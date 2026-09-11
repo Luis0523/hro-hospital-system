@@ -14,6 +14,14 @@ public interface MedicoClinicaRepository extends JpaRepository<MedicoClinica, Lo
 
     List<MedicoClinica> findByMedicoIdAndActivoTrue(Long medicoId);
 
+    List<MedicoClinica> findByClinicaId(Long clinicaId);
+
+    List<MedicoClinica> findByMedicoId(Long medicoId);
+
+    List<MedicoClinica> findByMedicoIdAndClinicaId(Long medicoId, Long clinicaId);
+
+    List<MedicoClinica> findByActivoTrue();
+
     List<MedicoClinica> findByClinicaIdAndDiaSemanaAndActivoTrue(Long clinicaId, Short diaSemana);
 
     Optional<MedicoClinica> findByMedicoIdAndClinicaIdAndDiaSemana(Long medicoId, Long clinicaId, Short diaSemana);
