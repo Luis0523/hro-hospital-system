@@ -31,7 +31,7 @@ public class Paciente {
     @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
-    @Column(name = "sexo", nullable = false, length = 1)
+    @Column(name = "sexo", nullable = false, columnDefinition = "bpchar")
     private String sexo; // 'M' o 'F'
 
     @Column(name = "telefono", length = 20)
