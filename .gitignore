@@ -35,3 +35,7 @@ sprint.md
 
 #la carpeta context no se sube a github
 context/
+
+# AI Agents and Skills
+.agents/
+skills-lock.json
