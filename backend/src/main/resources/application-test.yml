@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:hro_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: sa
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true

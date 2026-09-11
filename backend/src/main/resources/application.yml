@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: hro-hospital-system
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # Configuración JPA común
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+
+  # Migraciones con Flyway
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/v1
+
+# Documentación Swagger / OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
