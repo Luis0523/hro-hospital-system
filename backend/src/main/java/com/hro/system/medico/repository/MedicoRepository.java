@@ -9,6 +9,10 @@ import java.util.Optional;
 
 @Repository
 public interface MedicoRepository extends JpaRepository<Medico, Long> {
+
     Optional<Medico> findByNumeroColegiado(String numeroColegiado);
+
     List<Medico> findByActivoTrue();
+
+    boolean existsByNumeroColegiadoAndIdNot(String numeroColegiado, Long id);
 }
