@@ -152,30 +152,56 @@ El Sistema de Gestión Hospitalaria del Hospital Regional de Occidente (HRO) tie
 
 ---
 
-## 7. Métricas de Calidad y Suite de Pruebas
+---
 
-Toda la lógica de negocio y persistencia está respaldada por pruebas de integración automatizadas ejecutadas contra PostgreSQL en Docker:
+## 7. Fase 6: Optimizaciones de Base de Datos, Índices, Triggers y Seeds (~50 Pacientes)
+
+### A. Migración V3 (`V3__optimizaciones_indices_triggers.sql`)
+1. **Índices de Alto Rendimiento (postgres-patterns):**
+   - **Índice Parcial (`idx_cita_activas_cupo`):** Indexa `cita(cupo_diario_id)` filtrando `WHERE estado NOT IN ('cancelada', 'reprogramada')`. Reduce drásticamente el costo de cálculo de cupos activos por horario.
+   - **Índice Compuesto (`idx_paciente_apellidos_nombres`):** Autocompletado y búsqueda de pacientes sin escaneos secuenciales.
+   - **Índice Compuesto (`idx_cita_cupo_estado`):** Filtros rápidos por cupo y estado de cita.
+   - **Índice Compuesto (`idx_turno_cita_estado` y `idx_turno_estado_hora`):** Agiliza consultas de pantalla de sala y colas por estado.
+   - **Índices GIN (`idx_auditoria_valores_nuevos_gin`, `idx_auditoria_valores_anteriores_gin`):** Búsqueda eficiente en campos JSONB de auditoría general.
+2. **Regla Clínica de Integridad mediante Trigger PostgreSQL (`trg_prevenir_modificacion_estado_terminal_cita`):**
+   - Rechaza a nivel de motor de base de datos (`RAISE EXCEPTION`) cualquier intento de reactivar o mutar citas en estados terminales (`'atendida'`, `'cancelada'`, `'reprogramada'`, `'no_asistio'`).
+3. **Función Atómica de Cierre Diario en Base de Datos (`fn_cierre_diario_inasistencias`):**
+   - Recibe `(p_fecha, p_clinica_id, p_usuario_id)` y ejecuta en una sola transacción el cierre de jornada: pasa citas pendientes/no atendidas a `no_asistio`, genera auditoría en lote en `cita_estado_historial`, y limpia turnos no respondidos sin liberar cupos.
+   - Conectada al backend en `CitaRepository.ejecutarCierreDiarioSp` y `CitaService.ejecutarCierreDiario`.
+
+### B. Seeds de Datos de Prueba Completos (`03_datos_prueba_50_pacientes_citas_turnos.sql`)
+- **Población:** 50+ pacientes con nombres guatemaltecos realistas, DPIs de 13 dígitos del suroccidente (Quetzaltenango, Salcajá, Cantel, Olintepeque, Almolonga, San Juan Ostuncalco, Zunil, Coatepeque, etc.) y expedientes clínicos únicos.
+- **Distribución de Citas y Turnos:**
+  - Citas en todos los 6 estados del ciclo de vida (`pendiente`, `confirmada`, `atendida`, `cancelada`, `reprogramada`, `no_asistio`).
+  - Turnos en sala (`en_espera`, `llamado`, `no_responde`, `atendido`).
+  - Historial de estados (`cita_estado_historial`) con trazabilidad completa.
+
+---
+
+## 8. Métricas de Calidad y Suite de Pruebas
+
+Toda la lógica de negocio, persistencia, triggers y funciones atómicas están respaldadas por pruebas de integración automatizadas ejecutadas contra PostgreSQL en Docker:
 
 ```
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running com.hro.system.agenda.controller.CupoDiarioConcurrenciaTest (1 test)
-[INFO] Running com.hro.system.cita.controller.CitaCicloDeVidaTest (4 tests)
+[INFO] Running com.hro.system.cita.controller.CitaCicloDeVidaTest (6 tests)
 [INFO] Running com.hro.system.turno.controller.TurnoInasistenciaTest (3 tests)
 [INFO] Running com.hro.system.clinica.controller.CatalogosYCalendarioTest (7 tests)
 [INFO] Running com.hro.system.paciente.controller.PacienteControllerTest (8 tests)
 [INFO] Running com.hro.system.HroHospitalSystemApplicationTests (1 test)
-[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 26, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
 | Módulo Evaluado | Pruebas | Resultado | Aspectos Clave Validados |
 | :--- | :---: | :---: | :--- |
 | Concurrencia de Cupos | 1 | ✅ 100% | 10 hilos simultáneos, cero sobreventa, liberación atómica |
-| Ciclo de Vida de Citas | 4 | ✅ 100% | Horas estimadas, ventanas dinámicas, reprogramación genealógica, cancelación, tolerancia a papel |
+| Ciclo de Vida de Citas | 6 | ✅ 100% | Cierre atómico con SP PostgreSQL, Trigger de estados terminales, ventanas dinámicas, reprogramación genealógica, cancelación, tolerancia a papel |
 | Turnos e Inasistencias | 3 | ✅ 100% | Check-in atómico, llamado, no-responde, reintegración al final de la fila, cierre diario sin liberar cupo |
 | Catálogos y Calendario | 7 | ✅ 100% | CRUDs jerárquicos, asignación médico-clínica, bloqueo preventivo HU-15 |
 | Gestión de Pacientes | 8 | ✅ 100% | Validaciones DPI, expediente único, paginación, filtros |
-| Contexto de Aplicación | 1 | ✅ 100% | Inyección de dependencias, Flyway y Beans de configuración |
-| **Total General** | **24** | **100% Éxito** | **Cero fallos, cero errores** |
+| Contexto de Aplicación | 1 | ✅ 100% | Inyección de dependencias, Flyway V1/V2/V3 y Beans de configuración |
+| **Total General** | **26** | **100% Éxito** | **Cero fallos, cero errores** |

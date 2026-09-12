@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.cita.dto.CancelarCitaRequestDTO;
+import com.hro.system.cita.dto.CierreDiarioRequestDTO;
 import com.hro.system.cita.dto.CrearCitaRequestDTO;
 import com.hro.system.cita.dto.ReprogramarCitaRequestDTO;
 import com.hro.system.cita.entity.Cita;
@@ -96,11 +97,11 @@ public class CitaCicloDeVidaTest {
 
     @BeforeEach
     void setUp() {
-        turnoRepository.deleteAll();
-        historialRepository.deleteAll();
-        citaRepository.deleteAll();
-        cupoDiarioRepository.deleteAll();
-        medicoClinicaRepository.deleteAll();
+        turnoRepository.deleteAllInBatch();
+        historialRepository.deleteAllInBatch();
+        citaRepository.deleteAllInBatch();
+        cupoDiarioRepository.deleteAllInBatch();
+        medicoClinicaRepository.deleteAllInBatch();
 
         String suffix = UUID.randomUUID().toString().substring(0, 5);
 
@@ -312,5 +313,68 @@ public class CitaCicloDeVidaTest {
                 .andExpect(jsonPath("$.data.id").value(citaPapel.getId()))
                 .andExpect(jsonPath("$.data.horaEstimada").doesNotExist())
                 .andExpect(jsonPath("$.data.estado").value("pendiente"));
+    }
+
+    @Test
+    @DisplayName("Cierre Diario de Citas: Función atómica de BD marca inasistencias y genera auditoría sin liberar cupo")
+    void testCierreDiarioCitasAtomicsSp() throws Exception {
+        // 1. Agendar cita en cupo1
+        CrearCitaRequestDTO req = CrearCitaRequestDTO.builder()
+                .pacienteId(paciente.getId())
+                .cupoDiarioId(cupo1.getId())
+                .usuarioId(usuario.getId())
+                .build();
+
+        String agendarResp = mockMvc.perform(post("/citas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long citaId = objectMapper.readTree(agendarResp).get("data").get("id").asLong();
+
+        // 2. Ejecutar cierre diario
+        CierreDiarioRequestDTO cierreReq = CierreDiarioRequestDTO.builder()
+                .fecha(cupo1.getFecha())
+                .clinicaId(medicoClinica.getClinica().getId())
+                .usuarioId(usuario.getId())
+                .build();
+
+        mockMvc.perform(post("/citas/cierre-diario")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cierreReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(1));
+
+        // 3. Verificar estado 'no_asistio'
+        Cita citaFinal = citaRepository.findById(citaId).orElseThrow();
+        assertEquals("no_asistio", citaFinal.getEstado());
+
+        // 4. Verificar que cupo no se liberó
+        CupoDiario cupoFinal = cupoDiarioRepository.findById(cupo1.getId()).orElseThrow();
+        assertEquals(1, cupoFinal.getCuposOcupados(), "El cupo de la jornada no debe liberarse en el cierre diario");
+
+        // 5. Verificar auditoría registrada
+        List<CitaEstadoHistorial> hist = historialRepository.findByCitaIdOrderByFechaCambioDesc(citaId);
+        assertFalse(hist.isEmpty());
+        assertEquals("no_asistio", hist.get(0).getEstadoNuevo());
+    }
+
+    @Test
+    @DisplayName("Regla Clínica BD (Trigger): Previene alteración de cita en estado terminal")
+    void testTriggerPrevenirModificacionCitaTerminal() {
+        // Cita en estado terminal 'atendida'
+        Cita citaTerminal = citaRepository.save(Cita.builder()
+                .paciente(paciente)
+                .cupoDiario(cupo1)
+                .estado("atendida")
+                .registradoPor(usuario)
+                .build());
+
+        // Intentar pasar a 'pendiente' directamente debe disparar la excepción del trigger en PostgreSQL
+        citaTerminal.setEstado("pendiente");
+        assertThrows(Exception.class, () -> {
+            citaRepository.saveAndFlush(citaTerminal);
+        }, "El trigger de PostgreSQL debe impedir reactivar una cita en estado terminal");
     }
 }

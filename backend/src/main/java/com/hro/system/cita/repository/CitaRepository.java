@@ -30,4 +30,11 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     @Query("SELECT c FROM Cita c WHERE c.cupoDiario.fecha = :fecha AND (:clinicaId IS NULL OR c.cupoDiario.medicoClinica.clinica.id = :clinicaId) AND c.estado IN ('pendiente', 'confirmada')")
     List<Cita> buscarCitasPendientesParaCierre(@Param("fecha") LocalDate fecha, @Param("clinicaId") Long clinicaId);
+
+    @Query(value = "SELECT fn_cierre_diario_inasistencias(CAST(:fecha AS date), :clinicaId, :usuarioId)", nativeQuery = true)
+    int ejecutarCierreDiarioSp(
+            @Param("fecha") LocalDate fecha,
+            @Param("clinicaId") Long clinicaId,
+            @Param("usuarioId") Long usuarioId
+    );
 }

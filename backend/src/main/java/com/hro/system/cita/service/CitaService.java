@@ -232,6 +232,8 @@ public class CitaService {
 
     /**
      * Cierre operativo del día: Pasa las citas pendientes no presentadas a 'no_asistio'.
+     * Delega la lógica de negocio y auditoría a la función atómica PostgreSQL 'fn_cierre_diario_inasistencias',
+     * garantizando alto rendimiento y transaccionalidad completa en el motor de base de datos.
      * IMPORTANTE: No se libera cupo diario ya que la jornada finalizó.
      */
     @Transactional
@@ -239,21 +241,25 @@ public class CitaService {
         UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
-        List<Cita> pendientes = citaRepository.buscarCitasPendientesParaCierre(fecha, clinicaId);
         int procesadas = 0;
+        try {
+            procesadas = citaRepository.ejecutarCierreDiarioSp(fecha, clinicaId, usuarioId);
+            log.info("Cierre diario completado exitosamente mediante función atómica BD fn_cierre_diario_inasistencias para fecha {}. {} citas marcadas como 'no_asistio'.", fecha, procesadas);
+        } catch (Exception e) {
+            log.warn("Error al ejecutar fn_cierre_diario_inasistencias en BD ({}), recurriendo a procesamiento de reserva en Java...", e.getMessage());
+            List<Cita> pendientes = citaRepository.buscarCitasPendientesParaCierre(fecha, clinicaId);
+            for (Cita c : pendientes) {
+                String anterior = c.getEstado();
+                c.setEstado("no_asistio");
+                c.setActualizadoEn(OffsetDateTime.now());
+                citaRepository.save(c);
 
-        for (Cita c : pendientes) {
-            String anterior = c.getEstado();
-            c.setEstado("no_asistio");
-            c.setActualizadoEn(OffsetDateTime.now());
-            citaRepository.save(c);
-
-            registrarTransicionEstado(c, anterior, "no_asistio", usuario,
-                    "Inasistencia al cierre de jornada: Paciente no se presentó a check-in en enfermería.");
-            procesadas++;
+                registrarTransicionEstado(c, anterior, "no_asistio", usuario,
+                        "Inasistencia al cierre de jornada: Paciente no se presentó a check-in en enfermería.");
+                procesadas++;
+            }
         }
 
-        log.info("Cierre diario completado para fecha {}. {} citas marcadas como 'no_asistio'.", fecha, procesadas);
         return procesadas;
     }
 

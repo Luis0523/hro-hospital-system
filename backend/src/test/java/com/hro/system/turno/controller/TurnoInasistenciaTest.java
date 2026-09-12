@@ -101,12 +101,12 @@ public class TurnoInasistenciaTest {
 
     @BeforeEach
     void setUp() {
-        turnoRepository.deleteAll();
-        contadorRepository.deleteAll();
-        historialRepository.deleteAll();
-        citaRepository.deleteAll();
-        cupoDiarioRepository.deleteAll();
-        medicoClinicaRepository.deleteAll();
+        turnoRepository.deleteAllInBatch();
+        contadorRepository.deleteAllInBatch();
+        historialRepository.deleteAllInBatch();
+        citaRepository.deleteAllInBatch();
+        cupoDiarioRepository.deleteAllInBatch();
+        medicoClinicaRepository.deleteAllInBatch();
 
         fechaHoy = LocalDate.now();
         String suffix = UUID.randomUUID().toString().substring(0, 5);
