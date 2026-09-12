@@ -62,13 +62,21 @@ public class CupoDiarioConcurrenciaTest {
     @Autowired
     private com.hro.system.cita.repository.CitaRepository citaRepository;
 
+    @Autowired
+    private com.hro.system.turno.repository.TurnoRepository turnoRepository;
+
+    @Autowired
+    private com.hro.system.cita.repository.CitaEstadoHistorialRepository historialRepository;
+
     private MedicoClinica medicoClinicaTest;
     private LocalDate proximoLunes;
 
     @BeforeEach
     void setUp() {
-        citaRepository.deleteAll();
-        cupoDiarioRepository.deleteAll();
+        turnoRepository.deleteAllInBatch();
+        historialRepository.deleteAllInBatch();
+        citaRepository.deleteAllInBatch();
+        cupoDiarioRepository.deleteAllInBatch();
 
         // Encontrar próximo lunes para asegurar día_semana = 1
         proximoLunes = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
