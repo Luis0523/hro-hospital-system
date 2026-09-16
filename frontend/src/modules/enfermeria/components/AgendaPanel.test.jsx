@@ -25,7 +25,9 @@ const CUPOS = [
 
 describe('AgendaPanel', () => {
   it('no renderiza nada si está cerrado', () => {
-    const { container } = render(<AgendaPanel abierto={false} fecha="2026-09-20" />)
+    const { container } = render(
+      <AgendaPanel abierto={false} fecha="2026-09-20" onCerrar={() => {}} />,
+    )
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -40,5 +42,29 @@ describe('AgendaPanel', () => {
     render(<AgendaPanel abierto fecha="2026-09-20" cupos={CUPOS} onCerrar={() => {}} />)
 
     expect(screen.getByRole('button', { name: /agendar cita/i })).toBeDisabled()
+  })
+
+  it('muestra la alerta de sin cupo (409)', () => {
+    render(
+      <AgendaPanel
+        abierto
+        fecha="2026-09-20"
+        cupos={CUPOS}
+        sinCupo
+        error="No hay cupos disponibles para la fecha seleccionada."
+        onCerrar={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Sin cupos disponibles')).toBeInTheDocument()
+    expect(
+      screen.getByText('No hay cupos disponibles para la fecha seleccionada.'),
+    ).toBeInTheDocument()
+  })
+
+  it('muestra el estado de carga de cupos', () => {
+    render(<AgendaPanel abierto fecha="2026-09-20" cupos={[]} cargandoCupos onCerrar={() => {}} />)
+
+    expect(screen.getByText('Cargando cupos...')).toBeInTheDocument()
   })
 })

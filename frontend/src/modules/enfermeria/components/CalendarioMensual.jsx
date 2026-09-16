@@ -1,4 +1,5 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
+import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { aIso, hoyIso } from '@/shared/utils/fecha'
 
 const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -24,6 +25,7 @@ export default function CalendarioMensual({
   onSeleccionar,
   onCambiarMes,
   onHoy,
+  cargando = false,
 }) {
   const hoy = hoyIso()
   const porFecha = new Map(dias.map((dia) => [dia.fecha, dia]))
@@ -119,7 +121,9 @@ export default function CalendarioMensual({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {cargando && <Spinner label="Cargando disponibilidad..." />}
+
+      <div className={`grid grid-cols-7 gap-1 ${cargando ? 'pointer-events-none opacity-50' : ''}`}>
         {celdas.map((celda, indice) => {
           if (!celda) {
             return (
@@ -140,6 +144,8 @@ export default function CalendarioMensual({
               type="button"
               disabled={!habilitada}
               onClick={() => onSeleccionar(info)}
+              aria-label={`Día ${String(dia).padStart(2, '0')}${etiqueta(info) ? `, ${etiqueta(info)}` : ''}`}
+              aria-current={esHoy ? 'date' : undefined}
               className={`flex min-h-[92px] flex-col justify-between rounded-lg p-2 text-left transition-all ${estilo(
                 info,
               )} ${habilitada ? 'cursor-pointer' : 'cursor-not-allowed'}`}

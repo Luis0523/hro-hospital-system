@@ -67,6 +67,8 @@ export default function EnfermeriaPage() {
   const [agendando, setAgendando] = useState(false)
   const [citaCreada, setCitaCreada] = useState(null)
   const [errorAgenda, setErrorAgenda] = useState(null)
+  const [sinCupo, setSinCupo] = useState(false)
+  const [cargandoDias, setCargandoDias] = useState(false)
 
   const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
 
@@ -88,9 +90,11 @@ export default function EnfermeriaPage() {
 
   useEffect(() => {
     const { fechaInicio, fechaFin } = rangoDelMes(mes.getFullYear(), mes.getMonth())
+    setCargandoDias(true)
     consultarDisponibilidad({ clinicaIds: seleccionadas, fechaInicio, fechaFin })
       .then(setDias)
       .catch(() => setDias([]))
+      .finally(() => setCargandoDias(false))
   }, [mes, seleccionadas])
 
   useEffect(() => {
@@ -335,6 +339,7 @@ export default function EnfermeriaPage() {
     if (paciente) setPacienteAgenda(paciente)
     setCitaCreada(null)
     setErrorAgenda(null)
+    setSinCupo(false)
     setAgendaAbierta(true)
   }
 
@@ -351,6 +356,8 @@ export default function EnfermeriaPage() {
     setSeleccionada(info.fecha)
     setCupoSeleccionado(null)
     setCitaCreada(null)
+    setErrorAgenda(null)
+    setSinCupo(false)
     setAgendaAbierta(true)
   }
 
@@ -358,6 +365,7 @@ export default function EnfermeriaPage() {
     if (!pacienteAgenda || !cupoSeleccionado) return
     setAgendando(true)
     setErrorAgenda(null)
+    setSinCupo(false)
     try {
       const cita = await agendarCita({
         pacienteId: pacienteAgenda.id,
@@ -372,6 +380,7 @@ export default function EnfermeriaPage() {
         message: `${cita.fechaCita} • ${cita.horaEstimada?.slice(0, 5)}`,
       })
     } catch (error) {
+      setSinCupo(error.status === 409)
       setErrorAgenda(error.message)
       mostrarToast({ tone: 'error', title: 'No se pudo agendar', message: error.message })
     } finally {
@@ -445,6 +454,7 @@ export default function EnfermeriaPage() {
           <CalendarioMensual
             mes={mes}
             dias={dias}
+            cargando={cargandoDias}
             seleccionada={seleccionada}
             onSeleccionar={seleccionarDia}
             onCambiarMes={(delta) =>
@@ -482,6 +492,7 @@ export default function EnfermeriaPage() {
         onBuscarPacientes={buscarPacientes}
         citaCreada={citaCreada}
         agendando={agendando}
+        sinCupo={sinCupo}
         error={errorAgenda}
         onAgendar={confirmarAgenda}
         onCerrar={cerrarAgenda}

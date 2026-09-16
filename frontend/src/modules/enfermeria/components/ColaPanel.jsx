@@ -22,7 +22,10 @@ export default function ColaPanel({
   onReintegrar,
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl bg-surface-container-lowest p-4 shadow-card">
+    <section
+      aria-label="Cola de la clínica y pacientes no respondidos"
+      className="flex flex-col gap-3 rounded-xl bg-surface-container-lowest p-4 shadow-card"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <Icon name="groups" className="text-[20px] text-primary" />
