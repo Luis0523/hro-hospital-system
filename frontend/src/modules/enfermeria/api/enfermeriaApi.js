@@ -1,4 +1,5 @@
 import client from '@/shared/api/client'
+import { guardarCache, leerCache, limpiarCachePrefijo } from '@/shared/utils/cache'
 import { aIso, hoyIso } from '@/shared/utils/fecha'
 import {
   citasMock,
@@ -72,20 +73,38 @@ function completarRango(agrupado, fechaInicio, fechaFin, feriados = new Set()) {
 async function obtenerFeriados(fechaInicio, fechaFin) {
   const feriados = new Set()
   const anios = new Set([fechaInicio.slice(0, 4), fechaFin.slice(0, 4)])
-  try {
-    for (const anio of anios) {
-      const lista = desenvolver(await client.get('/dias-no-laborables', { params: { anio } }))
-      lista.forEach((dia) => feriados.add(dia.fecha))
+
+  for (const anio of anios) {
+    const clave = `feriados_${anio}`
+    let lista = leerCache(clave)
+    if (!lista) {
+      try {
+        lista = desenvolver(await client.get('/dias-no-laborables', { params: { anio } }))
+        guardarCache(clave, lista, 24 * 60 * 60 * 1000)
+      } catch {
+        lista = []
+      }
     }
-  } catch {
-    return feriados
+    lista.forEach((dia) => feriados.add(dia.fecha))
   }
+
   return feriados
 }
 
 export async function listarClinicas() {
   if (USE_MOCK) return clinicasMock
-  return desenvolver(await client.get('/clinicas'))
+  const cacheado = leerCache('clinicas')
+  if (cacheado) return cacheado
+  const clinicas = desenvolver(await client.get('/clinicas'))
+  guardarCache('clinicas', clinicas, 6 * 60 * 60 * 1000)
+  return clinicas
+}
+
+export async function listarPacientes({ page = 0, size = 50 } = {}) {
+  if (USE_MOCK) return pacientesMock
+  const respuesta = await client.get('/pacientes', { params: { page, size } })
+  const pagina = desenvolver(respuesta)
+  return pagina?.content ?? pagina
 }
 
 export async function consultarDisponibilidad({ clinicaIds = [], fechaInicio, fechaFin } = {}) {
@@ -94,9 +113,14 @@ export async function consultarDisponibilidad({ clinicaIds = [], fechaInicio, fe
   }
   const params = { fechaInicio, fechaFin }
   if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
+  const clave = `cupos_mes_${fechaInicio}_${fechaFin}_${clinicaIds.join('-') || 'all'}`
+  const cacheado = leerCache(clave)
+  if (cacheado) return cacheado
   const agrupado = agruparCuposPorFecha(desenvolver(await client.get('/cupos', { params })))
   const feriados = await obtenerFeriados(fechaInicio, fechaFin)
-  return completarRango(agrupado, fechaInicio, fechaFin, feriados)
+  const resultado = completarRango(agrupado, fechaInicio, fechaFin, feriados)
+  guardarCache(clave, resultado, 30 * 1000)
+  return resultado
 }
 
 export async function listarCuposDelDia(fecha, clinicaIds = []) {
@@ -105,7 +129,12 @@ export async function listarCuposDelDia(fecha, clinicaIds = []) {
   }
   const params = { fechaInicio: fecha, fechaFin: fecha }
   if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
-  return desenvolver(await client.get('/cupos', { params }))
+  const clave = `cupos_dia_${fecha}_${clinicaIds.join('-') || 'all'}`
+  const cacheado = leerCache(clave)
+  if (cacheado) return cacheado
+  const cupos = desenvolver(await client.get('/cupos', { params }))
+  guardarCache(clave, cupos, 30 * 1000)
+  return cupos
 }
 
 export async function listarCitasDePaciente(pacienteId) {
@@ -179,9 +208,11 @@ export async function agendarCita({ pacienteId, cupo }) {
     return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
   }
 
-  return desenvolver(
+  const cita = desenvolver(
     await client.post('/citas', { pacienteId: Number(pacienteId), cupoDiarioId: cupo.id }),
   )
+  limpiarCachePrefijo('cupos')
+  return cita
 }
 
 export async function hacerCheckIn(citaId) {

@@ -12,6 +12,7 @@ import {
   hacerCheckIn,
   listarClinicas,
   listarCuposDelDia,
+  listarPacientes,
   listarTurnosActivos,
   listarTurnosClinica,
   llamarTurno,
@@ -29,6 +30,7 @@ import ScannerDock from '../components/ScannerDock.jsx'
 import ConfirmacionCita from '../components/ConfirmacionCita.jsx'
 import ColaPanel from '../components/ColaPanel.jsx'
 import AgendaPanel from '../components/AgendaPanel.jsx'
+import PacientesTemporalModal from '../components/PacientesTemporalModal.jsx'
 
 const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
@@ -69,6 +71,7 @@ export default function EnfermeriaPage() {
   const [errorAgenda, setErrorAgenda] = useState(null)
   const [sinCupo, setSinCupo] = useState(false)
   const [cargandoDias, setCargandoDias] = useState(false)
+  const [pacientesAbierto, setPacientesAbierto] = useState(false)
 
   const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
 
@@ -334,6 +337,15 @@ export default function EnfermeriaPage() {
     )
   }
 
+  function abrirPacientes() {
+    setPacientesAbierto(true)
+  }
+
+  function seleccionarPacienteTemporal(paciente) {
+    setPacientesAbierto(false)
+    abrirAgenda(paciente)
+  }
+
   function abrirAgenda(paciente = null) {
     if (paciente) setPacienteAgenda(paciente)
     setCitaCreada(null)
@@ -422,6 +434,7 @@ export default function EnfermeriaPage() {
         tableroActivo={tableroActivo}
         onToggleTablero={alternarTablero}
         onPasarSiguiente={manejarPasarSiguiente}
+        onVerPacientes={abrirPacientes}
         pasandoSiguiente={pasando}
       />
 
@@ -494,6 +507,13 @@ export default function EnfermeriaPage() {
         error={errorAgenda}
         onAgendar={confirmarAgenda}
         onCerrar={cerrarAgenda}
+      />
+
+      <PacientesTemporalModal
+        abierto={pacientesAbierto}
+        onCerrar={() => setPacientesAbierto(false)}
+        onCargarPacientes={listarPacientes}
+        onSeleccionarPaciente={seleccionarPacienteTemporal}
       />
 
       <ScannerDock

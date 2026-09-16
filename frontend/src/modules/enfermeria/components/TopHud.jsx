@@ -8,6 +8,7 @@ export default function TopHud({
   tableroActivo,
   onToggleTablero,
   onPasarSiguiente,
+  onVerPacientes,
   pasandoSiguiente = false,
 }) {
   return (
@@ -59,6 +60,15 @@ export default function TopHud({
               {pacienteActual ? ` • ${pacienteActual}` : ''}
             </span>
           </span>
+          <button
+            type="button"
+            onClick={onVerPacientes}
+            title="Temporal: ver pacientes registrados"
+            className="flex items-center gap-1 rounded bg-surface-container-lowest px-2 py-1 text-primary shadow-card transition hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container"
+          >
+            <Icon name="folder_shared" className="text-[16px]" />
+            <span className="text-label-sm font-semibold uppercase tracking-wider">Pacientes</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
