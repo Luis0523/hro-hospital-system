@@ -15,6 +15,8 @@ public class GenerarTurnoRequestDTO {
     @NotNull(message = "El ID de la cita es obligatorio")
     private Long citaId;
 
-    @NotNull(message = "El ID del usuario (enfermera) que genera el turno es obligatorio")
+    /**
+     * Opcional: si se omite, se toma del usuario autenticado (header X-Usuario-Id).
+     */
     private Long usuarioId;
 }

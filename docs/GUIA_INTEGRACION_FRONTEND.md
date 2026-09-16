@@ -48,6 +48,41 @@ Todas las respuestas de la API REST (tanto éxitos como errores controlados) uti
 | **`409 Conflict`** | **Cupos agotados / Sobrecupo prevenido.** | Mostrar una **alerta visible y destacada**: *"No hay cupos disponibles para la fecha seleccionada. Por favor seleccione otra fecha u otro médico."* |
 | **`500 Error`** | Error interno del servidor. | Mostrar notificación de error del sistema e invitar a reintentar. |
 
+### 2.3 Autenticación en pruebas (modo simulado / mock)
+
+El hospital autentica a su personal con un **servicio externo local que aún no está disponible**. Para no bloquear el desarrollo del frontend, el backend opera en **modo `mock`**: la identidad se simula con cabeceras HTTP y el usuario se aprovisiona automáticamente (JIT) en la tabla `usuario_referencia`.
+
+**Cabeceras de simulación (opcionales):**
+
+| Cabecera | Descripción | Ejemplo |
+| :--- | :--- | :--- |
+| `X-Usuario-Id` | Identificador externo del usuario. | `enfermeria-01` |
+| `X-Usuario-Rol` | Rol operativo (`personal_citas`, `enfermeria`, `medico`, `administrador`, `archivo`). | `enfermeria` |
+| `X-Usuario-Nombre` | Nombre a mostrar (opcional). | `Enfermera de Pruebas` |
+
+Si no se envían cabeceras, el backend usa por defecto el usuario **`admin-hro-01`** con rol **`administrador`**, de modo que ninguna consulta falla.
+
+**Usuarios de prueba precargados (seeds):** `admin-hro-01` (administrador), `personal-citas-01`, `enfermeria-01`, `medico-01`, `archivo-01`.
+
+**El campo `usuarioId` ahora es opcional** en todos los cuerpos/parámetros. Si se envía, tiene prioridad; si se omite, se toma del usuario autenticado (cabeceras o usuario por defecto). Así el frontend puede migrar gradualmente.
+
+**Endpoints de verificación:**
+
+```http
+GET /api/v1/auth/modo     -> { "modo": "mock" }
+GET /api/v1/auth/perfil   -> identidad resuelta (id, idExterno, nombreMostrar, rolPrincipal)
+```
+
+Ejemplo con `curl`:
+
+```bash
+curl -H "X-Usuario-Id: enfermeria-01" -H "X-Usuario-Rol: enfermeria" \
+     http://localhost:8081/api/v1/auth/perfil
+```
+
+> [!NOTE]
+> Cuando el hospital habilite su servicio real, solo se implementa `HospitalProveedorIdentidad` y se cambia `HRO_AUTH_MODE=external`. El frontend no requiere cambios (seguirá enviando su token/credenciales reales).
+
 ---
 
 ## 3. Guía Específica por Módulo Frontend
@@ -134,10 +169,17 @@ Content-Type: application/json
     "horaEstimada": "08:10:00",
     "horaVentanaInicio": "07:55:00",
     "horaVentanaFin": "08:45:00",
+    "posicionEnFila": 3,
+    "minutosEsperaEstimados": 70,
     "estado": "pendiente"
   }
 }
 ```
+
+> [!NOTE]
+> **Hora estimada escalonada:** el backend calcula `horaEstimada = horaInicio + (posicionEnFila - 1) × duracionConsulta`, por lo que **cada cita tiene una hora distinta y no choca con las demás** del mismo médico. `minutosEsperaEstimados` es el tiempo aproximado desde el inicio de la jornada y `posicionEnFila` la posición en la fila. La ventana de presentación (`horaVentanaInicio`–`horaVentanaFin`) es el rango recomendado para que el paciente llegue.
+>
+> **Días habilitados por clínica:** cada clínica/médico atiende solo ciertos días (p. ej. Pediatría Especializada abre **solo lunes y jueves**). Si se intenta agendar en un día no habilitado, el backend responde `400` con el detalle. Consulta los días válidos con `GET /api/v1/medico-clinicas/clinica/{clinicaId}` o mediante `GET /api/v1/cupos`, que solo devuelve las fechas realmente disponibles.
 
 > [!IMPORTANT]
 > **Diseño del Comprobante Impreso / Ticket para el Paciente:**

@@ -2,6 +2,7 @@ package com.hro.system.turno.service;
 
 import com.hro.system.agenda.config.HroAgendaProperties;
 import com.hro.system.auditoria.event.AuditoriaEvent;
+import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.entity.CitaEstadoHistorial;
 import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
@@ -53,8 +54,9 @@ public class TurnoService {
         Cita cita = citaRepository.findById(dto.getCitaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", dto.getCitaId()));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         if ("cancelada".equalsIgnoreCase(cita.getEstado()) || "reprogramada".equalsIgnoreCase(cita.getEstado())) {
             throw new BusinessException(String.format("No se puede generar turno para una cita en estado '%s'", cita.getEstado()));
@@ -117,8 +119,9 @@ public class TurnoService {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         String estadoAnterior = turno.getEstado();
         turno.setEstado("llamado");
@@ -155,8 +158,9 @@ public class TurnoService {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         String estadoAnterior = turno.getEstado();
         turno.setEstado("no_responde");
@@ -184,8 +188,9 @@ public class TurnoService {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         if (!"no_responde".equalsIgnoreCase(turno.getEstado())) {
             throw new BusinessException(String.format("Solo se pueden reintegrar turnos en estado 'no_responde'. Estado actual: '%s'", turno.getEstado()));
@@ -237,8 +242,9 @@ public class TurnoService {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         String estadoAnterior = turno.getEstado();
         turno.setEstado("atendido");
@@ -278,8 +284,9 @@ public class TurnoService {
      */
     @Transactional
     public int procesarCierreDiarioTurnosNoRespondidos(LocalDate fecha, Long clinicaId, Long usuarioId) {
-        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         List<Turno> turnosNoResponde = turnoRepository.buscarNoRespondeParaCierre(fecha, clinicaId);
         int total = 0;

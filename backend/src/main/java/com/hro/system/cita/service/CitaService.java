@@ -5,6 +5,7 @@ import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.service.CupoDiarioService;
 import com.hro.system.auditoria.event.AuditoriaEvent;
+import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.cita.dto.*;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.entity.CitaEstadoHistorial;
@@ -12,6 +13,7 @@ import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
 import com.hro.system.cita.repository.CitaRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
+import com.hro.system.medico.entity.MedicoClinica;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -22,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -56,8 +59,9 @@ public class CitaService {
         CupoDiario cupo = cupoDiarioRepository.findById(dto.getCupoDiarioId())
                 .orElseThrow(() -> new ResourceNotFoundException("CupoDiario", "id", dto.getCupoDiarioId()));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         // Reserva atómica en PostgreSQL para prevenir sobreventa ante concurrencia
         cupoDiarioService.reservarCupoAtomico(cupo.getMedicoClinica().getId(), cupo.getFecha());
@@ -116,8 +120,9 @@ public class CitaService {
         CupoDiario nuevoCupo = cupoDiarioRepository.findById(dto.getNuevoCupoDiarioId())
                 .orElseThrow(() -> new ResourceNotFoundException("CupoDiario", "id", dto.getNuevoCupoDiarioId()));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         // 1. Reservar de forma atómica el nuevo cupo
         cupoDiarioService.reservarCupoAtomico(nuevoCupo.getMedicoClinica().getId(), nuevoCupo.getFecha());
@@ -174,8 +179,9 @@ public class CitaService {
             throw new BusinessException(String.format("No se puede cancelar una cita con estado terminal: '%s'", cita.getEstado()));
         }
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         String estadoAnterior = cita.getEstado();
         cita.setEstado("cancelada");
@@ -203,8 +209,9 @@ public class CitaService {
         Cita cita = citaRepository.findById(citaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", citaId));
 
-        UsuarioReferencia usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioId()));
+        Long usuarioId = UsuarioContexto.resolverId(dto.getUsuarioId());
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         String estadoAnterior = cita.getEstado();
         String nuevoEstado = dto.getNuevoEstado();
@@ -238,12 +245,13 @@ public class CitaService {
      */
     @Transactional
     public int ejecutarCierreDiario(LocalDate fecha, Long clinicaId, Long usuarioId) {
-        UsuarioReferencia usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+        Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
+        UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
         int procesadas = 0;
         try {
-            procesadas = citaRepository.ejecutarCierreDiarioSp(fecha, clinicaId, usuarioId);
+            procesadas = citaRepository.ejecutarCierreDiarioSp(fecha, clinicaId, usuarioResueltoId);
             log.info("Cierre diario completado exitosamente mediante función atómica BD fn_cierre_diario_inasistencias para fecha {}. {} citas marcadas como 'no_asistio'.", fecha, procesadas);
         } catch (Exception e) {
             log.warn("Error al ejecutar fn_cierre_diario_inasistencias en BD ({}), recurriendo a procesamiento de reserva en Java...", e.getMessage());
@@ -307,9 +315,7 @@ public class CitaService {
 
         // Duración promedio de la consulta
         // TODO: Sustituir valor por defecto por estudio de tiempos promedio por especialidad/médico.
-        int duracion = (cupo.getMedicoClinica().getDuracionConsultaMinutos() != null && cupo.getMedicoClinica().getDuracionConsultaMinutos() > 0)
-                ? cupo.getMedicoClinica().getDuracionConsultaMinutos()
-                : agendaProperties.getDuracionConsultaDefaultMinutos();
+        int duracion = duracionEfectiva(cupo.getMedicoClinica());
 
         LocalTime horaInicioJornada = cupo.getMedicoClinica().getHoraInicio();
 
@@ -323,6 +329,12 @@ public class CitaService {
 
         if (horaEstimada == null) {
             horaEstimada = horaInicioJornada.plusMinutes((long) (posicion - 1) * duracion);
+        }
+
+        if (horaEstimada.isAfter(cupo.getMedicoClinica().getHoraFin())) {
+            log.warn("Hora estimada {} excede el fin de jornada {} del cupo {} (posición {}). "
+                            + "Revise la capacidad/duración configurada para este médico-clínica.",
+                    horaEstimada, cupo.getMedicoClinica().getHoraFin(), cupo.getId(), posicion);
         }
 
         // Cálculo de ventana con margen base e incremento por incertidumbre acumulada
@@ -390,6 +402,15 @@ public class CitaService {
     }
 
     private CitaResponseDTO mapToDTO(Cita cita) {
+        Integer posicionEnFila = null;
+        Long minutosEsperaEstimados = null;
+        if (cita.getHoraEstimada() != null) {
+            LocalTime horaInicioJornada = cita.getCupoDiario().getMedicoClinica().getHoraInicio();
+            int duracion = duracionEfectiva(cita.getCupoDiario().getMedicoClinica());
+            minutosEsperaEstimados = Math.max(0, Duration.between(horaInicioJornada, cita.getHoraEstimada()).toMinutes());
+            posicionEnFila = (int) (minutosEsperaEstimados / duracion) + 1;
+        }
+
         return CitaResponseDTO.builder()
                 .id(cita.getId())
                 .pacienteId(cita.getPaciente().getId())
@@ -403,11 +424,23 @@ public class CitaService {
                 .horaEstimada(cita.getHoraEstimada())
                 .horaVentanaInicio(cita.getHoraVentanaInicio())
                 .horaVentanaFin(cita.getHoraVentanaFin())
+                .posicionEnFila(posicionEnFila)
+                .minutosEsperaEstimados(minutosEsperaEstimados)
                 .estado(cita.getEstado())
                 .citaOrigenId(cita.getCitaOrigen() != null ? cita.getCitaOrigen().getId() : null)
                 .version(cita.getVersion())
                 .creadoEn(cita.getCreadoEn())
                 .actualizadoEn(cita.getActualizadoEn())
                 .build();
+    }
+
+    /**
+     * Duración efectiva de consulta del médico-clínica, con respaldo en la configuración global.
+     */
+    private int duracionEfectiva(MedicoClinica medicoClinica) {
+        Integer configurada = medicoClinica.getDuracionConsultaMinutos();
+        return (configurada != null && configurada > 0)
+                ? configurada
+                : agendaProperties.getDuracionConsultaDefaultMinutos();
     }
 }

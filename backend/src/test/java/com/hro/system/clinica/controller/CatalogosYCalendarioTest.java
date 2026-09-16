@@ -210,7 +210,7 @@ class CatalogosYCalendarioTest {
                 .diaSemana((short) 1) // Lunes
                 .horaInicio(LocalTime.of(7, 0))
                 .horaFin(LocalTime.of(13, 0))
-                .capacidadMaxima(20)
+                .capacidadMaxima(12)
                 .duracionConsultaMinutos(30)
                 .build();
 
@@ -220,7 +220,28 @@ class CatalogosYCalendarioTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.diaSemanaNombre", is("Lunes")))
-                .andExpect(jsonPath("$.data.capacidadMaxima", is(20)));
+                .andExpect(jsonPath("$.data.capacidadMaxima", is(12)));
+    }
+
+    @Test
+    @DisplayName("POST /medico-clinicas - Debe rechazar horario cuya capacidad no cabe en la jornada")
+    void asignarHorarioMedico_capacidadExcedeJornada() throws Exception {
+        AsignarMedicoClinicaRequestDTO req = AsignarMedicoClinicaRequestDTO.builder()
+                .medicoId(medico.getId())
+                .clinicaId(clinica.getId())
+                .diaSemana((short) 2) // Martes
+                .horaInicio(LocalTime.of(7, 0))
+                .horaFin(LocalTime.of(13, 0))
+                .capacidadMaxima(20) // 20 x 30 = 600 min > 360 min de jornada
+                .duracionConsultaMinutos(30)
+                .build();
+
+        mockMvc.perform(post("/medico-clinicas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", containsString("no cabe en la jornada")));
     }
 
     @Test

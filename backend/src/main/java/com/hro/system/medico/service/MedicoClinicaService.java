@@ -40,6 +40,21 @@ public class MedicoClinicaService {
             throw new BusinessException("La hora de fin debe ser posterior a la hora de inicio");
         }
 
+        int duracion = (dto.getDuracionConsultaMinutos() != null) ? dto.getDuracionConsultaMinutos() : 35;
+
+        // La agenda debe caber dentro de la jornada para que las horas escalonadas no se desborden
+        // ni choquen con el final del horario del médico.
+        long minutosJornada = java.time.Duration.between(dto.getHoraInicio(), dto.getHoraFin()).toMinutes();
+        long minutosRequeridos = (long) dto.getCapacidadMaxima() * duracion;
+        if (minutosRequeridos > minutosJornada) {
+            throw new BusinessException(String.format(
+                    "La capacidad configurada no cabe en la jornada: %d pacientes x %d min = %d min, "
+                            + "pero el horario %s-%s solo dispone de %d min. Reduzca la capacidad, "
+                            + "la duración de consulta o amplíe el horario.",
+                    dto.getCapacidadMaxima(), duracion, minutosRequeridos,
+                    dto.getHoraInicio(), dto.getHoraFin(), minutosJornada));
+        }
+
         Medico medico = medicoRepository.findById(dto.getMedicoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "id", dto.getMedicoId()));
 
@@ -57,7 +72,7 @@ public class MedicoClinicaService {
                 .horaInicio(dto.getHoraInicio())
                 .horaFin(dto.getHoraFin())
                 .capacidadMaxima(dto.getCapacidadMaxima())
-                .duracionConsultaMinutos(dto.getDuracionConsultaMinutos() != null ? dto.getDuracionConsultaMinutos() : 35)
+                .duracionConsultaMinutos(duracion)
                 .activo(true)
                 .creadoEn(OffsetDateTime.now())
                 .build();

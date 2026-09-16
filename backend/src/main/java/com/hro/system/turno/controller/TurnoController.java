@@ -41,7 +41,7 @@ public class TurnoController {
             description = "Pasa el estado a 'llamado', incrementa intentos, actualiza turno actual en el tablero e inicia el tiempo de gracia configurable.")
     public ResponseEntity<ApiResponse<TurnoResponseDTO>> llamarTurno(
             @PathVariable Long id,
-            @Parameter(description = "ID del médico o enfermera que realiza el llamado") @RequestParam Long usuarioId) {
+            @Parameter(description = "ID del médico o enfermera que realiza el llamado. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId) {
         TurnoResponseDTO response = turnoService.llamarTurno(id, usuarioId);
         return ResponseEntity.ok(ApiResponse.ok(response, "Turno llamado exitosamente"));
     }
@@ -51,7 +51,7 @@ public class TurnoController {
             description = "Se activa si expira el tiempo de gracia sin que el paciente se presente. Permite avanzar la fila inmediatamente sin bloquear.")
     public ResponseEntity<ApiResponse<TurnoResponseDTO>> marcarNoResponde(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
+            @RequestParam(required = false) Long usuarioId,
             @RequestParam(required = false) String motivo) {
         TurnoResponseDTO response = turnoService.marcarNoResponde(id, usuarioId, motivo);
         return ResponseEntity.ok(ApiResponse.ok(response, "Turno marcado como 'no_responde'"));
@@ -72,7 +72,7 @@ public class TurnoController {
             description = "Concluye la atención médica y actualiza la cita asociada al estado 'atendida' con auditoría obligatoria.")
     public ResponseEntity<ApiResponse<TurnoResponseDTO>> marcarAtendido(
             @PathVariable Long id,
-            @RequestParam Long usuarioId) {
+            @RequestParam(required = false) Long usuarioId) {
         TurnoResponseDTO response = turnoService.marcarAtendido(id, usuarioId);
         return ResponseEntity.ok(ApiResponse.ok(response, "Consulta finalizada y turno marcado como 'atendido'"));
     }

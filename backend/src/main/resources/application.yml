@@ -32,8 +32,16 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
-# Parámetros provisionales v1 para cálculo de agenda y turnos (HRO)
+# Autenticación (servicio externo del hospital aún no disponible -> modo simulado)
 hro:
+  auth:
+    mode: ${HRO_AUTH_MODE:mock}
+    mock:
+      default-id-externo: ${HRO_AUTH_MOCK_ID:admin-hro-01}
+      default-rol: ${HRO_AUTH_MOCK_ROL:administrador}
+      default-nombre: ${HRO_AUTH_MOCK_NOMBRE:Usuario de Pruebas HRO}
+
+  # Parámetros provisionales v1 para cálculo de agenda y turnos (HRO)
   agenda:
     duracion-consulta-default-minutos: 35
     ventana:

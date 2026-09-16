@@ -26,6 +26,8 @@ public class CitaResponseDTO {
     private LocalTime horaEstimada;
     private LocalTime horaVentanaInicio;
     private LocalTime horaVentanaFin;
+    private Integer posicionEnFila;
+    private Long minutosEsperaEstimados;
     private String estado;
     private Long citaOrigenId;
     private Integer version;

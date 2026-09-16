@@ -23,7 +23,6 @@ public class CierreDiarioRequestDTO {
     @Schema(description = "ID opcional de la clínica (si se omite, cierra todas las clínicas de la fecha)", example = "1")
     private Long clinicaId;
 
-    @NotNull(message = "El ID del usuario que ejecuta el cierre es obligatorio")
-    @Schema(description = "ID del usuario que realiza el cierre", example = "2")
+    @Schema(description = "ID del usuario que realiza el cierre. Opcional: si se omite, se toma del usuario autenticado.", example = "2")
     private Long usuarioId;
 }

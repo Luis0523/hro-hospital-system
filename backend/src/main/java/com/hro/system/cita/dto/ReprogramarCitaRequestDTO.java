@@ -19,8 +19,7 @@ public class ReprogramarCitaRequestDTO {
     @Schema(description = "ID del nuevo cupo diario al que se transferirá el paciente", example = "15")
     private Long nuevoCupoDiarioId;
 
-    @NotNull(message = "El ID del usuario que autoriza/registra la reprogramación es obligatorio")
-    @Schema(description = "ID del usuario operativo o médico que realiza el cambio", example = "2")
+    @Schema(description = "ID del usuario operativo o médico que realiza el cambio. Opcional: si se omite, se toma del usuario autenticado.", example = "2")
     private Long usuarioId;
 
     @NotBlank(message = "El motivo de la reprogramación es obligatorio para auditoría médica")

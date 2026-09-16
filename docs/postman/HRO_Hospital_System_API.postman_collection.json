@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "hro-api-collection-v1",
     "name": "HRO Hospital System - API Collection (v1.0)",
-    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada, reprogramación genealógica, cancelación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos y Disponibilidad de Cupos Diarios\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
+    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Autenticación simulada (perfil y modo mock)\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada escalonada, reprogramación genealógica, cancelación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos, horarios por día de clínica y disponibilidad de cupos diarios\n\nAUTENTICACIÓN (modo mock): todas las peticiones envían automáticamente las cabeceras X-Usuario-Id, X-Usuario-Rol y X-Usuario-Nombre (ver script de pre-request de la colección). Puedes cambiar de estación modificando las variables usuarioExterno y usuarioRol.\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,9 +13,9 @@
     },
     {
       "key": "usuarioId",
-      "value": "2",
+      "value": "",
       "type": "string",
-      "description": "ID del usuario que realiza la operación (enfermera, médico u operador)"
+      "description": "Opcional: ID interno de usuario. Si se deja vacío, se usa la identidad simulada por cabeceras"
     },
     {
       "key": "clinicaId",
@@ -42,9 +42,69 @@
       "key": "dpiEjemplo",
       "value": "2984123450901",
       "type": "string"
+    },
+    {
+      "key": "usuarioExterno",
+      "value": "admin-hro-01",
+      "type": "string",
+      "description": "Identificador externo enviado en el header X-Usuario-Id (ej. enfermeria-01, personal-citas-01, medico-01, archivo-01)"
+    },
+    {
+      "key": "usuarioRol",
+      "value": "administrador",
+      "type": "string",
+      "description": "Rol enviado en el header X-Usuario-Rol (personal_citas, enfermeria, medico, administrador, archivo)"
+    },
+    {
+      "key": "usuarioNombre",
+      "value": "Usuario de Pruebas HRO",
+      "type": "string",
+      "description": "Nombre enviado en el header X-Usuario-Nombre (opcional)"
     }
   ],
   "item": [
+    {
+      "name": "00. Autenticación (Mock)",
+      "description": "Verificación de la autenticación simulada. Las cabeceras X-Usuario-Id / X-Usuario-Rol se envían automáticamente desde el script de pre-request de la colección.",
+      "item": [
+        {
+          "name": "1. Consultar Modo de Autenticación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/modo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "modo"
+              ]
+            },
+            "description": "Retorna 'mock' o 'external'. En pruebas debe ser 'mock'."
+          }
+        },
+        {
+          "name": "2. Consultar Perfil Simulado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "perfil"
+              ]
+            },
+            "description": "Devuelve la identidad resuelta desde las cabeceras X-Usuario-Id / X-Usuario-Rol / X-Usuario-Nombre (o el usuario por defecto admin-hro-01)."
+          }
+        }
+      ]
+    },
     {
       "name": "01. Estación de Enfermería y Turnos",
       "description": "Endpoints para el módulo frontend de enfermería: recepción presencial, gestión de colas, llamados y cierre.",
@@ -61,12 +121,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"citaId\": {{citaId}},\n  \"usuarioId\": {{usuarioId}}\n}"
+              "raw": "{\n  \"citaId\": {{citaId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/turnos/check-in",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "check-in"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "check-in"
+              ]
             },
             "description": "Registra la llegada presencial del paciente en la estación de enfermería.\n- Asigna número correlativo atómico del día (`fn_siguiente_turno`)\n- Pasa la cita a estado 'confirmada'\n- Pone el turno en estado 'en_espera'\n- Emite evento en tiempo real vía WebSocket a los tableros de sala"
           }
@@ -78,8 +143,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/turnos/clinica/{{clinicaId}}?fecha=2026-09-15",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "clinica", "{{clinicaId}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "clinica",
+                "{{clinicaId}}"
+              ],
               "query": [
                 {
                   "key": "fecha",
@@ -98,8 +169,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/turnos/activos",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "activos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "activos"
+              ]
             },
             "description": "Obtiene todos los turnos actualmente activos en salas de espera de todo el hospital."
           }
@@ -110,16 +186,16 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar?usuarioId={{usuarioId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "{{turnoId}}", "llamar"],
-              "query": [
-                {
-                  "key": "usuarioId",
-                  "value": "{{usuarioId}}",
-                  "description": "ID del médico o enfermera que llama al paciente"
-                }
-              ]
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "{{turnoId}}",
+                "llamar"
+              ],
+              "query": []
             },
             "description": "Cambia el estado del turno a 'llamado', actualiza la pantalla del tablero e inicia el temporizador de tiempo de gracia (3 minutos por defecto)."
           }
@@ -130,14 +206,16 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/no-responde?usuarioId={{usuarioId}}&motivo=Paciente no acudio tras 3 llamados en sala",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "{{turnoId}}", "no-responde"],
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/no-responde&motivo=Paciente no acudio tras 3 llamados en sala",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "{{turnoId}}",
+                "no-responde"
+              ],
               "query": [
-                {
-                  "key": "usuarioId",
-                  "value": "{{usuarioId}}"
-                },
                 {
                   "key": "motivo",
                   "value": "Paciente no acudio tras 3 llamados en sala"
@@ -159,12 +237,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"usuarioId\": {{usuarioId}},\n  \"motivo\": \"Paciente regreso de toma de muestras de laboratorio\"\n}"
+              "raw": "{\n  \"motivo\": \"Paciente regreso de toma de muestras de laboratorio\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/turnos/{{turnoId}}/reintegrar",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "{{turnoId}}", "reintegrar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "{{turnoId}}",
+                "reintegrar"
+              ]
             },
             "description": "Si un paciente en 'no_responde' regresa más tarde el mismo día, se reincorpora al final de la fila actual con un nuevo correlativo de turno, conservando la misma cita."
           }
@@ -175,15 +259,16 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/atendido?usuarioId={{usuarioId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "{{turnoId}}", "atendido"],
-              "query": [
-                {
-                  "key": "usuarioId",
-                  "value": "{{usuarioId}}"
-                }
-              ]
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/atendido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "{{turnoId}}",
+                "atendido"
+              ],
+              "query": []
             },
             "description": "El médico finaliza la atención médica. El turno pasa a 'atendido' y la cita pasa a 'atendida' con auditoría clínica."
           }
@@ -200,12 +285,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}},\n  \"usuarioId\": {{usuarioId}}\n}"
+              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/turnos/cierre-diario",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", "cierre-diario"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "cierre-diario"
+              ]
             },
             "description": "Al finalizar la jornada, pasa a 'no_asistio' las citas cuyos turnos quedaron en 'no_responde', sin liberar cupos."
           }
@@ -228,12 +318,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pacienteId\": {{pacienteId}},\n  \"cupoDiarioId\": 1,\n  \"usuarioId\": {{usuarioId}}\n}"
+              "raw": "{\n  \"pacienteId\": {{pacienteId}},\n  \"cupoDiarioId\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas"
+              ]
             },
             "description": "Agenda una nueva cita médica. Reserva atómicamente el cupo en PostgreSQL y calcula la hora estimada y ventana de tolerancia."
           }
@@ -245,8 +339,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/citas/{{citaId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "{{citaId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaId}}"
+              ]
             }
           }
         },
@@ -257,8 +356,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/citas/paciente/{{pacienteId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "paciente", "{{pacienteId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "paciente",
+                "{{pacienteId}}"
+              ]
             }
           }
         },
@@ -274,12 +379,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nuevoCupoDiarioId\": 2,\n  \"usuarioId\": {{usuarioId}},\n  \"motivo\": \"Paciente solicita cambio de horario por motivos laborales\"\n}"
+              "raw": "{\n  \"nuevoCupoDiarioId\": 2,\n  \"motivo\": \"Paciente solicita cambio de horario por motivos laborales\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas/{{citaId}}/reprogramar",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "{{citaId}}", "reprogramar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaId}}",
+                "reprogramar"
+              ]
             },
             "description": "Reprograma la cita. Pasa la cita original a 'reprogramada' (liberando su cupo) y crea una nueva cita vinculada mediante `cita_origen_id`."
           }
@@ -296,12 +407,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"usuarioId\": {{usuarioId}},\n  \"motivo\": \"Paciente no podra viajar desde su municipio\"\n}"
+              "raw": "{\n  \"motivo\": \"Paciente no podra viajar desde su municipio\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas/{{citaId}}/cancelar",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "{{citaId}}", "cancelar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaId}}",
+                "cancelar"
+              ]
             },
             "description": "Cancela la cita médica, liberando el cupo en PostgreSQL mediante `fn_decrementar_cupo` y registrando el motivo en auditoría."
           }
@@ -313,8 +430,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/citas/{{citaId}}/historial",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "{{citaId}}", "historial"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaId}}",
+                "historial"
+              ]
             },
             "description": "Obtiene la auditoría clínica completa de todas las transiciones que ha tenido la cita médica."
           }
@@ -331,12 +454,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}},\n  \"usuarioId\": {{usuarioId}}\n}"
+              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas/cierre-diario",
-              "host": ["{{baseUrl}}"],
-              "path": ["citas", "cierre-diario"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "cierre-diario"
+              ]
             },
             "description": "Ejecuta la función atómica `fn_cierre_diario_inasistencias` en PostgreSQL. Pasa citas pendientes a 'no_asistio' sin liberar cupo."
           }
@@ -354,8 +482,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/pacientes?page=0&size=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["pacientes"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -376,8 +508,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/pacientes/dpi/{{dpiEjemplo}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["pacientes", "dpi", "{{dpiEjemplo}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "dpi",
+                "{{dpiEjemplo}}"
+              ]
             },
             "description": "Búsqueda rápida por Documento Personal de Identificación (DPI de 13 dígitos)."
           }
@@ -389,8 +527,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/pacientes/{{pacienteId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["pacientes", "{{pacienteId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteId}}"
+              ]
             }
           }
         },
@@ -410,8 +553,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/pacientes",
-              "host": ["{{baseUrl}}"],
-              "path": ["pacientes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
             }
           }
         }
@@ -428,8 +575,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/catalogos/especialidades",
-              "host": ["{{baseUrl}}"],
-              "path": ["catalogos", "especialidades"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalogos",
+                "especialidades"
+              ]
             }
           }
         },
@@ -440,8 +592,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/catalogos/subespecialidades",
-              "host": ["{{baseUrl}}"],
-              "path": ["catalogos", "subespecialidades"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalogos",
+                "subespecialidades"
+              ]
             }
           }
         },
@@ -452,8 +609,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/catalogos/clinicas",
-              "host": ["{{baseUrl}}"],
-              "path": ["catalogos", "clinicas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalogos",
+                "clinicas"
+              ]
             }
           }
         },
@@ -464,8 +626,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/catalogos/medicos",
-              "host": ["{{baseUrl}}"],
-              "path": ["catalogos", "medicos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalogos",
+                "medicos"
+              ]
             }
           }
         },
@@ -476,8 +643,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/calendario/dias-no-laborables?anio=2026",
-              "host": ["{{baseUrl}}"],
-              "path": ["calendario", "dias-no-laborables"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "calendario",
+                "dias-no-laborables"
+              ],
               "query": [
                 {
                   "key": "anio",
@@ -488,6 +660,22 @@
           }
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const externo = pm.variables.get('usuarioExterno') || 'admin-hro-01';",
+          "const rol = pm.variables.get('usuarioRol') || 'administrador';",
+          "const nombre = pm.variables.get('usuarioNombre') || 'Usuario de Pruebas HRO';",
+          "pm.request.headers.upsert({ key: 'X-Usuario-Id', value: String(externo) });",
+          "pm.request.headers.upsert({ key: 'X-Usuario-Rol', value: String(rol) });",
+          "pm.request.headers.upsert({ key: 'X-Usuario-Nombre', value: String(nombre) });"
+        ]
+      }
     }
   ]
 }

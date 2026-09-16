@@ -1,5 +1,6 @@
 package com.hro.system.cita.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,6 @@ public class CrearCitaRequestDTO {
 
     private Long citaOrigenId;
 
-    @NotNull(message = "El ID del usuario que registra la cita es obligatorio")
+    @Schema(description = "ID del usuario que registra la cita. Opcional: si se omite, se toma del usuario autenticado (header X-Usuario-Id).", example = "1")
     private Long usuarioId;
 }
