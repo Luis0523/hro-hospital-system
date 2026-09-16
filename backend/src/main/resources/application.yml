@@ -31,3 +31,16 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: method
+
+# Parámetros provisionales v1 para cálculo de agenda y turnos (HRO)
+hro:
+  agenda:
+    duracion-consulta-default-minutos: 35
+    ventana:
+      margen-base-minutos: 15
+      incremento-por-bloque-minutos: 5
+      tamanio-bloque-posiciones: 5
+      margen-maximo-minutos: 45
+    turnos:
+      tiempo-gracia-llamado-segundos: 180
+      max-reintentos-llamado: 3
