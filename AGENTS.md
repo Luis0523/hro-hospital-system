@@ -41,26 +41,27 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
 - El diseño de referencia POS está en `context/mock/estacion/` (`DESIGN.md`, `code.html`, `screen.png`). No recrear el proyecto React; trabajar dentro de `frontend/`.
 
 ## Integración con el backend
-- Contrato oficial: `docs/postman/` (colección v2.1) y `docs/GUIA_INTEGRACION_FRONTEND.md`. Base: `http://localhost:8081/api/v1`.
+- Contrato oficial: `docs/postman/` (colección v2.1) y `docs/GUIA_INTEGRACION_FRONTEND.md`.
+- **Backend desplegado:** `https://hro-hospital-api.fly.dev/api/v1` (definido en `frontend/.env`). Local alternativo: `http://localhost:8081/api/v1`.
 - `VITE_API_URL` (default `/api/v1`) y `VITE_WS_URL` (default `/api/v1/ws`).
-- Vite proxya `/api` (con `ws: true`) a `VITE_BACKEND_URL` (default `http://localhost:8081`) para evitar CORS.
+- Vite proxya `/api` (con `ws: true`) a `VITE_BACKEND_URL` para evitar CORS.
 - `vite.config.js` define `global: 'globalThis'` — **necesario** para `sockjs-client`. No quitar.
-- `VITE_USE_MOCK=true` (default si no está definido): las vistas usan `modules/enfermeria/api/mockData.js`. Con `false` llaman al backend real.
+- `VITE_USE_MOCK=false` en `.env` conecta al backend real; con `true` usa `modules/enfermeria/api/mockData.js`. **En modo test (Vitest) siempre se usa mock** (`import.meta.env.MODE === 'test'`).
+- **Auth mock por cabeceras:** `client.js` envía `X-Usuario-Id`, `X-Usuario-Rol`, `X-Usuario-Nombre` desde `AuthContext`/`localStorage` (default `enfermeria-01`). `usuarioId` en cuerpos/query ya **no se usa**.
 - El backend envuelve respuestas en `ApiResponse`: `{ timestamp, success, message, data }`. El cliente axios devuelve el body; las APIs hacen `respuesta.data`.
 - Endpoints de Enfermería (contrato real):
-  - `POST /turnos/check-in` `{ citaId, usuarioId }` — llegada física (antes era `/turnos/generar`)
-  - `GET /turnos/clinica/{clinicaId}?fecha=YYYY-MM-DD` y `GET /turnos/activos`
-  - `POST /turnos/{id}/llamar?usuarioId=` · `/no-responde?usuarioId=&motivo=` · `/reintegrar` `{usuarioId,motivo}` · `/atendido?usuarioId=`
-  - `POST /citas` `{ pacienteId, cupoDiarioId, usuarioId }` · `GET /citas/{id}` · `GET /citas/paciente/{id}`
-  - `GET /pacientes/buscar?filtro=` (paginado, `data.content`) y `GET /pacientes/dpi/{dpi}`
-  - `GET /cupos?clinicaId=&fechaInicio=&fechaFin=`
-  - `GET /catalogos/{especialidades,subespecialidades,clinicas,medicos}`
+  - `POST /turnos/check-in` `{ citaId }` · `GET /turnos/clinica/{clinicaId}?fecha=YYYY-MM-DD` · `GET /turnos/activos`
+  - `POST /turnos/{id}/llamar` · `/no-responde?motivo=` · `/reintegrar` `{motivo}` · `/atendido`
+  - `POST /citas` `{ pacienteId, cupoDiarioId }` · `GET /citas/{id}` · `GET /citas/paciente/{id}`
+  - `GET /pacientes/buscar?filtro=` (paginado, `data.content`), `/pacientes/dpi/{dpi}`, `/pacientes/expediente/{exp}`
+  - `GET /cupos?clinicaId=&fechaInicio=&fechaFin=` · `GET /dias-no-laborables?anio=`
+  - **Catálogos: `/clinicas`, `/especialidades`, `/subespecialidades`, `/medicos`** (NO existe `/catalogos/*`).
 - Código `409` = cupos agotados: mostrar alerta destacada sugiriendo otra fecha/médico.
 - WebSocket: STOMP sobre SockJS en `/api/v1/ws`; topics `/topic/tablero` y `/topic/clinica/{clinicaId}`. Ver `src/shared/ws/turnosSocket.js`.
 
 ## Gotchas
-- El `.env.example` de la **raíz de esta rama** dice `8080`; el puerto real del backend es **8081** (el de `main` ya está corregido). No confiar en el de la rama.
+- No commitear `context/` (notas locales `avances/`, `instrucciones/`, `mock/`); está en `.git/info/exclude`.
+- `frontend/.env` (ignorado por Git) apunta al backend desplegado; `.env.example` documenta las variables.
 - `docs/` se trajo de `main` de forma parcial con `git checkout origin/main -- docs/`; contiene la colección Postman y la guía de integración (fuente de verdad de endpoints).
-- No commitear `context/` (notas locales `avances/`, `instrucciones/`, `mock/`); está en `.git/info/exclude` de este clon.
 - `.gitignore` de la rama ignora `cinbtext.md` (typo), no `cibtext.md`. `cibtext.md` sí está versionado y es la fuente de contexto del diseño (entidades, lógica de turnos/inasistencia).
 - Posible desajuste CI/Java: el workflow usa JDK 17 pero `backend/pom.xml` (en `main`) declara `java.version=21`. Verificar antes de tocar backend.

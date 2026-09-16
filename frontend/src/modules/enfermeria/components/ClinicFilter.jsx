@@ -74,11 +74,15 @@ export default function ClinicFilter({
                   </span>
                   <span className="text-title-sm">{clinica.nombre}</span>
                 </span>
-                <span
-                  className={`text-label-sm ${sinCupo ? 'text-outline' : 'text-on-surface-variant'}`}
-                >
-                  {clinica.cupos} cupos
-                </span>
+                {typeof clinica.cupos === 'number' && (
+                  <span
+                    className={`text-label-sm ${
+                      sinCupo ? 'text-outline' : 'text-on-surface-variant'
+                    }`}
+                  >
+                    {clinica.cupos} cupos
+                  </span>
+                )}
               </button>
             )
           })}

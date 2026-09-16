@@ -1,5 +1,5 @@
 import client from '@/shared/api/client'
-import { hoyIso } from '@/shared/utils/fecha'
+import { aIso, hoyIso } from '@/shared/utils/fecha'
 import {
   citasMock,
   clinicasMock,
@@ -12,7 +12,7 @@ import {
   turnosMock,
 } from './mockData'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
 const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 const normalizar = (valor) =>
@@ -20,17 +20,83 @@ const normalizar = (valor) =>
     .replace(/[\s-]/g, '')
     .toLowerCase()
 
+function agruparCuposPorFecha(cupos = []) {
+  const porFecha = new Map()
+
+  cupos.forEach((cupo) => {
+    const acumulado = porFecha.get(cupo.fecha) ?? {
+      fecha: cupo.fecha,
+      capacidadMaxima: 0,
+      cuposDisponibles: 0,
+      disponible: false,
+      noLaborable: false,
+    }
+    acumulado.capacidadMaxima += cupo.capacidadMaxima ?? 0
+    acumulado.cuposDisponibles += cupo.cuposDisponibles ?? 0
+    acumulado.disponible = acumulado.disponible || Boolean(cupo.disponible)
+    porFecha.set(cupo.fecha, acumulado)
+  })
+
+  return Array.from(porFecha.values())
+}
+
+function completarRango(agrupado, fechaInicio, fechaFin, feriados = new Set()) {
+  const mapa = new Map(agrupado.map((dia) => [dia.fecha, dia]))
+  const resultado = []
+  const inicio = new Date(`${fechaInicio}T00:00:00`)
+  const fin = new Date(`${fechaFin}T00:00:00`)
+
+  for (const fecha = new Date(inicio); fecha <= fin; fecha.setDate(fecha.getDate() + 1)) {
+    const iso = aIso(fecha)
+    const existente = mapa.get(iso)
+    if (existente) {
+      if (feriados.has(iso)) {
+        existente.noLaborable = true
+        existente.disponible = false
+      }
+      resultado.push(existente)
+      continue
+    }
+    resultado.push({
+      fecha: iso,
+      capacidadMaxima: 0,
+      cuposDisponibles: 0,
+      disponible: false,
+      noLaborable: fecha.getDay() === 0 || feriados.has(iso),
+    })
+  }
+
+  return resultado
+}
+
+async function obtenerFeriados(fechaInicio, fechaFin) {
+  const feriados = new Set()
+  const anios = new Set([fechaInicio.slice(0, 4), fechaFin.slice(0, 4)])
+  try {
+    for (const anio of anios) {
+      const lista = desenvolver(await client.get('/dias-no-laborables', { params: { anio } }))
+      lista.forEach((dia) => feriados.add(dia.fecha))
+    }
+  } catch {
+    return feriados
+  }
+  return feriados
+}
+
 export async function listarClinicas() {
   if (USE_MOCK) return clinicasMock
-  return desenvolver(await client.get('/catalogos/clinicas'))
+  return desenvolver(await client.get('/clinicas'))
 }
 
 export async function consultarDisponibilidad({ clinicaIds = [], fechaInicio, fechaFin } = {}) {
   if (USE_MOCK) {
     return disponibilidadMock(fechaInicio, fechaFin, Math.max(1, clinicaIds.length))
   }
-  const respuesta = await client.get('/cupos', { params: { fechaInicio, fechaFin } })
-  return desenvolver(respuesta)
+  const params = { fechaInicio, fechaFin }
+  if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
+  const agrupado = agruparCuposPorFecha(desenvolver(await client.get('/cupos', { params })))
+  const feriados = await obtenerFeriados(fechaInicio, fechaFin)
+  return completarRango(agrupado, fechaInicio, fechaFin, feriados)
 }
 
 export async function listarCuposDelDia(fecha, clinicaIds = []) {
@@ -40,32 +106,6 @@ export async function listarCuposDelDia(fecha, clinicaIds = []) {
   const params = { fechaInicio: fecha, fechaFin: fecha }
   if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
   return desenvolver(await client.get('/cupos', { params }))
-}
-
-export async function agendarCita({ pacienteId, cupo, usuarioId }) {
-  if (USE_MOCK) {
-    const paciente = pacientesMock.find((registro) => registro.id === Number(pacienteId))
-    if (!paciente) throw new Error('Paciente no encontrado')
-
-    if (!cupo || cupo.cuposDisponibles < 1) {
-      const error = new Error(
-        'No hay cupos disponibles para la fecha seleccionada. Seleccione otra fecha u otro médico.',
-      )
-      error.status = 409
-      throw error
-    }
-
-    reservarCupoMock(cupo.id)
-    return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
-  }
-
-  return desenvolver(
-    await client.post('/citas', {
-      pacienteId: Number(pacienteId),
-      cupoDiarioId: cupo.id,
-      usuarioId,
-    }),
-  )
 }
 
 export async function listarCitasDePaciente(pacienteId) {
@@ -122,7 +162,29 @@ export async function buscarCitaDelDia(identificador) {
   return { paciente, cita }
 }
 
-export async function hacerCheckIn(citaId, usuarioId) {
+export async function agendarCita({ pacienteId, cupo }) {
+  if (USE_MOCK) {
+    const paciente = pacientesMock.find((registro) => registro.id === Number(pacienteId))
+    if (!paciente) throw new Error('Paciente no encontrado')
+
+    if (!cupo || cupo.cuposDisponibles < 1) {
+      const error = new Error(
+        'No hay cupos disponibles para la fecha seleccionada. Seleccione otra fecha u otro médico.',
+      )
+      error.status = 409
+      throw error
+    }
+
+    reservarCupoMock(cupo.id)
+    return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
+  }
+
+  return desenvolver(
+    await client.post('/citas', { pacienteId: Number(pacienteId), cupoDiarioId: cupo.id }),
+  )
+}
+
+export async function hacerCheckIn(citaId) {
   if (USE_MOCK) {
     const existente = turnosMock.find((turno) => turno.citaId === Number(citaId))
     if (existente) return existente
@@ -144,7 +206,7 @@ export async function hacerCheckIn(citaId, usuarioId) {
     return turno
   }
 
-  return desenvolver(await client.post('/turnos/check-in', { citaId: Number(citaId), usuarioId }))
+  return desenvolver(await client.post('/turnos/check-in', { citaId: Number(citaId) }))
 }
 
 export async function listarTurnosClinica(clinicaId, fecha = hoyIso()) {
@@ -163,7 +225,7 @@ export async function listarTurnosActivos() {
   return desenvolver(await client.get('/turnos/activos'))
 }
 
-export async function llamarTurno(turnoId, usuarioId) {
+export async function llamarTurno(turnoId) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (!turno) {
@@ -174,12 +236,10 @@ export async function llamarTurno(turnoId, usuarioId) {
     turno.horaLlamado = new Date().toISOString()
     return turno
   }
-  return desenvolver(
-    await client.post(`/turnos/${turnoId}/llamar`, null, { params: { usuarioId } }),
-  )
+  return desenvolver(await client.post(`/turnos/${turnoId}/llamar`))
 }
 
-export async function marcarNoResponde(turnoId, usuarioId, motivo) {
+export async function marcarNoResponde(turnoId, motivo) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (turno) {
@@ -189,11 +249,11 @@ export async function marcarNoResponde(turnoId, usuarioId, motivo) {
     return turno ?? { id: Number(turnoId), estado: 'no_responde' }
   }
   return desenvolver(
-    await client.post(`/turnos/${turnoId}/no-responde`, null, { params: { usuarioId, motivo } }),
+    await client.post(`/turnos/${turnoId}/no-responde`, null, { params: { motivo } }),
   )
 }
 
-export async function reintegrarTurno(turnoId, usuarioId, motivo) {
+export async function reintegrarTurno(turnoId, motivo) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (turno) {
@@ -204,26 +264,24 @@ export async function reintegrarTurno(turnoId, usuarioId, motivo) {
     }
     return turno ?? { id: Number(turnoId), estado: 'en_espera' }
   }
-  return desenvolver(await client.post(`/turnos/${turnoId}/reintegrar`, { usuarioId, motivo }))
+  return desenvolver(await client.post(`/turnos/${turnoId}/reintegrar`, { motivo }))
 }
 
-export async function marcarAtendido(turnoId, usuarioId) {
+export async function marcarAtendido(turnoId) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (turno) turno.estado = 'atendido'
     return turno ?? { id: Number(turnoId), estado: 'atendido' }
   }
-  return desenvolver(
-    await client.post(`/turnos/${turnoId}/atendido`, null, { params: { usuarioId } }),
-  )
+  return desenvolver(await client.post(`/turnos/${turnoId}/atendido`))
 }
 
-export async function pasarSiguiente(clinicaId, usuarioId) {
+export async function pasarSiguiente(clinicaId) {
   if (USE_MOCK) {
     const siguiente = turnosMock.find(
       (turno) => turno.estado === 'en_espera' && turno.clinicaId === Number(clinicaId),
     )
-    if (siguiente) return llamarTurno(siguiente.id, usuarioId)
+    if (siguiente) return llamarTurno(siguiente.id)
     tableroMock.turnoActual += 1
     return { numeroTurno: tableroMock.turnoActual, clinicaId, estado: 'llamado' }
   }
@@ -233,7 +291,7 @@ export async function pasarSiguiente(clinicaId, usuarioId) {
   if (!siguiente) {
     throw new Error('No hay turnos en espera en esta clínica')
   }
-  return llamarTurno(siguiente.id, usuarioId)
+  return llamarTurno(siguiente.id)
 }
 
 export async function obtenerEstadoTablero() {
@@ -241,9 +299,6 @@ export async function obtenerEstadoTablero() {
 }
 
 export async function cambiarEstadoTablero(activo) {
-  if (!USE_MOCK) {
-    throw new Error('Endpoint de estado del tablero pendiente de confirmar con el backend')
-  }
   tableroMock.activo = activo
   return { activo }
 }

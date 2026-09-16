@@ -34,7 +34,7 @@ const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
 
 export default function EnfermeriaPage() {
-  const { usuario, usuarioId } = useAuth()
+  const { usuario } = useAuth()
   const { mostrarToast } = useToast()
 
   const ahora = new Date()
@@ -212,7 +212,7 @@ export default function EnfermeriaPage() {
     setEnviando(true)
     setErrorEscaneo(null)
     try {
-      const turno = await hacerCheckIn(resultado.cita.id, usuarioId)
+      const turno = await hacerCheckIn(resultado.cita.id)
       setTurnoGenerado(turno)
       setTurnoActual(turno.numeroTurno)
       setPacienteActual(`${resultado.paciente.nombres} ${resultado.paciente.apellidos}`)
@@ -257,7 +257,7 @@ export default function EnfermeriaPage() {
   async function manejarPasarSiguiente() {
     setPasando(true)
     try {
-      const llamado = await pasarSiguienteApi(clinicaActivaId, usuarioId)
+      const llamado = await pasarSiguienteApi(clinicaActivaId)
       if (llamado?.numeroTurno) setTurnoActual(llamado.numeroTurno)
       if (llamado?.pacienteNombre) setPacienteActual(llamado.pacienteNombre)
       activarGracia(llamado)
@@ -299,7 +299,7 @@ export default function EnfermeriaPage() {
     return ejecutarAccionTurno(
       turno,
       async () => {
-        const llamado = await llamarTurno(turno.id, usuarioId)
+        const llamado = await llamarTurno(turno.id)
         activarGracia(llamado)
         reproducirBeep()
         setTurnoActual(llamado.numeroTurno)
@@ -313,7 +313,7 @@ export default function EnfermeriaPage() {
   function manejarAtendido(turno) {
     return ejecutarAccionTurno(
       turno,
-      () => marcarAtendido(turno.id, usuarioId),
+      () => marcarAtendido(turno.id),
       'Consulta finalizada; cita marcada como atendida.',
     )
   }
@@ -321,8 +321,7 @@ export default function EnfermeriaPage() {
   function manejarNoResponde(turno) {
     return ejecutarAccionTurno(
       turno,
-      () =>
-        marcarNoResponde(turno.id, usuarioId, 'Paciente no se presentó tras el tiempo de gracia'),
+      () => marcarNoResponde(turno.id, 'Paciente no se presentó tras el tiempo de gracia'),
       'Paciente marcado como no responde; la fila continúa.',
     )
   }
@@ -330,7 +329,7 @@ export default function EnfermeriaPage() {
   function manejarReintegrar(turno) {
     return ejecutarAccionTurno(
       turno,
-      () => reintegrarTurno(turno.id, usuarioId, 'Paciente regresó el mismo día'),
+      () => reintegrarTurno(turno.id, 'Paciente regresó el mismo día'),
       'Paciente reintegrado al final de la fila.',
     )
   }
@@ -370,7 +369,6 @@ export default function EnfermeriaPage() {
       const cita = await agendarCita({
         pacienteId: pacienteAgenda.id,
         cupo: cupoSeleccionado,
-        usuarioId,
       })
       setCitaCreada(cita)
       setCupoSeleccionado(null)
