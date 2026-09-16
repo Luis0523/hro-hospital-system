@@ -3,6 +3,20 @@ import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { aIso, hoyIso } from '@/shared/utils/fecha'
 
 const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const MESES_CORTOS = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+]
 const MESES = [
   'Enero',
   'Febrero',
@@ -28,6 +42,8 @@ export default function CalendarioMensual({
   cargando = false,
 }) {
   const hoy = hoyIso()
+  const ahora = new Date()
+  const etiquetaHoy = `${ahora.getDate()} ${MESES_CORTOS[ahora.getMonth()]}`
   const porFecha = new Map(dias.map((dia) => [dia.fecha, dia]))
 
   const anio = mes.getFullYear()
@@ -73,7 +89,7 @@ export default function CalendarioMensual({
               type="button"
               aria-label="Mes anterior"
               onClick={() => onCambiarMes(-1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-lowest text-on-surface shadow-card hover:bg-surface-variant active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-lowest text-on-surface shadow-card transition hover:bg-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container active:scale-95"
             >
               <Icon name="chevron_left" className="text-[20px]" />
             </button>
@@ -81,7 +97,7 @@ export default function CalendarioMensual({
               type="button"
               aria-label="Mes siguiente"
               onClick={() => onCambiarMes(1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-lowest text-on-surface shadow-card hover:bg-surface-variant active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-lowest text-on-surface shadow-card transition hover:bg-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container active:scale-95"
             >
               <Icon name="chevron_right" className="text-[20px]" />
             </button>
@@ -100,9 +116,9 @@ export default function CalendarioMensual({
           <button
             type="button"
             onClick={onHoy}
-            className="flex h-8 items-center rounded-lg bg-surface-container-lowest px-3 text-title-sm text-primary shadow-card transition hover:bg-surface-container-high"
+            className="flex h-8 items-center rounded-lg bg-surface-container-lowest px-3 text-title-sm text-primary shadow-card transition hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container"
           >
-            Ir a hoy
+            {`Ir a hoy (${etiquetaHoy})`}
           </button>
           <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-3 py-1 text-label-sm text-on-surface-variant shadow-card">
             <span className="h-2.5 w-2.5 rounded-full bg-secondary-container" />
@@ -129,7 +145,7 @@ export default function CalendarioMensual({
             return (
               <div
                 key={`vacio-${indice}`}
-                className="min-h-[92px] rounded-lg bg-surface-container-low/50 opacity-40"
+                className="min-h-[64px] rounded-lg bg-surface-container-low/50 opacity-40 sm:min-h-[92px]"
               />
             )
           }
@@ -146,7 +162,7 @@ export default function CalendarioMensual({
               onClick={() => onSeleccionar(info)}
               aria-label={`Día ${String(dia).padStart(2, '0')}${etiqueta(info) ? `, ${etiqueta(info)}` : ''}`}
               aria-current={esHoy ? 'date' : undefined}
-              className={`flex min-h-[92px] flex-col justify-between rounded-lg p-2 text-left transition-all ${estilo(
+              className={`flex min-h-[64px] flex-col justify-between rounded-lg p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container sm:min-h-[92px] ${estilo(
                 info,
               )} ${habilitada ? 'cursor-pointer' : 'cursor-not-allowed'}`}
             >

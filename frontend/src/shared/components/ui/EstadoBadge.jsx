@@ -16,7 +16,7 @@ export default function EstadoBadge({ estado }) {
   const etiqueta = String(estado ?? '').replace(/_/g, ' ')
   return (
     <span
-      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold capitalize ${
+      className={`inline-block rounded px-2.5 py-0.5 text-label-sm font-semibold capitalize ${
         estilos[estado] ?? 'bg-slate-100 text-slate-600'
       }`}
     >

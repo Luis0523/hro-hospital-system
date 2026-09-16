@@ -16,9 +16,9 @@ export default function ScannerDock({ value, onChange, onSubmit, onSimular, inpu
             onChange={(event) => onChange(event.target.value)}
             placeholder="Escanee el DPI o carné del paciente..."
             aria-label="DPI o carné del paciente"
-            className="h-14 w-full rounded-xl bg-surface-container-low pl-14 pr-44 text-title-md text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container"
+            className="h-14 w-full rounded-xl bg-surface-container-low pl-14 pr-14 text-title-md text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container sm:pr-44"
           />
-          <span className="absolute right-3 flex items-center gap-1 rounded-lg bg-secondary-fixed px-2 py-1 text-on-secondary-container">
+          <span className="absolute right-3 hidden items-center gap-1 rounded-lg bg-secondary-fixed px-2 py-1 text-on-secondary-container sm:flex">
             <span className="h-2.5 w-2.5 animate-ping rounded-full bg-secondary-container" />
             <span className="text-label-sm font-bold uppercase tracking-tight">
               Lector listo para captura
@@ -29,7 +29,7 @@ export default function ScannerDock({ value, onChange, onSubmit, onSimular, inpu
         <button
           type="button"
           onClick={onSimular}
-          className="flex h-14 items-center gap-2 rounded-xl bg-surface-container px-4 text-on-surface transition hover:bg-surface-container-high active:scale-95"
+          className="flex h-14 items-center gap-2 rounded-xl bg-surface-container px-4 text-on-surface transition hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container active:scale-95"
         >
           <Icon name="barcode_scanner" className="text-[22px] text-primary" />
           <span className="hidden text-title-sm sm:inline">Simular scan</span>
