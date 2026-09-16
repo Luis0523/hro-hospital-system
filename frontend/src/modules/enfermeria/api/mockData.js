@@ -113,7 +113,73 @@ export const citasMock = [
   },
 ]
 
-export const turnosMock = []
+function horaRelativa(minutosAtras) {
+  const fecha = new Date()
+  fecha.setMinutes(fecha.getMinutes() - minutosAtras)
+  return fecha.toISOString()
+}
+
+export const turnosMock = [
+  {
+    id: 9001,
+    citaId: null,
+    numeroTurno: 40,
+    estado: 'atendido',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoNombre: 'Dr. Jorge Castillo',
+    pacienteNombre: 'José Miguel Ajpacajá',
+    horaGenerado: horaRelativa(70),
+    horaLlamado: horaRelativa(55),
+  },
+  {
+    id: 9002,
+    citaId: null,
+    numeroTurno: 41,
+    estado: 'no_responde',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoNombre: 'Dr. Jorge Castillo',
+    pacienteNombre: 'Rosa Elena Chávez',
+    horaGenerado: horaRelativa(50),
+    horaLlamado: horaRelativa(35),
+  },
+  {
+    id: 9003,
+    citaId: null,
+    numeroTurno: 42,
+    estado: 'llamado',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoNombre: 'Dr. Jorge Castillo',
+    pacienteNombre: 'Carlos M. Mendoza',
+    horaGenerado: horaRelativa(30),
+    horaLlamado: horaRelativa(2),
+  },
+  {
+    id: 9004,
+    citaId: null,
+    numeroTurno: 43,
+    estado: 'en_espera',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoNombre: 'Dr. Jorge Castillo',
+    pacienteNombre: 'Ana Lucía Pérez Morales',
+    horaGenerado: horaRelativa(12),
+  },
+  {
+    id: 9005,
+    citaId: null,
+    numeroTurno: 44,
+    estado: 'en_espera',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoNombre: 'Dr. Jorge Castillo',
+    pacienteNombre: 'Byron Estuardo Ixcoy',
+    horaGenerado: horaRelativa(5),
+  },
+]
+
 export const tableroMock = { activo: true, turnoActual: 42 }
 
 export function disponibilidadMock(fechaInicio, fechaFin, cantidadClinicas = 1) {

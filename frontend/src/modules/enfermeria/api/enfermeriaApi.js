@@ -102,31 +102,62 @@ export async function listarTurnosClinica(clinicaId, fecha = hoyIso()) {
 }
 
 export async function listarTurnosActivos() {
-  if (USE_MOCK) return turnosMock
+  if (USE_MOCK) {
+    return turnosMock.filter((turno) => turno.estado === 'en_espera' || turno.estado === 'llamado')
+  }
   return desenvolver(await client.get('/turnos/activos'))
 }
 
 export async function llamarTurno(turnoId, usuarioId) {
-  if (USE_MOCK) return { turnoId: Number(turnoId), estado: 'llamado' }
+  if (USE_MOCK) {
+    const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
+    if (!turno) {
+      tableroMock.turnoActual += 1
+      return { id: Date.now(), numeroTurno: tableroMock.turnoActual, estado: 'llamado' }
+    }
+    turno.estado = 'llamado'
+    turno.horaLlamado = new Date().toISOString()
+    return turno
+  }
   return desenvolver(
     await client.post(`/turnos/${turnoId}/llamar`, null, { params: { usuarioId } }),
   )
 }
 
 export async function marcarNoResponde(turnoId, usuarioId, motivo) {
-  if (USE_MOCK) return { turnoId: Number(turnoId), estado: 'no_responde' }
+  if (USE_MOCK) {
+    const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
+    if (turno) {
+      turno.estado = 'no_responde'
+      turno.motivo = motivo
+    }
+    return turno ?? { id: Number(turnoId), estado: 'no_responde' }
+  }
   return desenvolver(
     await client.post(`/turnos/${turnoId}/no-responde`, null, { params: { usuarioId, motivo } }),
   )
 }
 
 export async function reintegrarTurno(turnoId, usuarioId, motivo) {
-  if (USE_MOCK) return { turnoId: Number(turnoId), estado: 'reintegrado' }
+  if (USE_MOCK) {
+    const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
+    if (turno) {
+      turno.estado = 'en_espera'
+      turno.numeroTurno = Math.max(...turnosMock.map((registro) => registro.numeroTurno)) + 1
+      turno.horaGenerado = new Date().toISOString()
+      turno.motivo = motivo
+    }
+    return turno ?? { id: Number(turnoId), estado: 'en_espera' }
+  }
   return desenvolver(await client.post(`/turnos/${turnoId}/reintegrar`, { usuarioId, motivo }))
 }
 
 export async function marcarAtendido(turnoId, usuarioId) {
-  if (USE_MOCK) return { turnoId: Number(turnoId), estado: 'atendido' }
+  if (USE_MOCK) {
+    const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
+    if (turno) turno.estado = 'atendido'
+    return turno ?? { id: Number(turnoId), estado: 'atendido' }
+  }
   return desenvolver(
     await client.post(`/turnos/${turnoId}/atendido`, null, { params: { usuarioId } }),
   )
@@ -134,8 +165,12 @@ export async function marcarAtendido(turnoId, usuarioId) {
 
 export async function pasarSiguiente(clinicaId, usuarioId) {
   if (USE_MOCK) {
+    const siguiente = turnosMock.find(
+      (turno) => turno.estado === 'en_espera' && turno.clinicaId === Number(clinicaId),
+    )
+    if (siguiente) return llamarTurno(siguiente.id, usuarioId)
     tableroMock.turnoActual += 1
-    return { numeroTurno: tableroMock.turnoActual, clinicaId }
+    return { numeroTurno: tableroMock.turnoActual, clinicaId, estado: 'llamado' }
   }
 
   const turnos = await listarTurnosClinica(clinicaId)

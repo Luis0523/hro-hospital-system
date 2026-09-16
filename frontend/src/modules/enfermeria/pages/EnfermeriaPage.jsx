@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
+import { reproducirBeep } from '@/shared/utils/sonido'
 import {
   buscarCitaDelDia,
   cambiarEstadoTablero,
@@ -9,8 +10,13 @@ import {
   hacerCheckIn,
   listarClinicas,
   listarTurnosActivos,
+  listarTurnosClinica,
+  llamarTurno,
+  marcarAtendido,
+  marcarNoResponde,
   obtenerEstadoTablero,
   pasarSiguiente as pasarSiguienteApi,
+  reintegrarTurno,
 } from '../api/enfermeriaApi'
 import { pacientesMock } from '../api/mockData'
 import TopHud from '../components/TopHud.jsx'
@@ -18,12 +24,18 @@ import ClinicFilter from '../components/ClinicFilter.jsx'
 import CalendarioMensual from '../components/CalendarioMensual.jsx'
 import ScannerDock from '../components/ScannerDock.jsx'
 import ConfirmacionCita from '../components/ConfirmacionCita.jsx'
+import ColaPanel from '../components/ColaPanel.jsx'
+
+const SEGUNDOS_GRACIA = 180
+const ESTADOS_EN_COLA = ['en_espera', 'llamado']
 
 export default function EnfermeriaPage() {
   const { usuario, usuarioId } = useAuth()
   const { mostrarToast } = useToast()
 
   const ahora = new Date()
+  const scannerRef = useRef(null)
+
   const [mes, setMes] = useState(new Date(ahora.getFullYear(), ahora.getMonth(), 1))
   const [clinicas, setClinicas] = useState([])
   const [seleccionadas, setSeleccionadas] = useState([])
@@ -33,12 +45,18 @@ export default function EnfermeriaPage() {
   const [turnoActual, setTurnoActual] = useState(0)
   const [pacienteActual, setPacienteActual] = useState('')
   const [colaEnEspera, setColaEnEspera] = useState(0)
+  const [turnos, setTurnos] = useState([])
+  const [noRespondidos, setNoRespondidos] = useState([])
+  const [cargandoId, setCargandoId] = useState(null)
+  const [turnoEnGracia, setTurnoEnGracia] = useState(null)
   const [scanner, setScanner] = useState('')
   const [resultado, setResultado] = useState(null)
   const [turnoGenerado, setTurnoGenerado] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [pasando, setPasando] = useState(false)
   const [errorEscaneo, setErrorEscaneo] = useState(null)
+
+  const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
 
   useEffect(() => {
     listarClinicas()
@@ -48,9 +66,9 @@ export default function EnfermeriaPage() {
       .then((estado) => setTableroActivo(estado.activo))
       .catch(() => {})
     listarTurnosActivos()
-      .then((turnos) => {
-        setColaEnEspera(turnos.length)
-        const ultimo = turnos.reduce((max, turno) => Math.max(max, turno.numeroTurno ?? 0), 0)
+      .then((activos) => {
+        setColaEnEspera(activos.length)
+        const ultimo = activos.reduce((max, turno) => Math.max(max, turno.numeroTurno ?? 0), 0)
         setTurnoActual(ultimo)
       })
       .catch(() => {})
@@ -63,6 +81,40 @@ export default function EnfermeriaPage() {
       .catch(() => setDias([]))
   }, [mes, seleccionadas])
 
+  const refrescarCola = useCallback(async () => {
+    if (!clinicaActivaId) return
+    const lista = await listarTurnosClinica(clinicaActivaId)
+    const enCola = lista.filter((turno) => ESTADOS_EN_COLA.includes(turno.estado))
+    setTurnos(enCola)
+    setNoRespondidos(lista.filter((turno) => turno.estado === 'no_responde'))
+    setColaEnEspera(enCola.length)
+  }, [clinicaActivaId])
+
+  useEffect(() => {
+    refrescarCola().catch(() => {})
+  }, [refrescarCola])
+
+  useEffect(() => {
+    if (!turnoEnGracia?.id) return
+    const intervalo = setInterval(() => {
+      setTurnoEnGracia((actual) => {
+        if (!actual) return actual
+        return { ...actual, restante: Math.max(0, actual.restante - 1) }
+      })
+    }, 1000)
+    return () => clearInterval(intervalo)
+  }, [turnoEnGracia?.id])
+
+  useEffect(() => {
+    if (turnoEnGracia && turnoEnGracia.restante === 0) {
+      mostrarToast({
+        tone: 'warning',
+        title: 'Tiempo de gracia agotado',
+        message: 'Puede marcar al paciente como "No responde".',
+      })
+    }
+  }, [turnoEnGracia, mostrarToast])
+
   const resumen = useMemo(() => {
     const disponibles = dias.reduce((total, dia) => total + (dia.cuposDisponibles ?? 0), 0)
     const capacidad = dias.reduce((total, dia) => total + (dia.capacidadMaxima ?? 0), 0)
@@ -70,12 +122,18 @@ export default function EnfermeriaPage() {
     return { cuposMes: disponibles, ocupacion }
   }, [dias])
 
-  const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
-
   function alternarClinica(id) {
     setSeleccionadas((actual) =>
       actual.includes(id) ? actual.filter((valor) => valor !== id) : [...actual, id],
     )
+  }
+
+  function activarGracia(turno) {
+    if (turno?.id) setTurnoEnGracia({ id: turno.id, restante: SEGUNDOS_GRACIA })
+  }
+
+  function enfocarScanner() {
+    scannerRef.current?.focus()
   }
 
   const escanear = useCallback(
@@ -90,11 +148,13 @@ export default function EnfermeriaPage() {
             title: 'Paciente no encontrado',
             message: 'Verifique el DPI o carné escaneado.',
           })
+          enfocarScanner()
           return
         }
         setResultado(encontrado)
       } catch (error) {
         mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: error.message })
+        enfocarScanner()
       }
     },
     [mostrarToast],
@@ -122,7 +182,7 @@ export default function EnfermeriaPage() {
       setTurnoGenerado(turno)
       setTurnoActual(turno.numeroTurno)
       setPacienteActual(`${resultado.paciente.nombres} ${resultado.paciente.apellidos}`)
-      setColaEnEspera((total) => total + 1)
+      await refrescarCola()
       mostrarToast({
         tone: 'success',
         title: `Turno #${String(turno.numeroTurno).padStart(3, '0')}`,
@@ -139,6 +199,7 @@ export default function EnfermeriaPage() {
     setResultado(null)
     setTurnoGenerado(null)
     setErrorEscaneo(null)
+    enfocarScanner()
   }
 
   async function alternarTablero() {
@@ -164,6 +225,10 @@ export default function EnfermeriaPage() {
     try {
       const llamado = await pasarSiguienteApi(clinicaActivaId, usuarioId)
       if (llamado?.numeroTurno) setTurnoActual(llamado.numeroTurno)
+      if (llamado?.pacienteNombre) setPacienteActual(llamado.pacienteNombre)
+      activarGracia(llamado)
+      reproducirBeep()
+      await refrescarCola()
       mostrarToast({
         tone: 'info',
         title: `Turno #${String(llamado?.numeroTurno ?? '').padStart(3, '0')}`,
@@ -175,6 +240,89 @@ export default function EnfermeriaPage() {
       setPasando(false)
     }
   }
+
+  async function ejecutarAccionTurno(turno, accion, mensajeExito) {
+    setCargandoId(turno.id)
+    try {
+      const actualizado = await accion()
+      if (turnoEnGracia?.id === turno.id && actualizado?.estado !== 'llamado') {
+        setTurnoEnGracia(null)
+      }
+      await refrescarCola()
+      mostrarToast({
+        tone: 'success',
+        title: `Turno #${String(turno.numeroTurno).padStart(3, '0')}`,
+        message: mensajeExito,
+      })
+    } catch (error) {
+      mostrarToast({ tone: 'error', title: 'No se pudo actualizar', message: error.message })
+    } finally {
+      setCargandoId(null)
+    }
+  }
+
+  function manejarLlamar(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      async () => {
+        const llamado = await llamarTurno(turno.id, usuarioId)
+        activarGracia(llamado)
+        reproducirBeep()
+        setTurnoActual(llamado.numeroTurno)
+        setPacienteActual(llamado.pacienteNombre ?? '')
+        return llamado
+      },
+      'Paciente llamado al consultorio.',
+    )
+  }
+
+  function manejarAtendido(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      () => marcarAtendido(turno.id, usuarioId),
+      'Consulta finalizada; cita marcada como atendida.',
+    )
+  }
+
+  function manejarNoResponde(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      () =>
+        marcarNoResponde(turno.id, usuarioId, 'Paciente no se presentó tras el tiempo de gracia'),
+      'Paciente marcado como no responde; la fila continúa.',
+    )
+  }
+
+  function manejarReintegrar(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      () => reintegrarTurno(turno.id, usuarioId, 'Paciente regresó el mismo día'),
+      'Paciente reintegrado al final de la fila.',
+    )
+  }
+
+  const pasarSiguienteRef = useRef(() => {})
+  pasarSiguienteRef.current = manejarPasarSiguiente
+  const cerrarConfirmacionRef = useRef(() => {})
+  cerrarConfirmacionRef.current = cerrarConfirmacion
+
+  useEffect(() => {
+    function manejarAtajos(event) {
+      if (event.altKey && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        enfocarScanner()
+      }
+      if (event.altKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        pasarSiguienteRef.current()
+      }
+      if (event.key === 'Escape') {
+        cerrarConfirmacionRef.current()
+      }
+    }
+    window.addEventListener('keydown', manejarAtajos)
+    return () => window.removeEventListener('keydown', manejarAtajos)
+  }, [])
 
   return (
     <div className="min-h-screen bg-surface pb-28">
@@ -190,7 +338,7 @@ export default function EnfermeriaPage() {
       />
 
       <div className="grid grid-cols-1 items-start gap-4 px-4 py-3 lg:grid-cols-12">
-        <div className="lg:col-span-3">
+        <div className="flex flex-col gap-3 lg:col-span-3">
           <ClinicFilter
             clinicas={clinicas}
             seleccionadas={seleccionadas}
@@ -199,6 +347,17 @@ export default function EnfermeriaPage() {
             resumen={resumen}
             colaEnEspera={colaEnEspera}
             promedioMin={6}
+          />
+          <ColaPanel
+            turnos={turnos}
+            noRespondidos={noRespondidos}
+            turnoEnGraciaId={turnoEnGracia?.id}
+            segundosRestantes={turnoEnGracia?.restante ?? 0}
+            cargandoId={cargandoId}
+            onLlamar={manejarLlamar}
+            onAtendido={manejarAtendido}
+            onNoResponde={manejarNoResponde}
+            onReintegrar={manejarReintegrar}
           />
         </div>
         <div className="lg:col-span-9">
@@ -234,6 +393,7 @@ export default function EnfermeriaPage() {
         onChange={setScanner}
         onSubmit={manejarSubmit}
         onSimular={simularScan}
+        inputRef={scannerRef}
       />
     </div>
   )

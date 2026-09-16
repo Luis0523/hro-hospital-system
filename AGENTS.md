@@ -29,7 +29,8 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
 - Stack: React 18 + Vite 5 + Tailwind 3 + React Router 6 + Headless UI, **JavaScript/JSX** (sin TypeScript).
 - Alias `@/` → `src/` (configurado en `vite.config.js` y `jsconfig.json`). Usarlo en imports cross-carpeta.
 - UI kit en `src/shared/components/ui/` (`Button`, `Input`, `Select`, `Card`, `EstadoBadge`, `Modal`, `Alert`, `EmptyState`, `Spinner`, `Table`, `Icon`, `Toast`) exportado por `index.js`.
-- Pantalla de Enfermería = **una sola pantalla POS** en `src/modules/enfermeria/pages/EnfermeriaPage.jsx` (sin navbar): encabezado (`TopHud`), filtro de clínicas (`ClinicFilter`), calendario (`CalendarioMensual`), confirmación de llegada (`ConfirmacionCita`) y barra de lector (`ScannerDock`).
+- Pantalla de Enfermería = **una sola pantalla POS** en `src/modules/enfermeria/pages/EnfermeriaPage.jsx` (sin navbar): encabezado (`TopHud`), filtro de clínicas (`ClinicFilter`), calendario (`CalendarioMensual`), cola y estados de turno (`ColaPanel`), confirmación de llegada (`ConfirmacionCita`) y barra de lector (`ScannerDock`).
+- Atajos de teclado en la pantalla POS: `Alt+S` enfoca el lector, `Alt+N` pasa el siguiente turno, `Esc` cierra la confirmación.
 - Estados transversales con Context: `src/shared/context/AuthContext.jsx` (usuario simulado en dev) y `ToastContext.jsx`.
 - Estructura:
   - `src/router/AppRouter.jsx` — `/` → `/enfermeria` (pantalla POS); otras estaciones como placeholder.

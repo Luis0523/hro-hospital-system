@@ -1,6 +1,6 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 
-export default function ScannerDock({ value, onChange, onSubmit, onSimular }) {
+export default function ScannerDock({ value, onChange, onSubmit, onSimular, inputRef }) {
   return (
     <footer className="fixed bottom-0 left-0 z-40 w-full bg-surface-container-lowest px-4 py-3 shadow-dock">
       <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -9,6 +9,7 @@ export default function ScannerDock({ value, onChange, onSubmit, onSimular }) {
             <Icon name="barcode_scanner" className="text-[24px]" />
           </span>
           <input
+            ref={inputRef}
             autoFocus
             type="text"
             value={value}
