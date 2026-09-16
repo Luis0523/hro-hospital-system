@@ -4,11 +4,14 @@ import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
 import { reproducirBeep } from '@/shared/utils/sonido'
 import {
+  agendarCita,
   buscarCitaDelDia,
+  buscarPacientes,
   cambiarEstadoTablero,
   consultarDisponibilidad,
   hacerCheckIn,
   listarClinicas,
+  listarCuposDelDia,
   listarTurnosActivos,
   listarTurnosClinica,
   llamarTurno,
@@ -25,6 +28,7 @@ import CalendarioMensual from '../components/CalendarioMensual.jsx'
 import ScannerDock from '../components/ScannerDock.jsx'
 import ConfirmacionCita from '../components/ConfirmacionCita.jsx'
 import ColaPanel from '../components/ColaPanel.jsx'
+import AgendaPanel from '../components/AgendaPanel.jsx'
 
 const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
@@ -55,6 +59,14 @@ export default function EnfermeriaPage() {
   const [enviando, setEnviando] = useState(false)
   const [pasando, setPasando] = useState(false)
   const [errorEscaneo, setErrorEscaneo] = useState(null)
+  const [agendaAbierta, setAgendaAbierta] = useState(false)
+  const [pacienteAgenda, setPacienteAgenda] = useState(null)
+  const [cuposDelDia, setCuposDelDia] = useState([])
+  const [cupoSeleccionado, setCupoSeleccionado] = useState(null)
+  const [cargandoCupos, setCargandoCupos] = useState(false)
+  const [agendando, setAgendando] = useState(false)
+  const [citaCreada, setCitaCreada] = useState(null)
+  const [errorAgenda, setErrorAgenda] = useState(null)
 
   const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
 
@@ -80,6 +92,15 @@ export default function EnfermeriaPage() {
       .then(setDias)
       .catch(() => setDias([]))
   }, [mes, seleccionadas])
+
+  useEffect(() => {
+    if (!agendaAbierta) return
+    setCargandoCupos(true)
+    listarCuposDelDia(seleccionada, seleccionadas)
+      .then(setCuposDelDia)
+      .catch(() => setCuposDelDia([]))
+      .finally(() => setCargandoCupos(false))
+  }, [agendaAbierta, seleccionada, seleccionadas])
 
   const refrescarCola = useCallback(async () => {
     if (!clinicaActivaId) return
@@ -149,6 +170,15 @@ export default function EnfermeriaPage() {
             message: 'Verifique el DPI o carné escaneado.',
           })
           enfocarScanner()
+          return
+        }
+        if (!encontrado.cita) {
+          abrirAgenda(encontrado.paciente)
+          mostrarToast({
+            tone: 'info',
+            title: 'Paciente sin cita hoy',
+            message: 'Seleccione una fecha y un cupo para agendar.',
+          })
           return
         }
         setResultado(encontrado)
@@ -301,6 +331,57 @@ export default function EnfermeriaPage() {
     )
   }
 
+  function abrirAgenda(paciente = null) {
+    if (paciente) setPacienteAgenda(paciente)
+    setCitaCreada(null)
+    setErrorAgenda(null)
+    setAgendaAbierta(true)
+  }
+
+  function cerrarAgenda() {
+    setAgendaAbierta(false)
+    setPacienteAgenda(null)
+    setCupoSeleccionado(null)
+    setCuposDelDia([])
+    setCitaCreada(null)
+    setErrorAgenda(null)
+  }
+
+  function seleccionarDia(info) {
+    setSeleccionada(info.fecha)
+    setCupoSeleccionado(null)
+    setCitaCreada(null)
+    setAgendaAbierta(true)
+  }
+
+  async function confirmarAgenda() {
+    if (!pacienteAgenda || !cupoSeleccionado) return
+    setAgendando(true)
+    setErrorAgenda(null)
+    try {
+      const cita = await agendarCita({
+        pacienteId: pacienteAgenda.id,
+        cupo: cupoSeleccionado,
+        usuarioId,
+      })
+      setCitaCreada(cita)
+      setCupoSeleccionado(null)
+      mostrarToast({
+        tone: 'success',
+        title: 'Cita agendada',
+        message: `${cita.fechaCita} • ${cita.horaEstimada?.slice(0, 5)}`,
+      })
+    } catch (error) {
+      setErrorAgenda(error.message)
+      mostrarToast({ tone: 'error', title: 'No se pudo agendar', message: error.message })
+    } finally {
+      setAgendando(false)
+      listarCuposDelDia(seleccionada, seleccionadas)
+        .then(setCuposDelDia)
+        .catch(() => {})
+    }
+  }
+
   const pasarSiguienteRef = useRef(() => {})
   pasarSiguienteRef.current = manejarPasarSiguiente
   const cerrarConfirmacionRef = useRef(() => {})
@@ -365,7 +446,7 @@ export default function EnfermeriaPage() {
             mes={mes}
             dias={dias}
             seleccionada={seleccionada}
-            onSeleccionar={(info) => setSeleccionada(info.fecha)}
+            onSeleccionar={seleccionarDia}
             onCambiarMes={(delta) =>
               setMes((actual) => new Date(actual.getFullYear(), actual.getMonth() + delta, 1))
             }
@@ -387,6 +468,24 @@ export default function EnfermeriaPage() {
           onCancelar={cerrarConfirmacion}
         />
       )}
+
+      <AgendaPanel
+        abierto={agendaAbierta}
+        fecha={seleccionada}
+        cupos={cuposDelDia}
+        cargandoCupos={cargandoCupos}
+        cupoSeleccionado={cupoSeleccionado}
+        onSeleccionarCupo={setCupoSeleccionado}
+        paciente={pacienteAgenda}
+        onQuitarPaciente={() => setPacienteAgenda(null)}
+        onSeleccionarPaciente={setPacienteAgenda}
+        onBuscarPacientes={buscarPacientes}
+        citaCreada={citaCreada}
+        agendando={agendando}
+        error={errorAgenda}
+        onAgendar={confirmarAgenda}
+        onCerrar={cerrarAgenda}
+      />
 
       <ScannerDock
         value={scanner}

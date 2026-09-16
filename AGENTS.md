@@ -31,6 +31,7 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
 - UI kit en `src/shared/components/ui/` (`Button`, `Input`, `Select`, `Card`, `EstadoBadge`, `Modal`, `Alert`, `EmptyState`, `Spinner`, `Table`, `Icon`, `Toast`) exportado por `index.js`.
 - Pantalla de Enfermería = **una sola pantalla POS** en `src/modules/enfermeria/pages/EnfermeriaPage.jsx` (sin navbar): encabezado (`TopHud`), filtro de clínicas (`ClinicFilter`), calendario (`CalendarioMensual`), cola y estados de turno (`ColaPanel`), confirmación de llegada (`ConfirmacionCita`) y barra de lector (`ScannerDock`).
 - Atajos de teclado en la pantalla POS: `Alt+S` enfoca el lector, `Alt+N` pasa el siguiente turno, `Esc` cierra la confirmación.
+- Agendamiento: al seleccionar un día con cupo (o al escanear un paciente sin cita hoy) se abre `AgendaPanel` → elegir cupo (clínica/médico) → **"Agendar cita"** (`POST /citas`) → comprobante con ventana de presentación. El `409` (sin cupo) se detecta por `error.status`.
 - Estados transversales con Context: `src/shared/context/AuthContext.jsx` (usuario simulado en dev) y `ToastContext.jsx`.
 - Estructura:
   - `src/router/AppRouter.jsx` — `/` → `/enfermeria` (pantalla POS); otras estaciones como placeholder.

@@ -212,3 +212,117 @@ export function disponibilidadMock(fechaInicio, fechaFin, cantidadClinicas = 1) 
 
 export const citaHoyMock = (pacienteId) =>
   citasMock.find((cita) => cita.pacienteId === pacienteId && cita.fechaCita === hoyIso()) ?? null
+
+const OFERTA_CUPOS = [
+  {
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 01 - Medicina General',
+    medicoId: 5,
+    medicoNombre: 'Dr. Jorge Castillo',
+    horaInicio: '07:00:00',
+    horaFin: '12:00:00',
+    capacidadMaxima: 20,
+  },
+  {
+    clinicaId: 2,
+    clinicaNombre: 'Clínica 02 - Pediatría',
+    medicoId: 6,
+    medicoNombre: 'Dra. Sofía Reyes',
+    horaInicio: '08:00:00',
+    horaFin: '13:00:00',
+    capacidadMaxima: 18,
+  },
+  {
+    clinicaId: 4,
+    clinicaNombre: 'Clínica 04 - Cardiología',
+    medicoId: 7,
+    medicoNombre: 'Dr. Manuel Ortiz',
+    horaInicio: '07:00:00',
+    horaFin: '11:00:00',
+    capacidadMaxima: 12,
+  },
+  {
+    clinicaId: 7,
+    clinicaNombre: 'Clínica 07 - Traumatología',
+    medicoId: 8,
+    medicoNombre: 'Dra. Ana Gómez',
+    horaInicio: '09:00:00',
+    horaFin: '14:00:00',
+    capacidadMaxima: 10,
+  },
+  {
+    clinicaId: 9,
+    clinicaNombre: 'Clínica 09 - Ginecología',
+    medicoId: 9,
+    medicoNombre: 'Dra. Lucía Méndez',
+    horaInicio: '08:00:00',
+    horaFin: '12:00:00',
+    capacidadMaxima: 12,
+  },
+]
+
+const cuposReservados = new Map()
+
+export function reservarCupoMock(cupoId) {
+  const extra = (cuposReservados.get(cupoId) ?? 0) + 1
+  cuposReservados.set(cupoId, extra)
+  return extra
+}
+
+export function cuposDiaMock(fecha, clinicaIds = []) {
+  const filtro = clinicaIds.length > 0 ? clinicaIds : OFERTA_CUPOS.map((oferta) => oferta.clinicaId)
+  const dia = Number(fecha.slice(8, 10))
+
+  return OFERTA_CUPOS.filter((oferta) => filtro.includes(oferta.clinicaId)).map((oferta) => {
+    const id = oferta.clinicaId * 1000 + dia
+    const base = (dia * (oferta.clinicaId + 3)) % (oferta.capacidadMaxima + 1)
+    const ocupados = Math.min(oferta.capacidadMaxima, base + (cuposReservados.get(id) ?? 0))
+    const disponibles = Math.max(0, oferta.capacidadMaxima - ocupados)
+
+    return {
+      id,
+      medicoClinicaId: oferta.clinicaId * 10 + oferta.medicoId,
+      medicoId: oferta.medicoId,
+      medicoNombre: oferta.medicoNombre,
+      clinicaId: oferta.clinicaId,
+      clinicaNombre: oferta.clinicaNombre,
+      fecha,
+      horaInicio: oferta.horaInicio,
+      horaFin: oferta.horaFin,
+      capacidadMaxima: oferta.capacidadMaxima,
+      cuposOcupados: ocupados,
+      cuposDisponibles: disponibles,
+      disponible: disponibles > 0,
+    }
+  })
+}
+
+function sumarMinutos(hora, minutos) {
+  const [horas, mins] = hora.split(':').map(Number)
+  const total = (horas * 60 + mins + minutos + 1440) % 1440
+  const hh = String(Math.floor(total / 60)).padStart(2, '0')
+  const mm = String(total % 60).padStart(2, '0')
+  return `${hh}:${mm}:00`
+}
+
+export function construirCitaMock({ id, paciente, cupo }) {
+  const horaEstimada = sumarMinutos(cupo.horaInicio, cupo.cuposOcupados * 20)
+
+  return {
+    id,
+    pacienteId: paciente.id,
+    pacienteNombreCompleto: `${paciente.nombres} ${paciente.apellidos}`,
+    pacienteDpi: paciente.dpi,
+    pacienteExpediente: paciente.numeroExpediente,
+    cupoDiarioId: cupo.id,
+    fechaCita: cupo.fecha,
+    clinicaNombre: cupo.clinicaNombre,
+    medicoNombre: cupo.medicoNombre,
+    horaEstimada,
+    horaVentanaInicio: sumarMinutos(horaEstimada, -15),
+    horaVentanaFin: sumarMinutos(horaEstimada, 35),
+    estado: 'pendiente',
+    citaOrigenId: null,
+    version: 1,
+  }
+}

@@ -3,8 +3,11 @@ import { hoyIso } from '@/shared/utils/fecha'
 import {
   citasMock,
   clinicasMock,
+  construirCitaMock,
+  cuposDiaMock,
   disponibilidadMock,
   pacientesMock,
+  reservarCupoMock,
   tableroMock,
   turnosMock,
 } from './mockData'
@@ -30,11 +33,63 @@ export async function consultarDisponibilidad({ clinicaIds = [], fechaInicio, fe
   return desenvolver(respuesta)
 }
 
+export async function listarCuposDelDia(fecha, clinicaIds = []) {
+  if (USE_MOCK) {
+    return cuposDiaMock(fecha, clinicaIds)
+  }
+  const params = { fechaInicio: fecha, fechaFin: fecha }
+  if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
+  return desenvolver(await client.get('/cupos', { params }))
+}
+
+export async function agendarCita({ pacienteId, cupo, usuarioId }) {
+  if (USE_MOCK) {
+    const paciente = pacientesMock.find((registro) => registro.id === Number(pacienteId))
+    if (!paciente) throw new Error('Paciente no encontrado')
+
+    if (!cupo || cupo.cuposDisponibles < 1) {
+      const error = new Error(
+        'No hay cupos disponibles para la fecha seleccionada. Seleccione otra fecha u otro médico.',
+      )
+      error.status = 409
+      throw error
+    }
+
+    reservarCupoMock(cupo.id)
+    return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
+  }
+
+  return desenvolver(
+    await client.post('/citas', {
+      pacienteId: Number(pacienteId),
+      cupoDiarioId: cupo.id,
+      usuarioId,
+    }),
+  )
+}
+
 export async function listarCitasDePaciente(pacienteId) {
   if (USE_MOCK) {
     return citasMock.filter((cita) => cita.pacienteId === Number(pacienteId))
   }
   return desenvolver(await client.get(`/citas/paciente/${pacienteId}`))
+}
+
+export async function buscarPacientes(filtro = '') {
+  if (USE_MOCK) {
+    const termino = filtro.trim().toLowerCase()
+    return pacientesMock.filter(
+      (paciente) =>
+        !termino ||
+        [paciente.dpi, paciente.numeroExpediente, paciente.nombres, paciente.apellidos].some(
+          (valor) => valor.toLowerCase().includes(termino),
+        ),
+    )
+  }
+
+  const respuesta = await client.get('/pacientes/buscar', { params: { filtro } })
+  const pagina = desenvolver(respuesta)
+  return pagina?.content ?? pagina
 }
 
 export async function buscarPaciente(identificador) {

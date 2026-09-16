@@ -16,9 +16,12 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    const status = error.response?.status
     const mensaje =
       error.response?.data?.message || error.message || 'Error de comunicación con el servidor'
-    return Promise.reject(new Error(mensaje))
+    const normalizado = new Error(mensaje)
+    normalizado.status = status
+    return Promise.reject(normalizado)
   },
 )
 
