@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Auditoría y trazabilidad — HRO",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1068,
+      760
+    ],
+    "views": [
+      {
+        "id": "mutacion",
+        "label": "Mutación y transición",
+        "focus": [
+          "servicios",
+          "historial",
+          "evento"
+        ],
+        "note": "Cada cambio de estado publica un evento y registra la transición."
+      },
+      {
+        "id": "async",
+        "label": "Persistencia asíncrona",
+        "focus": [
+          "evento",
+          "listener",
+          "audservice",
+          "auditoria"
+        ],
+        "note": "El listener asíncrono guarda la bitácora en su propia transacción."
+      },
+      {
+        "id": "consulta",
+        "label": "Consulta",
+        "focus": [
+          "auditoria",
+          "admin"
+        ],
+        "note": "El panel administrativo consulta la bitácora paginada."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Acción"
+    },
+    {
+      "label": "Evento"
+    },
+    {
+      "label": "Listener async"
+    },
+    {
+      "label": "Persistencia"
+    },
+    {
+      "label": "Consulta"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "servicios",
+      "type": "backend",
+      "label": "Servicios",
+      "sublabel": "Cita / Turno",
+      "stage": 0,
+      "row": 0,
+      "tag": "mutación"
+    },
+    {
+      "id": "historial",
+      "type": "database",
+      "label": "cita_estado_historial",
+      "sublabel": "transición de estado",
+      "stage": 0,
+      "row": 2,
+      "tag": "inmutable",
+      "width": 150
+    },
+    {
+      "id": "evento",
+      "type": "messagebus",
+      "label": "AuditoriaEvent",
+      "sublabel": "ApplicationEventPublisher",
+      "stage": 1,
+      "row": 0,
+      "tag": "in-process"
+    },
+    {
+      "id": "listener",
+      "type": "backend",
+      "label": "AuditoriaEventListener",
+      "sublabel": "@Async @EventListener",
+      "stage": 2,
+      "row": 0,
+      "tag": "no bloquea",
+      "width": 150
+    },
+    {
+      "id": "audservice",
+      "type": "backend",
+      "label": "AuditoriaService",
+      "sublabel": "REQUIRES_NEW",
+      "stage": 2,
+      "row": 2,
+      "tag": "transacción propia"
+    },
+    {
+      "id": "auditoria",
+      "type": "database",
+      "label": "auditoria_general",
+      "sublabel": "JSONB antes/después",
+      "stage": 3,
+      "row": 1,
+      "tag": "índices GIN"
+    },
+    {
+      "id": "admin",
+      "type": "external",
+      "label": "Panel admin",
+      "sublabel": "GET /auditoria",
+      "stage": 4,
+      "row": 1,
+      "tag": "consulta"
+    }
+  ],
+  "flows": [
+    {
+      "from": "servicios",
+      "to": "historial",
+      "label": "registra transición",
+      "classification": "obligatorio",
+      "variant": "emphasis",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "servicios",
+      "to": "evento",
+      "label": "publishEvent()",
+      "classification": "síncrono",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "evento",
+      "to": "listener",
+      "label": "entrega evento",
+      "classification": "asíncrono",
+      "variant": "dashed",
+      "route": "straight"
+    },
+    {
+      "from": "listener",
+      "to": "audservice",
+      "label": "registrarBitacora()",
+      "classification": "delegación",
+      "variant": "default",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "audservice",
+      "to": "auditoria",
+      "label": "INSERT bitácora",
+      "classification": "REQUIRES_NEW",
+      "variant": "emphasis",
+      "route": "vertical-channel"
+    },
+    {
+      "from": "auditoria",
+      "to": "admin",
+      "label": "consulta paginada",
+      "classification": "filtro tabla/usuario",
+      "variant": "default",
+      "route": "top-channel"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Doble trazabilidad",
+      "items": [
+        "cita_estado_historial guarda cada transición con usuario y motivo",
+        "auditoria_general guarda valores anteriores y nuevos en JSONB"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Asincronía",
+      "items": [
+        "El evento se publica en la misma petición pero se persiste de forma asíncrona",
+        "REQUIRES_NEW evita que la bitácora se revierta con la transacción de negocio"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Consulta",
+      "items": [
+        "GET /auditoria filtra por tabla o usuario con paginación",
+        "Los índices GIN aceleran la búsqueda en los JSONB"
+      ]
+    }
+  ]
+}
