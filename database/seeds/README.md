@@ -7,13 +7,19 @@ Para la documentación detallada sobre estructura, esquemas y relaciones, consul
 ## Scripts Disponibles
 
 1. **`01_pacientes_seeds.sql`**: Catálogo inicial de 10 pacientes de prueba con DPIs y expedientes clínicos.
-2. **`02_catalogos_seeds.sql`**: Catálogos base institucionales del HRO:
+2. **`02_catalogos_seeds.sql`**: Catálogos base institucionales del HRO (modelo V4):
    - Especialidades médicas (Medicina Interna, Pediatría, Ginecología, Cirugía, Traumatología, Cardiología).
-   - Subespecialidades y consultorios (Clínicas 101, 102, 201, 202, 301, 401, 402).
-   - Médicos especialistas con número de colegiado y horarios asignados en `medico_clinica`.
+   - Subespecialidades.
+   - **Espacios físicos** (salas 101–402) con número, nivel y capacidad de camillas (ya no ligados a una subespecialidad).
+   - Médicos especialistas y su **programación por subespecialidad** (`medico_subespecialidad`): día, horario y capacidad. Ej.: Pediatría Especializada solo lunes y jueves.
+   - **Permisos por subespecialidad** (`permiso_subespecialidad`).
    - Días feriados oficiales de Guatemala en `dia_no_laborable`.
 3. **`03_datos_prueba_50_pacientes_citas_turnos.sql`**:
    - Más de 100 pacientes registrados con nombres de la región suroccidente de Guatemala.
-   - 57 citas médicas en los 6 estados del ciclo de vida (`pendiente`, `confirmada`, `atendida`, `cancelada`, `reprogramada`, `no_asistio`).
-   - 25 turnos en sala de espera (`atendido`, `en_espera`, `llamado`, `no_responde`).
-   - 113 registros de auditoría en `cita_estado_historial`.
+   - Cupos diarios y **asignación diaria** (`asignacion_diaria_espacio`) para fechas de prueba.
+   - Citas médicas en los 6 estados del ciclo de vida (`pendiente`, `confirmada`, `atendida`, `cancelada`, `reprogramada`, `no_asistio`).
+   - Turnos en sala de espera (`atendido`, `en_espera`, `llamado`, `no_responde`) asociados a la asignación diaria.
+   - Registros de auditoría en `cita_estado_historial`.
+
+> **Modelo V4:** la subespecialidad que atiende en cada sala cambia a diario y la decide el jefe de enfermería (`asignacion_diaria_espacio`). Por eso los seeds crean las asignaciones por fecha antes de generar citas y turnos.
+

@@ -3,15 +3,17 @@ package com.hro.system.agenda.controller;
 import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.service.CupoDiarioService;
-import com.hro.system.clinica.entity.Clinica;
 import com.hro.system.clinica.entity.Especialidad;
-import com.hro.system.clinica.repository.ClinicaRepository;
+import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.common.CupoAgotadoException;
+import com.hro.system.espacio.entity.EspacioFisico;
+import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoClinica;
-import com.hro.system.medico.repository.MedicoClinicaRepository;
+import com.hro.system.medico.entity.MedicoSubespecialidad;
 import com.hro.system.medico.repository.MedicoRepository;
+import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,19 +44,19 @@ public class CupoDiarioConcurrenciaTest {
     private CupoDiarioRepository cupoDiarioRepository;
 
     @Autowired
-    private MedicoClinicaRepository medicoClinicaRepository;
+    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private ClinicaRepository clinicaRepository;
+    private EspacioFisicoRepository espacioFisicoRepository;
 
     @Autowired
     private EspecialidadRepository especialidadRepository;
 
     @Autowired
-    private com.hro.system.clinica.repository.SubespecialidadRepository subespecialidadRepository;
+    private SubespecialidadRepository subespecialidadRepository;
 
     @Autowired
     private UsuarioReferenciaRepository usuarioReferenciaRepository;
@@ -68,7 +70,7 @@ public class CupoDiarioConcurrenciaTest {
     @Autowired
     private com.hro.system.cita.repository.CitaEstadoHistorialRepository historialRepository;
 
-    private MedicoClinica medicoClinicaTest;
+    private MedicoSubespecialidad medicoSubespecialidadTest;
     private LocalDate proximoLunes;
 
     @BeforeEach
@@ -78,7 +80,6 @@ public class CupoDiarioConcurrenciaTest {
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
 
-        // Encontrar próximo lunes para asegurar día_semana = 1
         proximoLunes = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
 
         Especialidad esp = especialidadRepository.save(Especialidad.builder()
@@ -86,16 +87,18 @@ public class CupoDiarioConcurrenciaTest {
                 .activo(true)
                 .build());
 
-        com.hro.system.clinica.entity.Subespecialidad subesp = subespecialidadRepository.save(com.hro.system.clinica.entity.Subespecialidad.builder()
+        Subespecialidad subesp = subespecialidadRepository.save(Subespecialidad.builder()
                 .especialidad(esp)
                 .nombre("Subespecialidad Concurrencia " + UUID.randomUUID().toString().substring(0, 5))
                 .activo(true)
                 .build());
 
-        Clinica clinica = clinicaRepository.save(Clinica.builder()
-                .nombre("Clínica Test Concurrencia " + UUID.randomUUID().toString().substring(0, 5))
-                .subespecialidad(subesp)
-                .ubicacion("Modulo A")
+        // El espacio físico ya no se liga a la subespecialidad; se crea por separado.
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("S-" + UUID.randomUUID().toString().substring(0, 5))
+                .nivel((short) 1)
+                .capacidadCamillas(1)
+                .nombre("Sala Test Concurrencia")
                 .activo(true)
                 .build());
 
@@ -113,10 +116,10 @@ public class CupoDiarioConcurrenciaTest {
                 .activo(true)
                 .build());
 
-        // Capacidad configurada intencionalmente muy baja (3 cupos) para probar saturación y concurrencia
-        medicoClinicaTest = medicoClinicaRepository.save(MedicoClinica.builder()
+        // Capacidad intencionalmente baja (3 cupos) para probar saturación y concurrencia
+        medicoSubespecialidadTest = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
                 .medico(medico)
-                .clinica(clinica)
+                .subespecialidad(subesp)
                 .diaSemana((short) 1) // Lunes
                 .horaInicio(LocalTime.of(8, 0))
                 .horaFin(LocalTime.of(12, 0))
@@ -144,7 +147,7 @@ public class CupoDiarioConcurrenciaTest {
             executor.submit(() -> {
                 try {
                     latchInicio.await(); // Todos los hilos esperan aquí para arrancar al mismo milisegundo exacto
-                    cupoDiarioService.reservarCupoAtomico(medicoClinicaTest.getId(), proximoLunes);
+                    cupoDiarioService.reservarCupoAtomico(medicoSubespecialidadTest.getId(), proximoLunes);
                     exitos.incrementAndGet();
                 } catch (CupoAgotadoException e) {
                     rechazados.incrementAndGet();
@@ -156,7 +159,6 @@ public class CupoDiarioConcurrenciaTest {
             });
         }
 
-        // Disparo de salida simultáneo para los 10 hilos
         latchInicio.countDown();
         latchFin.await();
         executor.shutdown();
@@ -165,24 +167,19 @@ public class CupoDiarioConcurrenciaTest {
             fail("Hubo errores inesperados en los hilos: " + errores.get(0).getMessage());
         }
 
-        // Validaciones rigurosas
         assertEquals(capacidadEsperada, exitos.get(), "Exactamente 3 reservas deben haber tenido éxito");
         assertEquals(totalHilos - capacidadEsperada, rechazados.get(), "Exactamente 7 solicitudes deben haber sido rechazadas");
 
-        CupoDiario cupoFinal = cupoDiarioRepository.findByMedicoClinicaIdAndFecha(medicoClinicaTest.getId(), proximoLunes).orElseThrow();
+        CupoDiario cupoFinal = cupoDiarioRepository.findByMedicoSubespecialidadIdAndFecha(medicoSubespecialidadTest.getId(), proximoLunes).orElseThrow();
         assertEquals(3, cupoFinal.getCuposOcupados(), "La cantidad física de cupos ocupados en BD debe ser exactamente 3");
         assertEquals(3, cupoFinal.getCapacidadMaxima());
 
-        // Probar liberación atómica: liberamos 1 cupo
         cupoDiarioService.liberarCupoAtomico(cupoFinal.getId());
 
         CupoDiario cupoTrasLiberar = cupoDiarioRepository.findById(cupoFinal.getId()).orElseThrow();
         assertEquals(2, cupoTrasLiberar.getCuposOcupados(), "Tras liberar 1 cupo, deben quedar 2 ocupados");
 
-        // Ahora un nuevo intento debe tener éxito
-        assertDoesNotThrow(() -> {
-            cupoDiarioService.reservarCupoAtomico(medicoClinicaTest.getId(), proximoLunes);
-        });
+        assertDoesNotThrow(() -> cupoDiarioService.reservarCupoAtomico(medicoSubespecialidadTest.getId(), proximoLunes));
 
         CupoDiario cupoTrasNuevoIntento = cupoDiarioRepository.findById(cupoFinal.getId()).orElseThrow();
         assertEquals(3, cupoTrasNuevoIntento.getCuposOcupados(), "Vuelve a estar lleno en 3");

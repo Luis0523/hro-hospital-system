@@ -1,6 +1,6 @@
 package com.hro.system.agenda.entity;
 
-import com.hro.system.medico.entity.MedicoClinica;
+import com.hro.system.medico.entity.MedicoSubespecialidad;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "cupo_diario", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"medico_clinica_id", "fecha"})
+        @UniqueConstraint(columnNames = {"medico_subespecialidad_id", "fecha"})
 })
 @Getter
 @Setter
@@ -23,8 +23,8 @@ public class CupoDiario {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medico_clinica_id", nullable = false)
-    private MedicoClinica medicoClinica;
+    @JoinColumn(name = "medico_subespecialidad_id", nullable = false)
+    private MedicoSubespecialidad medicoSubespecialidad;
 
     @Column(name = "fecha", nullable = false)
     private LocalDate fecha;

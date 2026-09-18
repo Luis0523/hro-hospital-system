@@ -12,14 +12,14 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MedicoClinicaResponseDTO {
+public class MedicoSubespecialidadResponseDTO {
     private Long id;
     private Long medicoId;
     private String medicoNombre;
     private String numeroColegiado;
-    private Long clinicaId;
-    private String clinicaNombre;
+    private Long subespecialidadId;
     private String subespecialidadNombre;
+    private Long especialidadId;
     private String especialidadNombre;
     private Short diaSemana;
     private String diaSemanaNombre;

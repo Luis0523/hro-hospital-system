@@ -14,13 +14,13 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AsignarMedicoClinicaRequestDTO {
+public class AsignarMedicoSubespecialidadRequestDTO {
 
     @NotNull(message = "El ID del médico es obligatorio")
     private Long medicoId;
 
-    @NotNull(message = "El ID de la clínica es obligatorio")
-    private Long clinicaId;
+    @NotNull(message = "El ID de la subespecialidad es obligatorio")
+    private Long subespecialidadId;
 
     @NotNull(message = "El día de la semana es obligatorio (1=Lunes a 7=Domingo)")
     @Min(value = 1, message = "El día de la semana debe ser entre 1 (Lunes) y 7 (Domingo)")

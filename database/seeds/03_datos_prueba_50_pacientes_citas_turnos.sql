@@ -67,19 +67,20 @@ SET nombres = EXCLUDED.nombres,
     numero_expediente = EXCLUDED.numero_expediente;
 
 
--- 2. ASEGURAR CUPOS DIARIOS PARA FECHAS DE PRUEBA
--- (Ayer, Hoy, Mañana, Próxima Semana)
+-- 2. CUPOS DIARIOS PARA FECHAS DE PRUEBA (Ayer, Hoy, Mañana, Próxima Semana)
 DO $$
 DECLARE
-    r_mc RECORD;
+    r_ms RECORD;
     v_fecha DATE;
     v_fechas DATE[] := ARRAY[CURRENT_DATE - 1, CURRENT_DATE, CURRENT_DATE + 1, CURRENT_DATE + 7];
 BEGIN
-    FOR r_mc IN SELECT id, capacidad_maxima FROM medico_clinica WHERE activo = true LOOP
+    -- Se generan cupos para todas las fechas de prueba (independiente del día) para
+    -- que el set de demostración siempre tenga datos utilizables.
+    FOR r_ms IN SELECT id, capacidad_maxima FROM medico_subespecialidad WHERE activo = true LOOP
         FOREACH v_fecha IN ARRAY v_fechas LOOP
-            INSERT INTO cupo_diario (medico_clinica_id, fecha, capacidad_maxima, cupos_ocupados)
-            VALUES (r_mc.id, v_fecha, r_mc.capacidad_maxima, 0)
-            ON CONFLICT (medico_clinica_id, fecha) DO UPDATE 
+            INSERT INTO cupo_diario (medico_subespecialidad_id, fecha, capacidad_maxima, cupos_ocupados)
+            VALUES (r_ms.id, v_fecha, r_ms.capacidad_maxima, 0)
+            ON CONFLICT (medico_subespecialidad_id, fecha) DO UPDATE
             SET capacidad_maxima = EXCLUDED.capacidad_maxima,
                 cupos_ocupados = 0;
         END LOOP;
@@ -87,75 +88,108 @@ BEGIN
 END $$;
 
 
--- 3. POBLACIÓN DE 50+ CITAS CON DIVERSIDAD DE ESTADOS DEL CICLO DE VIDA
--- Estados: pendiente, confirmada, atendida, no_asistio, cancelada, reprogramada
+-- 2.5 ASIGNACIÓN DIARIA: qué subespecialidad ocupa qué espacio físico cada fecha
+DO $$
+DECLARE
+    v_user BIGINT;
+    v_fecha DATE;
+    v_fechas DATE[] := ARRAY[CURRENT_DATE - 1, CURRENT_DATE, CURRENT_DATE + 1, CURRENT_DATE + 7];
+    r_sub RECORD;
+    v_espacio BIGINT;
+BEGIN
+    SELECT id INTO v_user FROM usuario_referencia WHERE id_externo = 'jefe-enfermeria-01';
+    IF v_user IS NULL THEN SELECT id INTO v_user FROM usuario_referencia ORDER BY id LIMIT 1; END IF;
+
+    FOREACH v_fecha IN ARRAY v_fechas LOOP
+        FOR r_sub IN
+            SELECT DISTINCT s.id, s.nombre
+            FROM medico_subespecialidad ms
+            JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+            WHERE ms.activo = true AND ms.dia_semana = EXTRACT(ISODOW FROM v_fecha)::smallint
+            ORDER BY s.nombre
+        LOOP
+            SELECT ef.id INTO v_espacio
+            FROM espacio_fisico ef
+            WHERE ef.activo = true
+              AND NOT EXISTS (SELECT 1 FROM asignacion_diaria_espacio a WHERE a.fecha = v_fecha AND a.espacio_fisico_id = ef.id)
+            ORDER BY ef.nivel, ef.numero
+            LIMIT 1;
+
+            IF v_espacio IS NOT NULL THEN
+                INSERT INTO asignacion_diaria_espacio (espacio_fisico_id, subespecialidad_id, fecha, creado_por)
+                VALUES (v_espacio, r_sub.id, v_fecha, v_user)
+                ON CONFLICT (espacio_fisico_id, fecha) DO NOTHING;
+            END IF;
+        END LOOP;
+    END LOOP;
+END $$;
+
+
+-- 3. POBLACIÓN DE CITAS CON DIVERSIDAD DE ESTADOS DEL CICLO DE VIDA
 DO $$
 DECLARE
     v_user_id BIGINT;
-    v_cupo_ayer_101 BIGINT;
-    v_cupo_ayer_201 BIGINT;
-    v_cupo_hoy_101 BIGINT;
-    v_cupo_hoy_102 BIGINT;
-    v_cupo_hoy_201 BIGINT;
-    v_cupo_manana_101 BIGINT;
-    v_cupo_semana_101 BIGINT;
+    v_cupo_ayer_medgen BIGINT;
+    v_cupo_ayer_pedgen BIGINT;
+    v_cupo_hoy_medgen BIGINT;
+    v_cupo_hoy_cardio BIGINT;
+    v_cupo_hoy_pedgen BIGINT;
+    v_cupo_manana_medgen BIGINT;
+    v_cupo_semana_medgen BIGINT;
     r_pac RECORD;
     v_idx INT := 1;
     v_cita_id BIGINT;
     v_cita_reprog_id BIGINT;
+    v_asig BIGINT;
 BEGIN
     SELECT id INTO v_user_id FROM usuario_referencia LIMIT 1;
-    
-    -- Cupos específicos por clínica y fecha
-    SELECT cd.id INTO v_cupo_ayer_101 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE - 1 AND c.nombre LIKE '%101%' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_ayer_201 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE - 1 AND c.nombre LIKE '%201%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_ayer_medgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE - 1 AND s.nombre = 'Medicina General' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_hoy_101 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE AND c.nombre LIKE '%101%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_ayer_pedgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE - 1 AND s.nombre = 'Pediatría General' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_hoy_102 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE AND c.nombre LIKE '%102%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_hoy_medgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE AND s.nombre = 'Medicina General' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_hoy_201 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE AND c.nombre LIKE '%201%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_hoy_cardio
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE AND s.nombre = 'Cardiología Clínica' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_manana_101 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE + 1 AND c.nombre LIKE '%101%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_hoy_pedgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE AND s.nombre = 'Pediatría General' LIMIT 1;
 
-    SELECT cd.id INTO v_cupo_semana_101 
-    FROM cupo_diario cd JOIN medico_clinica mc ON mc.id = cd.medico_clinica_id JOIN clinica c ON c.id = mc.clinica_id 
-    WHERE cd.fecha = CURRENT_DATE + 7 AND c.nombre LIKE '%101%' LIMIT 1;
+    SELECT cd.id INTO v_cupo_manana_medgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE + 1 AND s.nombre = 'Medicina General' LIMIT 1;
 
-    -- Fallbacks si alguna clínica no tiene horario para esa fecha
-    IF v_cupo_ayer_101 IS NULL THEN SELECT id INTO v_cupo_ayer_101 FROM cupo_diario WHERE fecha = CURRENT_DATE - 1 LIMIT 1; END IF;
-    IF v_cupo_ayer_201 IS NULL THEN v_cupo_ayer_201 := v_cupo_ayer_101; END IF;
-    IF v_cupo_hoy_101 IS NULL THEN SELECT id INTO v_cupo_hoy_101 FROM cupo_diario WHERE fecha = CURRENT_DATE LIMIT 1; END IF;
-    IF v_cupo_hoy_102 IS NULL THEN v_cupo_hoy_102 := v_cupo_hoy_101; END IF;
-    IF v_cupo_hoy_201 IS NULL THEN v_cupo_hoy_201 := v_cupo_hoy_101; END IF;
-    IF v_cupo_manana_101 IS NULL THEN SELECT id INTO v_cupo_manana_101 FROM cupo_diario WHERE fecha = CURRENT_DATE + 1 LIMIT 1; END IF;
-    IF v_cupo_semana_101 IS NULL THEN SELECT id INTO v_cupo_semana_101 FROM cupo_diario WHERE fecha = CURRENT_DATE + 7 LIMIT 1; END IF;
+    SELECT cd.id INTO v_cupo_semana_medgen
+    FROM cupo_diario cd JOIN medico_subespecialidad ms ON ms.id = cd.medico_subespecialidad_id JOIN subespecialidad s ON s.id = ms.subespecialidad_id
+    WHERE cd.fecha = CURRENT_DATE + 7 AND s.nombre = 'Medicina General' LIMIT 1;
 
-    -- Reiniciar cupos_ocupados y asegurar capacidad suficiente en los cupos de prueba
-    UPDATE cupo_diario 
+    IF v_cupo_ayer_medgen IS NULL THEN SELECT id INTO v_cupo_ayer_medgen FROM cupo_diario WHERE fecha = CURRENT_DATE - 1 LIMIT 1; END IF;
+    IF v_cupo_ayer_pedgen IS NULL THEN v_cupo_ayer_pedgen := v_cupo_ayer_medgen; END IF;
+    IF v_cupo_hoy_medgen IS NULL THEN SELECT id INTO v_cupo_hoy_medgen FROM cupo_diario WHERE fecha = CURRENT_DATE LIMIT 1; END IF;
+    IF v_cupo_hoy_cardio IS NULL THEN v_cupo_hoy_cardio := v_cupo_hoy_medgen; END IF;
+    IF v_cupo_hoy_pedgen IS NULL THEN v_cupo_hoy_pedgen := v_cupo_hoy_medgen; END IF;
+    IF v_cupo_manana_medgen IS NULL THEN SELECT id INTO v_cupo_manana_medgen FROM cupo_diario WHERE fecha = CURRENT_DATE + 1 LIMIT 1; END IF;
+    IF v_cupo_semana_medgen IS NULL THEN SELECT id INTO v_cupo_semana_medgen FROM cupo_diario WHERE fecha = CURRENT_DATE + 7 LIMIT 1; END IF;
+
+    UPDATE cupo_diario
        SET cupos_ocupados = 0,
            capacidad_maxima = GREATEST(capacidad_maxima, 30)
-     WHERE id IN (v_cupo_ayer_101, v_cupo_ayer_201, v_cupo_hoy_101, v_cupo_hoy_102, v_cupo_hoy_201, v_cupo_manana_101, v_cupo_semana_101);
+     WHERE id IN (v_cupo_ayer_medgen, v_cupo_ayer_pedgen, v_cupo_hoy_medgen, v_cupo_hoy_cardio, v_cupo_hoy_pedgen, v_cupo_manana_medgen, v_cupo_semana_medgen);
 
     FOR r_pac IN SELECT id, dpi, nombres, apellidos FROM paciente ORDER BY id LIMIT 50 LOOP
-        
-        -- Grupo A: 1 a 15 -> Citas ATENDIDAS (divididas entre Clínica 101 y Clínica 201)
+
         IF v_idx BETWEEN 1 AND 15 THEN
             DECLARE
-                v_cupo_target BIGINT := CASE WHEN v_idx <= 8 THEN v_cupo_ayer_101 ELSE v_cupo_ayer_201 END;
+                v_cupo_target BIGINT := CASE WHEN v_idx <= 8 THEN v_cupo_ayer_medgen ELSE v_cupo_ayer_pedgen END;
             BEGIN
                 INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
                 VALUES (r_pac.id, v_cupo_target, '08:00'::time + ((v_idx * 15) || ' minutes')::interval, '07:45'::time, '08:45'::time, 'atendida', v_user_id, 1)
@@ -168,19 +202,19 @@ BEGIN
                 INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
                 VALUES (v_cita_id, 'confirmada', 'atendida', v_user_id, 'Consulta médica finalizada con prescripción', CURRENT_DATE - 1 + '08:30'::time);
 
-                INSERT INTO turno (cita_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado, hora_atendido)
-                VALUES (v_cita_id, v_idx, 'atendido', 1, CURRENT_DATE - 1 + '07:45'::time, CURRENT_DATE - 1 + '08:05'::time, CURRENT_DATE - 1 + '08:30'::time);
+                v_asig := (SELECT a.id FROM asignacion_diaria_espacio a JOIN cupo_diario cd2 ON cd2.fecha = a.fecha JOIN medico_subespecialidad ms2 ON ms2.id = cd2.medico_subespecialidad_id AND ms2.subespecialidad_id = a.subespecialidad_id WHERE cd2.id = v_cupo_target LIMIT 1);
+                INSERT INTO turno (cita_id, asignacion_diaria_espacio_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado, hora_atendido)
+                VALUES (v_cita_id, v_asig, v_idx, 'atendido', 1, CURRENT_DATE - 1 + '07:45'::time, CURRENT_DATE - 1 + '08:05'::time, CURRENT_DATE - 1 + '08:30'::time);
 
                 UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_target;
             END;
 
-        -- Grupo B: 16 a 25 -> Citas CONFIRMADAS hoy (en espera o llamadas en sala)
         ELSIF v_idx BETWEEN 16 AND 25 THEN
             DECLARE
                 v_pos INT := v_idx - 15;
             BEGIN
                 INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
-                VALUES (r_pac.id, v_cupo_hoy_101, '08:00'::time + ((v_pos * 25) || ' minutes')::interval, '07:45'::time, '08:45'::time, 'confirmada', v_user_id, 0)
+                VALUES (r_pac.id, v_cupo_hoy_medgen, '08:00'::time + ((v_pos * 25) || ' minutes')::interval, '07:45'::time, '08:45'::time, 'confirmada', v_user_id, 0)
                 RETURNING id INTO v_cita_id;
 
                 INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
@@ -188,24 +222,24 @@ BEGIN
                 INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
                 VALUES (v_cita_id, 'pendiente', 'confirmada', v_user_id, 'Paciente en sala de espera HRO', now() - INTERVAL '30 minutes');
 
+                v_asig := (SELECT a.id FROM asignacion_diaria_espacio a JOIN cupo_diario cd2 ON cd2.fecha = a.fecha JOIN medico_subespecialidad ms2 ON ms2.id = cd2.medico_subespecialidad_id AND ms2.subespecialidad_id = a.subespecialidad_id WHERE cd2.id = v_cupo_hoy_medgen LIMIT 1);
                 IF v_pos IN (1, 2) THEN
-                    INSERT INTO turno (cita_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado)
-                    VALUES (v_cita_id, v_pos, 'llamado', 1, now() - INTERVAL '30 minutes', now() - INTERVAL '5 minutes');
+                    INSERT INTO turno (cita_id, asignacion_diaria_espacio_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado)
+                    VALUES (v_cita_id, v_asig, v_pos, 'llamado', 1, now() - INTERVAL '30 minutes', now() - INTERVAL '5 minutes');
                 ELSIF v_pos = 3 THEN
-                    INSERT INTO turno (cita_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado)
-                    VALUES (v_cita_id, v_pos, 'no_responde', 2, now() - INTERVAL '40 minutes', now() - INTERVAL '15 minutes');
+                    INSERT INTO turno (cita_id, asignacion_diaria_espacio_id, numero_turno, estado, intentos_llamado, hora_generado, hora_llamado)
+                    VALUES (v_cita_id, v_asig, v_pos, 'no_responde', 2, now() - INTERVAL '40 minutes', now() - INTERVAL '15 minutes');
                 ELSE
-                    INSERT INTO turno (cita_id, numero_turno, estado, intentos_llamado, hora_generado)
-                    VALUES (v_cita_id, v_pos, 'en_espera', 0, now() - INTERVAL '30 minutes');
+                    INSERT INTO turno (cita_id, asignacion_diaria_espacio_id, numero_turno, estado, intentos_llamado, hora_generado)
+                    VALUES (v_cita_id, v_asig, v_pos, 'en_espera', 0, now() - INTERVAL '30 minutes');
                 END IF;
 
-                UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_hoy_101;
+                UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_hoy_medgen;
             END;
 
-        -- Grupo C: 26 a 35 -> Citas PENDIENTES para hoy o mañana (esperando check-in)
         ELSIF v_idx BETWEEN 26 AND 35 THEN
             DECLARE
-                v_cupo_target BIGINT := CASE WHEN v_idx <= 30 THEN v_cupo_hoy_102 ELSE v_cupo_manana_101 END;
+                v_cupo_target BIGINT := CASE WHEN v_idx <= 30 THEN v_cupo_hoy_cardio ELSE v_cupo_manana_medgen END;
                 v_pos INT := v_idx - 25;
             BEGIN
                 INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
@@ -218,10 +252,9 @@ BEGIN
                 UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_target;
             END;
 
-        -- Grupo D: 36 a 40 -> Citas NO ASISTIÓ (de jornadas cerradas)
         ELSIF v_idx BETWEEN 36 AND 40 THEN
             INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
-            VALUES (r_pac.id, v_cupo_ayer_201, '11:00'::time + (((v_idx - 35) * 20) || ' minutes')::interval, '10:45'::time, '11:45'::time, 'no_asistio', v_user_id, 1)
+            VALUES (r_pac.id, v_cupo_ayer_pedgen, '11:00'::time + (((v_idx - 35) * 20) || ' minutes')::interval, '10:45'::time, '11:45'::time, 'no_asistio', v_user_id, 1)
             RETURNING id INTO v_cita_id;
 
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
@@ -229,12 +262,11 @@ BEGIN
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
             VALUES (v_cita_id, 'pendiente', 'no_asistio', v_user_id, 'Inasistencia al cierre de jornada: Paciente no se presentó a consulta.', CURRENT_DATE - 1 + '14:00'::time);
 
-            UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_ayer_201;
+            UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_ayer_pedgen;
 
-        -- Grupo E: 41 a 45 -> Citas CANCELADAS por orden médica o paciente
         ELSIF v_idx BETWEEN 41 AND 45 THEN
             INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
-            VALUES (r_pac.id, v_cupo_hoy_201, '09:30'::time, '09:00'::time, '10:00'::time, 'cancelada', v_user_id, 1)
+            VALUES (r_pac.id, v_cupo_hoy_pedgen, '09:30'::time, '09:00'::time, '10:00'::time, 'cancelada', v_user_id, 1)
             RETURNING id INTO v_cita_id;
 
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
@@ -242,31 +274,24 @@ BEGIN
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
             VALUES (v_cita_id, 'pendiente', 'cancelada', v_user_id, 'Paciente notificó imposibilidad de traslado desde municipio', now() - INTERVAL '1 day');
 
-            -- Cupo liberado (no incrementa cupos_ocupados)
-
-        -- Grupo F: 46 a 50 -> Citas REPROGRAMADAS con trazabilidad hacia nueva cita
         ELSE
-            -- Cita original reprogramada
             INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
-            VALUES (r_pac.id, v_cupo_ayer_101, '08:30'::time, '08:00'::time, '09:00'::time, 'reprogramada', v_user_id, 1)
+            VALUES (r_pac.id, v_cupo_ayer_medgen, '08:30'::time, '08:00'::time, '09:00'::time, 'reprogramada', v_user_id, 1)
             RETURNING id INTO v_cita_id;
 
-            -- Nueva cita reprogramada para la próxima semana
             INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, cita_origen_id, registrado_por, version)
-            VALUES (r_pac.id, v_cupo_semana_101, '08:30'::time, '08:00'::time, '09:00'::time, 'pendiente', v_cita_id, v_user_id, 0)
+            VALUES (r_pac.id, v_cupo_semana_medgen, '08:30'::time, '08:00'::time, '09:00'::time, 'pendiente', v_cita_id, v_user_id, 0)
             RETURNING id INTO v_cita_reprog_id;
 
-            -- Historial de cita origen
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
             VALUES (v_cita_id, NULL, 'pendiente', v_user_id, 'Cita programada original', CURRENT_DATE - 2);
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
             VALUES (v_cita_id, 'pendiente', 'reprogramada', v_user_id, 'Reprogramación solicitada por ausencia justificada del médico especialista', CURRENT_DATE - 1);
 
-            -- Historial de nueva cita
             INSERT INTO cita_estado_historial (cita_id, estado_anterior, estado_nuevo, usuario_referencia_id, motivo, fecha_cambio)
             VALUES (v_cita_reprog_id, NULL, 'pendiente', v_user_id, 'Cita generada por reprogramación de cita #' || v_cita_id, CURRENT_DATE - 1);
 
-            UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_semana_101;
+            UPDATE cupo_diario SET cupos_ocupados = cupos_ocupados + 1 WHERE id = v_cupo_semana_medgen;
         END IF;
 
         v_idx := v_idx + 1;
@@ -274,11 +299,11 @@ BEGIN
 END $$;
 
 
--- 4. CONTADOR DIARIO DE TURNOS PARA PANTALLAS DE SALA
-INSERT INTO contador_turno_diario (clinica_id, fecha, turno_actual, turno_siguiente)
-SELECT DISTINCT mc.clinica_id, CURRENT_DATE, 2, 11
-FROM medico_clinica mc
-WHERE mc.activo = true
-ON CONFLICT (clinica_id, fecha) DO UPDATE 
-SET turno_actual = EXCLUDED.turno_actual, 
+-- 4. CONTADOR DIARIO DE TURNOS PARA PANTALLAS DE SALA (por asignación diaria)
+INSERT INTO contador_turno_diario (asignacion_diaria_espacio_id, turno_actual, turno_siguiente)
+SELECT a.id, 2, 11
+FROM asignacion_diaria_espacio a
+WHERE a.fecha = CURRENT_DATE
+ON CONFLICT (asignacion_diaria_espacio_id) DO UPDATE
+SET turno_actual = EXCLUDED.turno_actual,
     turno_siguiente = EXCLUDED.turno_siguiente;

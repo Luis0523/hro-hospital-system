@@ -2,7 +2,7 @@ package com.hro.system.usuario.service;
 
 import com.hro.system.auditoria.event.AuditoriaEvent;
 import com.hro.system.usuario.entity.UsuarioReferencia;
-import com.hro.system.usuario.repository.PermisoClinicaRepository;
+import com.hro.system.usuario.repository.PermisoSubespecialidadRepository;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.util.Optional;
 public class UsuarioReferenciaService {
 
     private final UsuarioReferenciaRepository usuarioRepository;
-    private final PermisoClinicaRepository permisoClinicaRepository;
+    private final PermisoSubespecialidadRepository permisoSubespecialidadRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -59,9 +59,9 @@ public class UsuarioReferenciaService {
     }
 
     @Transactional(readOnly = true)
-    public boolean tienePermisoEnClinica(Long usuarioId, Long clinicaId, String tipoPermiso) {
-        return permisoClinicaRepository
-                .findByUsuarioReferenciaIdAndClinicaIdAndTipoPermiso(usuarioId, clinicaId, tipoPermiso)
+    public boolean tienePermisoEnSubespecialidad(Long usuarioId, Long subespecialidadId, String tipoPermiso) {
+        return permisoSubespecialidadRepository
+                .findByUsuarioReferenciaIdAndSubespecialidadIdAndTipoPermiso(usuarioId, subespecialidadId, tipoPermiso)
                 .isPresent();
     }
 }

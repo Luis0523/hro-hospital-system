@@ -14,17 +14,25 @@ import java.util.Optional;
 public interface TurnoRepository extends JpaRepository<Turno, Long> {
 
     Optional<Turno> findByCitaId(Long citaId);
+
     List<Turno> findByEstado(String estado);
 
-    @Query(value = "SELECT fn_siguiente_turno(:clinicaId, :fecha)", nativeQuery = true)
-    Integer obtenerSiguienteTurnoAtomico(@Param("clinicaId") Long clinicaId, @Param("fecha") LocalDate fecha);
+    @Query(value = "SELECT fn_siguiente_turno(:asignacionDiariaEspacioId)", nativeQuery = true)
+    Integer obtenerSiguienteTurnoAtomico(@Param("asignacionDiariaEspacioId") Long asignacionDiariaEspacioId);
 
-    @Query("SELECT t FROM Turno t WHERE t.cita.cupoDiario.fecha = :fecha AND (:clinicaId IS NULL OR t.cita.cupoDiario.medicoClinica.clinica.id = :clinicaId)")
-    List<Turno> buscarPorFechaYClinica(@Param("fecha") LocalDate fecha, @Param("clinicaId") Long clinicaId);
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId")
+    List<Turno> buscarPorAsignacion(@Param("asignacionId") Long asignacionId);
 
-    @Query("SELECT t FROM Turno t WHERE t.cita.cupoDiario.fecha = :fecha AND (:clinicaId IS NULL OR t.cita.cupoDiario.medicoClinica.clinica.id = :clinicaId) AND t.estado = 'no_responde'")
-    List<Turno> buscarNoRespondeParaCierre(@Param("fecha") LocalDate fecha, @Param("clinicaId") Long clinicaId);
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.fecha = :fecha " +
+            "AND (:subespecialidadId IS NULL OR t.asignacionDiariaEspacio.subespecialidad.id = :subespecialidadId)")
+    List<Turno> buscarPorFechaYSubespecialidad(@Param("fecha") LocalDate fecha, @Param("subespecialidadId") Long subespecialidadId);
 
-    @Query("SELECT t FROM Turno t WHERE t.cita.cupoDiario.fecha = :fecha AND t.cita.cupoDiario.medicoClinica.clinica.id = :clinicaId AND t.estado IN ('en_espera', 'llamado', 'reintegrado') ORDER BY t.numeroTurno ASC")
-    List<Turno> buscarTurnosEnEsperaPorClinica(@Param("fecha") LocalDate fecha, @Param("clinicaId") Long clinicaId);
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.fecha = :fecha " +
+            "AND (:subespecialidadId IS NULL OR t.asignacionDiariaEspacio.subespecialidad.id = :subespecialidadId) " +
+            "AND t.estado = 'no_responde'")
+    List<Turno> buscarNoRespondeParaCierre(@Param("fecha") LocalDate fecha, @Param("subespecialidadId") Long subespecialidadId);
+
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId " +
+            "AND t.estado IN ('en_espera', 'llamado', 'reintegrado') ORDER BY t.numeroTurno ASC")
+    List<Turno> buscarTurnosEnEsperaPorAsignacion(@Param("asignacionId") Long asignacionId);
 }

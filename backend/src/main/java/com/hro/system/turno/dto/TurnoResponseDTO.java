@@ -17,8 +17,11 @@ public class TurnoResponseDTO {
     private Integer numeroTurno;
     private String estado;
     private Integer intentosLlamado;
-    private Long clinicaId;
-    private String clinicaNombre;
+    private Long asignacionDiariaEspacioId;
+    private String espacioNumero;
+    private Short nivel;
+    private Long subespecialidadId;
+    private String subespecialidadNombre;
     private String medicoNombre;
     private OffsetDateTime horaGenerado;
     private OffsetDateTime horaLlamado;

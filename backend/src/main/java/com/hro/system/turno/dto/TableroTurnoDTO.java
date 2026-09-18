@@ -12,9 +12,10 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TableroTurnoDTO {
-    private Long clinicaId;
-    private String clinicaNombre;
-    private String consultorioUbicacion;
+    private Long asignacionDiariaEspacioId;
+    private String espacioNumero;
+    private Short nivel;
+    private String subespecialidadNombre;
     private Integer turnoActual;
     private Integer turnoSiguiente;
     private OffsetDateTime ultimaActualizacion;

@@ -10,7 +10,8 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `01. Estación de Enfermería y Turnos` (Check-in, Colas, Llamados, Inasistencias, Reintegración, Cierre)
      - `02. Citas Médicas` (Agendamiento, Cálculo de Horas Estimadas, Reprogramación, Cancelación, Auditoría)
      - `03. Pacientes` (Admisión, Búsqueda por DPI, Consulta de Expedientes)
-     - `04. Catálogos y Calendario` (Especialidades, Clínicas, Médicos, Feriados)
+     - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Feriados)
+     - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
 2. **`HRO_Local_Environment.postman_environment.json`**:
    - Variables de entorno (`baseUrl`, `clinicaId`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
    - Variables de autenticación simulada (`usuarioExterno`, `usuarioRol`, `usuarioNombre`).

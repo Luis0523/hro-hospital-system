@@ -79,7 +79,7 @@ public class CitaController {
     @Operation(summary = "Ejecutar cierre diario de jornada", description = "Identifica citas pendientes en la fecha que no asistieron y las marca como no_asistio sin liberar cupos.")
     public ResponseEntity<ApiResponse<Integer>> ejecutarCierreDiario(
             @Valid @RequestBody com.hro.system.cita.dto.CierreDiarioRequestDTO dto) {
-        int procesadas = citaService.ejecutarCierreDiario(dto.getFecha(), dto.getClinicaId(), dto.getUsuarioId());
+        int procesadas = citaService.ejecutarCierreDiario(dto.getFecha(), dto.getSubespecialidadId(), dto.getUsuarioId());
         return ResponseEntity.ok(ApiResponse.ok(procesadas, "Cierre diario ejecutado exitosamente. Citas marcadas como no_asistio: " + procesadas));
     }
 

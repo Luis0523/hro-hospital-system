@@ -9,6 +9,8 @@ import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
 import com.hro.system.cita.repository.CitaRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
+import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
+import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
 import com.hro.system.turno.dto.TableroTurnoDTO;
@@ -41,13 +43,14 @@ public class TurnoService {
     private final CitaRepository citaRepository;
     private final CitaEstadoHistorialRepository historialRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
+    private final AsignacionDiariaEspacioRepository asignacionRepository;
     private final HroAgendaProperties agendaProperties;
     private final SimpMessagingTemplate messagingTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * Check-in de enfermería: confirma llegada física del paciente y genera correlativo atómico diario.
-     * Compatible con citas electrónicas y citas migradas en papel sin hora_estimada calculada.
+     * Check-in: confirma llegada física, resuelve la sala del día (asignación diaria por
+     * subespecialidad) y genera el correlativo atómico con fn_siguiente_turno.
      */
     @Transactional
     public TurnoResponseDTO generarTurnoParaCita(GenerarTurnoRequestDTO dto) {
@@ -66,14 +69,21 @@ public class TurnoService {
             throw new BusinessException("La cita ya cuenta con un turno generado previamente.");
         }
 
-        Long clinicaId = cita.getCupoDiario().getMedicoClinica().getClinica().getId();
-        LocalDate fechaHoy = cita.getCupoDiario().getFecha();
+        LocalDate fecha = cita.getCupoDiario().getFecha();
+        Long subespecialidadId = cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getId();
 
-        // Obtener número correlativo de forma atómica e indivisible en PostgreSQL
-        Integer numeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(clinicaId, fechaHoy);
+        AsignacionDiariaEspacio asignacion = asignacionRepository
+                .findBySubespecialidadIdAndFecha(subespecialidadId, fecha)
+                .orElseThrow(() -> new BusinessException(
+                        "No hay un espacio físico asignado para la subespecialidad "
+                                + cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getNombre()
+                                + " el " + fecha + ". El jefe de enfermería debe asignar la sala del día."));
+
+        Integer numeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(asignacion.getId());
 
         Turno turno = Turno.builder()
                 .cita(cita)
+                .asignacionDiariaEspacio(asignacion)
                 .numeroTurno(numeroTurno)
                 .estado("en_espera")
                 .intentosLlamado(0)
@@ -82,7 +92,6 @@ public class TurnoService {
 
         Turno guardado = turnoRepository.save(turno);
 
-        // Actualizar estado de la cita a 'confirmada' en sala y registrar auditoría obligatoria
         String estadoAnterior = cita.getEstado();
         cita.setEstado("confirmada");
         cita.setActualizadoEn(OffsetDateTime.now());
@@ -97,23 +106,19 @@ public class TurnoService {
                 .fechaCambio(OffsetDateTime.now())
                 .build());
 
-        // Actualizar tablero de sala
-        notificarActualizacionTablero(clinicaId, fechaHoy);
+        notificarActualizacionTablero(asignacion.getId());
 
-        // Bitácora general
         publicarAuditoria("turno", guardado.getId(), "crear", usuario.getId(), null, Map.of(
                 "numeroTurno", numeroTurno,
                 "citaId", cita.getId(),
+                "asignacionDiariaEspacioId", asignacion.getId(),
                 "estado", "en_espera"
         ));
 
-        log.info("Turno #{} generado para cita ID: {}, clínica ID: {}", numeroTurno, cita.getId(), clinicaId);
+        log.info("Turno #{} generado para cita ID: {}, asignación diaria ID: {}", numeroTurno, cita.getId(), asignacion.getId());
         return mapToDTO(guardado);
     }
 
-    /**
-     * Llamar paciente a consultorio: pasa el turno a 'llamado', incrementa intentos y actualiza el turno actual en el tablero.
-     */
     @Transactional
     public TurnoResponseDTO llamarTurno(Long turnoId, Long usuarioId) {
         Turno turno = turnoRepository.findById(turnoId)
@@ -130,13 +135,9 @@ public class TurnoService {
 
         Turno actualizado = turnoRepository.save(turno);
 
-        Long clinicaId = turno.getCita().getCupoDiario().getMedicoClinica().getClinica().getId();
-        LocalDate fecha = turno.getCita().getCupoDiario().getFecha();
-
-        // Actualizar turno_actual en contador_turno_diario para que las pantallas muestren este número
-        actualizarTurnoActualContador(clinicaId, fecha, turno.getNumeroTurno());
-
-        notificarActualizacionTablero(clinicaId, fecha);
+        Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
+        actualizarTurnoActualContador(asignacionId, turno.getNumeroTurno());
+        notificarActualizacionTablero(asignacionId);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -149,10 +150,6 @@ public class TurnoService {
         return mapToDTO(actualizado);
     }
 
-    /**
-     * Marca un turno como 'no_responde' si expira el tiempo de gracia o no atiende al llamado.
-     * Permite avanzar la fila inmediatamente sin bloquear la ventanilla/médico.
-     */
     @Transactional
     public TurnoResponseDTO marcarNoResponde(Long turnoId, Long usuarioId, String motivo) {
         Turno turno = turnoRepository.findById(turnoId)
@@ -166,23 +163,17 @@ public class TurnoService {
         turno.setEstado("no_responde");
         Turno actualizado = turnoRepository.save(turno);
 
-        Long clinicaId = turno.getCita().getCupoDiario().getMedicoClinica().getClinica().getId();
-        LocalDate fecha = turno.getCita().getCupoDiario().getFecha();
-
-        notificarActualizacionTablero(clinicaId, fecha);
+        Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
+        notificarActualizacionTablero(asignacionId);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
                 Map.of("estado", "no_responde", "motivo", motivo != null ? motivo : "No se presentó tras llamado"));
 
-        log.warn("Turno #{} marcado como 'no_responde' en clínica ID: {}", turno.getNumeroTurno(), clinicaId);
+        log.warn("Turno #{} marcado como 'no_responde'", turno.getNumeroTurno());
         return mapToDTO(actualizado);
     }
 
-    /**
-     * Reintegra un paciente en estado 'no_responde' el mismo día.
-     * Conserva la misma cita y turno, asignándole una nueva posición al final de la fila actual con fn_siguiente_turno.
-     */
     @Transactional
     public TurnoResponseDTO reintegrarTurno(Long turnoId, ReintegrarTurnoRequestDTO dto) {
         Turno turno = turnoRepository.findById(turnoId)
@@ -196,13 +187,13 @@ public class TurnoService {
             throw new BusinessException(String.format("Solo se pueden reintegrar turnos en estado 'no_responde'. Estado actual: '%s'", turno.getEstado()));
         }
 
-        Long clinicaId = turno.getCita().getCupoDiario().getMedicoClinica().getClinica().getId();
-        LocalDate fecha = turno.getCita().getCupoDiario().getFecha();
+        Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
+        if (asignacionId == null) {
+            throw new BusinessException("El turno no tiene una asignación diaria asociada; no se puede reintegrar.");
+        }
 
         int turnoAnterior = turno.getNumeroTurno();
-
-        // Obtener nueva posición al final de la fila actual del día
-        Integer nuevoNumeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(clinicaId, fecha);
+        Integer nuevoNumeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(asignacionId);
 
         turno.setNumeroTurno(nuevoNumeroTurno);
         turno.setEstado("reintegrado");
@@ -210,11 +201,8 @@ public class TurnoService {
         turno.setHoraLlamado(null);
 
         Turno actualizado = turnoRepository.save(turno);
+        notificarActualizacionTablero(asignacionId);
 
-        // Notificar al tablero
-        notificarActualizacionTablero(clinicaId, fecha);
-
-        // Auditoría inmutable en cita_estado_historial
         historialRepository.save(CitaEstadoHistorial.builder()
                 .cita(turno.getCita())
                 .estadoAnterior("confirmada")
@@ -233,10 +221,6 @@ public class TurnoService {
         return mapToDTO(actualizado);
     }
 
-    /**
-     * Marca un turno como 'atendido' por el médico.
-     * Actualiza la cita a estado 'atendida' y registra la auditoría correspondiente.
-     */
     @Transactional
     public TurnoResponseDTO marcarAtendido(Long turnoId, Long usuarioId) {
         Turno turno = turnoRepository.findById(turnoId)
@@ -251,7 +235,6 @@ public class TurnoService {
         turno.setHoraAtendido(OffsetDateTime.now());
         Turno actualizado = turnoRepository.save(turno);
 
-        // Actualizar cita
         Cita cita = turno.getCita();
         String estadoCitaAnterior = cita.getEstado();
         cita.setEstado("atendida");
@@ -267,9 +250,8 @@ public class TurnoService {
                 .fechaCambio(OffsetDateTime.now())
                 .build());
 
-        Long clinicaId = cita.getCupoDiario().getMedicoClinica().getClinica().getId();
-        LocalDate fecha = cita.getCupoDiario().getFecha();
-        notificarActualizacionTablero(clinicaId, fecha);
+        Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
+        notificarActualizacionTablero(asignacionId);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -278,17 +260,13 @@ public class TurnoService {
         return mapToDTO(actualizado);
     }
 
-    /**
-     * Cierre diario de turnos: Marca citas asociadas a turnos que quedaron en 'no_responde' como 'no_asistio'.
-     * NO libera cupo en cupo_diario.
-     */
     @Transactional
-    public int procesarCierreDiarioTurnosNoRespondidos(LocalDate fecha, Long clinicaId, Long usuarioId) {
+    public int procesarCierreDiarioTurnosNoRespondidos(LocalDate fecha, Long subespecialidadId, Long usuarioId) {
         Long usuarioResueltoId = UsuarioContexto.resolverId(usuarioId);
         UsuarioReferencia usuario = usuarioRepository.findById(usuarioResueltoId)
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioResueltoId));
 
-        List<Turno> turnosNoResponde = turnoRepository.buscarNoRespondeParaCierre(fecha, clinicaId);
+        List<Turno> turnosNoResponde = turnoRepository.buscarNoRespondeParaCierre(fecha, subespecialidadId);
         int total = 0;
 
         for (Turno t : turnosNoResponde) {
@@ -316,9 +294,8 @@ public class TurnoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TurnoResponseDTO> listarTurnosEnEspera(Long clinicaId, LocalDate fecha) {
-        LocalDate f = (fecha != null) ? fecha : LocalDate.now();
-        return turnoRepository.buscarTurnosEnEsperaPorClinica(f, clinicaId).stream()
+    public List<TurnoResponseDTO> listarTurnosEnEspera(Long asignacionId) {
+        return turnoRepository.buscarTurnosEnEsperaPorAsignacion(asignacionId).stream()
                 .map(this::mapToDTO)
                 .toList();
     }
@@ -330,27 +307,35 @@ public class TurnoService {
                 .toList();
     }
 
-    private void actualizarTurnoActualContador(Long clinicaId, LocalDate fecha, Integer numeroTurno) {
-        contadorRepository.findByClinicaIdAndFecha(clinicaId, fecha).ifPresent(contador -> {
+    private void actualizarTurnoActualContador(Long asignacionId, Integer numeroTurno) {
+        if (asignacionId == null) {
+            return;
+        }
+        contadorRepository.findByAsignacionDiariaEspacioId(asignacionId).ifPresent(contador -> {
             contador.setTurnoActual(numeroTurno);
             contadorRepository.save(contador);
         });
     }
 
-    private void notificarActualizacionTablero(Long clinicaId, LocalDate fecha) {
-        contadorRepository.findByClinicaIdAndFecha(clinicaId, fecha).ifPresent(contador -> {
+    private void notificarActualizacionTablero(Long asignacionId) {
+        if (asignacionId == null) {
+            return;
+        }
+        contadorRepository.findByAsignacionDiariaEspacioId(asignacionId).ifPresent(contador -> {
+            AsignacionDiariaEspacio a = contador.getAsignacionDiariaEspacio();
             TableroTurnoDTO tablero = TableroTurnoDTO.builder()
-                    .clinicaId(clinicaId)
-                    .clinicaNombre(contador.getClinica().getNombre())
-                    .consultorioUbicacion(contador.getClinica().getUbicacion())
+                    .asignacionDiariaEspacioId(a.getId())
+                    .espacioNumero(a.getEspacioFisico().getNumero())
+                    .nivel(a.getEspacioFisico().getNivel())
+                    .subespecialidadNombre(a.getSubespecialidad().getNombre())
                     .turnoActual(contador.getTurnoActual())
                     .turnoSiguiente(contador.getTurnoSiguiente())
                     .ultimaActualizacion(OffsetDateTime.now())
                     .build();
 
             messagingTemplate.convertAndSend("/topic/tablero", tablero);
-            messagingTemplate.convertAndSend("/topic/clinica/" + clinicaId, tablero);
-            log.debug("Evento WebSocket emitido al tablero para clinica ID: {}", clinicaId);
+            messagingTemplate.convertAndSend("/topic/clinica/" + a.getId(), tablero);
+            log.debug("Evento WebSocket emitido al tablero para asignación diaria ID: {}", a.getId());
         });
     }
 
@@ -366,15 +351,19 @@ public class TurnoService {
     }
 
     private TurnoResponseDTO mapToDTO(Turno turno) {
+        AsignacionDiariaEspacio a = turno.getAsignacionDiariaEspacio();
         return TurnoResponseDTO.builder()
                 .id(turno.getId())
                 .citaId(turno.getCita().getId())
                 .numeroTurno(turno.getNumeroTurno())
                 .estado(turno.getEstado())
                 .intentosLlamado(turno.getIntentosLlamado())
-                .clinicaId(turno.getCita().getCupoDiario().getMedicoClinica().getClinica().getId())
-                .clinicaNombre(turno.getCita().getCupoDiario().getMedicoClinica().getClinica().getNombre())
-                .medicoNombre(turno.getCita().getCupoDiario().getMedicoClinica().getMedico().getNombres())
+                .asignacionDiariaEspacioId(a != null ? a.getId() : null)
+                .espacioNumero(a != null ? a.getEspacioFisico().getNumero() : null)
+                .nivel(a != null ? a.getEspacioFisico().getNivel() : null)
+                .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
+                .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
+                .medicoNombre(turno.getCita().getCupoDiario().getMedicoSubespecialidad().getMedico().getNombres())
                 .horaGenerado(turno.getHoraGenerado())
                 .horaLlamado(turno.getHoraLlamado())
                 .horaAtendido(turno.getHoraAtendido())

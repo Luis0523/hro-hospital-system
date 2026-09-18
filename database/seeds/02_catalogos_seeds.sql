@@ -1,25 +1,25 @@
 -- =====================================================================
--- SEEDS: Catálogos Médicos y Calendario Institucional - HRO
+-- SEEDS: Catálogos Médicos, Espacios Físicos y Calendario Institucional - HRO
+-- (Adaptado al modelo V4: espacio físico separado de la subespecialidad)
 -- =====================================================================
 
--- 1. Usuario de Referencia Inicial (Administrador)
+-- 1. Usuarios de Referencia
 INSERT INTO usuario_referencia (id_externo, nombre_mostrar, rol_principal, activo)
 VALUES ('admin-hro-01', 'Administrador del Sistema HRO', 'administrador', true)
 ON CONFLICT (id_externo) DO NOTHING;
 
--- 1.1 Usuarios de referencia por estación (para pruebas con autenticación simulada / JIT)
---     Los roles válidos son: personal_citas, enfermeria, medico, administrador, archivo.
 INSERT INTO usuario_referencia (id_externo, nombre_mostrar, rol_principal, activo)
 VALUES
-    ('personal-citas-01', 'Operador de Ventanilla (Pruebas)', 'personal_citas', true),
-    ('enfermeria-01',     'Enfermera de Consulta Externa (Pruebas)', 'enfermeria', true),
-    ('medico-01',         'Médico de Consulta Externa (Pruebas)', 'medico', true),
-    ('archivo-01',        'Encargado de Archivo (Pruebas)', 'archivo', true)
+    ('personal-citas-01',   'Operador de Ventanilla (Pruebas)', 'personal_citas', true),
+    ('enfermeria-01',       'Enfermera de Consulta Externa (Pruebas)', 'enfermeria', true),
+    ('jefe-enfermeria-01',  'Jefe de Enfermería (Pruebas)', 'jefe_enfermeria', true),
+    ('medico-01',           'Médico de Consulta Externa (Pruebas)', 'medico', true),
+    ('archivo-01',          'Encargado de Archivo (Pruebas)', 'archivo', true)
 ON CONFLICT (id_externo) DO NOTHING;
 
 -- 2. Especialidades Médicas
 INSERT INTO especialidad (nombre, activo)
-VALUES 
+VALUES
     ('Medicina Interna', true),
     ('Pediatría', true),
     ('Ginecología y Obstetricia', true),
@@ -61,39 +61,18 @@ INSERT INTO subespecialidad (especialidad_id, nombre, activo)
 SELECT e.id, 'Traumatología General', true FROM especialidad e WHERE e.nombre = 'Traumatología y Ortopedia'
 ON CONFLICT (especialidad_id, nombre) DO NOTHING;
 
--- 4. Clínicas / Consultorios
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 101 - Medicina General', 'Edificio Consulta Externa, Nivel 1', true 
-FROM subespecialidad s WHERE s.nombre = 'Medicina General' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 101 - Medicina General');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 102 - Cardiología', 'Edificio Consulta Externa, Nivel 1', true 
-FROM subespecialidad s WHERE s.nombre = 'Cardiología Clínica' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 102 - Cardiología');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 201 - Pediatría', 'Edificio Consulta Externa, Nivel 2', true 
-FROM subespecialidad s WHERE s.nombre = 'Pediatría General' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 201 - Pediatría');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 202 - Niño Sano', 'Edificio Consulta Externa, Nivel 2', true 
-FROM subespecialidad s WHERE s.nombre = 'Control de Niño Sano' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 202 - Niño Sano');
-
--- Clínica con atención restringida: Pediatría Especializada solo abre Lunes y Jueves
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 203 - Pediatría Especializada', 'Edificio Consulta Externa, Nivel 2', true 
-FROM subespecialidad s WHERE s.nombre = 'Pediatría Especializada' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 203 - Pediatría Especializada');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 301 - Ginecología', 'Edificio Consulta Externa, Nivel 3', true 
-FROM subespecialidad s WHERE s.nombre = 'Ginecología General' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 301 - Ginecología');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 401 - Cirugía General', 'Edificio Consulta Externa, Nivel 4', true 
-FROM subespecialidad s WHERE s.nombre = 'Cirugía General' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 401 - Cirugía General');
-
-INSERT INTO clinica (subespecialidad_id, nombre, ubicacion, activo)
-SELECT s.id, 'Clínica 402 - Traumatología', 'Edificio Consulta Externa, Nivel 4', true 
-FROM subespecialidad s WHERE s.nombre = 'Traumatología General' AND NOT EXISTS (SELECT 1 FROM clinica WHERE nombre = 'Clínica 402 - Traumatología');
+-- 4. Espacios físicos (salas/consultorios). Ya NO se ligan a una subespecialidad.
+INSERT INTO espacio_fisico (numero, nivel, capacidad_camillas, nombre, ubicacion, activo)
+VALUES
+    ('101', 1, 1, 'Sala 101', 'Edificio Consulta Externa, Nivel 1', true),
+    ('102', 1, 1, 'Sala 102', 'Edificio Consulta Externa, Nivel 1', true),
+    ('201', 2, 1, 'Sala 201', 'Edificio Consulta Externa, Nivel 2', true),
+    ('202', 2, 1, 'Sala 202', 'Edificio Consulta Externa, Nivel 2', true),
+    ('203', 2, 2, 'Sala 203', 'Edificio Consulta Externa, Nivel 2', true),
+    ('301', 3, 1, 'Sala 301', 'Edificio Consulta Externa, Nivel 3', true),
+    ('401', 4, 1, 'Sala 401', 'Edificio Consulta Externa, Nivel 4', true),
+    ('402', 4, 1, 'Sala 402', 'Edificio Consulta Externa, Nivel 4', true)
+ON CONFLICT (numero) DO NOTHING;
 
 -- 5. Médicos Especialistas
 INSERT INTO medico (nombres, numero_colegiado, activo)
@@ -106,95 +85,86 @@ VALUES
     ('Dra. Sofía Marisol Gómez López', 'COL-13245', true)
 ON CONFLICT (numero_colegiado) DO NOTHING;
 
--- 6. Asignación Médico - Clínica con Horarios y Cupos
---    Regla operativa: capacidad_maxima * duracion_consulta_minutos <= minutos de la jornada,
---    de modo que las horas escalonadas nunca se desborden del horario del médico.
---    Además, algunas clínicas solo abren ciertos días (p. ej. Pediatría Especializada: Lunes y Jueves).
+-- 6. Programación médico-subespecialidad (día, horario y capacidad).
+--    Regla: capacidad_maxima * duracion <= minutos de la jornada.
+--    Algunas subespecialidades solo abren ciertos días.
 
--- Dr. Morales (COL-10452) en Clínica 101 - Medicina General: Lunes a Viernes, 07:00-13:00 (360 min)
--- 12 pacientes x 30 min = 360 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '07:00:00'::time, '13:00:00'::time, 12, 30, true
-FROM medico m, clinica c, (VALUES (1), (2), (3), (4), (5)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-10452' AND c.nombre = 'Clínica 101 - Medicina General'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dr. Morales (COL-10452) en Medicina General: Lunes a Viernes, 07:00-13:00 (360 min) -> 12 x 30
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '07:00:00'::time, '13:00:00'::time, 12, 30, true
+FROM medico m, subespecialidad s, (VALUES (1), (2), (3), (4), (5)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-10452' AND s.nombre = 'Medicina General'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dra. Fuentes (COL-12890) en Clínica 102 - Cardiología: Lunes, Miércoles y Viernes, 08:00-12:00 (240 min)
--- 6 pacientes x 40 min = 240 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '08:00:00'::time, '12:00:00'::time, 6, 40, true
-FROM medico m, clinica c, (VALUES (1), (3), (5)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-12890' AND c.nombre = 'Clínica 102 - Cardiología'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dra. Fuentes (COL-12890) en Cardiología Clínica: Lunes, Miércoles y Viernes, 08:00-12:00 -> 6 x 40
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '08:00:00'::time, '12:00:00'::time, 6, 40, true
+FROM medico m, subespecialidad s, (VALUES (1), (3), (5)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-12890' AND s.nombre = 'Cardiología Clínica'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dr. Arreaga (COL-08741) en Clínica 201 - Pediatría: Lunes a Viernes, 07:30-13:30 (360 min)
--- 14 pacientes x 25 min = 350 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '07:30:00'::time, '13:30:00'::time, 14, 25, true
-FROM medico m, clinica c, (VALUES (1), (2), (3), (4), (5)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-08741' AND c.nombre = 'Clínica 201 - Pediatría'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dr. Arreaga (COL-08741) en Pediatría General: Lunes a Viernes, 07:30-13:30 -> 14 x 25
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '07:30:00'::time, '13:30:00'::time, 14, 25, true
+FROM medico m, subespecialidad s, (VALUES (1), (2), (3), (4), (5)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-08741' AND s.nombre = 'Pediatría General'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dra. Citalán (COL-14562) en Clínica 301 - Ginecología: Lunes, Miércoles y Viernes, 07:00-13:00 (360 min)
--- 12 pacientes x 30 min = 360 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '07:00:00'::time, '13:00:00'::time, 12, 30, true
-FROM medico m, clinica c, (VALUES (1), (3), (5)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-14562' AND c.nombre = 'Clínica 301 - Ginecología'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dra. Citalán (COL-14562) en Ginecología General: Lunes, Miércoles y Viernes, 07:00-13:00 -> 12 x 30
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '07:00:00'::time, '13:00:00'::time, 12, 30, true
+FROM medico m, subespecialidad s, (VALUES (1), (3), (5)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-14562' AND s.nombre = 'Ginecología General'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dr. Vásquez (COL-09874) en Clínica 202 - Niño Sano: SOLO Lunes y Jueves, 08:00-12:00 (240 min)
--- 8 pacientes x 30 min = 240 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '08:00:00'::time, '12:00:00'::time, 8, 30, true
-FROM medico m, clinica c, (VALUES (1), (4)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-09874' AND c.nombre = 'Clínica 202 - Niño Sano'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dr. Vásquez (COL-09874) en Control de Niño Sano: SOLO Lunes y Jueves, 08:00-12:00 -> 8 x 30
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '08:00:00'::time, '12:00:00'::time, 8, 30, true
+FROM medico m, subespecialidad s, (VALUES (1), (4)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-09874' AND s.nombre = 'Control de Niño Sano'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dra. Gómez (COL-13245) en Clínica 203 - Pediatría Especializada: SOLO Lunes y Jueves, 08:00-13:00 (300 min)
--- 10 pacientes x 30 min = 300 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '08:00:00'::time, '13:00:00'::time, 10, 30, true
-FROM medico m, clinica c, (VALUES (1), (4)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-13245' AND c.nombre = 'Clínica 203 - Pediatría Especializada'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dra. Gómez (COL-13245) en Pediatría Especializada: SOLO Lunes y Jueves, 08:00-13:00 -> 10 x 30
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '08:00:00'::time, '13:00:00'::time, 10, 30, true
+FROM medico m, subespecialidad s, (VALUES (1), (4)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-13245' AND s.nombre = 'Pediatría Especializada'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dr. Vásquez (COL-09874) en Clínica 402 - Traumatología: Martes y Viernes, 07:00-12:00 (300 min)
--- 10 pacientes x 30 min = 300 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '07:00:00'::time, '12:00:00'::time, 10, 30, true
-FROM medico m, clinica c, (VALUES (2), (5)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-09874' AND c.nombre = 'Clínica 402 - Traumatología'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dr. Vásquez (COL-09874) en Traumatología General: Martes y Viernes, 07:00-12:00 -> 10 x 30
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '07:00:00'::time, '12:00:00'::time, 10, 30, true
+FROM medico m, subespecialidad s, (VALUES (2), (5)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-09874' AND s.nombre = 'Traumatología General'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
 
--- Dra. Citalán (COL-14562) en Clínica 401 - Cirugía General: Martes y Jueves, 08:00-12:00 (240 min)
--- 6 pacientes x 40 min = 240 min
-INSERT INTO medico_clinica (medico_id, clinica_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
-SELECT m.id, c.id, d.dia, '08:00:00'::time, '12:00:00'::time, 6, 40, true
-FROM medico m, clinica c, (VALUES (2), (4)) AS d(dia)
-WHERE m.numero_colegiado = 'COL-14562' AND c.nombre = 'Clínica 401 - Cirugía General'
-ON CONFLICT (medico_id, clinica_id, dia_semana) DO UPDATE
+-- Dra. Citalán (COL-14562) en Cirugía General: Martes y Jueves, 08:00-12:00 -> 6 x 40
+INSERT INTO medico_subespecialidad (medico_id, subespecialidad_id, dia_semana, hora_inicio, hora_fin, capacidad_maxima, duracion_consulta_minutos, activo)
+SELECT m.id, s.id, d.dia, '08:00:00'::time, '12:00:00'::time, 6, 40, true
+FROM medico m, subespecialidad s, (VALUES (2), (4)) AS d(dia)
+WHERE m.numero_colegiado = 'COL-14562' AND s.nombre = 'Cirugía General'
+ON CONFLICT (medico_id, subespecialidad_id, dia_semana) DO UPDATE
    SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin,
        capacidad_maxima = EXCLUDED.capacidad_maxima, duracion_consulta_minutos = EXCLUDED.duracion_consulta_minutos,
        activo = EXCLUDED.activo;
@@ -206,26 +176,20 @@ UPDATE medico m
  WHERE m.numero_colegiado = 'COL-08741'
    AND u.id_externo = 'medico-01';
 
--- 7. Permisos por clínica (para pruebas de autorización por estación)
---    Enfermería puede avanzar turnos en las clínicas de consulta externa.
-INSERT INTO permiso_clinica (usuario_referencia_id, clinica_id, tipo_permiso)
-SELECT u.id, c.id, 'avanzar_turno'
-FROM usuario_referencia u, clinica c
+-- 7. Permisos por subespecialidad (no por sala física)
+INSERT INTO permiso_subespecialidad (usuario_referencia_id, subespecialidad_id, tipo_permiso)
+SELECT u.id, s.id, 'avanzar_turno'
+FROM usuario_referencia u, subespecialidad s
 WHERE u.id_externo = 'enfermeria-01'
-  AND c.nombre IN (
-      'Clínica 101 - Medicina General',
-      'Clínica 201 - Pediatría',
-      'Clínica 202 - Niño Sano',
-      'Clínica 203 - Pediatría Especializada')
-ON CONFLICT (usuario_referencia_id, clinica_id, tipo_permiso) DO NOTHING;
+  AND s.nombre IN ('Medicina General', 'Pediatría General', 'Control de Niño Sano', 'Pediatría Especializada')
+ON CONFLICT (usuario_referencia_id, subespecialidad_id, tipo_permiso) DO NOTHING;
 
--- Ventanilla de citas puede autorizar cupos en Medicina General.
-INSERT INTO permiso_clinica (usuario_referencia_id, clinica_id, tipo_permiso)
-SELECT u.id, c.id, 'autorizar_cupo'
-FROM usuario_referencia u, clinica c
+INSERT INTO permiso_subespecialidad (usuario_referencia_id, subespecialidad_id, tipo_permiso)
+SELECT u.id, s.id, 'autorizar_cupo'
+FROM usuario_referencia u, subespecialidad s
 WHERE u.id_externo = 'personal-citas-01'
-  AND c.nombre = 'Clínica 101 - Medicina General'
-ON CONFLICT (usuario_referencia_id, clinica_id, tipo_permiso) DO NOTHING;
+  AND s.nombre = 'Medicina General'
+ON CONFLICT (usuario_referencia_id, subespecialidad_id, tipo_permiso) DO NOTHING;
 
 -- 8. Días No Laborables Iniciales (Feriados Nacionales)
 INSERT INTO dia_no_laborable (fecha, motivo, creado_por)

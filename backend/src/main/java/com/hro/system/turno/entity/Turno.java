@@ -1,6 +1,7 @@
 package com.hro.system.turno.entity;
 
 import com.hro.system.cita.entity.Cita;
+import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,6 +23,11 @@ public class Turno {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cita_id", nullable = false)
     private Cita cita;
+
+    /** Espacio físico + subespecialidad del día donde el paciente hace fila (para el tablero). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asignacion_diaria_espacio_id")
+    private AsignacionDiariaEspacio asignacionDiariaEspacio;
 
     @Column(name = "numero_turno", nullable = false)
     private Integer numeroTurno;

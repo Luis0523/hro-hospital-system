@@ -11,16 +11,16 @@ import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.entity.CitaEstadoHistorial;
 import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
 import com.hro.system.cita.repository.CitaRepository;
-import com.hro.system.clinica.entity.Clinica;
 import com.hro.system.clinica.entity.Especialidad;
 import com.hro.system.clinica.entity.Subespecialidad;
-import com.hro.system.clinica.repository.ClinicaRepository;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
+import com.hro.system.espacio.entity.EspacioFisico;
+import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoClinica;
-import com.hro.system.medico.repository.MedicoClinicaRepository;
+import com.hro.system.medico.entity.MedicoSubespecialidad;
 import com.hro.system.medico.repository.MedicoRepository;
+import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.turno.repository.TurnoRepository;
@@ -69,13 +69,13 @@ public class CitaCicloDeVidaTest {
     private CupoDiarioRepository cupoDiarioRepository;
 
     @Autowired
-    private MedicoClinicaRepository medicoClinicaRepository;
+    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private ClinicaRepository clinicaRepository;
+    private EspacioFisicoRepository espacioFisicoRepository;
 
     @Autowired
     private SubespecialidadRepository subespecialidadRepository;
@@ -91,7 +91,8 @@ public class CitaCicloDeVidaTest {
 
     private Paciente paciente;
     private UsuarioReferencia usuario;
-    private MedicoClinica medicoClinica;
+    private Subespecialidad subespecialidad;
+    private MedicoSubespecialidad medicoSubespecialidad;
     private CupoDiario cupo1;
     private CupoDiario cupo2;
 
@@ -101,7 +102,7 @@ public class CitaCicloDeVidaTest {
         historialRepository.deleteAllInBatch();
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
-        medicoClinicaRepository.deleteAllInBatch();
+        medicoSubespecialidadRepository.deleteAllInBatch();
 
         String suffix = UUID.randomUUID().toString().substring(0, 5);
 
@@ -127,16 +128,17 @@ public class CitaCicloDeVidaTest {
                 .activo(true)
                 .build());
 
-        Subespecialidad subesp = subespecialidadRepository.save(Subespecialidad.builder()
+        subespecialidad = subespecialidadRepository.save(Subespecialidad.builder()
                 .especialidad(esp)
                 .nombre("Cardiología " + suffix)
                 .activo(true)
                 .build());
 
-        Clinica clinica = clinicaRepository.save(Clinica.builder()
-                .nombre("Consultorio 101 " + suffix)
-                .subespecialidad(subesp)
-                .ubicacion("Módulo B")
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("S-" + suffix)
+                .nivel((short) 1)
+                .capacidadCamillas(1)
+                .nombre("Sala " + suffix)
                 .activo(true)
                 .build());
 
@@ -147,9 +149,9 @@ public class CitaCicloDeVidaTest {
                 .activo(true)
                 .build());
 
-        medicoClinica = medicoClinicaRepository.save(MedicoClinica.builder()
+        medicoSubespecialidad = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
                 .medico(medico)
-                .clinica(clinica)
+                .subespecialidad(subespecialidad)
                 .diaSemana((short) 1) // Lunes
                 .horaInicio(LocalTime.of(8, 0))
                 .horaFin(LocalTime.of(12, 0))
@@ -159,14 +161,14 @@ public class CitaCicloDeVidaTest {
                 .build());
 
         cupo1 = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoClinica(medicoClinica)
+                .medicoSubespecialidad(medicoSubespecialidad)
                 .fecha(LocalDate.of(2026, 9, 14)) // Lunes
                 .capacidadMaxima(10)
                 .cuposOcupados(0)
                 .build());
 
         cupo2 = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoClinica(medicoClinica)
+                .medicoSubespecialidad(medicoSubespecialidad)
                 .fecha(LocalDate.of(2026, 9, 21)) // Siguiente Lunes
                 .capacidadMaxima(10)
                 .cuposOcupados(0)
@@ -182,22 +184,20 @@ public class CitaCicloDeVidaTest {
                 .usuarioId(usuario.getId())
                 .build();
 
-        String responseContent = mockMvc.perform(post("/citas")
+        mockMvc.perform(post("/citas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.estado").value("pendiente"))
-                .andExpect(jsonPath("$.data.horaEstimada").value("08:00:00")) // 1ra cita = horaInicio (08:00)
+                .andExpect(jsonPath("$.data.horaEstimada").value("08:00:00"))
                 .andExpect(jsonPath("$.data.horaVentanaInicio").isNotEmpty())
                 .andExpect(jsonPath("$.data.horaVentanaFin").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
 
-        // Verificar que el cupo se incrementó atómicamente a 1
         CupoDiario cupoActualizado = cupoDiarioRepository.findById(cupo1.getId()).orElseThrow();
         assertEquals(1, cupoActualizado.getCuposOcupados());
 
-        // Verificar auditoría inmutable obligatoria
         List<CitaEstadoHistorial> historial = historialRepository.findAll();
         assertEquals(1, historial.size());
         assertEquals("pendiente", historial.get(0).getEstadoNuevo());
@@ -208,7 +208,6 @@ public class CitaCicloDeVidaTest {
     @Test
     @DisplayName("Reprogramar Cita: Conserva cita origen en 'reprogramada', libera cupo y crea nueva cita enlazada")
     void testReprogramarCitaPreservaHistorialYCupos() throws Exception {
-        // 1. Agendar cita original
         CrearCitaRequestDTO agendarReq = CrearCitaRequestDTO.builder()
                 .pacienteId(paciente.getId())
                 .cupoDiarioId(cupo1.getId())
@@ -223,7 +222,6 @@ public class CitaCicloDeVidaTest {
 
         Long citaOriginalId = objectMapper.readTree(agendarResp).get("data").get("id").asLong();
 
-        // 2. Reprogramar hacia cupo2
         ReprogramarCitaRequestDTO reprogReq = ReprogramarCitaRequestDTO.builder()
                 .nuevoCupoDiarioId(cupo2.getId())
                 .usuarioId(usuario.getId())
@@ -241,19 +239,16 @@ public class CitaCicloDeVidaTest {
         Long nuevaCitaId = objectMapper.readTree(reprogResp).get("data").get("id").asLong();
         assertNotEquals(citaOriginalId, nuevaCitaId);
 
-        // 3. Validar estado de cita original
         Cita citaOriginal = citaRepository.findById(citaOriginalId).orElseThrow();
         assertEquals("reprogramada", citaOriginal.getEstado());
 
-        // 4. Validar cupos: cupo1 debe volver a 0 (liberado) y cupo2 debe estar en 1 (reservado)
         CupoDiario c1 = cupoDiarioRepository.findById(cupo1.getId()).orElseThrow();
         CupoDiario c2 = cupoDiarioRepository.findById(cupo2.getId()).orElseThrow();
         assertEquals(0, c1.getCuposOcupados(), "El cupo de la cita original debe quedar liberado en 0");
         assertEquals(1, c2.getCuposOcupados(), "El nuevo cupo debe tener 1 cupo ocupado");
 
-        // 5. Validar trazabilidad completa en cita_estado_historial
         List<CitaEstadoHistorial> histCita1 = historialRepository.findByCitaIdOrderByFechaCambioDesc(citaOriginalId);
-        assertEquals(2, histCita1.size()); // creación inicial + transición a reprogramada
+        assertEquals(2, histCita1.size());
         assertEquals("reprogramada", histCita1.get(0).getEstadoNuevo());
         assertEquals("pendiente", histCita1.get(0).getEstadoAnterior());
     }
@@ -275,7 +270,6 @@ public class CitaCicloDeVidaTest {
 
         Long citaId = objectMapper.readTree(agendarResp).get("data").get("id").asLong();
 
-        // Cancelar cita
         CancelarCitaRequestDTO cancelReq = CancelarCitaRequestDTO.builder()
                 .usuarioId(usuario.getId())
                 .motivo("Cancelación por orden médica previa")
@@ -297,7 +291,6 @@ public class CitaCicloDeVidaTest {
     @Test
     @DisplayName("Tolerancia a citas en papel migradas: Citas sin horaEstimada operan sin error")
     void testCitaSinHoraEstimadaMigradaDePapel() throws Exception {
-        // Cita migrada retroactivamente sin hora calculada
         Cita citaPapel = citaRepository.save(Cita.builder()
                 .paciente(paciente)
                 .cupoDiario(cupo1)
@@ -318,7 +311,6 @@ public class CitaCicloDeVidaTest {
     @Test
     @DisplayName("Cierre Diario de Citas: Función atómica de BD marca inasistencias y genera auditoría sin liberar cupo")
     void testCierreDiarioCitasAtomicsSp() throws Exception {
-        // 1. Agendar cita en cupo1
         CrearCitaRequestDTO req = CrearCitaRequestDTO.builder()
                 .pacienteId(paciente.getId())
                 .cupoDiarioId(cupo1.getId())
@@ -333,10 +325,9 @@ public class CitaCicloDeVidaTest {
 
         Long citaId = objectMapper.readTree(agendarResp).get("data").get("id").asLong();
 
-        // 2. Ejecutar cierre diario
         CierreDiarioRequestDTO cierreReq = CierreDiarioRequestDTO.builder()
                 .fecha(cupo1.getFecha())
-                .clinicaId(medicoClinica.getClinica().getId())
+                .subespecialidadId(subespecialidad.getId())
                 .usuarioId(usuario.getId())
                 .build();
 
@@ -346,15 +337,12 @@ public class CitaCicloDeVidaTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(1));
 
-        // 3. Verificar estado 'no_asistio'
         Cita citaFinal = citaRepository.findById(citaId).orElseThrow();
         assertEquals("no_asistio", citaFinal.getEstado());
 
-        // 4. Verificar que cupo no se liberó
         CupoDiario cupoFinal = cupoDiarioRepository.findById(cupo1.getId()).orElseThrow();
         assertEquals(1, cupoFinal.getCuposOcupados(), "El cupo de la jornada no debe liberarse en el cierre diario");
 
-        // 5. Verificar auditoría registrada
         List<CitaEstadoHistorial> hist = historialRepository.findByCitaIdOrderByFechaCambioDesc(citaId);
         assertFalse(hist.isEmpty());
         assertEquals("no_asistio", hist.get(0).getEstadoNuevo());
@@ -363,7 +351,6 @@ public class CitaCicloDeVidaTest {
     @Test
     @DisplayName("Regla Clínica BD (Trigger): Previene alteración de cita en estado terminal")
     void testTriggerPrevenirModificacionCitaTerminal() {
-        // Cita en estado terminal 'atendida'
         Cita citaTerminal = citaRepository.save(Cita.builder()
                 .paciente(paciente)
                 .cupoDiario(cupo1)
@@ -371,10 +358,8 @@ public class CitaCicloDeVidaTest {
                 .registradoPor(usuario)
                 .build());
 
-        // Intentar pasar a 'pendiente' directamente debe disparar la excepción del trigger en PostgreSQL
         citaTerminal.setEstado("pendiente");
-        assertThrows(Exception.class, () -> {
-            citaRepository.saveAndFlush(citaTerminal);
-        }, "El trigger de PostgreSQL debe impedir reactivar una cita en estado terminal");
+        assertThrows(Exception.class, () -> citaRepository.saveAndFlush(citaTerminal),
+                "El trigger de PostgreSQL debe impedir reactivar una cita en estado terminal");
     }
 }

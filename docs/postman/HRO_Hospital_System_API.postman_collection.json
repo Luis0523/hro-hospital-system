@@ -608,13 +608,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/catalogos/clinicas",
+              "raw": "{{baseUrl}}/catalogos/espacios-fisicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "catalogos",
-                "clinicas"
+                "espacios-fisicos"
               ]
             }
           }
@@ -657,6 +657,166 @@
                 }
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Asignación Diaria (Jefe de Enfermería)",
+      "description": "Define qué subespecialidad ocupa qué espacio físico cada fecha, verifica cobertura y ejecuta el cierre del día.",
+      "item": [
+        {
+          "name": "1. Listar asignación de una fecha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias?fecha=2026-09-21",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-21"
+                }
+              ]
+            },
+            "description": "Lista las asignaciones (sala + subespecialidad) de una fecha."
+          }
+        },
+        {
+          "name": "2. Crear asignación diaria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"espacioFisicoId\": 1,\n  \"subespecialidadId\": 1,\n  \"fecha\": \"2026-09-21\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias"
+              ]
+            },
+            "description": "Asigna una subespecialidad a un espacio físico en una fecha (solo si el día está abierto)."
+          }
+        },
+        {
+          "name": "3. Verificar cobertura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias/cobertura?fecha=2026-09-21",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias",
+                "cobertura"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-21"
+                }
+              ]
+            },
+            "description": "Subespecialidades con médicos programados ese día que aún no tienen espacio asignado."
+          }
+        },
+        {
+          "name": "4. Cerrar el día",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias/cerrar?fecha=2026-09-21",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias",
+                "cerrar"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-21"
+                }
+              ]
+            },
+            "description": "Bloquea la edición libre de la asignación del día (exige cobertura completa)."
+          }
+        },
+        {
+          "name": "5. Duplicar asignación de una fecha anterior",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias/duplicar?fechaOrigen=2026-09-14&fechaDestino=2026-09-21",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias",
+                "duplicar"
+              ],
+              "query": [
+                {
+                  "key": "fechaOrigen",
+                  "value": "2026-09-14"
+                },
+                {
+                  "key": "fechaDestino",
+                  "value": "2026-09-21"
+                }
+              ]
+            },
+            "description": "Copia las filas de una fecha origen hacia la fecha destino (editable después)."
+          }
+        },
+        {
+          "name": "6. Reasignación en caliente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias/1/reasignar?nuevoEspacioFisicoId=2&motivo=Emergencia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias",
+                "1",
+                "reasignar"
+              ],
+              "query": [
+                {
+                  "key": "nuevoEspacioFisicoId",
+                  "value": "2"
+                },
+                {
+                  "key": "motivo",
+                  "value": "Emergencia"
+                }
+              ]
+            },
+            "description": "Única vía para cambiar una fecha ya cerrada. Queda auditada."
           }
         }
       ]

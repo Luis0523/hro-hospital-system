@@ -21,7 +21,7 @@ public class CitaResponseDTO {
     private String pacienteExpediente;
     private Long cupoDiarioId;
     private LocalDate fechaCita;
-    private String clinicaNombre;
+    private String subespecialidadNombre;
     private String medicoNombre;
     private LocalTime horaEstimada;
     private LocalTime horaVentanaInicio;

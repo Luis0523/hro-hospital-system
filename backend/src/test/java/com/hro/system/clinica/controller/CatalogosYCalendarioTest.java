@@ -7,20 +7,21 @@ import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.repository.DiaNoLaborableRepository;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.repository.CitaRepository;
-import com.hro.system.clinica.dto.CrearClinicaRequestDTO;
 import com.hro.system.clinica.dto.CrearEspecialidadRequestDTO;
 import com.hro.system.clinica.dto.CrearSubespecialidadRequestDTO;
-import com.hro.system.clinica.entity.Clinica;
 import com.hro.system.clinica.entity.Especialidad;
 import com.hro.system.clinica.entity.Subespecialidad;
-import com.hro.system.clinica.repository.ClinicaRepository;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
-import com.hro.system.medico.dto.AsignarMedicoClinicaRequestDTO;
+import com.hro.system.espacio.dto.CrearEspacioFisicoRequestDTO;
+import com.hro.system.espacio.entity.EspacioFisico;
+import com.hro.system.espacio.repository.EspacioFisicoRepository;
+import com.hro.system.medico.dto.AsignarMedicoSubespecialidadRequestDTO;
 import com.hro.system.medico.dto.CrearMedicoRequestDTO;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.repository.MedicoClinicaRepository;
+import com.hro.system.medico.entity.MedicoSubespecialidad;
 import com.hro.system.medico.repository.MedicoRepository;
+import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -62,13 +63,13 @@ class CatalogosYCalendarioTest {
     private SubespecialidadRepository subespecialidadRepository;
 
     @Autowired
-    private ClinicaRepository clinicaRepository;
+    private EspacioFisicoRepository espacioFisicoRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private MedicoClinicaRepository medicoClinicaRepository;
+    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
 
     @Autowired
     private DiaNoLaborableRepository diaNoLaborableRepository;
@@ -87,7 +88,7 @@ class CatalogosYCalendarioTest {
 
     private Especialidad especialidad;
     private Subespecialidad subespecialidad;
-    private Clinica clinica;
+    private EspacioFisico espacioFisico;
     private Medico medico;
     private UsuarioReferencia usuarioAdmin;
 
@@ -95,9 +96,9 @@ class CatalogosYCalendarioTest {
     void setUp() {
         citaRepository.deleteAll();
         cupoDiarioRepository.deleteAll();
-        medicoClinicaRepository.deleteAll();
+        medicoSubespecialidadRepository.deleteAll();
         diaNoLaborableRepository.deleteAll();
-        clinicaRepository.deleteAll();
+        espacioFisicoRepository.deleteAll();
         subespecialidadRepository.deleteAll();
         especialidadRepository.deleteAll();
         medicoRepository.deleteAll();
@@ -122,9 +123,11 @@ class CatalogosYCalendarioTest {
                 .activo(true)
                 .build());
 
-        clinica = clinicaRepository.save(Clinica.builder()
-                .subespecialidad(subespecialidad)
-                .nombre("Clínica 101")
+        espacioFisico = espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("101")
+                .nivel((short) 1)
+                .capacidadCamillas(1)
+                .nombre("Sala 101")
                 .ubicacion("Nivel 1")
                 .activo(true)
                 .build());
@@ -169,20 +172,23 @@ class CatalogosYCalendarioTest {
     }
 
     @Test
-    @DisplayName("POST /clinicas - Debe crear clínica con ubicación")
-    void crearClinica_exito() throws Exception {
-        CrearClinicaRequestDTO req = CrearClinicaRequestDTO.builder()
-                .subespecialidadId(subespecialidad.getId())
-                .nombre("Clínica 102 - Cardiología")
+    @DisplayName("POST /espacios-fisicos - Debe crear una sala con número, nivel y capacidad de camillas")
+    void crearEspacioFisico_exito() throws Exception {
+        CrearEspacioFisicoRequestDTO req = CrearEspacioFisicoRequestDTO.builder()
+                .numero("102")
+                .nivel((short) 1)
+                .capacidadCamillas(2)
+                .nombre("Sala 102")
                 .ubicacion("Edificio Consulta Externa, Nivel 1")
                 .build();
 
-        mockMvc.perform(post("/clinicas")
+        mockMvc.perform(post("/espacios-fisicos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data.nombre", is("Clínica 102 - Cardiología")));
+                .andExpect(jsonPath("$.data.numero", is("102")))
+                .andExpect(jsonPath("$.data.capacidadCamillas", is(2)));
     }
 
     @Test
@@ -202,11 +208,11 @@ class CatalogosYCalendarioTest {
     }
 
     @Test
-    @DisplayName("POST /medico-clinicas - Debe asignar horario y cupo a médico en clínica")
+    @DisplayName("POST /medico-subespecialidades - Debe asignar horario y cupo a médico en subespecialidad")
     void asignarHorarioMedico_exito() throws Exception {
-        AsignarMedicoClinicaRequestDTO req = AsignarMedicoClinicaRequestDTO.builder()
+        AsignarMedicoSubespecialidadRequestDTO req = AsignarMedicoSubespecialidadRequestDTO.builder()
                 .medicoId(medico.getId())
-                .clinicaId(clinica.getId())
+                .subespecialidadId(subespecialidad.getId())
                 .diaSemana((short) 1) // Lunes
                 .horaInicio(LocalTime.of(7, 0))
                 .horaFin(LocalTime.of(13, 0))
@@ -214,7 +220,7 @@ class CatalogosYCalendarioTest {
                 .duracionConsultaMinutos(30)
                 .build();
 
-        mockMvc.perform(post("/medico-clinicas")
+        mockMvc.perform(post("/medico-subespecialidades")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -224,11 +230,11 @@ class CatalogosYCalendarioTest {
     }
 
     @Test
-    @DisplayName("POST /medico-clinicas - Debe rechazar horario cuya capacidad no cabe en la jornada")
+    @DisplayName("POST /medico-subespecialidades - Debe rechazar horario cuya capacidad no cabe en la jornada")
     void asignarHorarioMedico_capacidadExcedeJornada() throws Exception {
-        AsignarMedicoClinicaRequestDTO req = AsignarMedicoClinicaRequestDTO.builder()
+        AsignarMedicoSubespecialidadRequestDTO req = AsignarMedicoSubespecialidadRequestDTO.builder()
                 .medicoId(medico.getId())
-                .clinicaId(clinica.getId())
+                .subespecialidadId(subespecialidad.getId())
                 .diaSemana((short) 2) // Martes
                 .horaInicio(LocalTime.of(7, 0))
                 .horaFin(LocalTime.of(13, 0))
@@ -236,7 +242,7 @@ class CatalogosYCalendarioTest {
                 .duracionConsultaMinutos(30)
                 .build();
 
-        mockMvc.perform(post("/medico-clinicas")
+        mockMvc.perform(post("/medico-subespecialidades")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
@@ -266,25 +272,22 @@ class CatalogosYCalendarioTest {
     void registrarDiaNoLaborable_rechazoPorCitasExistentes() throws Exception {
         LocalDate fecha = LocalDate.of(2026, 9, 20);
 
-        // Crear asignación médico clínica
-        com.hro.system.medico.entity.MedicoClinica mc = medicoClinicaRepository.save(com.hro.system.medico.entity.MedicoClinica.builder()
+        MedicoSubespecialidad ms = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
                 .medico(medico)
-                .clinica(clinica)
+                .subespecialidad(subespecialidad)
                 .diaSemana((short) 7)
                 .horaInicio(LocalTime.of(8, 0))
                 .horaFin(LocalTime.of(12, 0))
                 .capacidadMaxima(10)
                 .build());
 
-        // Crear cupo diario
         CupoDiario cupo = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoClinica(mc)
+                .medicoSubespecialidad(ms)
                 .fecha(fecha)
                 .capacidadMaxima(10)
                 .cuposOcupados(1)
                 .build());
 
-        // Crear paciente
         Paciente paciente = pacienteRepository.save(Paciente.builder()
                 .dpi("2984123450901")
                 .nombres("Juan")
@@ -293,7 +296,6 @@ class CatalogosYCalendarioTest {
                 .sexo("M")
                 .build());
 
-        // Crear cita programada en esa fecha
         citaRepository.save(Cita.builder()
                 .paciente(paciente)
                 .cupoDiario(cupo)
@@ -302,7 +304,6 @@ class CatalogosYCalendarioTest {
                 .registradoPor(usuarioAdmin)
                 .build());
 
-        // Intentar registrar día no laborable
         CrearDiaNoLaborableRequestDTO req = CrearDiaNoLaborableRequestDTO.builder()
                 .fecha(fecha)
                 .motivo("Mantenimiento no programado")

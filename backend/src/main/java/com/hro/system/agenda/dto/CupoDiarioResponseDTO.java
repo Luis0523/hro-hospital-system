@@ -20,8 +20,8 @@ public class CupoDiarioResponseDTO {
     @Schema(description = "ID del registro de cupo diario", example = "10")
     private Long id;
 
-    @Schema(description = "ID de la asignación médico-clínica", example = "3")
-    private Long medicoClinicaId;
+    @Schema(description = "ID de la programación médico-subespecialidad", example = "3")
+    private Long medicoSubespecialidadId;
 
     @Schema(description = "ID del médico", example = "5")
     private Long medicoId;
@@ -29,11 +29,11 @@ public class CupoDiarioResponseDTO {
     @Schema(description = "Nombre completo del médico", example = "Dra. Sofía Reyes")
     private String medicoNombre;
 
-    @Schema(description = "ID de la clínica", example = "2")
-    private Long clinicaId;
+    @Schema(description = "ID de la subespecialidad", example = "2")
+    private Long subespecialidadId;
 
-    @Schema(description = "Nombre de la clínica", example = "Clínica de Pediatría 1")
-    private String clinicaNombre;
+    @Schema(description = "Nombre de la subespecialidad", example = "Cardiología Clínica")
+    private String subespecialidadNombre;
 
     @Schema(description = "Fecha de atención", example = "2026-09-15")
     private LocalDate fecha;
@@ -63,15 +63,15 @@ public class CupoDiarioResponseDTO {
         int disponibles = Math.max(0, entity.getCapacidadMaxima() - entity.getCuposOcupados());
         return CupoDiarioResponseDTO.builder()
                 .id(entity.getId())
-                .medicoClinicaId(entity.getMedicoClinica().getId())
-                .medicoId(entity.getMedicoClinica().getMedico().getId())
-                .medicoNombre(entity.getMedicoClinica().getMedico().getNombres())
-                .clinicaId(entity.getMedicoClinica().getClinica().getId())
-                .clinicaNombre(entity.getMedicoClinica().getClinica().getNombre())
+                .medicoSubespecialidadId(entity.getMedicoSubespecialidad().getId())
+                .medicoId(entity.getMedicoSubespecialidad().getMedico().getId())
+                .medicoNombre(entity.getMedicoSubespecialidad().getMedico().getNombres())
+                .subespecialidadId(entity.getMedicoSubespecialidad().getSubespecialidad().getId())
+                .subespecialidadNombre(entity.getMedicoSubespecialidad().getSubespecialidad().getNombre())
                 .fecha(entity.getFecha())
-                .diaSemana(entity.getMedicoClinica().getDiaSemana())
-                .horaInicio(entity.getMedicoClinica().getHoraInicio())
-                .horaFin(entity.getMedicoClinica().getHoraFin())
+                .diaSemana(entity.getMedicoSubespecialidad().getDiaSemana())
+                .horaInicio(entity.getMedicoSubespecialidad().getHoraInicio())
+                .horaFin(entity.getMedicoSubespecialidad().getHoraFin())
                 .capacidadMaxima(entity.getCapacidadMaxima())
                 .cuposOcupados(entity.getCuposOcupados())
                 .cuposDisponibles(disponibles)
