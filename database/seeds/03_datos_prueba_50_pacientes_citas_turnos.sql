@@ -95,7 +95,7 @@ DECLARE
     v_fecha DATE;
     v_fechas DATE[] := ARRAY[CURRENT_DATE - 1, CURRENT_DATE, CURRENT_DATE + 1, CURRENT_DATE + 7];
     r_sub RECORD;
-    v_espacio BIGINT;
+    v_espacio uuid;
 BEGIN
     SELECT id INTO v_user FROM usuario_referencia WHERE id_externo = 'jefe-enfermeria-01';
     IF v_user IS NULL THEN SELECT id INTO v_user FROM usuario_referencia ORDER BY id LIMIT 1; END IF;
@@ -105,7 +105,7 @@ BEGIN
             SELECT DISTINCT s.id, s.nombre
             FROM medico_subespecialidad ms
             JOIN subespecialidad s ON s.id = ms.subespecialidad_id
-            WHERE ms.activo = true AND ms.dia_semana = EXTRACT(ISODOW FROM v_fecha)::smallint
+            WHERE ms.activo = true
             ORDER BY s.nombre
         LOOP
             SELECT ef.id INTO v_espacio
@@ -129,13 +129,13 @@ END $$;
 DO $$
 DECLARE
     v_user_id BIGINT;
-    v_cupo_ayer_medgen BIGINT;
-    v_cupo_ayer_pedgen BIGINT;
-    v_cupo_hoy_medgen BIGINT;
-    v_cupo_hoy_cardio BIGINT;
-    v_cupo_hoy_pedgen BIGINT;
-    v_cupo_manana_medgen BIGINT;
-    v_cupo_semana_medgen BIGINT;
+    v_cupo_ayer_medgen uuid;
+    v_cupo_ayer_pedgen uuid;
+    v_cupo_hoy_medgen uuid;
+    v_cupo_hoy_cardio uuid;
+    v_cupo_hoy_pedgen uuid;
+    v_cupo_manana_medgen uuid;
+    v_cupo_semana_medgen uuid;
     r_pac RECORD;
     v_idx INT := 1;
     v_cita_id BIGINT;
@@ -189,7 +189,7 @@ BEGIN
 
         IF v_idx BETWEEN 1 AND 15 THEN
             DECLARE
-                v_cupo_target BIGINT := CASE WHEN v_idx <= 8 THEN v_cupo_ayer_medgen ELSE v_cupo_ayer_pedgen END;
+                v_cupo_target uuid := CASE WHEN v_idx <= 8 THEN v_cupo_ayer_medgen ELSE v_cupo_ayer_pedgen END;
             BEGIN
                 INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)
                 VALUES (r_pac.id, v_cupo_target, '08:00'::time + ((v_idx * 15) || ' minutes')::interval, '07:45'::time, '08:45'::time, 'atendida', v_user_id, 1)
@@ -239,7 +239,7 @@ BEGIN
 
         ELSIF v_idx BETWEEN 26 AND 35 THEN
             DECLARE
-                v_cupo_target BIGINT := CASE WHEN v_idx <= 30 THEN v_cupo_hoy_cardio ELSE v_cupo_manana_medgen END;
+                v_cupo_target uuid := CASE WHEN v_idx <= 30 THEN v_cupo_hoy_cardio ELSE v_cupo_manana_medgen END;
                 v_pos INT := v_idx - 25;
             BEGIN
                 INSERT INTO cita (paciente_id, cupo_diario_id, hora_estimada, hora_ventana_inicio, hora_ventana_fin, estado, registrado_por, version)

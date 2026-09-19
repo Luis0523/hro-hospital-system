@@ -25,7 +25,7 @@ public class AuditoriaGeneral {
     private String tablaAfectada;
 
     @Column(name = "entidad_id", nullable = false)
-    private Long entidadId;
+    private String entidadId;
 
     @Column(name = "accion", nullable = false, length = 15)
     private String accion; // crear, actualizar, eliminar

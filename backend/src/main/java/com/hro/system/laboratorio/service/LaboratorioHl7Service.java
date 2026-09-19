@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -24,7 +25,7 @@ public class LaboratorioHl7Service {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public MensajeHl7Log registrarMensajeHl7(Long ordenId, String direccion, String contenidoCrudo, String estado) {
+    public MensajeHl7Log registrarMensajeHl7(UUID ordenId, String direccion, String contenidoCrudo, String estado) {
         OrdenLaboratorio orden = null;
         if (ordenId != null) {
             orden = ordenRepository.findById(ordenId).orElse(null);

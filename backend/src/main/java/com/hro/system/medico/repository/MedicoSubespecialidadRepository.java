@@ -6,23 +6,24 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface MedicoSubespecialidadRepository extends JpaRepository<MedicoSubespecialidad, Long> {
+public interface MedicoSubespecialidadRepository extends JpaRepository<MedicoSubespecialidad, UUID> {
 
     List<MedicoSubespecialidad> findBySubespecialidadIdAndActivoTrue(Long subespecialidadId);
 
-    List<MedicoSubespecialidad> findByMedicoIdAndActivoTrue(Long medicoId);
+    List<MedicoSubespecialidad> findByMedicoIdAndActivoTrue(UUID medicoId);
 
     List<MedicoSubespecialidad> findBySubespecialidadId(Long subespecialidadId);
 
-    List<MedicoSubespecialidad> findByMedicoId(Long medicoId);
+    List<MedicoSubespecialidad> findByMedicoId(UUID medicoId);
 
-    List<MedicoSubespecialidad> findByMedicoIdAndSubespecialidadId(Long medicoId, Long subespecialidadId);
+    List<MedicoSubespecialidad> findByMedicoIdAndSubespecialidadId(UUID medicoId, Long subespecialidadId);
 
     List<MedicoSubespecialidad> findByActivoTrue();
 
     List<MedicoSubespecialidad> findBySubespecialidadIdAndDiaSemanaAndActivoTrue(Long subespecialidadId, Short diaSemana);
 
-    Optional<MedicoSubespecialidad> findByMedicoIdAndSubespecialidadIdAndDiaSemana(Long medicoId, Long subespecialidadId, Short diaSemana);
+    Optional<MedicoSubespecialidad> findByMedicoIdAndSubespecialidadIdAndDiaSemana(UUID medicoId, Long subespecialidadId, Short diaSemana);
 }

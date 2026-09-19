@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -14,7 +15,7 @@ import java.time.LocalDate;
 public class AsignacionDiariaResponseDTO {
     private Long id;
     private LocalDate fecha;
-    private Long espacioFisicoId;
+    private UUID espacioFisicoId;
     private String espacioNumero;
     private Short nivel;
     private Long subespecialidadId;

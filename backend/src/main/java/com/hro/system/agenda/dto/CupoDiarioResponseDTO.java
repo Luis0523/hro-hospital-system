@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -18,13 +19,13 @@ import java.time.LocalTime;
 public class CupoDiarioResponseDTO {
 
     @Schema(description = "ID del registro de cupo diario", example = "10")
-    private Long id;
+    private UUID id;
 
     @Schema(description = "ID de la programación médico-subespecialidad", example = "3")
-    private Long medicoSubespecialidadId;
+    private UUID medicoSubespecialidadId;
 
     @Schema(description = "ID del médico", example = "5")
-    private Long medicoId;
+    private UUID medicoId;
 
     @Schema(description = "Nombre completo del médico", example = "Dra. Sofía Reyes")
     private String medicoNombre;

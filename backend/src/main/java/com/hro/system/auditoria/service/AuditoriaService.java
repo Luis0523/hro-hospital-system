@@ -43,7 +43,7 @@ public class AuditoriaService {
 
             AuditoriaGeneral registro = AuditoriaGeneral.builder()
                     .tablaAfectada(event.getTablaAfectada())
-                    .entidadId(event.getEntidadId())
+                    .entidadId(String.valueOf(event.getEntidadId()))
                     .accion(event.getAccion())
                     .usuarioReferencia(usuario)
                     .valoresAnteriores(valoresAnterioresJson)

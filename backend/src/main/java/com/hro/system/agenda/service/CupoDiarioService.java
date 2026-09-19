@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -32,7 +33,7 @@ public class CupoDiarioService {
      * y que la fecha no sea día no laborable.
      */
     @Transactional
-    public CupoDiario obtenerOCrearCupoDiario(Long medicoSubespecialidadId, LocalDate fecha) {
+    public CupoDiario obtenerOCrearCupoDiario(UUID medicoSubespecialidadId, LocalDate fecha) {
         MedicoSubespecialidad ms = medicoSubespecialidadRepository.findById(medicoSubespecialidadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Programación médico-subespecialidad no encontrada con ID: " + medicoSubespecialidadId));
 
@@ -59,7 +60,7 @@ public class CupoDiarioService {
     }
 
     @Transactional
-    public CupoDiario reservarCupoAtomico(Long medicoSubespecialidadId, LocalDate fecha) {
+    public CupoDiario reservarCupoAtomico(UUID medicoSubespecialidadId, LocalDate fecha) {
         CupoDiario cupo = obtenerOCrearCupoDiario(medicoSubespecialidadId, fecha);
 
         boolean reservado = cupoDiarioRepository.incrementarCupoAtomico(cupo.getId());
@@ -76,7 +77,7 @@ public class CupoDiarioService {
     }
 
     @Transactional
-    public void liberarCupoAtomico(Long cupoDiarioId) {
+    public void liberarCupoAtomico(UUID cupoDiarioId) {
         boolean decrementado = cupoDiarioRepository.decrementarCupoAtomico(cupoDiarioId);
         if (!decrementado) {
             log.warn("Se intentó decrementar un cupo diario ({}) que ya tenía 0 cupos ocupados o no existía.", cupoDiarioId);
@@ -90,7 +91,7 @@ public class CupoDiarioService {
      * (no por sala física), porque la sala se resuelve por día.
      */
     @Transactional
-    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, Long medicoId, Long medicoSubespecialidadId, LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, UUID medicoId, UUID medicoSubespecialidadId, LocalDate fechaInicio, LocalDate fechaFin) {
         LocalDate inicio = (fechaInicio != null) ? fechaInicio : LocalDate.now();
         LocalDate fin = (fechaFin != null) ? fechaFin : inicio.plusDays(14);
 

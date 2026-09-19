@@ -8,18 +8,19 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface CitaRepository extends JpaRepository<Cita, Long> {
-    List<Cita> findByPacienteId(Long pacienteId);
-    List<Cita> findByCupoDiarioId(Long cupoDiarioId);
+    List<Cita> findByPacienteId(UUID pacienteId);
+    List<Cita> findByCupoDiarioId(UUID cupoDiarioId);
     List<Cita> findByEstado(String estado);
 
     @Query("SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnFecha(@Param("fecha") LocalDate fecha);
 
     @Query("SELECT COUNT(c) FROM Cita c WHERE c.cupoDiario.id = :cupoDiarioId AND c.estado NOT IN ('cancelada', 'reprogramada')")
-    long contarCitasActivasEnCupo(@Param("cupoDiarioId") Long cupoDiarioId);
+    long contarCitasActivasEnCupo(@Param("cupoDiarioId") UUID cupoDiarioId);
 
     @Query(value = "SELECT fn_calcular_hora_estimada(CAST(:horaInicio AS time), :duracion, :posicion)", nativeQuery = true)
     java.time.LocalTime calcularHoraEstimada(

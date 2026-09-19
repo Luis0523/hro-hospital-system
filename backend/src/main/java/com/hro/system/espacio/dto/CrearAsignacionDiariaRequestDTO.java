@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 public class CrearAsignacionDiariaRequestDTO {
 
     @NotNull(message = "El ID del espacio físico es obligatorio")
-    private Long espacioFisicoId;
+    private UUID espacioFisicoId;
 
     @NotNull(message = "El ID de la subespecialidad es obligatorio")
     private Long subespecialidadId;

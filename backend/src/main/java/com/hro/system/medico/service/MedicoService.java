@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -62,7 +63,7 @@ public class MedicoService {
     }
 
     @Transactional
-    public MedicoResponseDTO actualizarMedico(Long id, ActualizarMedicoRequestDTO dto) {
+    public MedicoResponseDTO actualizarMedico(UUID id, ActualizarMedicoRequestDTO dto) {
         Medico medico = medicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "id", id));
 
@@ -86,7 +87,7 @@ public class MedicoService {
     }
 
     @Transactional
-    public void cambiarEstado(Long id, boolean activo) {
+    public void cambiarEstado(UUID id, boolean activo) {
         Medico medico = medicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "id", id));
         medico.setActivo(activo);
@@ -101,7 +102,7 @@ public class MedicoService {
     }
 
     @Transactional(readOnly = true)
-    public MedicoResponseDTO buscarPorId(Long id) {
+    public MedicoResponseDTO buscarPorId(UUID id) {
         Medico medico = medicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "id", id));
         return mapToDTO(medico);

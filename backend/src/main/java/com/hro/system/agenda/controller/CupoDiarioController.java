@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/cupos")
@@ -28,8 +29,8 @@ public class CupoDiarioController {
             description = "Retorna los cupos por médico y subespecialidad en un rango de fechas indicando cupos libres y ocupados.")
     public ResponseEntity<ApiResponse<List<CupoDiarioResponseDTO>>> consultarCupos(
             @Parameter(description = "ID de la subespecialidad") @RequestParam(required = false) Long subespecialidadId,
-            @Parameter(description = "ID del médico") @RequestParam(required = false) Long medicoId,
-            @Parameter(description = "ID de la programación médico-subespecialidad") @RequestParam(required = false) Long medicoSubespecialidadId,
+            @Parameter(description = "ID del médico") @RequestParam(required = false) UUID medicoId,
+            @Parameter(description = "ID de la programación médico-subespecialidad") @RequestParam(required = false) UUID medicoSubespecialidadId,
             @Parameter(description = "Fecha inicial (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @Parameter(description = "Fecha final (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin
     ) {
@@ -40,7 +41,7 @@ public class CupoDiarioController {
     @GetMapping("/medico-subespecialidad/{medicoSubespecialidadId}/fecha/{fecha}")
     @Operation(summary = "Consultar o inicializar cupo para una fecha específica")
     public ResponseEntity<ApiResponse<CupoDiarioResponseDTO>> obtenerCupoFecha(
-            @PathVariable Long medicoSubespecialidadId,
+            @PathVariable UUID medicoSubespecialidadId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
         CupoDiario cupo = cupoDiarioService.obtenerOCrearCupoDiario(medicoSubespecialidadId, fecha);
@@ -51,7 +52,7 @@ public class CupoDiarioController {
     @Operation(summary = "Reserva atómica de un cupo (Prevención de Overbooking)",
             description = "Incrementa atómicamente los cupos ocupados si no se alcanzó la capacidad máxima. Falla con 409 si está lleno.")
     public ResponseEntity<ApiResponse<CupoDiarioResponseDTO>> reservarCupo(
-            @PathVariable Long medicoSubespecialidadId,
+            @PathVariable UUID medicoSubespecialidadId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
         CupoDiario cupo = cupoDiarioService.reservarCupoAtomico(medicoSubespecialidadId, fecha);
@@ -60,7 +61,7 @@ public class CupoDiarioController {
 
     @PostMapping("/{cupoDiarioId}/liberar")
     @Operation(summary = "Liberar atómicamente un cupo previamente reservado")
-    public ResponseEntity<ApiResponse<Void>> liberarCupo(@PathVariable Long cupoDiarioId) {
+    public ResponseEntity<ApiResponse<Void>> liberarCupo(@PathVariable UUID cupoDiarioId) {
         cupoDiarioService.liberarCupoAtomico(cupoDiarioId);
         return ResponseEntity.ok(ApiResponse.<Void>ok(null, "Cupo liberado exitosamente"));
     }

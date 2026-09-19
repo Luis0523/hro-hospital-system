@@ -10,17 +10,18 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface CupoDiarioRepository extends JpaRepository<CupoDiario, Long> {
+public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
 
-    Optional<CupoDiario> findByMedicoSubespecialidadIdAndFecha(Long medicoSubespecialidadId, LocalDate fecha);
+    Optional<CupoDiario> findByMedicoSubespecialidadIdAndFecha(UUID medicoSubespecialidadId, LocalDate fecha);
 
     @Query(value = "SELECT fn_incrementar_cupo(:cupoDiarioId)", nativeQuery = true)
-    boolean incrementarCupoAtomico(@Param("cupoDiarioId") Long cupoDiarioId);
+    boolean incrementarCupoAtomico(@Param("cupoDiarioId") UUID cupoDiarioId);
 
     @Query(value = "SELECT fn_decrementar_cupo(:cupoDiarioId)", nativeQuery = true)
-    boolean decrementarCupoAtomico(@Param("cupoDiarioId") Long cupoDiarioId);
+    boolean decrementarCupoAtomico(@Param("cupoDiarioId") UUID cupoDiarioId);
 
     @Modifying
     @Query(value = """
@@ -29,14 +30,14 @@ public interface CupoDiarioRepository extends JpaRepository<CupoDiario, Long> {
             ON CONFLICT (medico_subespecialidad_id, fecha) DO NOTHING
             """, nativeQuery = true)
     int inicializarCupoSiNoExiste(
-            @Param("medicoSubespecialidadId") Long medicoSubespecialidadId,
+            @Param("medicoSubespecialidadId") UUID medicoSubespecialidadId,
             @Param("fecha") LocalDate fecha,
             @Param("capacidadMaxima") Integer capacidadMaxima
     );
 
     List<CupoDiario> findByMedicoSubespecialidad_Subespecialidad_IdAndFechaBetween(Long subespecialidadId, LocalDate desde, LocalDate hasta);
 
-    List<CupoDiario> findByMedicoSubespecialidad_Medico_IdAndFechaBetween(Long medicoId, LocalDate desde, LocalDate hasta);
+    List<CupoDiario> findByMedicoSubespecialidad_Medico_IdAndFechaBetween(UUID medicoId, LocalDate desde, LocalDate hasta);
 
-    List<CupoDiario> findByMedicoSubespecialidadIdAndFechaBetween(Long medicoSubespecialidadId, LocalDate desde, LocalDate hasta);
+    List<CupoDiario> findByMedicoSubespecialidadIdAndFechaBetween(UUID medicoSubespecialidadId, LocalDate desde, LocalDate hasta);
 }

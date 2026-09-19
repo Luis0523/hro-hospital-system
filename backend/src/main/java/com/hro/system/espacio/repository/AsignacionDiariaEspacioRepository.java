@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface AsignacionDiariaEspacioRepository extends JpaRepository<AsignacionDiariaEspacio, Long> {
@@ -17,11 +18,11 @@ public interface AsignacionDiariaEspacioRepository extends JpaRepository<Asignac
 
     List<AsignacionDiariaEspacio> findByFechaAndSubespecialidadId(LocalDate fecha, Long subespecialidadId);
 
-    Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFecha(Long espacioFisicoId, LocalDate fecha);
+    Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
     Optional<AsignacionDiariaEspacio> findBySubespecialidadIdAndFecha(Long subespecialidadId, LocalDate fecha);
 
-    boolean existsByEspacioFisicoIdAndFecha(Long espacioFisicoId, LocalDate fecha);
+    boolean existsByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
     long deleteByFecha(LocalDate fecha);
 

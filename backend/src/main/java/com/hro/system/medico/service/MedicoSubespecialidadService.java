@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Programación médica por subespecialidad (día, horario y capacidad), independiente
@@ -101,7 +102,7 @@ public class MedicoSubespecialidadService {
     }
 
     @Transactional
-    public void cambiarEstado(Long id, boolean activo) {
+    public void cambiarEstado(UUID id, boolean activo) {
         MedicoSubespecialidad ms = medicoSubespecialidadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicoSubespecialidad", "id", id));
         ms.setActivo(activo);
@@ -116,7 +117,7 @@ public class MedicoSubespecialidadService {
     }
 
     @Transactional(readOnly = true)
-    public List<MedicoSubespecialidadResponseDTO> listarPorMedico(Long medicoId) {
+    public List<MedicoSubespecialidadResponseDTO> listarPorMedico(UUID medicoId) {
         return medicoSubespecialidadRepository.findByMedicoIdAndActivoTrue(medicoId).stream()
                 .map(this::mapToDTO)
                 .toList();
@@ -130,7 +131,7 @@ public class MedicoSubespecialidadService {
     }
 
     @Transactional(readOnly = true)
-    public MedicoSubespecialidadResponseDTO buscarPorId(Long id) {
+    public MedicoSubespecialidadResponseDTO buscarPorId(UUID id) {
         return mapToDTO(medicoSubespecialidadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicoSubespecialidad", "id", id)));
     }

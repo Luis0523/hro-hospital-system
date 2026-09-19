@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Gestión de espacios físicos (salas/consultorios). Ya no administra la especialidad:
@@ -60,7 +61,7 @@ public class EspacioFisicoService {
     }
 
     @Transactional
-    public EspacioFisicoResponseDTO actualizar(Long id, ActualizarEspacioFisicoRequestDTO dto) {
+    public EspacioFisicoResponseDTO actualizar(UUID id, ActualizarEspacioFisicoRequestDTO dto) {
         EspacioFisico espacio = espacioFisicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", id));
 
@@ -78,7 +79,7 @@ public class EspacioFisicoService {
     }
 
     @Transactional
-    public void cambiarEstado(Long id, boolean activo) {
+    public void cambiarEstado(UUID id, boolean activo) {
         EspacioFisico espacio = espacioFisicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", id));
         espacio.setActivo(activo);
@@ -97,7 +98,7 @@ public class EspacioFisicoService {
     }
 
     @Transactional(readOnly = true)
-    public EspacioFisicoResponseDTO buscarPorId(Long id) {
+    public EspacioFisicoResponseDTO buscarPorId(UUID id) {
         return mapToDTO(espacioFisicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", id)));
     }

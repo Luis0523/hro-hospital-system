@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -16,10 +17,10 @@ import java.time.LocalTime;
 public class CrearCitaRequestDTO {
 
     @NotNull(message = "El ID del paciente es obligatorio")
-    private Long pacienteId;
+    private UUID pacienteId;
 
     @NotNull(message = "El ID del cupo diario es obligatorio")
-    private Long cupoDiarioId;
+    private UUID cupoDiarioId;
 
     private LocalTime horaEstimada;
     private LocalTime horaVentanaInicio;

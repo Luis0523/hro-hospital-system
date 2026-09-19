@@ -7,13 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class PacienteResponseDTO {
-    private Long id;
+    private UUID id;
     private String dpi;
     private String nombres;
     private String apellidos;

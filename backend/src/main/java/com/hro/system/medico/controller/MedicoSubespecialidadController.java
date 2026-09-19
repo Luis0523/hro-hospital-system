@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/medico-subespecialidades")
@@ -39,7 +40,7 @@ public class MedicoSubespecialidadController {
 
     @GetMapping("/medico/{medicoId}")
     @Operation(summary = "Listar asignaciones de un médico")
-    public ResponseEntity<ApiResponse<List<MedicoSubespecialidadResponseDTO>>> listarPorMedico(@PathVariable Long medicoId) {
+    public ResponseEntity<ApiResponse<List<MedicoSubespecialidadResponseDTO>>> listarPorMedico(@PathVariable UUID medicoId) {
         return ResponseEntity.ok(ApiResponse.ok(medicoSubespecialidadService.listarPorMedico(medicoId), "Asignaciones del médico"));
     }
 
@@ -53,13 +54,13 @@ public class MedicoSubespecialidadController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar asignación por ID")
-    public ResponseEntity<ApiResponse<MedicoSubespecialidadResponseDTO>> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<MedicoSubespecialidadResponseDTO>> buscarPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(medicoSubespecialidadService.buscarPorId(id), "Asignación localizada"));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Desactivar horario (soft delete)")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
         medicoSubespecialidadService.cambiarEstado(id, false);
         return ResponseEntity.ok(ApiResponse.ok(null, "Horario desactivado"));
     }

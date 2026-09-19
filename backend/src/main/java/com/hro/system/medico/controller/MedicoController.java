@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/medicos")
@@ -34,7 +35,7 @@ public class MedicoController {
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar médico", description = "Actualiza nombres, colegiado o estado del médico.")
     public ResponseEntity<ApiResponse<MedicoResponseDTO>> actualizar(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody ActualizarMedicoRequestDTO dto) {
         MedicoResponseDTO response = medicoService.actualizarMedico(id, dto);
         return ResponseEntity.ok(ApiResponse.ok(response, "Médico actualizado exitosamente"));
@@ -49,7 +50,7 @@ public class MedicoController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar médico por ID", description = "Obtiene los detalles de un médico por su ID.")
-    public ResponseEntity<ApiResponse<MedicoResponseDTO>> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<MedicoResponseDTO>> buscarPorId(@PathVariable UUID id) {
         MedicoResponseDTO response = medicoService.buscarPorId(id);
         return ResponseEntity.ok(ApiResponse.ok(response, "Médico localizado"));
     }
@@ -63,7 +64,7 @@ public class MedicoController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Desactivar médico (Soft delete)", description = "Cambia el estado del médico a inactivo.")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
         medicoService.cambiarEstado(id, false);
         return ResponseEntity.ok(ApiResponse.ok(null, "Médico desactivado exitosamente"));
     }

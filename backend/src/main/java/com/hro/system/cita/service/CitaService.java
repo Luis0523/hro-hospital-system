@@ -31,6 +31,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -272,7 +273,7 @@ public class CitaService {
     }
 
     @Transactional(readOnly = true)
-    public List<CitaResponseDTO> listarCitasPorPaciente(Long pacienteId) {
+    public List<CitaResponseDTO> listarCitasPorPaciente(UUID pacienteId) {
         return citaRepository.findByPacienteId(pacienteId).stream()
                 .map(this::mapToDTO)
                 .toList();

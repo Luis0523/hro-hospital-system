@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -15,11 +16,11 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class CitaResponseDTO {
     private Long id;
-    private Long pacienteId;
+    private UUID pacienteId;
     private String pacienteNombreCompleto;
     private String pacienteDpi;
     private String pacienteExpediente;
-    private Long cupoDiarioId;
+    private UUID cupoDiarioId;
     private LocalDate fechaCita;
     private String subespecialidadNombre;
     private String medicoNombre;

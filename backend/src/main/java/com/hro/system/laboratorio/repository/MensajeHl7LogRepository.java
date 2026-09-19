@@ -5,8 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface MensajeHl7LogRepository extends JpaRepository<MensajeHl7Log, Long> {
-    List<MensajeHl7Log> findByOrdenLaboratorioId(Long ordenLaboratorioId);
+public interface MensajeHl7LogRepository extends JpaRepository<MensajeHl7Log, UUID> {
+    List<MensajeHl7Log> findByOrdenLaboratorioId(UUID ordenLaboratorioId);
 }

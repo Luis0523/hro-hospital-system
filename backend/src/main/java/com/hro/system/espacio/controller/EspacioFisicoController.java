@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/espacios-fisicos")
@@ -33,7 +34,7 @@ public class EspacioFisicoController {
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar espacio físico")
     public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> actualizar(
-            @PathVariable Long id, @Valid @RequestBody ActualizarEspacioFisicoRequestDTO dto) {
+            @PathVariable UUID id, @Valid @RequestBody ActualizarEspacioFisicoRequestDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.actualizar(id, dto), "Espacio físico actualizado"));
     }
 
@@ -51,13 +52,13 @@ public class EspacioFisicoController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar espacio físico por ID")
-    public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> buscar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.buscarPorId(id), "Espacio físico localizado"));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Poner fuera de servicio (soft delete)", description = "Marca el espacio como inactivo (baja o mantenimiento).")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
         espacioFisicoService.cambiarEstado(id, false);
         return ResponseEntity.ok(ApiResponse.ok(null, "Espacio físico fuera de servicio"));
     }

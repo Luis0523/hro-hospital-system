@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -68,7 +69,7 @@ public class PacienteService {
     }
 
     @Transactional
-    public PacienteResponseDTO actualizarPaciente(Long id, ActualizarPacienteRequestDTO dto) {
+    public PacienteResponseDTO actualizarPaciente(UUID id, ActualizarPacienteRequestDTO dto) {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente", "id", id));
 
@@ -131,7 +132,7 @@ public class PacienteService {
     }
 
     @Transactional(readOnly = true)
-    public PacienteResponseDTO buscarPorId(Long id) {
+    public PacienteResponseDTO buscarPorId(UUID id) {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente", "id", id));
         return mapToDTO(paciente);

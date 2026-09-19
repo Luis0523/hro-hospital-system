@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/citas")
@@ -44,7 +45,7 @@ public class CitaController {
 
     @GetMapping("/paciente/{pacienteId}")
     @Operation(summary = "Listar citas de un paciente", description = "Obtiene el historial de citas asociadas a un paciente.")
-    public ResponseEntity<ApiResponse<List<CitaResponseDTO>>> listarPorPaciente(@PathVariable Long pacienteId) {
+    public ResponseEntity<ApiResponse<List<CitaResponseDTO>>> listarPorPaciente(@PathVariable UUID pacienteId) {
         List<CitaResponseDTO> citas = citaService.listarCitasPorPaciente(pacienteId);
         return ResponseEntity.ok(ApiResponse.ok(citas, "Citas del paciente obtenidas con éxito"));
     }

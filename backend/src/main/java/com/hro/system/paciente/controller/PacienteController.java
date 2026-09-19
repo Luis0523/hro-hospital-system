@@ -17,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/pacientes")
@@ -37,7 +38,7 @@ public class PacienteController {
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar datos del paciente", description = "Actualiza nombres, apellidos, teléfono, dirección o número de expediente de un paciente.")
     public ResponseEntity<ApiResponse<PacienteResponseDTO>> actualizar(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody ActualizarPacienteRequestDTO dto) {
         PacienteResponseDTO response = pacienteService.actualizarPaciente(id, dto);
         return ResponseEntity.ok(ApiResponse.ok(response, "Paciente actualizado exitosamente"));
@@ -70,7 +71,7 @@ public class PacienteController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar paciente por ID", description = "Obtiene los datos demográficos y expediente de un paciente por su ID primario.")
-    public ResponseEntity<ApiResponse<PacienteResponseDTO>> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PacienteResponseDTO>> buscarPorId(@PathVariable UUID id) {
         PacienteResponseDTO response = pacienteService.buscarPorId(id);
         return ResponseEntity.ok(ApiResponse.ok(response, "Paciente localizado"));
     }

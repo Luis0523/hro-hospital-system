@@ -13,11 +13,18 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Feriados)
      - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
 2. **`HRO_Local_Environment.postman_environment.json`**:
-   - Variables de entorno (`baseUrl`, `clinicaId`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
+   - Variables de entorno (`baseUrl`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
+   - Variables del modelo V4 (`subespecialidadId`, `espacioFisicoId`, `asignacionId`, `medicoSubespecialidadId`).
    - Variables de autenticación simulada (`usuarioExterno`, `usuarioRol`, `usuarioNombre`).
 
-## Autenticación simulada (Mock)
+## Identificadores UUID (modelo V5)
 
+Desde la versión **1.2.0**, los identificadores de `paciente`, `medico`, `medico_subespecialidad`, `espacio_fisico`, `cupo_diario`, `orden_laboratorio`, `resultado_laboratorio` y `mensaje_hl7_log` son **UUID** (texto), no números. Las demás entidades (`cita`, `turno`, `asignacion_diaria_espacio`, `usuario_referencia`, etc.) mantienen id numérico.
+
+- Las variables `pacienteId`, `medicoId`, `cupoDiarioId`, `espacioFisicoId`, `medicoSubespecialidadId`, `asignacionId` del entorno deben contener el UUID real (o el id numérico según corresponda).
+- Copia los valores reales desde las respuestas de `GET /pacientes`, `GET /espacios-fisicos`, `GET /cupos`, etc.
+
+## Autenticación simulada (Mock)
 El backend aún no se conecta al servicio de autenticación externo del hospital. En su lugar, **la colección inyecta automáticamente** las cabeceras `X-Usuario-Id`, `X-Usuario-Rol` y `X-Usuario-Nombre` mediante un *pre-request script* a nivel de colección.
 
 - Usuario por defecto: `admin-hro-01` (rol `administrador`).

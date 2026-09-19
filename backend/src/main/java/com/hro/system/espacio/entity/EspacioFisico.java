@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * Espacio físico (sala / consultorio) del hospital.
@@ -26,8 +27,8 @@ import java.time.OffsetDateTime;
 public class EspacioFisico {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "numero", nullable = false, length = 30)
     private String numero;

@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * Programación médica por subespecialidad: qué médico atiende qué subespecialidad,
@@ -26,8 +27,8 @@ import java.time.OffsetDateTime;
 public class MedicoSubespecialidad {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "medico_id", nullable = false)

@@ -7,14 +7,15 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MedicoSubespecialidadResponseDTO {
-    private Long id;
-    private Long medicoId;
+    private UUID id;
+    private UUID medicoId;
     private String medicoNombre;
     private String numeroColegiado;
     private Long subespecialidadId;

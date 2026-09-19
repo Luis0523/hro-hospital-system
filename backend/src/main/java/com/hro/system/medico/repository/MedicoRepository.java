@@ -6,13 +6,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface MedicoRepository extends JpaRepository<Medico, Long> {
+public interface MedicoRepository extends JpaRepository<Medico, UUID> {
 
     Optional<Medico> findByNumeroColegiado(String numeroColegiado);
 
     List<Medico> findByActivoTrue();
 
-    boolean existsByNumeroColegiadoAndIdNot(String numeroColegiado, Long id);
+    boolean existsByNumeroColegiadoAndIdNot(String numeroColegiado, UUID id);
 }

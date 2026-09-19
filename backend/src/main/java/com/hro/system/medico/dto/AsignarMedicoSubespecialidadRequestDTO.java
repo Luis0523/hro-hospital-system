@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -17,7 +18,7 @@ import java.time.LocalTime;
 public class AsignarMedicoSubespecialidadRequestDTO {
 
     @NotNull(message = "El ID del médico es obligatorio")
-    private Long medicoId;
+    private UUID medicoId;
 
     @NotNull(message = "El ID de la subespecialidad es obligatorio")
     private Long subespecialidadId;

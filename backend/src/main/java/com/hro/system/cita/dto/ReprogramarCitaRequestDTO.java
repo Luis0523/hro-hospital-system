@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -17,7 +18,7 @@ public class ReprogramarCitaRequestDTO {
 
     @NotNull(message = "El ID del nuevo cupo diario es obligatorio")
     @Schema(description = "ID del nuevo cupo diario al que se transferirá el paciente", example = "15")
-    private Long nuevoCupoDiarioId;
+    private UUID nuevoCupoDiarioId;
 
     @Schema(description = "ID del usuario operativo o médico que realiza el cambio. Opcional: si se omite, se toma del usuario autenticado.", example = "2")
     private Long usuarioId;

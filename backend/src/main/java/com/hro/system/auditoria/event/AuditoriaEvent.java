@@ -7,7 +7,7 @@ import lombok.Getter;
 @Builder
 public class AuditoriaEvent {
     private final String tablaAfectada;
-    private final Long entidadId;
+    private final Object entidadId;
     private final String accion; // "crear", "actualizar", "eliminar"
     private final Long usuarioReferenciaId;
     private final Object valoresAnteriores;

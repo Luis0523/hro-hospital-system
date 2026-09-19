@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/asignaciones-diarias")
@@ -50,7 +51,7 @@ public class AsignacionDiariaEspacioController {
     @Operation(summary = "Reasignación en caliente", description = "Única vía para cambiar una fecha ya cerrada. Queda auditada.")
     public ResponseEntity<ApiResponse<AsignacionDiariaResponseDTO>> reasignar(
             @PathVariable Long id,
-            @RequestParam Long nuevoEspacioFisicoId,
+            @RequestParam UUID nuevoEspacioFisicoId,
             @RequestParam(required = false) String motivo) {
         return ResponseEntity.ok(ApiResponse.ok(
                 asignacionService.reasignarEnCaliente(id, nuevoEspacioFisicoId, motivo),

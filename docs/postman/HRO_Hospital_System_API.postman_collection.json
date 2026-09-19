@@ -18,12 +18,6 @@
       "description": "Opcional: ID interno de usuario. Si se deja vacío, se usa la identidad simulada por cabeceras"
     },
     {
-      "key": "clinicaId",
-      "value": "1",
-      "type": "string",
-      "description": "ID de la clínica o consultorio de consulta externa"
-    },
-    {
       "key": "citaId",
       "value": "1",
       "type": "string"
@@ -60,6 +54,30 @@
       "value": "Usuario de Pruebas HRO",
       "type": "string",
       "description": "Nombre enviado en el header X-Usuario-Nombre (opcional)"
+    },
+    {
+      "key": "subespecialidadId",
+      "value": "1",
+      "type": "string",
+      "description": "ID de subespecialidad (cupos, cierre diario)"
+    },
+    {
+      "key": "espacioFisicoId",
+      "value": "1",
+      "type": "string",
+      "description": "ID de espacio físico (sala)"
+    },
+    {
+      "key": "asignacionId",
+      "value": "1",
+      "type": "string",
+      "description": "ID de asignación diaria (sala + subespecialidad + fecha)"
+    },
+    {
+      "key": "medicoSubespecialidadId",
+      "value": "1",
+      "type": "string",
+      "description": "ID de programación médico-subespecialidad"
     }
   ],
   "item": [
@@ -142,21 +160,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/clinica/{{clinicaId}}?fecha=2026-09-15",
+              "raw": "{{baseUrl}}/turnos/asignacion/{{asignacionId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "turnos",
-                "clinica",
-                "{{clinicaId}}"
-              ],
-              "query": [
-                {
-                  "key": "fecha",
-                  "value": "2026-09-15",
-                  "description": "Fecha a consultar (formato YYYY-MM-DD, opcional)"
-                }
+                "asignacion",
+                "{{asignacionId}}"
               ]
             },
             "description": "Obtiene la lista activa de pacientes en espera para una clínica específica, ordenados por número de turno."
@@ -206,7 +217,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/no-responde&motivo=Paciente no acudio tras 3 llamados en sala",
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/no-responde?motivo=Paciente no acudio tras 3 llamados en sala",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -285,7 +296,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}}\n}"
+              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"subespecialidadId\": {{subespecialidadId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/turnos/cierre-diario",
@@ -306,6 +317,37 @@
       "name": "02. Citas Médicas (Agendamiento y Ciclo de Vida)",
       "description": "Endpoints de gestión de citas médicas, cálculo de horas estimadas, reprogramación y cancelación.",
       "item": [
+        {
+          "name": "Consultar disponibilidad de cupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cupos"
+              ],
+              "query": [
+                {
+                  "key": "subespecialidadId",
+                  "value": "{{subespecialidadId}}"
+                },
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-14"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-28"
+                }
+              ]
+            },
+            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas."
+          }
+        },
         {
           "name": "1. Agendar Cita (Hora Estimada y Ventana)",
           "request": {
@@ -454,7 +496,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"clinicaId\": {{clinicaId}}\n}"
+              "raw": "{\n  \"fecha\": \"2026-09-15\",\n  \"subespecialidadId\": {{subespecialidadId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas/cierre-diario",
@@ -566,96 +608,235 @@
     },
     {
       "name": "04. Catálogos y Calendario",
-      "description": "Endpoints de consulta de catálogos médicos, consultorios y disponibilidad.",
+      "description": "Especialidades, subespecialidades, espacios físicos, médicos, programación por subespecialidad y calendario institucional.",
       "item": [
         {
-          "name": "1. Listar Especialidades Médicas",
+          "name": "1. Listar especialidades",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/catalogos/especialidades",
+              "raw": "{{baseUrl}}/especialidades",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "catalogos",
                 "especialidades"
               ]
             }
           }
         },
         {
-          "name": "2. Listar Subespecialidades",
+          "name": "2. Crear especialidad",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/catalogos/subespecialidades",
+              "raw": "{{baseUrl}}/especialidades",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "catalogos",
+                "especialidades"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Pediatría\"\n}"
+            }
+          }
+        },
+        {
+          "name": "3. Listar subespecialidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
                 "subespecialidades"
               ]
             }
           }
         },
         {
-          "name": "3. Listar Clínicas / Consultorios",
+          "name": "4. Crear subespecialidad",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/catalogos/espacios-fisicos",
+              "raw": "{{baseUrl}}/subespecialidades",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "catalogos",
+                "subespecialidades"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"especialidadId\": 1,\n  \"nombre\": \"Cardiología Clínica\"\n}"
+            }
+          }
+        },
+        {
+          "name": "5. Listar espacios físicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/espacios-fisicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
                 "espacios-fisicos"
               ]
             }
           }
         },
         {
-          "name": "4. Listar Médicos y Asignación de Horarios",
+          "name": "6. Crear espacio físico",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/catalogos/medicos",
+              "raw": "{{baseUrl}}/espacios-fisicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "catalogos",
+                "espacios-fisicos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero\": \"103\",\n  \"nivel\": 1,\n  \"capacidadCamillas\": 1,\n  \"nombre\": \"Sala 103\",\n  \"ubicacion\": \"Nivel 1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "7. Listar médicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
                 "medicos"
               ]
             }
           }
         },
         {
-          "name": "5. Listar Feriados / Días No Laborables",
+          "name": "8. Crear médico",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/calendario/dias-no-laborables?anio=2026",
+              "raw": "{{baseUrl}}/medicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "calendario",
-                "dias-no-laborables"
-              ],
-              "query": [
-                {
-                  "key": "anio",
-                  "value": "2026"
-                }
+                "medicos"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Dra. Carmen Fuentes\",\n  \"numeroColegiado\": \"COL-12890\"\n}"
+            }
+          }
+        },
+        {
+          "name": "9. Asignar programación médico-subespecialidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"medicoId\": 1,\n  \"subespecialidadId\": 1,\n  \"diaSemana\": 1,\n  \"horaInicio\": \"07:00:00\",\n  \"horaFin\": \"13:00:00\",\n  \"capacidadMaxima\": 12,\n  \"duracionConsultaMinutos\": 30\n}"
+            }
+          }
+        },
+        {
+          "name": "10. Listar días no laborables",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables?anio=2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables?anio=2026"
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. Registrar día no laborable",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"2026-11-02\",\n  \"motivo\": \"Asueto institucional\"\n}"
             }
           }
         }

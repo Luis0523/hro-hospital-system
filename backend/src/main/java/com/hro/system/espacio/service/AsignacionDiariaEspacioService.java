@@ -28,6 +28,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 /**
  * Asignación diaria de subespecialidades a espacios físicos y cierre de jornada.
@@ -105,7 +106,7 @@ public class AsignacionDiariaEspacioService {
      * (por ejemplo, una emergencia que obliga a mover una especialidad). Queda auditada.
      */
     @Transactional
-    public AsignacionDiariaResponseDTO reasignarEnCaliente(Long id, Long nuevoEspacioFisicoId, String motivo) {
+    public AsignacionDiariaResponseDTO reasignarEnCaliente(Long id, UUID nuevoEspacioFisicoId, String motivo) {
         AsignacionDiariaEspacio asignacion = asignacionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AsignacionDiariaEspacio", "id", id));
         EspacioFisico nuevoEspacio = espacioFisicoRepository.findById(nuevoEspacioFisicoId)
@@ -115,7 +116,7 @@ public class AsignacionDiariaEspacioService {
             throw new BusinessException("El espacio " + nuevoEspacio.getNumero() + " ya está ocupado el " + asignacion.getFecha() + ".");
         }
 
-        Long anterior = asignacion.getEspacioFisico().getId();
+        UUID anterior = asignacion.getEspacioFisico().getId();
         asignacion.setEspacioFisico(nuevoEspacio);
         AsignacionDiariaEspacio guardada = asignacionRepository.save(asignacion);
 
