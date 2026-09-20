@@ -1,9 +1,11 @@
 import client from '@/shared/api/client'
+import { mapearMedico, mapearPaciente, mapearSubespecialidad } from './archivoMappers'
 import {
   avanzarEstadoMock,
   buscarExpedientePorCodigoMock,
   clinicasArchivoMock,
   crearExpedienteMock,
+  expedientesMock,
   listarExpedientesMock,
   marcarNoLocalizadoMock,
   medicosArchivoMock,
@@ -24,12 +26,51 @@ function pendienteBackend(operacion) {
 
 export async function listarClinicas() {
   if (USE_MOCK) return clinicasArchivoMock
-  return desenvolver(await client.get('/clinicas'))
+
+  // PENDIENTE BACKEND (contrato sin confirmar):
+  // "Clínica" NO existe como recurso en el backend. En el entorno desplegado
+  // GET /clinicas responde 500 ("No static resource clinicas"). No se remapea
+  // silenciosamente a /subespecialidades porque no está confirmado que
+  // "clínica" y "subespecialidad" sean el mismo concepto de negocio.
+  return pendienteBackend('listar clínicas (contrato sin confirmar)')
 }
 
 export async function listarMedicos() {
   if (USE_MOCK) return medicosArchivoMock
-  return desenvolver(await client.get('/medicos'))
+  return desenvolver(await client.get('/medicos')).map(mapearMedico)
+}
+
+// Catálogo temporal usado SOLO por el modo mock de esta función auxiliar.
+// La función no está conectada a la interfaz todavía.
+const subespecialidadesArchivoMock = [
+  {
+    id: 1,
+    nombre: 'Medicina General',
+    especialidadId: 1,
+    especialidadNombre: 'Medicina Interna',
+    activo: true,
+  },
+  {
+    id: 2,
+    nombre: 'Cardiología Clínica',
+    especialidadId: 6,
+    especialidadNombre: 'Cardiología',
+    activo: true,
+  },
+  {
+    id: 3,
+    nombre: 'Pediatría General',
+    especialidadId: 2,
+    especialidadNombre: 'Pediatría',
+    activo: true,
+  },
+]
+
+// Función auxiliar de integración real. No sustituye a listarClinicas ni está
+// conectada a la UI: sirve para la futura integración con el catálogo real.
+export async function listarSubespecialidades() {
+  if (USE_MOCK) return subespecialidadesArchivoMock
+  return desenvolver(await client.get('/subespecialidades')).map(mapearSubespecialidad)
 }
 
 export async function listarExpedientes({ fecha, clinicaId, medicoId } = {}) {
@@ -80,5 +121,45 @@ export async function crearExpediente(pacienteId) {
 
   // PENDIENTE BACKEND (contrato propuesto, sin confirmar):
   // POST /expedientes  { pacienteId }
+  // NOTA: NO se conecta con POST/PUT /pacientes. El campo
+  // paciente.numeroExpediente NO equivale a una entidad de expediente físico
+  // con ubicación, estado e historial.
   return pendienteBackend('crear el expediente físico')
+}
+
+// Los siguientes pacientes se construyen a partir de expedientesMock para que
+// las funciones auxiliares tengan una respuesta coherente en modo mock.
+function pacienteDesdeExpedienteMock(expediente) {
+  if (!expediente) return null
+  return {
+    id: expediente.pacienteId ?? null,
+    dpi: expediente.pacienteDpi ?? null,
+    nombres: expediente.pacienteNombre ?? '',
+    apellidos: '',
+    nombreCompleto: expediente.pacienteNombre ?? '',
+    numeroExpediente: expediente.numeroExpediente ?? null,
+    fechaNacimiento: null,
+    sexo: null,
+    telefono: null,
+    direccion: null,
+  }
+}
+
+// Funciones auxiliares reales, todavía NO conectadas a la interfaz.
+export async function buscarPacientePorExpediente(numeroExpediente) {
+  if (USE_MOCK) {
+    return pacienteDesdeExpedienteMock(
+      expedientesMock.find((expediente) => expediente.numeroExpediente === numeroExpediente),
+    )
+  }
+  return mapearPaciente(desenvolver(await client.get(`/pacientes/expediente/${numeroExpediente}`)))
+}
+
+export async function buscarPacientePorDpi(dpi) {
+  if (USE_MOCK) {
+    return pacienteDesdeExpedienteMock(
+      expedientesMock.find((expediente) => expediente.pacienteDpi === dpi),
+    )
+  }
+  return mapearPaciente(desenvolver(await client.get(`/pacientes/dpi/${dpi}`)))
 }

@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   avanzarEstado,
   buscarExpedientePorCodigo,
+  buscarPacientePorDpi,
+  buscarPacientePorExpediente,
   crearExpediente,
+  listarClinicas,
   listarExpedientes,
+  listarMedicos,
+  listarSubespecialidades,
   marcarNoLocalizado,
   obtenerExpediente,
 } from './archivoApi'
@@ -68,5 +73,42 @@ describe('archivoApi (mock)', () => {
 
     const detalle = await obtenerExpediente(7)
     expect(detalle.numeroExpediente).toBe(creado.numeroExpediente)
+  })
+})
+
+describe('archivoApi (catálogos y auxiliares en modo mock)', () => {
+  it('mantiene listarClinicas como catálogo mock, sin confundirlo con subespecialidades', async () => {
+    const clinicas = await listarClinicas()
+
+    expect(clinicas.length).toBeGreaterThan(0)
+    expect(clinicas[0]).toHaveProperty('nombre')
+  })
+
+  it('lista médicos desde el mock', async () => {
+    const medicos = await listarMedicos()
+
+    expect(medicos.length).toBeGreaterThan(0)
+    expect(medicos[0]).toHaveProperty('nombre')
+  })
+
+  it('lista subespecialidades desde el mock de la función auxiliar', async () => {
+    const subespecialidades = await listarSubespecialidades()
+
+    expect(subespecialidades.length).toBeGreaterThan(0)
+    expect(subespecialidades[0]).toHaveProperty('especialidadNombre')
+  })
+
+  it('busca paciente por número de expediente', async () => {
+    const paciente = await buscarPacientePorExpediente('EXP-004521')
+
+    expect(paciente?.numeroExpediente).toBe('EXP-004521')
+    expect(await buscarPacientePorExpediente('NO-EXISTE')).toBeNull()
+  })
+
+  it('busca paciente por DPI', async () => {
+    const paciente = await buscarPacientePorDpi('2456789010101')
+
+    expect(paciente?.dpi).toBe('2456789010101')
+    expect(await buscarPacientePorDpi('0000000000000')).toBeNull()
   })
 })
