@@ -10,18 +10,27 @@ vi.mock('@/shared/api/client', () => ({
 }))
 
 import client from '@/shared/api/client'
+import * as administracionApi from './administracionApi'
 import {
   actualizarEspecialidad,
   actualizarEspacioFisico,
+  actualizarMedico,
   actualizarSubespecialidad,
   crearEspecialidad,
   crearEspacioFisico,
+  crearMedico,
+  crearProgramacion,
   crearSubespecialidad,
   desactivarEspecialidad,
   desactivarEspacioFisico,
+  desactivarMedico,
+  desactivarProgramacion,
   desactivarSubespecialidad,
   listarEspecialidades,
   listarEspaciosFisicos,
+  listarMedicos,
+  listarProgramacionesPorMedico,
+  listarProgramacionesPorSubespecialidad,
   listarSubespecialidades,
 } from './administracionApi'
 import { reiniciarCatalogosMock } from './mockData'
@@ -38,6 +47,27 @@ describe('administracionApi (mock)', () => {
     await listarEspecialidades()
     await listarSubespecialidades()
     await listarEspaciosFisicos()
+    await listarMedicos()
+    await listarProgramacionesPorMedico('6f0d3a2c-1a11-4d21-9c01-000000000101')
+    await listarProgramacionesPorSubespecialidad(1)
+    await crearMedico({ nombres: 'Dr. Prueba', numeroColegiado: 'COL-90001' })
+    await crearProgramacion({
+      medicoId: '6f0d3a2c-1a11-4d21-9c01-000000000101',
+      subespecialidadId: 6,
+      diaSemana: 5,
+      horaInicio: '08:00',
+      horaFin: '11:00',
+      capacidadMaxima: 4,
+      duracionConsultaMinutos: 30,
+    })
+    await actualizarMedico('6f0d3a2c-1a11-4d21-9c01-000000000101', {
+      nombres: 'Dr. Prueba',
+      numeroColegiado: 'COL-10021',
+      usuarioReferenciaId: 5,
+      activo: true,
+    })
+    await desactivarMedico('6f0d3a2c-1a11-4d21-9c01-000000000103')
+    await desactivarProgramacion('6f0d3a2c-1a11-4d21-9c01-000000000204')
 
     expect(client.get).not.toHaveBeenCalled()
     expect(client.post).not.toHaveBeenCalled()
@@ -165,6 +195,190 @@ describe('administracionApi (mock)', () => {
 
       expect(lista.length).toBeGreaterThan(0)
       expect(lista.every((item) => item.nivel === 2)).toBe(true)
+    })
+  })
+
+  describe('médicos', () => {
+    it('lista médicos activos con id UUID', async () => {
+      const lista = await listarMedicos()
+
+      expect(lista.length).toBeGreaterThan(0)
+      expect(lista[0].id).toMatch(UUID)
+      expect(lista[0]).toHaveProperty('nombres')
+      expect(lista[0]).toHaveProperty('numeroColegiado')
+      expect(lista[0]).toHaveProperty('usuarioReferenciaId')
+      expect(lista[0].activo).toBe(true)
+    })
+
+    it('crea un médico con id UUID y activo', async () => {
+      const creado = await crearMedico({
+        nombres: 'Dr. Andrés Lima',
+        numeroColegiado: 'COL-50001',
+      })
+
+      expect(creado.id).toMatch(UUID)
+      expect(creado.activo).toBe(true)
+      expect((await listarMedicos()).some((item) => item.id === creado.id)).toBe(true)
+    })
+
+    it('rechaza un número de colegiado duplicado', async () => {
+      await expect(
+        crearMedico({ nombres: 'Otro médico', numeroColegiado: 'COL-10021' }),
+      ).rejects.toThrow(/colegiado/i)
+    })
+
+    it('edita preservando usuarioReferenciaId y activo', async () => {
+      const [primero] = await listarMedicos()
+      const actualizado = await actualizarMedico(primero.id, {
+        nombres: 'Dr. Carlos Méndez Actualizado',
+        numeroColegiado: primero.numeroColegiado,
+        usuarioReferenciaId: primero.usuarioReferenciaId,
+        activo: primero.activo,
+      })
+
+      expect(actualizado.nombres).toBe('Dr. Carlos Méndez Actualizado')
+      expect(actualizado.usuarioReferenciaId).toBe(primero.usuarioReferenciaId)
+      expect(actualizado.activo).toBe(true)
+    })
+
+    it('desactiva un médico y deja de listarse', async () => {
+      const [primero] = await listarMedicos()
+      await desactivarMedico(primero.id)
+
+      expect((await listarMedicos()).some((item) => item.id === primero.id)).toBe(false)
+    })
+  })
+
+  describe('programación médico-subespecialidad', () => {
+    async function primerMedico() {
+      const [medico] = await listarMedicos()
+      return medico
+    }
+
+    it('lista por médico con campos derivados y UUID', async () => {
+      const medico = await primerMedico()
+      const lista = await listarProgramacionesPorMedico(medico.id)
+
+      expect(lista.length).toBeGreaterThan(0)
+      expect(lista[0].id).toMatch(UUID)
+      expect(lista[0].medicoId).toBe(medico.id)
+      expect(lista[0]).toHaveProperty('medicoNombre')
+      expect(lista[0]).toHaveProperty('subespecialidadNombre')
+      expect(lista[0]).toHaveProperty('especialidadNombre')
+      expect(lista[0].activo).toBe(true)
+    })
+
+    it('lista por subespecialidad', async () => {
+      const lista = await listarProgramacionesPorSubespecialidad(1)
+
+      expect(lista.length).toBeGreaterThan(0)
+      expect(lista.every((item) => item.subespecialidadId === 1)).toBe(true)
+    })
+
+    it('crea una programación con día, diaSemanaNombre y normaliza HH:mm:ss', async () => {
+      const medico = await primerMedico()
+      const creada = await crearProgramacion({
+        medicoId: medico.id,
+        subespecialidadId: 5,
+        diaSemana: 3,
+        horaInicio: '09:00',
+        horaFin: '11:00',
+        capacidadMaxima: 3,
+        duracionConsultaMinutos: 30,
+      })
+
+      expect(creada.id).toMatch(UUID)
+      expect(creada.diaSemana).toBe(3)
+      expect(creada.diaSemanaNombre).toBe('Miércoles')
+      expect(creada.horaInicio).toBe('09:00:00')
+      expect(creada.horaFin).toBe('11:00:00')
+      expect(creada.duracionConsultaMinutos).toBe(30)
+    })
+
+    it('usa duración estimada 35 por defecto', async () => {
+      const medico = await primerMedico()
+      const creada = await crearProgramacion({
+        medicoId: medico.id,
+        subespecialidadId: 6,
+        diaSemana: 6,
+        horaInicio: '08:00',
+        horaFin: '11:00',
+        capacidadMaxima: 4,
+      })
+
+      expect(creada.duracionConsultaMinutos).toBe(35)
+    })
+
+    it('rechaza una programación duplicada por médico, subespecialidad y día', async () => {
+      const medico = await primerMedico()
+
+      await expect(
+        crearProgramacion({
+          medicoId: medico.id,
+          subespecialidadId: 1,
+          diaSemana: 1,
+          horaInicio: '07:00',
+          horaFin: '09:00',
+          capacidadMaxima: 2,
+          duracionConsultaMinutos: 30,
+        }),
+      ).rejects.toThrow(/ya tiene asignado/i)
+    })
+
+    it('rechaza una hora de fin anterior a la hora de inicio', async () => {
+      const medico = await primerMedico()
+
+      await expect(
+        crearProgramacion({
+          medicoId: medico.id,
+          subespecialidadId: 7,
+          diaSemana: 3,
+          horaInicio: '11:00',
+          horaFin: '10:00',
+          capacidadMaxima: 2,
+          duracionConsultaMinutos: 30,
+        }),
+      ).rejects.toThrow(/hora de fin/i)
+    })
+
+    it('rechaza una capacidad/duración incompatible con la jornada (mock backend)', async () => {
+      const medico = await primerMedico()
+
+      await expect(
+        crearProgramacion({
+          medicoId: medico.id,
+          subespecialidadId: 8,
+          diaSemana: 2,
+          horaInicio: '07:00',
+          horaFin: '08:00',
+          capacidadMaxima: 100,
+          duracionConsultaMinutos: 60,
+        }),
+      ).rejects.toThrow(/no cabe en la jornada/i)
+    })
+
+    it('desactiva una programación y deja de listarse', async () => {
+      const medico = await primerMedico()
+      const creada = await crearProgramacion({
+        medicoId: medico.id,
+        subespecialidadId: 6,
+        diaSemana: 6,
+        horaInicio: '08:00',
+        horaFin: '11:00',
+        capacidadMaxima: 4,
+        duracionConsultaMinutos: 30,
+      })
+
+      await desactivarProgramacion(creada.id)
+
+      const lista = await listarProgramacionesPorMedico(medico.id)
+      expect(lista.some((item) => item.id === creada.id)).toBe(false)
+    })
+
+    it('no expone funciones que el contrato backend no ofrece', () => {
+      expect(administracionApi.actualizarProgramacion).toBeUndefined()
+      expect(administracionApi.reactivarMedico).toBeUndefined()
+      expect(administracionApi.reactivarProgramacion).toBeUndefined()
     })
   })
 })

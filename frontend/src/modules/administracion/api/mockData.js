@@ -8,6 +8,8 @@
 //
 // Los endpoints de listado del backend devuelven únicamente registros activos.
 
+import { aMinutos, nombreDia, normalizarHora } from '../utils/dias.js'
+
 const creadoEnBase = '2026-01-05T08:00:00-06:00'
 
 const ESPECIALIDADES_BASE = [
@@ -95,11 +97,93 @@ const ESPACIOS_FISICOS_BASE = [
   },
 ]
 
+// MedicoResponseDTO { id: UUID, nombres, numeroColegiado, usuarioReferenciaId: Long, activo, creadoEn }
+const MEDICOS_BASE = [
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000101',
+    nombres: 'Dr. Carlos Méndez',
+    numeroColegiado: 'COL-10021',
+    usuarioReferenciaId: 5,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000102',
+    nombres: 'Dra. Sofía Reyes',
+    numeroColegiado: 'COL-10022',
+    usuarioReferenciaId: null,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000103',
+    nombres: 'Dra. Carmen Fuentes',
+    numeroColegiado: 'COL-12890',
+    usuarioReferenciaId: null,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+]
+
+// MedicoSubespecialidadResponseDTO (campos derivados se completan al listar).
+const MEDICO_SUBESPECIALIDADES_BASE = [
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000201',
+    medicoId: '6f0d3a2c-1a11-4d21-9c01-000000000101',
+    subespecialidadId: 1,
+    diaSemana: 1,
+    horaInicio: '07:00:00',
+    horaFin: '13:00:00',
+    capacidadMaxima: 12,
+    duracionConsultaMinutos: 30,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000202',
+    medicoId: '6f0d3a2c-1a11-4d21-9c01-000000000101',
+    subespecialidadId: 2,
+    diaSemana: 2,
+    horaInicio: '08:00:00',
+    horaFin: '12:00:00',
+    capacidadMaxima: 8,
+    duracionConsultaMinutos: 30,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000203',
+    medicoId: '6f0d3a2c-1a11-4d21-9c01-000000000102',
+    subespecialidadId: 3,
+    diaSemana: 4,
+    horaInicio: '07:30:00',
+    horaFin: '11:30:00',
+    capacidadMaxima: 10,
+    duracionConsultaMinutos: 25,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000204',
+    medicoId: '6f0d3a2c-1a11-4d21-9c01-000000000103',
+    subespecialidadId: 4,
+    diaSemana: 1,
+    horaInicio: '14:00:00',
+    horaFin: '16:00:00',
+    capacidadMaxima: 4,
+    duracionConsultaMinutos: 30,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+]
+
 const clonar = (valor) => JSON.parse(JSON.stringify(valor))
 
 export const especialidadesMock = clonar(ESPECIALIDADES_BASE)
 export const subespecialidadesMock = clonar(SUBESPECIALIDADES_BASE)
 export const espaciosFisicosMock = clonar(ESPACIOS_FISICOS_BASE)
+export const medicosMock = clonar(MEDICOS_BASE)
+export const medicoSubespecialidadesMock = clonar(MEDICO_SUBESPECIALIDADES_BASE)
 
 let contadorIdEspecialidad = ESPECIALIDADES_BASE.length
 let contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
@@ -132,6 +216,12 @@ export function reiniciarCatalogosMock() {
   especialidadesMock.splice(0, especialidadesMock.length, ...clonar(ESPECIALIDADES_BASE))
   subespecialidadesMock.splice(0, subespecialidadesMock.length, ...clonar(SUBESPECIALIDADES_BASE))
   espaciosFisicosMock.splice(0, espaciosFisicosMock.length, ...clonar(ESPACIOS_FISICOS_BASE))
+  medicosMock.splice(0, medicosMock.length, ...clonar(MEDICOS_BASE))
+  medicoSubespecialidadesMock.splice(
+    0,
+    medicoSubespecialidadesMock.length,
+    ...clonar(MEDICO_SUBESPECIALIDADES_BASE),
+  )
   contadorIdEspecialidad = ESPECIALIDADES_BASE.length
   contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
   contadorUuid = ESPACIOS_FISICOS_BASE.length
@@ -315,4 +405,168 @@ export function desactivarEspacioFisicoMock(id) {
   }
   espacio.activo = false
   return espacio
+}
+
+// ---------------------------------------------------------------------------
+// Médicos
+// ---------------------------------------------------------------------------
+
+export function listarMedicosMock() {
+  return medicosMock.filter((item) => item.activo)
+}
+
+export function crearMedicoMock({ nombres, numeroColegiado, usuarioReferenciaId = null }) {
+  const nombreLimpio = String(nombres).trim()
+  const colegiadoLimpio = String(numeroColegiado).trim()
+  if (medicosMock.some((item) => item.numeroColegiado === colegiadoLimpio)) {
+    throw errorBackend(
+      `Ya existe un médico registrado con el número de colegiado: ${colegiadoLimpio}`,
+    )
+  }
+  const nuevo = {
+    id: generarUuidMock(),
+    nombres: nombreLimpio,
+    numeroColegiado: colegiadoLimpio,
+    usuarioReferenciaId,
+    activo: true,
+    creadoEn: new Date().toISOString(),
+  }
+  medicosMock.push(nuevo)
+  return nuevo
+}
+
+export function actualizarMedicoMock(
+  id,
+  { nombres, numeroColegiado, usuarioReferenciaId, activo },
+) {
+  const medico = medicosMock.find((item) => item.id === id)
+  if (!medico) {
+    throw errorBackend(`No se encontró el médico con ID ${id}`, 404)
+  }
+  const colegiadoLimpio = String(numeroColegiado).trim()
+  if (medicosMock.some((item) => item.id !== id && item.numeroColegiado === colegiadoLimpio)) {
+    throw errorBackend(`Ya existe otro médico registrado con el colegiado: ${colegiadoLimpio}`)
+  }
+  medico.nombres = String(nombres).trim()
+  medico.numeroColegiado = colegiadoLimpio
+  if (usuarioReferenciaId !== undefined) {
+    medico.usuarioReferenciaId = usuarioReferenciaId
+  }
+  if (activo !== undefined) {
+    medico.activo = activo
+  }
+  return medico
+}
+
+export function desactivarMedicoMock(id) {
+  const medico = medicosMock.find((item) => item.id === id)
+  if (!medico) {
+    throw errorBackend(`No se encontró el médico con ID ${id}`, 404)
+  }
+  medico.activo = false
+  return medico
+}
+
+// ---------------------------------------------------------------------------
+// Programación médico-subespecialidad
+// ---------------------------------------------------------------------------
+
+function enriquecerProgramacion(programacion) {
+  const medico = medicosMock.find((item) => item.id === programacion.medicoId)
+  const subespecialidad = subespecialidadesMock.find(
+    (item) => item.id === programacion.subespecialidadId,
+  )
+  const especialidad = especialidadesMock.find(
+    (item) => item.id === subespecialidad?.especialidadId,
+  )
+  return {
+    ...programacion,
+    medicoNombre: medico?.nombres ?? '',
+    numeroColegiado: medico?.numeroColegiado ?? '',
+    subespecialidadNombre: subespecialidad?.nombre ?? '',
+    especialidadId: especialidad?.id ?? null,
+    especialidadNombre: especialidad?.nombre ?? '',
+    diaSemanaNombre: nombreDia(programacion.diaSemana),
+  }
+}
+
+export function listarProgramacionesPorMedicoMock(medicoId) {
+  return medicoSubespecialidadesMock
+    .filter((item) => item.activo && item.medicoId === medicoId)
+    .map(enriquecerProgramacion)
+}
+
+export function listarProgramacionesPorSubespecialidadMock(subespecialidadId) {
+  return medicoSubespecialidadesMock
+    .filter((item) => item.activo && item.subespecialidadId === Number(subespecialidadId))
+    .map(enriquecerProgramacion)
+}
+
+export function crearProgramacionMock(dto) {
+  const inicio = aMinutos(dto.horaInicio)
+  const fin = aMinutos(dto.horaFin)
+  if (!(fin > inicio)) {
+    throw errorBackend('La hora de fin debe ser posterior a la hora de inicio')
+  }
+
+  const duracion = dto.duracionConsultaMinutos != null ? Number(dto.duracionConsultaMinutos) : 35
+  const capacidad = Number(dto.capacidadMaxima)
+  const minutosJornada = fin - inicio
+  const minutosRequeridos = capacidad * duracion
+  if (minutosRequeridos > minutosJornada) {
+    throw errorBackend(
+      `La capacidad configurada no cabe en la jornada: ${capacidad} pacientes x ${duracion} min = ${minutosRequeridos} min, pero el horario ${dto.horaInicio}-${dto.horaFin} solo dispone de ${minutosJornada} min.`,
+    )
+  }
+
+  if (!medicosMock.some((item) => item.id === dto.medicoId)) {
+    throw errorBackend(`No se encontró el médico con ID ${dto.medicoId}`, 404)
+  }
+
+  const subespecialidad = subespecialidadesMock.find(
+    (item) => item.id === Number(dto.subespecialidadId),
+  )
+  if (!subespecialidad) {
+    throw errorBackend(`No se encontró la subespecialidad con ID ${dto.subespecialidadId}`, 404)
+  }
+  if (!subespecialidad.activo) {
+    throw errorBackend(`La subespecialidad ${subespecialidad.nombre} está inactiva.`)
+  }
+
+  const diaSemana = Number(dto.diaSemana)
+  const duplicada = medicoSubespecialidadesMock.some(
+    (item) =>
+      item.medicoId === dto.medicoId &&
+      item.subespecialidadId === Number(dto.subespecialidadId) &&
+      item.diaSemana === diaSemana,
+  )
+  if (duplicada) {
+    throw errorBackend(
+      `El médico ya tiene asignado un horario en esta subespecialidad para el día ${nombreDia(diaSemana)}`,
+    )
+  }
+
+  const nueva = {
+    id: generarUuidMock(),
+    medicoId: dto.medicoId,
+    subespecialidadId: Number(dto.subespecialidadId),
+    diaSemana,
+    horaInicio: normalizarHora(dto.horaInicio),
+    horaFin: normalizarHora(dto.horaFin),
+    capacidadMaxima: capacidad,
+    duracionConsultaMinutos: duracion,
+    activo: true,
+    creadoEn: new Date().toISOString(),
+  }
+  medicoSubespecialidadesMock.push(nueva)
+  return enriquecerProgramacion(nueva)
+}
+
+export function desactivarProgramacionMock(id) {
+  const programacion = medicoSubespecialidadesMock.find((item) => item.id === id)
+  if (!programacion) {
+    throw errorBackend(`No se encontró la programación con ID ${id}`, 404)
+  }
+  programacion.activo = false
+  return enriquecerProgramacion(programacion)
 }

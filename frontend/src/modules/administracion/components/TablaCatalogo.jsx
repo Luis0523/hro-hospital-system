@@ -37,6 +37,7 @@ export default function TablaCatalogo({
   onVer,
   onEditar,
   onDesactivar,
+  permitirEditar = true,
   vacioTitulo = 'Sin registros',
   vacioDescripcion,
 }) {
@@ -68,9 +69,11 @@ export default function TablaCatalogo({
       <Button size="sm" variant="ghost" onClick={() => onVer?.(fila)}>
         Ver
       </Button>
-      <Button size="sm" variant="secondary" onClick={() => onEditar?.(fila)}>
-        Editar
-      </Button>
+      {permitirEditar && (
+        <Button size="sm" variant="secondary" onClick={() => onEditar?.(fila)}>
+          Editar
+        </Button>
+      )}
       {fila.activo && onDesactivar && (
         <Button size="sm" variant="danger" onClick={() => onDesactivar(fila)}>
           Desactivar

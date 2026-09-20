@@ -93,4 +93,27 @@ describe('TablaCatalogo', () => {
     const escritorio = screen.getByTestId('catalogo-escritorio')
     expect(within(escritorio).queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument()
   })
+
+  it('muestra Editar por defecto (comportamiento Fase 2)', () => {
+    render(<TablaCatalogo columnas={COLUMNAS} datos={DATOS} onEditar={vi.fn()} />)
+
+    const escritorio = screen.getByTestId('catalogo-escritorio')
+    expect(within(escritorio).getAllByRole('button', { name: 'Editar' }).length).toBeGreaterThan(0)
+  })
+
+  it('oculta Editar cuando permitirEditar es false', () => {
+    render(
+      <TablaCatalogo
+        columnas={COLUMNAS}
+        datos={DATOS}
+        onVer={vi.fn()}
+        onEditar={vi.fn()}
+        permitirEditar={false}
+      />,
+    )
+
+    const escritorio = screen.getByTestId('catalogo-escritorio')
+    expect(within(escritorio).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    expect(within(escritorio).getAllByRole('button', { name: 'Ver' }).length).toBeGreaterThan(0)
+  })
 })
