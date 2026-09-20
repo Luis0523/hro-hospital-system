@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import AppRouter from '@/router/AppRouter.jsx'
 
 function renderRuta(ruta) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <AuthProvider>
-        <AppRouter />
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
       </AuthProvider>
     </MemoryRouter>,
   )

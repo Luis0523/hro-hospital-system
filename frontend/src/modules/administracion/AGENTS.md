@@ -348,23 +348,19 @@ Debe contemplar:
 
 
 
-Mantener la jerarquía:
+La sección se diseña alrededor del contrato vigente del backend; ver "Modelo de dominio y backend".
 
 
 
-Especialidad
-
-→ Subespecialidad
-
-→ Clínica
+No asumir una jerarquía de persistencia concreta (por ejemplo Especialidad → Subespecialidad → Clínica) como modelo obligatorio.
 
 
 
-No aplanar esta relación.
+Si el backend vigente modela el concepto de "clínica" mediante otros recursos (por ejemplo espacio físico, asignación diaria u otra estructura), la UI debe adaptarse a ese modelo real.
 
 
 
-También deberá contemplarse la asociación entre médicos y clínicas según el contrato definitivo del backend.
+También deberá contemplarse la asociación entre médicos y clínicas según el contrato vigente del backend.
 
 
 
@@ -622,6 +618,84 @@ No considerar terminada una fase si introduce errores nuevos.
 
 
 
+\## Modelo de dominio y backend
+
+
+
+El frontend del Panel de Administración debe adaptarse a los contratos y al modelo vigente expuesto por el backend.
+
+
+
+No asumir relaciones de persistencia basándose únicamente en:
+
+
+
+\- mockups;
+
+\- documentación histórica;
+
+\- conversaciones anteriores;
+
+\- esquemas de base de datos obsoletos;
+
+\- nombres utilizados antiguamente por la interfaz.
+
+
+
+Antes de implementar una funcionalidad que dependa de datos del servidor, verificar:
+
+
+
+1\. controladores REST vigentes;
+
+2\. DTOs/request/response utilizados por esos controladores;
+
+3\. servicios relacionados cuando sean necesarios para comprender el comportamiento;
+
+4\. colección Postman, Swagger/OpenAPI o documentación de integración vigente;
+
+5\. migraciones/modelo de persistencia actual como apoyo para comprender la semántica.
+
+
+
+El frontend consume contratos de API; no debe depender directamente de nombres internos de tablas PostgreSQL.
+
+
+
+Si el requerimiento funcional utiliza el término "clínica", pero el backend vigente modela ese concepto mediante otros recursos (por ejemplo espacio físico, asignación diaria u otra estructura), primero debe analizarse el contrato real y diseñar la UI alrededor de él.
+
+
+
+No inventar:
+
+
+
+\- endpoints;
+
+\- payloads;
+
+\- campos;
+
+\- relaciones;
+
+\- estados;
+
+\- reglas de negocio
+
+
+
+para reproducir un modelo histórico que ya no corresponda al backend actual.
+
+
+
+Los mocks del frontend deben imitar el contrato backend que haya sido confirmado. No deben convertirse en un modelo alternativo al backend.
+
+
+
+\---
+
+
+
 \## Prioridad de fuentes
 
 
@@ -630,19 +704,37 @@ Cuando existan contradicciones, utilizar este orden:
 
 
 
-1\. requerimientos específicos del Panel de Administración proporcionados por el equipo;
+1\. Contratos REST y código backend vigente que implemente dichos contratos.
 
-2\. estado real del repositorio en `frontend-administrador`;
+2\. Documentación técnica vigente del repositorio (Postman, Swagger/OpenAPI, guía de integración).
 
-3\. contratos backend confirmados en documentación/Postman/Swagger;
+3\. Estado real del repositorio y modelo/migraciones actuales cuando ayuden a interpretar el contrato.
 
-4\. mockups visuales;
+4\. Requerimientos funcionales del Panel de Administración y Jira.
 
-5\. supuestos del agente.
+5\. Mockups visuales.
+
+6\. Supuestos del agente.
 
 
 
-Nunca convertir un supuesto en requisito sin indicarlo.
+Los requerimientos funcionales definen QUÉ debe poder hacer el administrador.
+
+
+
+El backend vigente define CÓMO están estructurados y expuestos los datos que el frontend debe consumir.
+
+
+
+Si existe una contradicción que no pueda resolverse examinando el repositorio, marcarla como:
+
+
+
+PENDIENTE DE CONFIRMACIÓN
+
+
+
+y no inventar una solución.
 
 
 
