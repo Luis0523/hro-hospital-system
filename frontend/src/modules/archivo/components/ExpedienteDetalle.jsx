@@ -2,6 +2,7 @@ import { Button, Modal } from '@/shared/components/ui'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import ExpedienteStepper from './ExpedienteStepper.jsx'
 import { metadatosEstado } from '../estadosExpediente'
+import { esExpedienteNuevo } from '../expedienteUtils'
 
 function formatearFechaHora(iso) {
   if (!iso) return ''
@@ -24,7 +25,7 @@ export default function ExpedienteDetalle({
 }) {
   if (!expediente) return null
 
-  const esNuevo = Boolean(expediente.expedienteNuevo) || !expediente.numeroExpediente
+  const esNuevo = esExpedienteNuevo(expediente)
   const meta = metadatosEstado(expediente.estado)
   const esExcepcion = !esNuevo && meta.excepcion
   const esTerminal = !esNuevo && expediente.estado === 'entregado'

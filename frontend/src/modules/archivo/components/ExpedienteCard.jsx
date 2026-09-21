@@ -1,9 +1,10 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { metadatosEstado } from '../estadosExpediente'
+import { esExpedienteNuevo } from '../expedienteUtils'
 
 export default function ExpedienteCard({ expediente, activo = false, onSeleccionar }) {
   const meta = metadatosEstado(expediente.estado)
-  const esNuevo = expediente.expedienteNuevo
+  const esNuevo = esExpedienteNuevo(expediente)
 
   return (
     <button

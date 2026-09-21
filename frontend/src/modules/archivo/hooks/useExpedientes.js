@@ -23,7 +23,7 @@ export function useExpedientes() {
   const [clinicas, setClinicas] = useState([])
   const [medicos, setMedicos] = useState([])
   const [expedientes, setExpedientes] = useState([])
-  const [cargando, setCargando] = useState(false)
+  const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {

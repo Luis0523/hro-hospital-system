@@ -90,4 +90,43 @@ describe('ExpedienteDetalle — expediente existente', () => {
       screen.queryByRole('button', { name: /crear expediente físico/i }),
     ).not.toBeInTheDocument()
   })
+
+  it('trata "entregado" como estado terminal', () => {
+    renderDetalle({ ...EXPEDIENTE_EXISTENTE, estado: 'entregado' })
+
+    expect(
+      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/no hay más acciones en esta fase/i)).toBeInTheDocument()
+  })
+
+  it('no permite avanzar ni volver a marcar cuando está no localizado', () => {
+    renderDetalle({ ...EXPEDIENTE_EXISTENTE, estado: 'no_localizado' })
+
+    expect(
+      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/requiere búsqueda por otro medio/i)).toBeInTheDocument()
+  })
+
+  it('deshabilita las acciones mientras procesa', () => {
+    renderDetalle(EXPEDIENTE_EXISTENTE, { procesando: true })
+
+    expect(screen.getByRole('button', { name: /avanzar al siguiente estado/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /marcar no localizado/i })).toBeDisabled()
+  })
+})
+
+describe('ExpedienteDetalle — criterio consistente de paciente nuevo', () => {
+  it('considera nuevo un expediente sin número aunque el flag sea falso', () => {
+    renderDetalle({ ...EXPEDIENTE_EXISTENTE, expedienteNuevo: false, numeroExpediente: null })
+
+    expect(screen.getByRole('button', { name: /crear expediente físico/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Trazabilidad del expediente')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
+    ).not.toBeInTheDocument()
+  })
 })

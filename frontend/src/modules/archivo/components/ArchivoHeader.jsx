@@ -10,7 +10,7 @@ export default function ArchivoHeader({ usuario }) {
             <Icon name="folder_shared" className="text-[24px]" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-label-sm uppercase tracking-widest text-hro-celeste">
+            <p className="truncate text-label-sm uppercase tracking-widest text-hro-blue">
               Sistema Hospitalario HRO
             </p>
             <h1 className="truncate text-headline-sm text-on-surface">

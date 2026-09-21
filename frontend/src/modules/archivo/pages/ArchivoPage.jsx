@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, EmptyState, Spinner } from '@/shared/components/ui'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
@@ -41,9 +41,35 @@ export default function ArchivoPage() {
   const [codigo, setCodigo] = useState('')
   const [procesando, setProcesando] = useState(false)
 
+  // Guardas inmediatas (ref) contra doble tap/activación concurrente. Se
+  // activan antes de esperar la operación async y se liberan en finally. No
+  // dependen del re-render de React ni del atributo disabled.
+  const operacionEnCurso = useRef(false)
+  const busquedaEnCurso = useRef(false)
+
+  // Al cambiar cualquier filtro, el expediente seleccionado puede dejar de
+  // pertenecer al resultado: se cierra el detalle para no mostrar datos fuera
+  // del listado actual.
+  useEffect(() => {
+    setSeleccionado(null)
+  }, [fecha, clinicaId, medicoId])
+
+  async function ejecutarOperacion(accion) {
+    if (operacionEnCurso.current) return
+    operacionEnCurso.current = true
+    setProcesando(true)
+    try {
+      await accion()
+    } finally {
+      operacionEnCurso.current = false
+      setProcesando(false)
+    }
+  }
+
   async function ejecutarBusqueda(valor) {
     const buscado = valor.trim()
-    if (!buscado) return
+    if (!buscado || busquedaEnCurso.current) return
+    busquedaEnCurso.current = true
     try {
       const encontrado = await buscarExpedientePorCodigo(buscado)
       if (!encontrado) {
@@ -58,6 +84,8 @@ export default function ArchivoPage() {
       setCodigo('')
     } catch (fallo) {
       mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: fallo.message })
+    } finally {
+      busquedaEnCurso.current = false
     }
   }
 
@@ -75,56 +103,53 @@ export default function ArchivoPage() {
 
   async function manejarAvanzar() {
     if (!seleccionado) return
-    setProcesando(true)
-    try {
-      const actualizado = await avanzar(seleccionado.id)
-      setSeleccionado(actualizado)
-      mostrarToast({
-        tone: 'success',
-        title: 'Estado actualizado',
-        message: `${actualizado.pacienteNombre} · ${metadatosEstado(actualizado.estado).etiqueta}`,
-      })
-    } catch (fallo) {
-      mostrarToast({ tone: 'error', title: 'No se pudo avanzar', message: fallo.message })
-    } finally {
-      setProcesando(false)
-    }
+    await ejecutarOperacion(async () => {
+      try {
+        const actualizado = await avanzar(seleccionado.id)
+        setSeleccionado(actualizado)
+        mostrarToast({
+          tone: 'success',
+          title: 'Estado actualizado',
+          message: `${actualizado.pacienteNombre} · ${metadatosEstado(actualizado.estado).etiqueta}`,
+        })
+      } catch (fallo) {
+        mostrarToast({ tone: 'error', title: 'No se pudo avanzar', message: fallo.message })
+      }
+    })
   }
 
   async function manejarNoLocalizado() {
     if (!seleccionado) return
-    setProcesando(true)
-    try {
-      const actualizado = await marcarNoLocalizado(seleccionado.id)
-      setSeleccionado(actualizado)
-      mostrarToast({
-        tone: 'warning',
-        title: 'Expediente no localizado',
-        message: 'Se requiere búsqueda por otro medio o preparar un expediente provisional.',
-      })
-    } catch (fallo) {
-      mostrarToast({ tone: 'error', title: 'No se pudo actualizar', message: fallo.message })
-    } finally {
-      setProcesando(false)
-    }
+    await ejecutarOperacion(async () => {
+      try {
+        const actualizado = await marcarNoLocalizado(seleccionado.id)
+        setSeleccionado(actualizado)
+        mostrarToast({
+          tone: 'warning',
+          title: 'Expediente no localizado',
+          message: 'Se requiere búsqueda por otro medio o preparar un expediente provisional.',
+        })
+      } catch (fallo) {
+        mostrarToast({ tone: 'error', title: 'No se pudo actualizar', message: fallo.message })
+      }
+    })
   }
 
   async function manejarCrear() {
     if (!seleccionado) return
-    setProcesando(true)
-    try {
-      const creado = await crear(seleccionado.pacienteId)
-      setSeleccionado(creado)
-      mostrarToast({
-        tone: 'success',
-        title: 'Expediente físico creado',
-        message: `${creado.pacienteNombre} · ${creado.numeroExpediente}`,
-      })
-    } catch (fallo) {
-      mostrarToast({ tone: 'error', title: 'No se pudo crear', message: fallo.message })
-    } finally {
-      setProcesando(false)
-    }
+    await ejecutarOperacion(async () => {
+      try {
+        const creado = await crear(seleccionado.pacienteId)
+        setSeleccionado(creado)
+        mostrarToast({
+          tone: 'success',
+          title: 'Expediente físico creado',
+          message: `${creado.pacienteNombre} · ${creado.numeroExpediente}`,
+        })
+      } catch (fallo) {
+        mostrarToast({ tone: 'error', title: 'No se pudo crear', message: fallo.message })
+      }
+    })
   }
 
   return (
@@ -152,7 +177,7 @@ export default function ArchivoPage() {
 
         <ResumenEstados resumen={resumen} total={total} />
 
-        <section aria-label="Listado de expedientes">
+        <section aria-label="Listado de expedientes" aria-busy={cargando}>
           <h2 className="mb-3 text-headline-sm text-on-surface">Expedientes a preparar</h2>
 
           {cargando ? (

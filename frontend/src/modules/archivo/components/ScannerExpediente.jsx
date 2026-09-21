@@ -45,7 +45,7 @@ export default function ScannerExpediente({ value, onChange, onSubmit, onSimular
           )}
         </div>
       </form>
-      <p className="mt-1 text-body-sm text-slate-400">
+      <p className="mt-1 text-body-sm text-slate-500">
         Campo simulado: no usa cámara ni lector real. Pendiente de identificador en el backend.
       </p>
     </section>
