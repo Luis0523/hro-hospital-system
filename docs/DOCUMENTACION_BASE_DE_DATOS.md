@@ -48,6 +48,28 @@ Las migraciones residen en `backend/src/main/resources/db/migration/` y se respa
 | **V1** | `V1__esquema_inicial.sql` | Esquema base DDL: Especialidades, Clínicas, Médicos, Pacientes, Cupos, Citas, Turnos, Laboratorio y Auditoría General. |
 | **V2** | `V2__corregir_funciones_cupos.sql` | Corrección de retorno en `fn_incrementar_cupo` (adaptación a `ROW_COUNT INT`) e implementación de `fn_decrementar_cupo`. |
 | **V3** | `V3__optimizaciones_indices_triggers.sql` | **Optimización global:** 7 índices de alto rendimiento, triggers de inmutabilidad clínica, compatibilidad con Hibernate y función atómica de cierre diario. |
+| **V4** | `V4__espacios_fisicos_y_asignacion_diaria.sql` | Separa el espacio físico de la subespecialidad e introduce la asignación diaria (`asignacion_diaria_espacio`, `cierre_asignacion_diaria`, `plano_hospital`). |
+| **V5** | `V5__claves_primarias_uuid.sql` | Cambia a UUID las claves primarias de las tablas principales (paciente, medico, cupo_diario, orden_laboratorio, etc.) con backfill sin pérdida de datos. |
+| **V6** | `V6__seguimiento_expedientes_fisicos.sql` | **Ciclo de vida físico del expediente:** `ubicacion_archivo`, `expediente`, `expediente_ciclo` (un viaje por cita) y `expediente_movimiento` (bitácora de checkpoints). |
+
+### 2.1 Seguimiento de expedientes físicos (V6)
+
+El módulo de Archivo modela el recorrido físico del expediente con el mismo patrón de seguimiento tipo paquete usado en `cita` → `cita_estado_historial`, en tres niveles:
+
+| Tabla | Nivel | PK | Descripción |
+| :--- | :--- | :--- | :--- |
+| `ubicacion_archivo` | Catálogo | `BIGINT` | Ubicaciones físicas normalizadas (pasillo/estante/balda). |
+| `expediente` | Objeto físico | `UUID` | El expediente en sí; uno por paciente. PK escaneable como código de barras/QR. |
+| `expediente_ciclo` | Viaje | `UUID` | Un ciclo por cita (`cita_id UNIQUE`); guarda el `estado_actual` del recorrido. |
+| `expediente_movimiento` | Bitácora | `BIGINT` | Cada checkpoint del ciclo (append-only), con usuario, ubicaciones y fecha. |
+
+Estados válidos de `expediente_ciclo.estado_actual`:
+`pendiente_localizar`, `en_busqueda`, `localizado`, `en_transito_entrega`, `entregado`, `en_transito_retorno`, `archivado`, `no_localizado`.
+
+Notas de diseño:
+- `expediente.numero_expediente` está **desnormalizado** desde `paciente.numero_expediente` (dato prácticamente inmutable) para búsquedas rápidas y para que el código de barras impreso no dependa de un JOIN.
+- `expediente_ciclo.version` implementa bloqueo optimista; el trigger `trg_expediente_ciclo_actualizar_marca_tiempo` usa la función dedicada `fn_expediente_ciclo_actualizar_marca_tiempo()` (la función genérica `fn_actualizar_marca_tiempo()` está acoplada a la tabla `cita`).
+- `no_localizado` no es terminal: la lógica de negocio puede devolver el ciclo a `en_busqueda`, registrando cada intento como una nueva fila en `expediente_movimiento`.
 
 ---
 

@@ -89,6 +89,12 @@ public class CitaCicloDeVidaTest {
     @Autowired
     private UsuarioReferenciaRepository usuarioReferenciaRepository;
 
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteCicloRepository expedienteCicloRepository;
+
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteMovimientoRepository expedienteMovimientoRepository;
+
     private Paciente paciente;
     private UsuarioReferencia usuario;
     private Subespecialidad subespecialidad;
@@ -100,6 +106,8 @@ public class CitaCicloDeVidaTest {
     void setUp() {
         turnoRepository.deleteAllInBatch();
         historialRepository.deleteAllInBatch();
+        expedienteMovimientoRepository.deleteAllInBatch();
+        expedienteCicloRepository.deleteAllInBatch();
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
         medicoSubespecialidadRepository.deleteAllInBatch();

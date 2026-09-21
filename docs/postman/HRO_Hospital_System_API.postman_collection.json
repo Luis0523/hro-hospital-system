@@ -78,6 +78,26 @@
       "value": "1",
       "type": "string",
       "description": "ID de programación médico-subespecialidad"
+    },
+    {
+      "key": "expedienteId",
+      "value": "3f1c0000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "numeroExpediente",
+      "value": "EXP-001234",
+      "type": "string"
+    },
+    {
+      "key": "expedienteCicloId",
+      "value": "a1b20000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "ubicacionArchivoId",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -998,6 +1018,492 @@
               ]
             },
             "description": "Única vía para cambiar una fecha ya cerrada. Queda auditada."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Estación de Archivo (Expedientes Físicos)",
+      "item": [
+        {
+          "name": "1. Listar ubicaciones de archivo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ubicaciones-archivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ubicaciones-archivo"
+              ]
+            },
+            "description": "Catálogo de ubicaciones físicas (pasillo/estante/balda) del archivo."
+          }
+        },
+        {
+          "name": "2. Crear ubicación de archivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pasillo\": \"B\",\n  \"estante\": \"14\",\n  \"balda\": \"3\",\n  \"descripcion\": \"Pasillo B, estante 14, balda 3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ubicaciones-archivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ubicaciones-archivo"
+              ]
+            },
+            "description": "Registra una ubicación física en el catálogo. Única por (pasillo, estante, balda)."
+          }
+        },
+        {
+          "name": "3. Buscar expedientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/buscar?filtro=&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "filtro",
+                  "value": ""
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Búsqueda paginada de expedientes por número, DPI o nombre de paciente. La respuesta paginada viene en `data.content`."
+          }
+        },
+        {
+          "name": "4. Obtener expediente por UUID (QR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/{{expedienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "{{expedienteId}}"
+              ]
+            },
+            "description": "Detalle del expediente por su UUID. Es el flujo al escanear el código QR de la carpeta física."
+          }
+        },
+        {
+          "name": "5. Obtener expediente por número (código de barras)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/numero/{{numeroExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "numero",
+                "{{numeroExpediente}}"
+              ]
+            },
+            "description": "Detalle del expediente por su número impreso. Flujo al escanear el código de barras."
+          }
+        },
+        {
+          "name": "6. Expediente de un paciente",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/paciente/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "paciente",
+                "{{pacienteId}}"
+              ]
+            },
+            "description": "Devuelve el expediente físico asociado a un paciente (relación 1:1)."
+          }
+        },
+        {
+          "name": "7. Crear expediente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": \"{{pacienteId}}\",\n  \"numeroExpediente\": \"{{numeroExpediente}}\",\n  \"ubicacionBaseId\": {{ubicacionArchivoId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expedientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes"
+              ]
+            },
+            "description": "Crea el expediente físico de un paciente. `numeroExpediente` y `ubicacionBaseId` son opcionales; el número se hereda de `paciente.numero_expediente` si se omite."
+          }
+        },
+        {
+          "name": "8. Iniciar ciclo de un expediente para una cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expedienteId\": \"{{expedienteId}}\",\n  \"citaId\": {{citaId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos"
+              ]
+            },
+            "description": "Crea el ciclo (viaje) del expediente para una cita específica, en estado `pendiente_localizar`. Responde 409 si la cita ya tiene un ciclo."
+          }
+        },
+        {
+          "name": "9. Obtener ciclo por ID (con timeline)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}"
+              ]
+            },
+            "description": "Detalle del ciclo con su lista de `movimientos` (checkpoints) ordenados cronológicamente."
+          }
+        },
+        {
+          "name": "10. Ciclo de una cita",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/cita/{{citaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "cita",
+                "{{citaId}}"
+              ]
+            },
+            "description": "Devuelve el ciclo asociado a una cita. Base para saber en qué punto del recorrido está el expediente."
+          }
+        },
+        {
+          "name": "11. Ciclos de un expediente",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/expediente/{{expedienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "expediente",
+                "{{expedienteId}}"
+              ]
+            },
+            "description": "Historial completo de viajes (ciclos) de un mismo expediente físico."
+          }
+        },
+        {
+          "name": "12. Cola de trabajo por estado",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos?estado=en_busqueda&fecha=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "en_busqueda"
+                },
+                {
+                  "key": "fecha",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Lista los ciclos filtrados por `estado` (y opcionalmente por fecha) para la cola operativa de la estación de Archivo."
+          }
+        },
+        {
+          "name": "13. Iniciar búsqueda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Se inicia búsqueda en estantería B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/iniciar-busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "iniciar-busqueda"
+              ]
+            },
+            "description": "Transición `pendiente_localizar` -> `en_busqueda`."
+          }
+        },
+        {
+          "name": "14. Localizar expediente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Encontrado en pasillo B, estante 14\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/localizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "localizar"
+              ]
+            },
+            "description": "Transición `en_busqueda` -> `localizado`."
+          }
+        },
+        {
+          "name": "15. Despachar a clínica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ubicacionDestinoId\": {{ubicacionArchivoId}},\n  \"observacion\": \"Despachado a consulta externa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/despachar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "despachar"
+              ]
+            },
+            "description": "Transición `localizado` -> `en_transito_entrega`. Registra la ubicación destino."
+          }
+        },
+        {
+          "name": "16. Entregar en clínica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Recibido por enfermería de la clínica\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/entregar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "entregar"
+              ]
+            },
+            "description": "Transición `en_transito_entrega` -> `entregado`. El expediente queda en uso."
+          }
+        },
+        {
+          "name": "17. Retornar a archivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Consulta finalizada, inicia devolución\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/retornar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "retornar"
+              ]
+            },
+            "description": "Transición `entregado` -> `en_transito_retorno`."
+          }
+        },
+        {
+          "name": "18. Archivar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ubicacionDestinoId\": {{ubicacionArchivoId}},\n  \"observacion\": \"Guardado en su casillero permanente\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/archivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "archivar"
+              ]
+            },
+            "description": "Transición `en_transito_retorno` -> `archivado`. Cierra el ciclo."
+          }
+        },
+        {
+          "name": "19. Marcar como no localizado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"No se encontró en la ubicación base; se buscará en préstamos\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/no-localizado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "no-localizado"
+              ]
+            },
+            "description": "Marca el ciclo como `no_localizado` desde cualquier estado activo. No es terminal: permite reintentar."
+          }
+        },
+        {
+          "name": "20. Reintentar búsqueda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Apareció en el archivo; se retoma la búsqueda\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/reintentar-busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "reintentar-busqueda"
+              ]
+            },
+            "description": "Transición `no_localizado` -> `en_busqueda`. Queda registrada como un nuevo movimiento."
           }
         }
       ]

@@ -70,11 +70,19 @@ public class CupoDiarioConcurrenciaTest {
     @Autowired
     private com.hro.system.cita.repository.CitaEstadoHistorialRepository historialRepository;
 
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteCicloRepository expedienteCicloRepository;
+
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteMovimientoRepository expedienteMovimientoRepository;
+
     private MedicoSubespecialidad medicoSubespecialidadTest;
     private LocalDate proximoLunes;
 
     @BeforeEach
     void setUp() {
+        expedienteMovimientoRepository.deleteAllInBatch();
+        expedienteCicloRepository.deleteAllInBatch();
         turnoRepository.deleteAllInBatch();
         historialRepository.deleteAllInBatch();
         citaRepository.deleteAllInBatch();
