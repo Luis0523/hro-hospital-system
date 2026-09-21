@@ -762,3 +762,94 @@ y REFLEJA decisiones del backend.
 
 No replica lógica de negocio del servidor.
 
+## Estado final del módulo (cierre Fase 10)
+
+Esta sección documenta el estado real final del módulo. Complementa las reglas anteriores, no las reemplaza.
+
+No agregar a este documento datos volátiles (posicionamiento de rama, hashes de Git, cantidad de tests, nombres de bundles del build ni fechas), porque quedan obsoletos con rapidez y no son reglas permanentes.
+
+### Rutas actuales
+
+- `/administracion`
+- `/administracion/usuarios`
+- `/administracion/clinicas`
+- `/administracion/cupos`
+- `/administracion/calendario`
+- `/administracion/reportes`
+- `/administracion/auditoria`
+
+### Estado por sección
+
+Dashboard:
+- parcialmente integrado;
+- único dato real actual: próximos días no laborables (máximo 3, una sola consulta);
+- citas del día, cupos disponibles, inasistencias y alertas administrativas pendientes de contrato backend (se muestran sin cifras).
+
+Usuarios:
+- vista informativa bloqueada;
+- no existen contratos REST administrativos suficientes para usuarios, roles y permisos;
+- no inventar CRUD, contraseñas ni roles.
+
+Clínicas:
+- funcional mediante Especialidades, Subespecialidades y Espacios físicos;
+- NO existe una entidad Clínica vigente;
+- no reintroducir `clinicaId`.
+
+Cupos:
+- Médicos funcional.
+- Programación `MedicoSubespecialidad` funcional para crear, listar y desactivar.
+- La programación NO es editable porque el backend no expone PUT/PATCH.
+- NO generar, reservar ni liberar `CupoDiario` desde Administración.
+- NO agregar fecha exacta a la programación semanal (solo día de la semana).
+
+Calendario:
+- días no laborables funcionales;
+- crear, listar y habilitar mediante DELETE según el contrato vigente;
+- sin `force`;
+- sin reprogramación automática;
+- no usar fecha +1.
+
+Reportes:
+- vista informativa bloqueada;
+- el backend no expone reportes agregados.
+
+Auditoría:
+- vista informativa bloqueada;
+- no consumir `GET /auditoria` hasta corregir el backend;
+- el endpoint presenta actualmente un problema de serialización, autorización pendiente y riesgo de datos sensibles (PII).
+
+### Reactivación
+
+Actualmente no debe implementarse una reactivación falsa de:
+
+- especialidades;
+- subespecialidades;
+- espacios;
+- médicos;
+- programación;
+
+mientras el backend no exponga un flujo administrable adecuado. La baja existente es lógica (DELETE) y no incluye reactivación.
+
+### Responsive final
+
+- Los catálogos usan tarjetas (cards) por debajo del breakpoint `xl`.
+- La tabla se muestra a partir de `xl`.
+- `ModalCatalogo` tiene scroll interno del cuerpo en móvil, con fallback `vh` y soporte `dvh`.
+- El menú lateral es responsive (overlay + cierre con Escape y botón).
+- Las pestañas (tabs) son accesibles con roving tabindex y navegación por teclado.
+
+### Deuda técnica conocida (deliberadamente fuera de alcance)
+
+No corregir sin coordinación; no pertenece al cierre de Fase 10:
+
+- `SubespecialidadesTab` y `ProgramacionTab` silencian errores al cargar catálogos de apoyo.
+- `ProgramacionTab` puede mostrar `Alert` y `EmptyState` simultáneamente cuando no hay filtro seleccionado.
+- Componentes de `shared/` (`Input`, `Select`, `Modal`, `Table`) y el scrollbar global presentan limitaciones heredadas.
+- Archivos ajenos al módulo incumplen Prettier (el chequeo global falla por ellos).
+
+### Regla fundamental
+
+EL FRONTEND SE ADAPTA AL BACKEND VIGENTE.
+
+No inventar endpoints, payloads, relaciones, estados ni reglas de negocio.
+
