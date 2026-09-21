@@ -43,7 +43,7 @@ export default function UsuariosPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-lg text-hro-blue">Usuarios y roles</h2>
+        <h2 className="text-headline-md text-hro-blue">Usuarios y roles</h2>
         <p className="text-sm text-slate-500">
           Administración del personal, sus roles y sus permisos en el hospital.
         </p>

@@ -86,7 +86,7 @@ export default function TablaCatalogo({
 
   return (
     <div>
-      <div data-testid="catalogo-escritorio" className="hidden md:block">
+      <div data-testid="catalogo-escritorio" className="hidden xl:block">
         <Table
           columns={columnasEscritorio}
           data={datos}
@@ -102,13 +102,13 @@ export default function TablaCatalogo({
         />
       </div>
 
-      <div data-testid="catalogo-movil" className="space-y-3 md:hidden">
+      <div data-testid="catalogo-movil" className="space-y-3 xl:hidden">
         {datos.map((fila) => (
           <div key={fila.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <dl className="space-y-2">
               {columnas.map((columna) => (
                 <div key={columna.key} className="flex items-start justify-between gap-3">
-                  <dt className="text-xs uppercase tracking-wide text-slate-400">
+                  <dt className="text-xs uppercase tracking-wide text-slate-500">
                     {columna.label}
                   </dt>
                   <dd className="text-right text-sm text-slate-700">{valorCelda(fila, columna)}</dd>

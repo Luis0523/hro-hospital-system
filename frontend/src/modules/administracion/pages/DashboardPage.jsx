@@ -66,7 +66,7 @@ export default function DashboardPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-lg text-hro-blue">Dashboard</h2>
+        <h2 className="text-headline-md text-hro-blue">Dashboard</h2>
         <p className="text-sm text-slate-500">Resumen general del Panel de Administración.</p>
       </header>
 
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-slate-700">
                     {formatearFechaLarga(dia.fecha)}
                   </p>
-                  <p className="text-xs text-slate-500">{dia.motivo}</p>
+                  <p className="break-words text-xs text-slate-500">{dia.motivo}</p>
                 </li>
               ))}
             </ul>

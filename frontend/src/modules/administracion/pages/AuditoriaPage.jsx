@@ -52,7 +52,7 @@ export default function AuditoriaPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-lg text-hro-blue">Auditoría</h2>
+        <h2 className="text-headline-md text-hro-blue">Auditoría</h2>
         <p className="text-sm text-slate-500">
           Consulta de trazabilidad de las operaciones realizadas en el sistema (solo lectura).
         </p>

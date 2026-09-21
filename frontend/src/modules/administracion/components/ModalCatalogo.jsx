@@ -44,7 +44,14 @@ export default function ModalCatalogo({
 
   return (
     <Modal open={abierto} onClose={onCerrar} title={titulo} footer={footer}>
-      {children}
+      {/*
+       * shared/Modal no limita la altura ni aporta scroll interno. El cuerpo se
+       * aísla aquí para que los formularios largos puedan desplazarse y el
+       * footer (Cancelar / Guardar) permanezca siempre visible en móvil.
+       */}
+      <div className="max-h-[calc(100vh-12rem)] supports-[height:100dvh]:max-h-[calc(100dvh-12rem)] overflow-y-auto">
+        {children}
+      </div>
     </Modal>
   )
 }

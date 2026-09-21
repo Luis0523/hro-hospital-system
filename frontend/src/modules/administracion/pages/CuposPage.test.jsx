@@ -187,4 +187,25 @@ describe('CuposPage', () => {
     expect(within(escritorio).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
     expect(within(escritorio).getAllByRole('button', { name: 'Ver' }).length).toBeGreaterThan(0)
   })
+
+  it('aplica roving tabindex y navega entre pestañas con el teclado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    const medicos = screen.getByRole('tab', { name: 'Médicos' })
+    const programacion = screen.getByRole('tab', { name: 'Programación y capacidad' })
+
+    expect(medicos).toHaveAttribute('tabindex', '0')
+    expect(programacion).toHaveAttribute('tabindex', '-1')
+
+    medicos.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(programacion).toHaveFocus()
+    expect(programacion).toHaveAttribute('tabindex', '0')
+    expect(medicos).toHaveAttribute('tabindex', '-1')
+
+    await user.keyboard('{ArrowLeft}')
+    expect(medicos).toHaveFocus()
+  })
 })

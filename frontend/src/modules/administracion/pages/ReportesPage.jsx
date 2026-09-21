@@ -46,7 +46,7 @@ export default function ReportesPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-lg text-hro-blue">Reportes</h2>
+        <h2 className="text-headline-md text-hro-blue">Reportes</h2>
         <p className="text-sm text-slate-500">
           Consulta de información administrativa sobre citas, demanda y capacidad.
         </p>

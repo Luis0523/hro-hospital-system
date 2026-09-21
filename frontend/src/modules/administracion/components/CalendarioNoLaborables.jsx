@@ -29,13 +29,25 @@ export default function CalendarioNoLaborables({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <header className="mb-4 flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" onClick={onMesAnterior} aria-label="Mes anterior">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11"
+          onClick={onMesAnterior}
+          aria-label="Mes anterior"
+        >
           <Icon name="chevron_left" className="text-[20px]" />
         </Button>
         <p className="text-sm font-semibold text-slate-700">
           {nombreMes(mes)} {anio}
         </p>
-        <Button variant="ghost" size="sm" onClick={onMesSiguiente} aria-label="Mes siguiente">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11"
+          onClick={onMesSiguiente}
+          aria-label="Mes siguiente"
+        >
           <Icon name="chevron_right" className="text-[20px]" />
         </Button>
       </header>
@@ -44,7 +56,7 @@ export default function CalendarioNoLaborables({
         {NOMBRES_DIA_CORTO.map((dia) => (
           <div
             key={dia}
-            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
           >
             {dia}
           </div>

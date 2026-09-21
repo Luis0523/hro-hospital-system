@@ -172,4 +172,43 @@ describe('ClinicasPage', () => {
     expect(await screen.findByText('Espacio físico creado')).toBeInTheDocument()
     expect(within(await esperarCatalogo()).getByText('Sala 501')).toBeInTheDocument()
   })
+
+  it('enlaza la pestaña activa con el panel existente', async () => {
+    renderPagina()
+
+    const activa = screen.getByRole('tab', { name: 'Especialidades' })
+    const panel = screen.getByRole('tabpanel')
+
+    expect(activa).toHaveAttribute('aria-controls', panel.id)
+    expect(panel).toHaveAttribute('aria-labelledby', activa.id)
+  })
+
+  it('aplica roving tabindex y navega entre pestañas con el teclado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    const especialidades = screen.getByRole('tab', { name: 'Especialidades' })
+    const subespecialidades = screen.getByRole('tab', { name: 'Subespecialidades' })
+    const espacios = screen.getByRole('tab', { name: 'Espacios físicos' })
+
+    expect(especialidades).toHaveAttribute('tabindex', '0')
+    expect(subespecialidades).toHaveAttribute('tabindex', '-1')
+    expect(espacios).toHaveAttribute('tabindex', '-1')
+
+    especialidades.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(subespecialidades).toHaveFocus()
+    expect(subespecialidades).toHaveAttribute('tabindex', '0')
+    expect(especialidades).toHaveAttribute('tabindex', '-1')
+
+    await user.keyboard('{ArrowLeft}')
+    expect(especialidades).toHaveFocus()
+
+    await user.keyboard('{End}')
+    expect(espacios).toHaveFocus()
+
+    await user.keyboard('{Home}')
+    expect(especialidades).toHaveFocus()
+  })
 })

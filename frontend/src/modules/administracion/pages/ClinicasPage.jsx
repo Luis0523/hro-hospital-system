@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import EspecialidadesTab from '../components/EspecialidadesTab.jsx'
 import EspaciosFisicosTab from '../components/EspaciosFisicosTab.jsx'
@@ -12,6 +12,23 @@ const PESTANAS = [
 
 export default function ClinicasPage() {
   const [pestana, setPestana] = useState('especialidades')
+  const tabsRef = useRef([])
+
+  const manejarTeclado = (evento) => {
+    const indiceActual = PESTANAS.findIndex((item) => item.id === pestana)
+    let siguiente = null
+
+    if (evento.key === 'ArrowRight') siguiente = (indiceActual + 1) % PESTANAS.length
+    else if (evento.key === 'ArrowLeft')
+      siguiente = (indiceActual - 1 + PESTANAS.length) % PESTANAS.length
+    else if (evento.key === 'Home') siguiente = 0
+    else if (evento.key === 'End') siguiente = PESTANAS.length - 1
+
+    if (siguiente === null) return
+    evento.preventDefault()
+    setPestana(PESTANAS[siguiente].id)
+    tabsRef.current[siguiente]?.focus()
+  }
 
   return (
     <section className="space-y-6">
@@ -25,20 +42,25 @@ export default function ClinicasPage() {
       <div
         role="tablist"
         aria-label="Catálogos clínicos"
-        className="flex flex-wrap gap-1 border-b border-slate-200"
+        onKeyDown={manejarTeclado}
+        className="flex gap-1 overflow-x-auto border-b border-slate-200"
       >
-        {PESTANAS.map((item) => {
+        {PESTANAS.map((item, indice) => {
           const activa = item.id === pestana
           return (
             <button
               key={item.id}
+              ref={(nodo) => {
+                tabsRef.current[indice] = nodo
+              }}
               type="button"
               role="tab"
               id={`tab-${item.id}`}
               aria-selected={activa}
-              aria-controls={`panel-${item.id}`}
+              aria-controls="panel-catalogos"
+              tabIndex={activa ? 0 : -1}
               onClick={() => setPestana(item.id)}
-              className={`inline-flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+              className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
                 activa
                   ? 'border-hro-blue text-hro-blue'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -51,7 +73,7 @@ export default function ClinicasPage() {
         })}
       </div>
 
-      <div role="tabpanel" id={`panel-${pestana}`} aria-labelledby={`tab-${pestana}`}>
+      <div role="tabpanel" id="panel-catalogos" aria-labelledby={`tab-${pestana}`}>
         {pestana === 'especialidades' && <EspecialidadesTab />}
         {pestana === 'subespecialidades' && <SubespecialidadesTab />}
         {pestana === 'espacios' && <EspaciosFisicosTab />}

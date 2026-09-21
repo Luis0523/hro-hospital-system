@@ -21,7 +21,7 @@ export default function MenuLateral({ onNavegar }) {
       aria-label="Navegación del Panel de Administración"
       className="flex h-full flex-col gap-1 overflow-y-auto px-3 py-4"
     >
-      <p className="px-3 pb-2 text-label-sm uppercase tracking-wider text-slate-400">Secciones</p>
+      <p className="px-3 pb-2 text-label-sm uppercase tracking-wider text-slate-500">Secciones</p>
 
       {ITEMS_ADMINISTRACION.map((item) => (
         <NavLink

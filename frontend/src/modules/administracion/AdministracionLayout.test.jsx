@@ -34,16 +34,39 @@ describe('AdministracionLayout', () => {
     expect(screen.getByText('Contenido hijo de prueba')).toBeInTheDocument()
   })
 
-  it('el botón móvil alterna el estado del menú', async () => {
+  it('abre el menú móvil desde el botón hamburguesa', async () => {
     renderLayout()
 
     const boton = screen.getByRole('button', { name: 'Abrir menú de navegación' })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
 
     await userEvent.click(boton)
-    expect(boton).toHaveAttribute('aria-expanded', 'true')
 
-    await userEvent.click(boton)
-    expect(boton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.getByRole('button', { name: 'Abrir menú de navegación', hidden: true }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Cerrar menú' })).toBeInTheDocument()
+  })
+
+  it('cierra el menú móvil con la tecla Escape', async () => {
+    renderLayout()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú de navegación' }))
+    await userEvent.keyboard('{Escape}')
+
+    expect(
+      screen.getByRole('button', { name: 'Abrir menú de navegación', hidden: true }),
+    ).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('cierra el menú móvil con el botón Cerrar menú', async () => {
+    renderLayout()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú de navegación' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar menú' }))
+
+    expect(
+      screen.getByRole('button', { name: 'Abrir menú de navegación', hidden: true }),
+    ).toHaveAttribute('aria-expanded', 'false')
   })
 })
