@@ -9,6 +9,7 @@
 // Los endpoints de listado del backend devuelven únicamente registros activos.
 
 import { aMinutos, nombreDia, normalizarHora } from '../utils/dias.js'
+import { hoyISO } from '../utils/fechas.js'
 
 const creadoEnBase = '2026-01-05T08:00:00-06:00'
 
@@ -177,6 +178,60 @@ const MEDICO_SUBESPECIALIDADES_BASE = [
   },
 ]
 
+// DiaNoLaborableResponseDTO { id: Long, fecha: LocalDate, motivo, creadoPorId: Long,
+//   creadoPorNombre, creadoEn: OffsetDateTime }
+// Réplica del backend vigente: POST valida fecha duplicada y citas activas; DELETE
+// es borrado físico. El backend simulado no inventa force, update ni campo activo.
+const DIAS_NO_LABORABLES_BASE = [
+  {
+    id: 1,
+    fecha: '2025-12-25',
+    motivo: 'Fiesta de Navidad',
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: '2026-01-05T08:00:00-06:00',
+  },
+  {
+    id: 2,
+    fecha: '2026-09-15',
+    motivo: 'Día de la Independencia Patria',
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: '2026-01-05T08:00:00-06:00',
+  },
+  {
+    id: 3,
+    fecha: '2026-10-20',
+    motivo: 'Día de la Revolución de Octubre',
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: '2026-01-05T08:00:00-06:00',
+  },
+  {
+    id: 4,
+    fecha: '2026-11-01',
+    motivo: 'Día de Todos los Santos',
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: '2026-01-05T08:00:00-06:00',
+  },
+  {
+    id: 5,
+    fecha: '2026-12-25',
+    motivo: 'Fiesta de Navidad',
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: '2026-01-05T08:00:00-06:00',
+  },
+]
+
+// Simulación exclusiva de pruebas: fechas con citas activas que el backend real
+// detectaría vía CitaRepository.contarCitasActivasEnFecha (estado distinto de
+// cancelada/reprogramada). No es una regla del frontend.
+const CITAS_ACTIVAS_POR_FECHA_MOCK = {
+  '2026-09-20': 1,
+}
+
 const clonar = (valor) => JSON.parse(JSON.stringify(valor))
 
 export const especialidadesMock = clonar(ESPECIALIDADES_BASE)
@@ -184,10 +239,12 @@ export const subespecialidadesMock = clonar(SUBESPECIALIDADES_BASE)
 export const espaciosFisicosMock = clonar(ESPACIOS_FISICOS_BASE)
 export const medicosMock = clonar(MEDICOS_BASE)
 export const medicoSubespecialidadesMock = clonar(MEDICO_SUBESPECIALIDADES_BASE)
+export const diasNoLaborablesMock = clonar(DIAS_NO_LABORABLES_BASE)
 
 let contadorIdEspecialidad = ESPECIALIDADES_BASE.length
 let contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
 let contadorUuid = ESPACIOS_FISICOS_BASE.length
+let contadorIdDiaNoLaborable = DIAS_NO_LABORABLES_BASE.length
 
 function errorBackend(mensaje, status = 400) {
   const error = new Error(mensaje)
@@ -222,9 +279,11 @@ export function reiniciarCatalogosMock() {
     medicoSubespecialidadesMock.length,
     ...clonar(MEDICO_SUBESPECIALIDADES_BASE),
   )
+  diasNoLaborablesMock.splice(0, diasNoLaborablesMock.length, ...clonar(DIAS_NO_LABORABLES_BASE))
   contadorIdEspecialidad = ESPECIALIDADES_BASE.length
   contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
   contadorUuid = ESPACIOS_FISICOS_BASE.length
+  contadorIdDiaNoLaborable = DIAS_NO_LABORABLES_BASE.length
 }
 
 // ---------------------------------------------------------------------------
@@ -569,4 +628,60 @@ export function desactivarProgramacionMock(id) {
   }
   programacion.activo = false
   return enriquecerProgramacion(programacion)
+}
+
+// ---------------------------------------------------------------------------
+// Calendario institucional — /dias-no-laborables (backend simulado)
+// ---------------------------------------------------------------------------
+
+export function listarDiasNoLaborablesMock() {
+  return [...diasNoLaborablesMock].sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+export function listarDiasNoLaborablesFuturosMock() {
+  const hoy = hoyISO()
+  return diasNoLaborablesMock
+    .filter((item) => item.fecha >= hoy)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+export function listarDiasNoLaborablesPorRangoMock(inicio, fin) {
+  return diasNoLaborablesMock
+    .filter((item) => item.fecha >= inicio && item.fecha <= fin)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+export function crearDiaNoLaborableMock({ fecha, motivo }) {
+  if (diasNoLaborablesMock.some((item) => item.fecha === fecha)) {
+    throw errorBackend(`La fecha ${fecha} ya está registrada como día no laborable.`)
+  }
+
+  const citasAfectadas = CITAS_ACTIVAS_POR_FECHA_MOCK[fecha] ?? 0
+  if (citasAfectadas > 0) {
+    throw errorBackend(
+      `No se puede registrar como día no laborable: Existen ${citasAfectadas} ` +
+        `cita(s) programada(s) para el ${fecha}. Deben ser reprogramadas o canceladas ` +
+        `antes de bloquear el día.`,
+    )
+  }
+
+  contadorIdDiaNoLaborable += 1
+  const nuevo = {
+    id: contadorIdDiaNoLaborable,
+    fecha,
+    motivo: String(motivo).trim(),
+    creadoPorId: 1,
+    creadoPorNombre: 'Administrador HRO',
+    creadoEn: new Date().toISOString(),
+  }
+  diasNoLaborablesMock.push(nuevo)
+  return nuevo
+}
+
+export function eliminarDiaNoLaborableMock(id) {
+  const indice = diasNoLaborablesMock.findIndex((item) => item.id === id)
+  if (indice === -1) {
+    throw errorBackend(`No se encontró el día no laborable con ID ${id}`, 404)
+  }
+  diasNoLaborablesMock.splice(indice, 1)
 }

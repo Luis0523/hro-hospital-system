@@ -16,6 +16,7 @@ import {
   actualizarEspacioFisico,
   actualizarMedico,
   actualizarSubespecialidad,
+  crearDiaNoLaborable,
   crearEspecialidad,
   crearEspacioFisico,
   crearMedico,
@@ -26,6 +27,10 @@ import {
   desactivarMedico,
   desactivarProgramacion,
   desactivarSubespecialidad,
+  eliminarDiaNoLaborable,
+  listarDiasNoLaborables,
+  listarDiasNoLaborablesFuturos,
+  listarDiasNoLaborablesPorRango,
   listarEspecialidades,
   listarEspaciosFisicos,
   listarMedicos,
@@ -34,6 +39,7 @@ import {
   listarSubespecialidades,
 } from './administracionApi'
 import { reiniciarCatalogosMock } from './mockData'
+import { aISO, desdeISO, hoyISO, sumarMes } from '../utils/fechas'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -68,6 +74,11 @@ describe('administracionApi (mock)', () => {
     })
     await desactivarMedico('6f0d3a2c-1a11-4d21-9c01-000000000103')
     await desactivarProgramacion('6f0d3a2c-1a11-4d21-9c01-000000000204')
+    const diaCreado = await crearDiaNoLaborable({ fecha: '2026-09-10', motivo: 'Prueba' })
+    await listarDiasNoLaborables()
+    await listarDiasNoLaborablesFuturos()
+    await listarDiasNoLaborablesPorRango('2026-09-01', '2026-09-30')
+    await eliminarDiaNoLaborable(diaCreado.id)
 
     expect(client.get).not.toHaveBeenCalled()
     expect(client.post).not.toHaveBeenCalled()
@@ -379,6 +390,85 @@ describe('administracionApi (mock)', () => {
       expect(administracionApi.actualizarProgramacion).toBeUndefined()
       expect(administracionApi.reactivarMedico).toBeUndefined()
       expect(administracionApi.reactivarProgramacion).toBeUndefined()
+    })
+  })
+
+  describe('días no laborables', () => {
+    it('lista todos los días no laborables ordenados', async () => {
+      const lista = await listarDiasNoLaborables()
+
+      expect(lista.length).toBeGreaterThan(0)
+      expect(typeof lista[0].id).toBe('number')
+      expect(lista[0]).toHaveProperty('fecha')
+      expect(lista[0]).toHaveProperty('motivo')
+      expect(lista[0]).toHaveProperty('creadoPorId')
+      expect(lista[0]).toHaveProperty('creadoPorNombre')
+      expect(lista[0]).toHaveProperty('creadoEn')
+      const fechas = lista.map((item) => item.fecha)
+      expect([...fechas].sort()).toEqual(fechas)
+    })
+
+    it('lista por rango de forma inclusiva', async () => {
+      const lista = await listarDiasNoLaborablesPorRango('2026-09-01', '2026-10-31')
+      const fechas = lista.map((item) => item.fecha)
+
+      expect(fechas).toContain('2026-09-15')
+      expect(fechas).toContain('2026-10-20')
+      expect(fechas).not.toContain('2026-11-01')
+      expect(fechas).not.toContain('2025-12-25')
+    })
+
+    it('lista solo fechas futuras incluyendo una recién creada', async () => {
+      const hoy = desdeISO(hoyISO())
+      const destino = sumarMes(hoy.anio, hoy.mes, 3)
+      const fecha = aISO(destino.anio, destino.mes, 10)
+      await crearDiaNoLaborable({ fecha, motivo: 'Asueto futuro' })
+
+      const lista = await listarDiasNoLaborablesFuturos()
+      expect(lista.some((item) => item.fecha === fecha)).toBe(true)
+      expect(lista.every((item) => item.fecha >= hoyISO())).toBe(true)
+    })
+
+    it('crea un día no laborable y recorta el motivo', async () => {
+      const creado = await crearDiaNoLaborable({
+        fecha: '2026-09-10',
+        motivo: '  Asueto local  ',
+      })
+
+      expect(typeof creado.id).toBe('number')
+      expect(creado.fecha).toBe('2026-09-10')
+      expect(creado.motivo).toBe('Asueto local')
+      expect(creado.creadoPorNombre).toBeTruthy()
+    })
+
+    it('rechaza una fecha duplicada', async () => {
+      await expect(
+        crearDiaNoLaborable({ fecha: '2026-09-15', motivo: 'Repetido' }),
+      ).rejects.toThrow(/ya está registrada como día no laborable/i)
+    })
+
+    it('rechaza una fecha con citas activas', async () => {
+      await expect(
+        crearDiaNoLaborable({ fecha: '2026-09-20', motivo: 'Mantenimiento' }),
+      ).rejects.toThrow(/cita\(s\) programada\(s\)/i)
+    })
+
+    it('elimina un día no laborable y deja de listarse', async () => {
+      const creado = await crearDiaNoLaborable({ fecha: '2026-09-11', motivo: 'Temporal' })
+      await eliminarDiaNoLaborable(creado.id)
+
+      const lista = await listarDiasNoLaborables()
+      expect(lista.some((item) => item.id === creado.id)).toBe(false)
+    })
+
+    it('devuelve 404 al eliminar un id inexistente', async () => {
+      await expect(eliminarDiaNoLaborable(999999)).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('no expone operaciones que el backend no ofrece', () => {
+      expect(administracionApi.actualizarDiaNoLaborable).toBeUndefined()
+      expect(administracionApi.reactivarDiaNoLaborable).toBeUndefined()
+      expect(administracionApi.forzarDiaNoLaborable).toBeUndefined()
     })
   })
 })

@@ -4,6 +4,7 @@ import {
   actualizarEspacioFisicoMock,
   actualizarMedicoMock,
   actualizarSubespecialidadMock,
+  crearDiaNoLaborableMock,
   crearEspecialidadMock,
   crearEspacioFisicoMock,
   crearMedicoMock,
@@ -14,6 +15,10 @@ import {
   desactivarMedicoMock,
   desactivarProgramacionMock,
   desactivarSubespecialidadMock,
+  eliminarDiaNoLaborableMock,
+  listarDiasNoLaborablesFuturosMock,
+  listarDiasNoLaborablesMock,
+  listarDiasNoLaborablesPorRangoMock,
   listarEspecialidadesMock,
   listarEspaciosFisicosMock,
   listarMedicosMock,
@@ -160,4 +165,40 @@ export async function crearProgramacion(datos) {
 export async function desactivarProgramacion(id) {
   if (USE_MOCK) return desactivarProgramacionMock(id)
   return desenvolver(await client.delete(`/medico-subespecialidades/${id}`))
+}
+
+// ---------------------------------------------------------------------------
+// Calendario institucional — /dias-no-laborables
+// Contrato vigente: POST, GET (todos), GET /futuros, GET /rango y DELETE /{id}.
+// No existen PUT/PATCH, baja lógica, reactivación ni force.
+//
+// PENDIENTE DE CONFIRMACIÓN (backend): el request admite creadoPorId, pero el
+// frontend no lo envía porque no dispone de identidad local numérica confiable.
+// El backend resuelve creadoPor con su mecanismo interno (primer UsuarioReferencia
+// o system-admin), lo que puede no identificar al administrador real.
+// ---------------------------------------------------------------------------
+
+export async function listarDiasNoLaborables() {
+  if (USE_MOCK) return listarDiasNoLaborablesMock()
+  return desenvolver(await client.get('/dias-no-laborables'))
+}
+
+export async function listarDiasNoLaborablesFuturos() {
+  if (USE_MOCK) return listarDiasNoLaborablesFuturosMock()
+  return desenvolver(await client.get('/dias-no-laborables/futuros'))
+}
+
+export async function listarDiasNoLaborablesPorRango(inicio, fin) {
+  if (USE_MOCK) return listarDiasNoLaborablesPorRangoMock(inicio, fin)
+  return desenvolver(await client.get('/dias-no-laborables/rango', { params: { inicio, fin } }))
+}
+
+export async function crearDiaNoLaborable({ fecha, motivo }) {
+  if (USE_MOCK) return crearDiaNoLaborableMock({ fecha, motivo })
+  return desenvolver(await client.post('/dias-no-laborables', { fecha, motivo }))
+}
+
+export async function eliminarDiaNoLaborable(id) {
+  if (USE_MOCK) return eliminarDiaNoLaborableMock(id)
+  return desenvolver(await client.delete(`/dias-no-laborables/${id}`))
 }
