@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,20 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     @Query("SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnFecha(@Param("fecha") LocalDate fecha);
+
+    @Query("""
+            SELECT c FROM Cita c
+              JOIN FETCH c.paciente
+              JOIN FETCH c.cupoDiario cd
+              JOIN FETCH cd.medicoSubespecialidad ms
+              JOIN FETCH ms.medico
+              JOIN FETCH ms.subespecialidad
+            WHERE cd.fecha = :fecha
+              AND c.estado NOT IN :estadosNoBloqueantes
+            ORDER BY c.horaEstimada ASC
+            """)
+    List<Cita> buscarCitasBloqueantesEnFecha(@Param("fecha") LocalDate fecha,
+                                             @Param("estadosNoBloqueantes") Collection<String> estadosNoBloqueantes);
 
     @Query("SELECT COUNT(c) FROM Cita c WHERE c.cupoDiario.id = :cupoDiarioId AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnCupo(@Param("cupoDiarioId") UUID cupoDiarioId);
