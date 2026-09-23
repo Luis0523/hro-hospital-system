@@ -313,9 +313,12 @@ class CatalogosYCalendarioTest {
         mockMvc.perform(post("/dias-no-laborables")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message", containsString("No se puede registrar como día no laborable: Existen 1 cita(s) programada(s)")));
+                .andExpect(jsonPath("$.codigo", is("DIA_NO_LABORABLE_CON_CITAS")))
+                .andExpect(jsonPath("$.data.totalCitas", is(1)))
+                .andExpect(jsonPath("$.data.citas", hasSize(1)))
+                .andExpect(jsonPath("$.message", containsString("cita(s) activa(s)")));
     }
 
     @Test

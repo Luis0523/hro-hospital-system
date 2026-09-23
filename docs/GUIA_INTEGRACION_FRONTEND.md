@@ -393,8 +393,27 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.
    - `POST /api/v1/asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=` → "reasignación en caliente" para una fecha ya cerrada (queda auditada).
 5. **Calendario Institucional:**
-   - `GET /api/v1/dias-no-laborables?anio=2026`
-   - `POST /api/v1/dias-no-laborables`: Registra asuetos o feriados. (Si ya existen citas en esa fecha, el backend devolverá un error impidiendo el registro hasta que se reprogramen).
+   - `GET /api/v1/dias-no-laborables` (todos), `GET /api/v1/dias-no-laborables/futuros`, `GET /api/v1/dias-no-laborables/rango?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`, `GET /api/v1/dias-no-laborables/{id}`.
+   - `POST /api/v1/dias-no-laborables` `{ fecha, motivo, creadoPorId?, forzar? }`:
+     - `201` si la fecha no tiene citas activas.
+     - `409` con `codigo: "DIA_NO_LABORABLE_CON_CITAS"` y `data: { fecha, totalCitas, citas: [{ id, horaEstimada, estado, pacienteNombre, medicoNombre, subespecialidadNombre }] }` si existen citas activas (cualquier estado distinto de `cancelada` o `reprogramada`). El frontend debe mostrar las citas afectadas, pedir confirmación explícita y reintentar con `forzar: true` para bloquear igualmente (las citas quedan pendientes de reprogramación manual).
+     - `400` con `codigo: "DIA_NO_LABORABLE_YA_EXISTE"` si la fecha ya está registrada.
+   - `PUT /api/v1/dias-no-laborables/{id}` `{ motivo }` edita el motivo (la fecha no se modifica; para cambiarla, eliminar y volver a crear).
+   - `DELETE /api/v1/dias-no-laborables/{id}` habilita la fecha de nuevo.
+   - **Códigos de error estructurados:** toda respuesta de `ApiResponse` puede incluir `codigo` (nullable) además de `message`; usar `codigo` para el manejo programático y `message` para mostrar al usuario.
+6. **Disponibilidad y reprogramación (Admin):**
+   - `GET /api/v1/cupos?soloDisponibles=true&subespecialidadId=&medicoId=&medicoSubespecialidadId=&fechaInicio=&fechaFin=` → disponibilidad por programación y rango; `soloDisponibles=true` omite los cupos sin disponibilidad.
+   - `GET /api/v1/citas/{id}/disponibilidad?fechaInicio=&fechaFin=` → cupos de la **misma programación** (médico + subespecialidad) de la cita, para reprogramar **conservando médico y subespecialidad**.
+   - `POST /api/v1/citas/{id}/reprogramar` `{ nuevoCupoDiarioId, motivo }` confirma el cambio (2 pasos: consultar y confirmar). Si el cupo está lleno → `409` (`CUPOS_AGOTADOS`).
+   - **No existe reprogramación automática**: el administrador decide cada cambio. Flujo definido en [`docs/FLUJO_ADMIN_DISPONIBILIDAD.md`](./FLUJO_ADMIN_DISPONIBILIDAD.md).
+7. **Dashboard administrativo:**
+   - `GET /api/v1/dashboard/resumen?fecha=YYYY-MM-DD` (por defecto, hoy) → indicadores agregados calculados en backend: `totalCitas`, `citasPendientes/Confirmadas/Atendidas/Canceladas/Reprogramadas`, `inasistencias`, `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `tasaInasistencia` y `alertas`.
+   - Alertas (`codigo` / `severidad`): `CITAS_EN_DIA_NO_LABORABLE` (CRITICA), `CUPOS_AGOTADOS` (ADVERTENCIA), `DIAS_NO_LABORABLES_PROXIMOS` (INFO). El frontend solo las muestra; no recalcula indicadores.
+8. **Reportes administrativos** (todos con `fechaInicio`/`fechaFin`; por defecto, últimos 30 días):
+   - `GET /api/v1/reportes/citas-por-estado` → `total` y `porEstado` (conteo por estado).
+   - `GET /api/v1/reportes/demanda-por-especialidad` → `items` con `totalCitas`, `atendidas`, `inasistencias` por especialidad.
+   - `GET /api/v1/reportes/utilizacion-cupos?subespecialidadId=` → `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `utilizacionPorcentaje`.
+   - Si `fechaFin < fechaInicio` → `400`. El frontend solo muestra; no agrega en cliente.
 
 ---
 

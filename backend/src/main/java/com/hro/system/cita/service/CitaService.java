@@ -1,6 +1,7 @@
 package com.hro.system.cita.service;
 
 import com.hro.system.agenda.config.HroAgendaProperties;
+import com.hro.system.agenda.dto.CupoDiarioResponseDTO;
 import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.service.CupoDiarioService;
@@ -166,6 +167,20 @@ public class CitaService {
 
         log.info("Cita #{} reprogramada exitosamente hacia nueva cita #{} en fecha {}", citaId, citaNuevaGuardada.getId(), nuevoCupo.getFecha());
         return mapToDTO(citaNuevaGuardada);
+    }
+
+    /**
+     * Disponibilidad para reprogramar una cita conservando médico y subespecialidad:
+     * devuelve los cupos de la misma programación de la cita dentro del rango solicitado.
+     * El administrador elige una nueva fecha y luego confirma con POST /citas/{id}/reprogramar.
+     */
+    @Transactional
+    public List<CupoDiarioResponseDTO> consultarDisponibilidadParaCita(Long citaId, LocalDate fechaInicio, LocalDate fechaFin) {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", citaId));
+
+        UUID medicoSubespecialidadId = cita.getCupoDiario().getMedicoSubespecialidad().getId();
+        return cupoDiarioService.consultarDisponibilidad(null, null, medicoSubespecialidadId, fechaInicio, fechaFin, null);
     }
 
     /**

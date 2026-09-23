@@ -32,9 +32,10 @@ public class CupoDiarioController {
             @Parameter(description = "ID del médico") @RequestParam(required = false) UUID medicoId,
             @Parameter(description = "ID de la programación médico-subespecialidad") @RequestParam(required = false) UUID medicoSubespecialidadId,
             @Parameter(description = "Fecha inicial (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
-            @Parameter(description = "Fecha final (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin
+            @Parameter(description = "Fecha final (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            @Parameter(description = "Si es true, omite los cupos sin disponibilidad") @RequestParam(required = false) Boolean soloDisponibles
     ) {
-        List<CupoDiarioResponseDTO> cupos = cupoDiarioService.consultarDisponibilidad(subespecialidadId, medicoId, medicoSubespecialidadId, fechaInicio, fechaFin);
+        List<CupoDiarioResponseDTO> cupos = cupoDiarioService.consultarDisponibilidad(subespecialidadId, medicoId, medicoSubespecialidadId, fechaInicio, fechaFin, soloDisponibles);
         return ResponseEntity.ok(ApiResponse.ok(cupos));
     }
 

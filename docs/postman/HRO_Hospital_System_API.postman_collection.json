@@ -343,7 +343,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28&soloDisponibles=true",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -362,10 +362,15 @@
                 {
                   "key": "fechaFin",
                   "value": "2026-09-28"
+                },
+                {
+                  "key": "soloDisponibles",
+                  "value": "true",
+                  "description": "Opcional. Si es true, omite los cupos sin disponibilidad."
                 }
               ]
             },
-            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas."
+            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas. Filtros: subespecialidadId, medicoId, medicoSubespecialidadId, fechaInicio, fechaFin, soloDisponibles."
           }
         },
         {
@@ -529,6 +534,41 @@
               ]
             },
             "description": "Ejecuta la función atómica `fn_cierre_diario_inasistencias` en PostgreSQL. Pasa citas pendientes a 'no_asistio' sin liberar cupo."
+          }
+        },
+        {
+          "name": "8. Disponibilidad para reprogramar una cita",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id/disponibilidad?fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                ":id",
+                "disponibilidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-14"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-28"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{citaId}}"
+                }
+              ]
+            },
+            "description": "Cupos de la misma programación (médico + subespecialidad) de la cita, para reprogramar conservando médico y subespecialidad. Luego confirmar con POST /citas/:id/reprogramar."
           }
         }
       ]
@@ -825,12 +865,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/dias-no-laborables?anio=2026",
+              "raw": "{{baseUrl}}/dias-no-laborables",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "dias-no-laborables?anio=2026"
+                "dias-no-laborables"
               ]
             }
           }
@@ -856,8 +896,356 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-11-02\",\n  \"motivo\": \"Asueto institucional\"\n}"
+              "raw": "{\n  \"fecha\": \"2026-11-02\",\n  \"motivo\": \"Asueto institucional\",\n  \"forzar\": false\n}"
             }
+          }
+        },
+        {
+          "name": "12. Editar día no laborable",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Asueto institucional (actualizado)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "13. Eliminar día no laborable",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "14. Listar especialidades por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/especialidades?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "especialidades"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            },
+            "description": "Filtra el catálogo por estado. Reactivación con PATCH /especialidades/:id/reactivar."
+          }
+        },
+        {
+          "name": "15. Reactivar especialidad",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/especialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "especialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Vuelve a activar una especialidad desactivada (baja lógica). Idempotente."
+          }
+        },
+        {
+          "name": "16. Listar subespecialidades por especialidad y estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades/especialidad/:especialidadId?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidades",
+                "especialidad",
+                ":especialidadId"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "especialidadId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "17. Reactivar subespecialidad",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla con 400 si la especialidad padre está inactiva."
+          }
+        },
+        {
+          "name": "18. Listar espacios físicos por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/espacios-fisicos?estado=inactivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios-fisicos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "inactivos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "19. Reactivar espacio físico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/espacios-fisicos/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios-fisicos",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "20. Listar médicos por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicos?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "21. Reactivar médico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicos/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicos",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "22. Listar programaciones con filtros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades?medicoId=&subespecialidadId=&diaSemana=&estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades"
+              ],
+              "query": [
+                {
+                  "key": "medicoId",
+                  "value": ""
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": ""
+                },
+                {
+                  "key": "diaSemana",
+                  "value": "",
+                  "description": "1 = Lunes ... 7 = Domingo"
+                },
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "23. Actualizar programación médica",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"12:00:00\",\n  \"capacidadMaxima\": 8,\n  \"duracionConsultaMinutos\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Actualiza horario, capacidad y duración. No cambia médico, subespecialidad ni día. Valida solapamiento."
+          }
+        },
+        {
+          "name": "24. Reactivar programación médica",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla si el médico o la subespecialidad están inactivos, o si hay solapamiento."
           }
         }
       ]
@@ -1504,6 +1892,422 @@
               ]
             },
             "description": "Transición `no_localizado` -> `en_busqueda`. Queda registrada como un nuevo movimiento."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Panel de Administración (Usuarios, Roles y Permisos)",
+      "description": "Gestión administrativa de usuarios internos (alta externa/JIT), roles y permisos por subespecialidad. No se administran contraseñas ni credenciales.",
+      "item": [
+        {
+          "name": "1. Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios?estado=activos&rol=administrador",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "activos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                },
+                {
+                  "key": "rol",
+                  "value": "administrador",
+                  "description": "Filtro opcional por rol"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Buscar usuario por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Activar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/activar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "activar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Reactiva un usuario desactivado (idempotente, con auditoría)."
+          }
+        },
+        {
+          "name": "4. Desactivar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/desactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "desactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Baja lógica del usuario (idempotente, con auditoría)."
+          }
+        },
+        {
+          "name": "5. Asignar rol",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rolPrincipal\": \"medico\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "rol"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Valores válidos: personal_citas, enfermeria, medico, administrador, archivo, jefe_enfermeria."
+          }
+        },
+        {
+          "name": "6. Listar roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Listar permisos de un usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/permisos?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "permisos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Listar permisos por subespecialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad?subespecialidadId=1&estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad"
+              ],
+              "query": [
+                {
+                  "key": "subespecialidadId",
+                  "value": "1"
+                },
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "9. Asignar permiso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": 1,\n  \"subespecialidadId\": 1,\n  \"tipoPermiso\": \"autorizar_cupo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad"
+              ]
+            },
+            "description": "Tipos válidos: avanzar_turno, generar_orden_laboratorio, autorizar_cupo. Si existía un permiso inactivo igual, lo reactiva."
+          }
+        },
+        {
+          "name": "10. Desactivar permiso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad/:id/desactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad",
+                ":id",
+                "desactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. Reactivar permiso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla con 400 si el usuario o la subespecialidad están inactivos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Dashboard (Admin)",
+      "description": "Indicadores agregados del panel administrativo calculados en backend.",
+      "item": [
+        {
+          "name": "1. Resumen administrativo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/resumen?fecha=2026-09-15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-15",
+                  "description": "Opcional (ISO YYYY-MM-DD). Por defecto, hoy."
+                }
+              ]
+            },
+            "description": "Citas del día por estado, cupos disponibles/ocupados, inasistencias, tasa de inasistencia y alertas administrativas (CITAS_EN_DIA_NO_LABORABLE, CUPOS_AGOTADOS, DIAS_NO_LABORABLES_PROXIMOS)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Reportes (Admin)",
+      "description": "Reportes operativos agregados calculados en backend. Todos aceptan fechaInicio/fechaFin (por defecto, últimos 30 días).",
+      "item": [
+        {
+          "name": "1. Citas por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas-por-estado?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "citas-por-estado"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Conteo de citas por estado en el rango (total + porEstado)."
+          }
+        },
+        {
+          "name": "2. Demanda por especialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/demanda-por-especialidad?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "demanda-por-especialidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Total de citas, atendidas e inasistencias por especialidad."
+          }
+        },
+        {
+          "name": "3. Utilización de cupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/utilizacion-cupos?fechaInicio=2026-09-01&fechaFin=2026-09-30&subespecialidadId={{subespecialidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "utilizacion-cupos"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": "{{subespecialidadId}}",
+                  "description": "Opcional"
+                }
+              ]
+            },
+            "description": "Capacidad, cupos ocupados/disponibles y porcentaje de utilización. Filtro opcional por subespecialidad."
           }
         }
       ]

@@ -53,7 +53,11 @@ public class CupoDiarioService {
             throw new BusinessException("La fecha " + fecha + " está registrada como día no laborable institucional.");
         }
 
-        cupoDiarioRepository.inicializarCupoSiNoExiste(medicoSubespecialidadId, fecha, ms.getCapacidadMaxima());
+        // Solo intenta inicializar si el cupo no existe: evita el INSERT ... ON CONFLICT
+        // innecesario y mantiene la compatibilidad con H2 en pruebas.
+        if (cupoDiarioRepository.findByMedicoSubespecialidadIdAndFecha(medicoSubespecialidadId, fecha).isEmpty()) {
+            cupoDiarioRepository.inicializarCupoSiNoExiste(medicoSubespecialidadId, fecha, ms.getCapacidadMaxima());
+        }
 
         return cupoDiarioRepository.findByMedicoSubespecialidadIdAndFecha(medicoSubespecialidadId, fecha)
                 .orElseThrow(() -> new ResourceNotFoundException("Error al inicializar el cupo diario para la fecha: " + fecha));
@@ -89,9 +93,12 @@ public class CupoDiarioService {
     /**
      * Consulta disponibilidad en un rango. El filtro principal ahora es por subespecialidad
      * (no por sala física), porque la sala se resuelve por día.
+     *
+     * @param soloDisponibles si es {@code true}, omite los cupos sin disponibilidad.
      */
     @Transactional
-    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, UUID medicoId, UUID medicoSubespecialidadId, LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, UUID medicoId, UUID medicoSubespecialidadId,
+                                                               LocalDate fechaInicio, LocalDate fechaFin, Boolean soloDisponibles) {
         LocalDate inicio = (fechaInicio != null) ? fechaInicio : LocalDate.now();
         LocalDate fin = (fechaFin != null) ? fechaFin : inicio.plusDays(14);
 
@@ -128,6 +135,9 @@ public class CupoDiarioService {
             }
         }
 
+        if (Boolean.TRUE.equals(soloDisponibles)) {
+            return resultado.stream().filter(CupoDiarioResponseDTO::getDisponible).toList();
+        }
         return resultado;
     }
 }
