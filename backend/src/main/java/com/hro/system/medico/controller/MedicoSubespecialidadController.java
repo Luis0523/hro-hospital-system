@@ -1,6 +1,8 @@
 package com.hro.system.medico.controller;
 
 import com.hro.system.common.ApiResponse;
+import com.hro.system.common.EstadoFiltro;
+import com.hro.system.medico.dto.ActualizarMedicoSubespecialidadRequestDTO;
 import com.hro.system.medico.dto.AsignarMedicoSubespecialidadRequestDTO;
 import com.hro.system.medico.dto.MedicoSubespecialidadResponseDTO;
 import com.hro.system.medico.service.MedicoSubespecialidadService;
@@ -32,6 +34,19 @@ public class MedicoSubespecialidadController {
                 .body(ApiResponse.ok(medicoSubespecialidadService.asignarHorario(dto), "Horario y cupo asignado exitosamente"));
     }
 
+    @GetMapping
+    @Operation(summary = "Listar programaciones con filtros",
+            description = "Filtros opcionales: medicoId, subespecialidadId, diaSemana y estado (activos por defecto; inactivos; todos).")
+    public ResponseEntity<ApiResponse<List<MedicoSubespecialidadResponseDTO>>> listar(
+            @RequestParam(required = false) UUID medicoId,
+            @RequestParam(required = false) Long subespecialidadId,
+            @RequestParam(required = false) Short diaSemana,
+            @RequestParam(required = false) String estado) {
+        List<MedicoSubespecialidadResponseDTO> lista = medicoSubespecialidadService.listarConFiltros(
+                medicoId, subespecialidadId, diaSemana, EstadoFiltro.from(estado).aActivo());
+        return ResponseEntity.ok(ApiResponse.ok(lista, "Programaciones obtenidas"));
+    }
+
     @GetMapping("/subespecialidad/{subespecialidadId}")
     @Operation(summary = "Listar horarios por subespecialidad")
     public ResponseEntity<ApiResponse<List<MedicoSubespecialidadResponseDTO>>> listarPorSubespecialidad(@PathVariable Long subespecialidadId) {
@@ -58,10 +73,28 @@ public class MedicoSubespecialidadController {
         return ResponseEntity.ok(ApiResponse.ok(medicoSubespecialidadService.buscarPorId(id), "Asignación localizada"));
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Actualizar programación médica",
+            description = "Modifica horario, capacidad y duración de consulta. No cambia médico, subespecialidad ni día.")
+    public ResponseEntity<ApiResponse<MedicoSubespecialidadResponseDTO>> actualizar(
+            @PathVariable UUID id,
+            @Valid @RequestBody ActualizarMedicoSubespecialidadRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                medicoSubespecialidadService.actualizarHorario(id, dto), "Programación actualizada"));
+    }
+
+    @PatchMapping("/{id}/reactivar")
+    @Operation(summary = "Reactivar programación",
+            description = "Reactiva una programación desactivada. Falla si el médico o la subespecialidad están inactivos o si hay solapamiento.")
+    public ResponseEntity<ApiResponse<MedicoSubespecialidadResponseDTO>> reactivar(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                medicoSubespecialidadService.reactivar(id), "Programación reactivada"));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Desactivar horario (soft delete)")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
-        medicoSubespecialidadService.cambiarEstado(id, false);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Horario desactivado"));
+    public ResponseEntity<ApiResponse<MedicoSubespecialidadResponseDTO>> desactivar(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                medicoSubespecialidadService.cambiarEstado(id, false), "Horario desactivado"));
     }
 }
