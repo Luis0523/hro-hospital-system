@@ -20,6 +20,16 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     @Query("SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnFecha(@Param("fecha") LocalDate fecha);
 
+    @Query("SELECT c.estado, COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha GROUP BY c.estado")
+    List<Object[]> contarPorEstadoYFecha(@Param("fecha") LocalDate fecha);
+
+    @Query("""
+            SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd
+            WHERE cd.fecha IN (SELECT d.fecha FROM DiaNoLaborable d)
+              AND c.estado NOT IN ('cancelada', 'reprogramada', 'atendida', 'no_asistio')
+            """)
+    long contarCitasActivasEnDiasNoLaborables();
+
     @Query("""
             SELECT c FROM Cita c
               JOIN FETCH c.paciente

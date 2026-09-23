@@ -2185,6 +2185,37 @@
           }
         }
       ]
+    },
+    {
+      "name": "08. Dashboard (Admin)",
+      "description": "Indicadores agregados del panel administrativo calculados en backend.",
+      "item": [
+        {
+          "name": "1. Resumen administrativo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/resumen?fecha=2026-09-15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-15",
+                  "description": "Opcional (ISO YYYY-MM-DD). Por defecto, hoy."
+                }
+              ]
+            },
+            "description": "Citas del día por estado, cupos disponibles/ocupados, inasistencias, tasa de inasistencia y alertas administrativas (CITAS_EN_DIA_NO_LABORABLE, CUPOS_AGOTADOS, DIAS_NO_LABORABLES_PROXIMOS)."
+          }
+        }
+      ]
     }
   ],
   "event": [

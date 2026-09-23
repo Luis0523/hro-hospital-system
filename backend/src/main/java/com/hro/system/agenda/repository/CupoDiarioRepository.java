@@ -17,6 +17,8 @@ public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
 
     Optional<CupoDiario> findByMedicoSubespecialidadIdAndFecha(UUID medicoSubespecialidadId, LocalDate fecha);
 
+    List<CupoDiario> findByFecha(LocalDate fecha);
+
     @Query(value = "SELECT fn_incrementar_cupo(:cupoDiarioId)", nativeQuery = true)
     boolean incrementarCupoAtomico(@Param("cupoDiarioId") UUID cupoDiarioId);
 
