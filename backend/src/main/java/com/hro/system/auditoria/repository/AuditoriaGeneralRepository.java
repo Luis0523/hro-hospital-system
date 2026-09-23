@@ -4,12 +4,13 @@ import com.hro.system.auditoria.entity.AuditoriaGeneral;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 
 @Repository
-public interface AuditoriaGeneralRepository extends JpaRepository<AuditoriaGeneral, Long> {
+public interface AuditoriaGeneralRepository extends JpaRepository<AuditoriaGeneral, Long>, JpaSpecificationExecutor<AuditoriaGeneral> {
 
     Page<AuditoriaGeneral> findByTablaAfectadaIgnoreCase(String tablaAfectada, Pageable pageable);
 
