@@ -35,11 +35,7 @@ public class MedicoService {
             throw new BusinessException("Ya existe un médico registrado con el número de colegiado: " + dto.getNumeroColegiado());
         }
 
-        UsuarioReferencia usuario = null;
-        if (dto.getUsuarioReferenciaId() != null) {
-            usuario = usuarioReferenciaRepository.findById(dto.getUsuarioReferenciaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioReferenciaId()));
-        }
+        UsuarioReferencia usuario = resolverUsuario(dto.getUsuarioReferenciaId());
 
         Medico medico = Medico.builder()
                 .nombres(dto.getNombres().trim())
@@ -71,11 +67,7 @@ public class MedicoService {
             throw new BusinessException("Ya existe otro médico registrado con el colegiado: " + dto.getNumeroColegiado());
         }
 
-        UsuarioReferencia usuario = null;
-        if (dto.getUsuarioReferenciaId() != null) {
-            usuario = usuarioReferenciaRepository.findById(dto.getUsuarioReferenciaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", dto.getUsuarioReferenciaId()));
-        }
+        UsuarioReferencia usuario = resolverUsuario(dto.getUsuarioReferenciaId());
 
         medico.setNombres(dto.getNombres().trim());
         medico.setNumeroColegiado(dto.getNumeroColegiado().trim());
@@ -83,20 +75,60 @@ public class MedicoService {
         medico.setActivo(dto.getActivo());
 
         Medico actualizado = medicoRepository.save(medico);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("medico")
+                .entidadId(actualizado.getId())
+                .accion("actualizar")
+                .valoresNuevos(actualizado)
+                .build());
+
         return mapToDTO(actualizado);
     }
 
     @Transactional
-    public void cambiarEstado(UUID id, boolean activo) {
+    public MedicoResponseDTO cambiarEstado(UUID id, boolean activo) {
         Medico medico = medicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "id", id));
+
+        if (Boolean.valueOf(activo).equals(medico.getActivo())) {
+            return mapToDTO(medico);
+        }
+
         medico.setActivo(activo);
-        medicoRepository.save(medico);
+        Medico guardado = medicoRepository.save(medico);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("medico")
+                .entidadId(guardado.getId())
+                .accion(activo ? "reactivar" : "desactivar")
+                .valoresNuevos(guardado)
+                .build());
+
+        log.info("Médico {} {}", guardado.getNombres(), activo ? "reactivado" : "desactivado");
+        return mapToDTO(guardado);
+    }
+
+    @Transactional
+    public MedicoResponseDTO reactivar(UUID id) {
+        return cambiarEstado(id, true);
     }
 
     @Transactional(readOnly = true)
     public List<MedicoResponseDTO> listarActivos() {
         return medicoRepository.findByActivoTrue().stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MedicoResponseDTO> listarPorEstado(Boolean activo) {
+        if (activo == null) {
+            return medicoRepository.findAll().stream()
+                    .map(this::mapToDTO)
+                    .toList();
+        }
+        return medicoRepository.findByActivo(activo).stream()
                 .map(this::mapToDTO)
                 .toList();
     }
@@ -113,6 +145,18 @@ public class MedicoService {
         Medico medico = medicoRepository.findByNumeroColegiado(numeroColegiado.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Medico", "número de colegiado", numeroColegiado));
         return mapToDTO(medico);
+    }
+
+    private UsuarioReferencia resolverUsuario(Long usuarioReferenciaId) {
+        if (usuarioReferenciaId == null) {
+            return null;
+        }
+        UsuarioReferencia usuario = usuarioReferenciaRepository.findById(usuarioReferenciaId)
+                .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioReferenciaId));
+        if (!Boolean.TRUE.equals(usuario.getActivo())) {
+            throw new BusinessException("El usuario de referencia " + usuario.getNombreMostrar() + " está inactivo.");
+        }
+        return usuario;
     }
 
     private MedicoResponseDTO mapToDTO(Medico m) {
