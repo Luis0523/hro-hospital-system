@@ -12,6 +12,8 @@ public interface EspecialidadRepository extends JpaRepository<Especialidad, Long
 
     List<Especialidad> findByActivoTrue();
 
+    List<Especialidad> findByActivo(boolean activo);
+
     Optional<Especialidad> findByNombreIgnoreCase(String nombre);
 
     boolean existsByNombreIgnoreCaseAndIdNot(String nombre, Long id);

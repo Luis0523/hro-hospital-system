@@ -1,6 +1,7 @@
 package com.hro.system.espacio.controller;
 
 import com.hro.system.common.ApiResponse;
+import com.hro.system.common.EstadoFiltro;
 import com.hro.system.espacio.dto.ActualizarEspacioFisicoRequestDTO;
 import com.hro.system.espacio.dto.CrearEspacioFisicoRequestDTO;
 import com.hro.system.espacio.dto.EspacioFisicoResponseDTO;
@@ -39,15 +40,22 @@ public class EspacioFisicoController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar espacios físicos activos")
-    public ResponseEntity<ApiResponse<List<EspacioFisicoResponseDTO>>> listar() {
-        return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.listarActivos(), "Listado de espacios físicos"));
+    @Operation(summary = "Listar espacios físicos", description = "Filtra por estado: activos (por defecto), inactivos o todos.")
+    public ResponseEntity<ApiResponse<List<EspacioFisicoResponseDTO>>> listar(
+            @RequestParam(required = false) String estado) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                espacioFisicoService.listarPorEstado(EstadoFiltro.from(estado).aActivo()),
+                "Listado de espacios físicos"));
     }
 
     @GetMapping("/nivel/{nivel}")
-    @Operation(summary = "Listar espacios físicos por nivel")
-    public ResponseEntity<ApiResponse<List<EspacioFisicoResponseDTO>>> listarPorNivel(@PathVariable Short nivel) {
-        return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.listarPorNivel(nivel), "Espacios del nivel " + nivel));
+    @Operation(summary = "Listar espacios físicos por nivel", description = "Filtra por estado: activos (por defecto), inactivos o todos.")
+    public ResponseEntity<ApiResponse<List<EspacioFisicoResponseDTO>>> listarPorNivel(
+            @PathVariable Short nivel,
+            @RequestParam(required = false) String estado) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                espacioFisicoService.listarPorNivel(nivel, EstadoFiltro.from(estado).aActivo()),
+                "Espacios del nivel " + nivel));
     }
 
     @GetMapping("/{id}")
@@ -56,10 +64,15 @@ public class EspacioFisicoController {
         return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.buscarPorId(id), "Espacio físico localizado"));
     }
 
+    @PatchMapping("/{id}/reactivar")
+    @Operation(summary = "Reactivar espacio físico", description = "Vuelve a poner en servicio un espacio previamente dado de baja (baja lógica).")
+    public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> reactivar(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.reactivar(id), "Espacio físico reactivado"));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Poner fuera de servicio (soft delete)", description = "Marca el espacio como inactivo (baja o mantenimiento).")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
-        espacioFisicoService.cambiarEstado(id, false);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Espacio físico fuera de servicio"));
+    public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> desactivar(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(espacioFisicoService.cambiarEstado(id, false), "Espacio físico fuera de servicio"));
     }
 }

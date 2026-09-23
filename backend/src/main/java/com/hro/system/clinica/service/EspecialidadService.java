@@ -64,11 +64,31 @@ public class EspecialidadService {
     }
 
     @Transactional
-    public void cambiarEstado(Long id, boolean activo) {
+    public EspecialidadResponseDTO cambiarEstado(Long id, boolean activo) {
         Especialidad esp = especialidadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Especialidad", "id", id));
+
+        if (Boolean.valueOf(activo).equals(esp.getActivo())) {
+            return mapToDTO(esp);
+        }
+
         esp.setActivo(activo);
-        especialidadRepository.save(esp);
+        Especialidad guardada = especialidadRepository.save(esp);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("especialidad")
+                .entidadId(guardada.getId())
+                .accion(activo ? "reactivar" : "desactivar")
+                .valoresNuevos(guardada)
+                .build());
+
+        log.info("Especialidad {} {}", guardada.getNombre(), activo ? "reactivada" : "desactivada");
+        return mapToDTO(guardada);
+    }
+
+    @Transactional
+    public EspecialidadResponseDTO reactivar(Long id) {
+        return cambiarEstado(id, true);
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +101,16 @@ public class EspecialidadService {
     @Transactional(readOnly = true)
     public List<EspecialidadResponseDTO> listarTodas() {
         return especialidadRepository.findAll().stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EspecialidadResponseDTO> listarPorEstado(Boolean activo) {
+        if (activo == null) {
+            return listarTodas();
+        }
+        return especialidadRepository.findByActivo(activo).stream()
                 .map(this::mapToDTO)
                 .toList();
     }
