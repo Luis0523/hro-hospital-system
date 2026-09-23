@@ -401,6 +401,11 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `PUT /api/v1/dias-no-laborables/{id}` `{ motivo }` edita el motivo (la fecha no se modifica; para cambiarla, eliminar y volver a crear).
    - `DELETE /api/v1/dias-no-laborables/{id}` habilita la fecha de nuevo.
    - **Códigos de error estructurados:** toda respuesta de `ApiResponse` puede incluir `codigo` (nullable) además de `message`; usar `codigo` para el manejo programático y `message` para mostrar al usuario.
+6. **Disponibilidad y reprogramación (Admin):**
+   - `GET /api/v1/cupos?soloDisponibles=true&subespecialidadId=&medicoId=&medicoSubespecialidadId=&fechaInicio=&fechaFin=` → disponibilidad por programación y rango; `soloDisponibles=true` omite los cupos sin disponibilidad.
+   - `GET /api/v1/citas/{id}/disponibilidad?fechaInicio=&fechaFin=` → cupos de la **misma programación** (médico + subespecialidad) de la cita, para reprogramar **conservando médico y subespecialidad**.
+   - `POST /api/v1/citas/{id}/reprogramar` `{ nuevoCupoDiarioId, motivo }` confirma el cambio (2 pasos: consultar y confirmar). Si el cupo está lleno → `409` (`CUPOS_AGOTADOS`).
+   - **No existe reprogramación automática**: el administrador decide cada cambio. Flujo definido en [`docs/FLUJO_ADMIN_DISPONIBILIDAD.md`](./FLUJO_ADMIN_DISPONIBILIDAD.md).
 
 ---
 

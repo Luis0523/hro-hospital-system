@@ -343,7 +343,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28&soloDisponibles=true",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -362,10 +362,15 @@
                 {
                   "key": "fechaFin",
                   "value": "2026-09-28"
+                },
+                {
+                  "key": "soloDisponibles",
+                  "value": "true",
+                  "description": "Opcional. Si es true, omite los cupos sin disponibilidad."
                 }
               ]
             },
-            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas."
+            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas. Filtros: subespecialidadId, medicoId, medicoSubespecialidadId, fechaInicio, fechaFin, soloDisponibles."
           }
         },
         {
@@ -529,6 +534,41 @@
               ]
             },
             "description": "Ejecuta la función atómica `fn_cierre_diario_inasistencias` en PostgreSQL. Pasa citas pendientes a 'no_asistio' sin liberar cupo."
+          }
+        },
+        {
+          "name": "8. Disponibilidad para reprogramar una cita",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id/disponibilidad?fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                ":id",
+                "disponibilidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-14"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-28"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{citaId}}"
+                }
+              ]
+            },
+            "description": "Cupos de la misma programación (médico + subespecialidad) de la cita, para reprogramar conservando médico y subespecialidad. Luego confirmar con POST /citas/:id/reprogramar."
           }
         }
       ]

@@ -1,5 +1,6 @@
 package com.hro.system.cita.controller;
 
+import com.hro.system.agenda.dto.CupoDiarioResponseDTO;
 import com.hro.system.cita.dto.CambiarEstadoCitaRequestDTO;
 import com.hro.system.cita.dto.CitaHistorialResponseDTO;
 import com.hro.system.cita.dto.CitaResponseDTO;
@@ -10,10 +11,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,6 +68,17 @@ public class CitaController {
         CitaResponseDTO response = citaService.reprogramarCita(id, dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Cita reprogramada exitosamente"));
+    }
+
+    @GetMapping("/{id}/disponibilidad")
+    @Operation(summary = "Consultar disponibilidad para reprogramar una cita",
+            description = "Devuelve los cupos de la misma programación (médico + subespecialidad) de la cita en el rango indicado, para reprogramar conservando médico y subespecialidad.")
+    public ResponseEntity<ApiResponse<List<CupoDiarioResponseDTO>>> consultarDisponibilidadParaCita(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
+        List<CupoDiarioResponseDTO> cupos = citaService.consultarDisponibilidadParaCita(id, fechaInicio, fechaFin);
+        return ResponseEntity.ok(ApiResponse.ok(cupos, "Disponibilidad para reprogramación obtenida"));
     }
 
     @PostMapping("/{id}/cancelar")
