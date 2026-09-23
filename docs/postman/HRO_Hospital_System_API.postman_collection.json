@@ -2311,6 +2311,64 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Auditoría (Admin)",
+      "description": "Consulta de la bitácora. Solo rol administrador (otros roles -> 403 ACCESO_DENEGADO). Paginada y con filtros combinables.",
+      "item": [
+        {
+          "name": "1. Consultar bitácora",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?tabla=&usuarioId=&accion=&fechaInicio=2026-09-01&fechaFin=2026-09-30&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "tabla",
+                  "value": "",
+                  "description": "Opcional (ej. cita, medico)"
+                },
+                {
+                  "key": "usuarioId",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "accion",
+                  "value": "",
+                  "description": "Opcional (crear, actualizar, eliminar, activar, desactivar, reactivar)"
+                },
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01",
+                  "description": "Opcional (ISO YYYY-MM-DD)"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30",
+                  "description": "Opcional (ISO YYYY-MM-DD)"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Devuelve AuditoriaResponseDTO paginado (sin exponer la entidad JPA). Filtros combinables por tabla, usuario, acción y rango de fechas."
+          }
+        }
+      ]
     }
   ],
   "event": [

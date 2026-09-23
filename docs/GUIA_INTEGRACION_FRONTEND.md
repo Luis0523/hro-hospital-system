@@ -414,6 +414,10 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `GET /api/v1/reportes/demanda-por-especialidad` → `items` con `totalCitas`, `atendidas`, `inasistencias` por especialidad.
    - `GET /api/v1/reportes/utilizacion-cupos?subespecialidadId=` → `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `utilizacionPorcentaje`.
    - Si `fechaFin < fechaInicio` → `400`. El frontend solo muestra; no agrega en cliente.
+9. **Auditoría administrativa** (solo rol `administrador`; otros roles → `403` `ACCESO_DENEGADO`):
+   - `GET /api/v1/auditoria?tabla=&usuarioId=&accion=&fechaInicio=&fechaFin=&page=&size=` → página de `AuditoriaResponseDTO` (`id`, `tablaAfectada`, `entidadId`, `accion`, `usuarioId`, `usuarioNombre`, `valoresAnteriores`, `valoresNuevos`, `fecha`). Paginada (por defecto `size=20`, orden `fecha` DESC).
+   - No expone la entidad JPA ni relaciones lazy. Vista de solo lectura.
+   - Los valores `anteriores`/`nuevos` son JSON en texto; el endpoint está restringido por rol para reducir la exposición de datos sensibles (PII).
 
 ---
 
