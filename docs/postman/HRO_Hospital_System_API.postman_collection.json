@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "hro-api-collection-v1",
-    "name": "HRO Hospital System - API Collection (v1.0)",
-    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Autenticación simulada (perfil y modo mock)\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada escalonada, reprogramación genealógica, cancelación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos, horarios por día de clínica y disponibilidad de cupos diarios\n\nAUTENTICACIÓN (modo mock): todas las peticiones envían automáticamente las cabeceras X-Usuario-Id, X-Usuario-Rol y X-Usuario-Nombre (ver script de pre-request de la colección). Puedes cambiar de estación modificando las variables usuarioExterno y usuarioRol.\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
+    "_postman_id": "hro-api-collection-v2",
+    "name": "HRO Hospital System - API Collection (v2.2.0)",
+    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Autenticación simulada (perfil y modo mock)\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada escalonada, reprogramación genealógica, cancelación, disponibilidad para reprogramación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos, horarios por día de clínica y disponibilidad de cupos diarios\n- Panel de Administración (usuarios, roles y permisos; dashboard; reportes; auditoría)\n\nAUTENTICACIÓN (modo mock): todas las peticiones envían automáticamente las cabeceras X-Usuario-Id, X-Usuario-Rol y X-Usuario-Nombre (ver script de pre-request de la colección). Puedes cambiar de estación modificando las variables usuarioExterno y usuarioRol.\n\nNOTA: el endpoint de auditoría (`GET /auditoria`) exige rol administrador; con otro rol responde 403 (ACCESO_DENEGADO).\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
