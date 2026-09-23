@@ -2216,6 +2216,101 @@
           }
         }
       ]
+    },
+    {
+      "name": "09. Reportes (Admin)",
+      "description": "Reportes operativos agregados calculados en backend. Todos aceptan fechaInicio/fechaFin (por defecto, últimos 30 días).",
+      "item": [
+        {
+          "name": "1. Citas por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas-por-estado?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "citas-por-estado"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Conteo de citas por estado en el rango (total + porEstado)."
+          }
+        },
+        {
+          "name": "2. Demanda por especialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/demanda-por-especialidad?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "demanda-por-especialidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Total de citas, atendidas e inasistencias por especialidad."
+          }
+        },
+        {
+          "name": "3. Utilización de cupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/utilizacion-cupos?fechaInicio=2026-09-01&fechaFin=2026-09-30&subespecialidadId={{subespecialidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "utilizacion-cupos"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": "{{subespecialidadId}}",
+                  "description": "Opcional"
+                }
+              ]
+            },
+            "description": "Capacidad, cupos ocupados/disponibles y porcentaje de utilización. Filtro opcional por subespecialidad."
+          }
+        }
+      ]
     }
   ],
   "event": [

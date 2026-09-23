@@ -31,6 +31,28 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     long contarCitasActivasEnDiasNoLaborables();
 
     @Query("""
+            SELECT c.estado, COUNT(c) FROM Cita c JOIN c.cupoDiario cd
+            WHERE cd.fecha BETWEEN :inicio AND :fin
+            GROUP BY c.estado
+            """)
+    List<Object[]> contarPorEstadoEnRango(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    @Query("""
+            SELECT e.id, e.nombre, COUNT(c),
+                   SUM(CASE WHEN c.estado = 'atendida' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN c.estado = 'no_asistio' THEN 1 ELSE 0 END)
+            FROM Cita c
+              JOIN c.cupoDiario cd
+              JOIN cd.medicoSubespecialidad ms
+              JOIN ms.subespecialidad s
+              JOIN s.especialidad e
+            WHERE cd.fecha BETWEEN :inicio AND :fin
+            GROUP BY e.id, e.nombre
+            ORDER BY COUNT(c) DESC
+            """)
+    List<Object[]> demandaPorEspecialidadEnRango(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    @Query("""
             SELECT c FROM Cita c
               JOIN FETCH c.paciente
               JOIN FETCH c.cupoDiario cd

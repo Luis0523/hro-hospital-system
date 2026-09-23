@@ -42,4 +42,13 @@ public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
     List<CupoDiario> findByMedicoSubespecialidad_Medico_IdAndFechaBetween(UUID medicoId, LocalDate desde, LocalDate hasta);
 
     List<CupoDiario> findByMedicoSubespecialidadIdAndFechaBetween(UUID medicoSubespecialidadId, LocalDate desde, LocalDate hasta);
+
+    @Query("""
+            SELECT cd FROM CupoDiario cd
+            WHERE cd.fecha BETWEEN :inicio AND :fin
+              AND (:subespecialidadId IS NULL OR cd.medicoSubespecialidad.subespecialidad.id = :subespecialidadId)
+            """)
+    List<CupoDiario> buscarParaUtilizacion(@Param("inicio") LocalDate inicio,
+                                           @Param("fin") LocalDate fin,
+                                           @Param("subespecialidadId") Long subespecialidadId);
 }

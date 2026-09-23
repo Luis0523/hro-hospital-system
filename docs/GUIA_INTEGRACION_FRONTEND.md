@@ -409,6 +409,11 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
 7. **Dashboard administrativo:**
    - `GET /api/v1/dashboard/resumen?fecha=YYYY-MM-DD` (por defecto, hoy) → indicadores agregados calculados en backend: `totalCitas`, `citasPendientes/Confirmadas/Atendidas/Canceladas/Reprogramadas`, `inasistencias`, `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `tasaInasistencia` y `alertas`.
    - Alertas (`codigo` / `severidad`): `CITAS_EN_DIA_NO_LABORABLE` (CRITICA), `CUPOS_AGOTADOS` (ADVERTENCIA), `DIAS_NO_LABORABLES_PROXIMOS` (INFO). El frontend solo las muestra; no recalcula indicadores.
+8. **Reportes administrativos** (todos con `fechaInicio`/`fechaFin`; por defecto, últimos 30 días):
+   - `GET /api/v1/reportes/citas-por-estado` → `total` y `porEstado` (conteo por estado).
+   - `GET /api/v1/reportes/demanda-por-especialidad` → `items` con `totalCitas`, `atendidas`, `inasistencias` por especialidad.
+   - `GET /api/v1/reportes/utilizacion-cupos?subespecialidadId=` → `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `utilizacionPorcentaje`.
+   - Si `fechaFin < fechaInicio` → `400`. El frontend solo muestra; no agrega en cliente.
 
 ---
 
