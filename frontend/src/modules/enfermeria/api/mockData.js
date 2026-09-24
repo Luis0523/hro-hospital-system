@@ -8,6 +8,41 @@ export const clinicasMock = [
   { id: 9, nombre: 'Clínica 09 - Ginecología', cupos: 0 },
 ]
 
+export const estacionesMock = [
+  {
+    id: 'box-04',
+    terminal: 'BOX-04 Triage',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 101 - Medicina General',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+    estado: 'disponible',
+  },
+  {
+    id: 'box-05',
+    terminal: 'BOX-05 Pediatría',
+    clinicaId: 2,
+    clinicaNombre: 'Clínica 102 - Pediatría',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+    estado: 'disponible',
+  },
+  {
+    id: 'box-06',
+    terminal: 'BOX-06 Cardiología',
+    clinicaId: 4,
+    clinicaNombre: 'Clínica 104 - Cardiología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    estado: 'ocupada',
+  },
+  {
+    id: 'box-07',
+    terminal: 'BOX-07 Traumatología',
+    clinicaId: 7,
+    clinicaNombre: 'Clínica 107 - Traumatología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    estado: 'disponible',
+  },
+]
+
 export const pacientesMock = [
   {
     id: 1,
