@@ -17,6 +17,20 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     List<Cita> findByCupoDiarioId(UUID cupoDiarioId);
     List<Cita> findByEstado(String estado);
 
+    @Query("""
+            SELECT c FROM Cita c
+              JOIN FETCH c.paciente
+              JOIN FETCH c.cupoDiario cd
+              JOIN FETCH cd.medicoSubespecialidad ms
+              JOIN FETCH ms.subespecialidad s
+            WHERE cd.fecha = :fecha
+              AND (:subespecialidadId IS NULL OR s.id = :subespecialidadId)
+              AND c.estado NOT IN ('cancelada', 'reprogramada')
+            ORDER BY c.horaEstimada ASC
+            """)
+    List<Cita> buscarCitasParaArchivo(@Param("fecha") LocalDate fecha,
+                                      @Param("subespecialidadId") Long subespecialidadId);
+
     @Query("SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnFecha(@Param("fecha") LocalDate fecha);
 

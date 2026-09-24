@@ -1893,6 +1893,211 @@
             },
             "description": "Transición `no_localizado` -> `en_busqueda`. Queda registrada como un nuevo movimiento."
           }
+        },
+        {
+          "name": "21. Consulta diaria de expedientes (jornada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/jornada?fecha=2026-11-09&subespecialidadId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "jornada"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09",
+                  "description": "Opcional (por defecto, hoy)"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": "",
+                  "description": "Opcional (unidad)"
+                }
+              ]
+            },
+            "description": "Citas de la fecha con paciente, número de expediente, ciclo/estado actual y ubicación base."
+          }
+        },
+        {
+          "name": "22. Buscar expediente por código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/buscar?codigo={{numeroExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "{{numeroExpediente}}",
+                  "description": "UUID (QR) o número (código de barras)"
+                }
+              ]
+            },
+            "description": "Resuelve UUID o número exacto. Código inexistente -> 404."
+          }
+        },
+        {
+          "name": "23. Crear acta de recepción",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"2026-11-09\",\n  \"subespecialidadId\": 1,\n  \"observaciones\": \"Entrega de expedientes del día\",\n  \"expedienteIds\": [\"{{expedienteId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion"
+              ]
+            },
+            "description": "Crea el acta (número ACT-YYYY-NNNN) con N expedientes; quién entrega por defecto es el usuario autenticado."
+          }
+        },
+        {
+          "name": "24. Listar actas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion?fecha=2026-11-09&subespecialidadId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "25. Obtener acta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "26. PDF de acta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion/:id/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion",
+                ":id",
+                "pdf"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Descarga el PDF del acta (application/pdf)."
+          }
+        },
+        {
+          "name": "27. Resumen operativo diario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivo/resumen?fecha=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivo",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09",
+                  "description": "Opcional (por defecto, hoy)"
+                }
+              ]
+            },
+            "description": "Indicadores diarios por estado del ciclo y expedientes nuevos."
+          }
+        },
+        {
+          "name": "28. PDF del resumen diario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivo/resumen/pdf?fecha=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivo",
+                "resumen",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09"
+                }
+              ]
+            },
+            "description": "Descarga el PDF del resumen diario (application/pdf)."
+          }
         }
       ]
     },
