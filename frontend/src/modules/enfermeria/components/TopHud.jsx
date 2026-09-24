@@ -10,6 +10,7 @@ export default function TopHud({
   onToggleTablero,
   onPasarSiguiente,
   onVerPacientes,
+  onAbrirPerfil,
   pasandoSiguiente = false,
 }) {
   const { tema, alternarTema } = useTema()
@@ -49,9 +50,16 @@ export default function TopHud({
             <p className="text-title-sm text-on-surface">{usuario?.nombre}</p>
             <p className="text-label-sm uppercase text-on-surface-variant">{usuario?.puesto}</p>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-on-primary">
+          <button
+            type="button"
+            onClick={onAbrirPerfil}
+            aria-label="Menú de usuario"
+            aria-haspopup="dialog"
+            title="Menú de usuario"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-on-primary transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-container"
+          >
             <Icon name="person" className="text-[20px]" />
-          </div>
+          </button>
         </div>
       </div>
 

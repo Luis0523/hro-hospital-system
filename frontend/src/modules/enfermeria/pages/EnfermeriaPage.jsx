@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
@@ -31,13 +32,15 @@ import ConfirmacionCita from '../components/ConfirmacionCita.jsx'
 import ColaPanel from '../components/ColaPanel.jsx'
 import AgendaPanel from '../components/AgendaPanel.jsx'
 import PacientesTemporalModal from '../components/PacientesTemporalModal.jsx'
+import MenuUsuario from '../components/MenuUsuario.jsx'
 
 const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
 
 export default function EnfermeriaPage() {
-  const { usuario } = useAuth()
+  const { usuario, cerrarSesion } = useAuth()
   const { mostrarToast } = useToast()
+  const navigate = useNavigate()
 
   const ahora = new Date()
   const scannerRef = useRef(null)
@@ -72,6 +75,7 @@ export default function EnfermeriaPage() {
   const [sinCupo, setSinCupo] = useState(false)
   const [cargandoDias, setCargandoDias] = useState(false)
   const [pacientesAbierto, setPacientesAbierto] = useState(false)
+  const [perfilAbierto, setPerfilAbierto] = useState(false)
 
   const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
 
@@ -346,6 +350,13 @@ export default function EnfermeriaPage() {
     abrirAgenda(paciente)
   }
 
+  function confirmarCierreSesion() {
+    setPerfilAbierto(false)
+    cerrarSesion()
+    mostrarToast({ tone: 'info', title: 'Sesión cerrada', message: 'Puede volver a ingresar.' })
+    navigate('/sesion-cerrada')
+  }
+
   function abrirAgenda(paciente = null) {
     if (paciente) setPacienteAgenda(paciente)
     setCitaCreada(null)
@@ -435,6 +446,7 @@ export default function EnfermeriaPage() {
         onToggleTablero={alternarTablero}
         onPasarSiguiente={manejarPasarSiguiente}
         onVerPacientes={abrirPacientes}
+        onAbrirPerfil={() => setPerfilAbierto(true)}
         pasandoSiguiente={pasando}
       />
 
@@ -514,6 +526,14 @@ export default function EnfermeriaPage() {
         onCerrar={() => setPacientesAbierto(false)}
         onCargarPacientes={listarPacientes}
         onSeleccionarPaciente={seleccionarPacienteTemporal}
+      />
+
+      <MenuUsuario
+        abierto={perfilAbierto}
+        onCerrar={() => setPerfilAbierto(false)}
+        usuario={usuario}
+        terminal={usuario?.terminal}
+        onCerrarSesion={confirmarCierreSesion}
       />
 
       <ScannerDock
