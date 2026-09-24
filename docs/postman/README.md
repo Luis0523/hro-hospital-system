@@ -39,7 +39,7 @@ La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de v
 
 El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md).
 
-## Panel de Administración (backend v1.4.0)
+## Panel de Administración (backend v1.5.0)
 
 Las carpetas `07`–`10` cubren el backend del Panel de Administración (épica SCRUM-109): usuarios/roles/permisos, dashboard, reportes y auditoría; además de los filtros por estado y la reactivación en catálogos, médicos y programación (carpeta `04`), y la disponibilidad para reprogramación (carpeta `02`).
 

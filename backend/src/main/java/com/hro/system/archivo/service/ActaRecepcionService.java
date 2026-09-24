@@ -18,13 +18,16 @@ import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +109,18 @@ public class ActaRecepcionService {
 
     @Transactional(readOnly = true)
     public List<ActaRecepcionResumenDTO> listar(LocalDate fecha, Long subespecialidadId) {
-        return actaRepository.buscar(fecha, subespecialidadId).stream()
+        Specification<ActaRecepcion> filtro = (root, query, cb) -> {
+            List<Predicate> predicados = new ArrayList<>();
+            if (fecha != null) {
+                predicados.add(cb.equal(root.get("fecha"), fecha));
+            }
+            if (subespecialidadId != null) {
+                predicados.add(cb.equal(root.get("subespecialidad").get("id"), subespecialidadId));
+            }
+            query.orderBy(cb.desc(root.get("creadoEn")));
+            return cb.and(predicados.toArray(new Predicate[0]));
+        };
+        return actaRepository.findAll(filtro).stream()
                 .map(this::mapResumen)
                 .toList();
     }

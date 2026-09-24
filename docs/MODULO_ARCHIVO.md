@@ -1,7 +1,7 @@
 # Módulo de Archivo — Seguimiento de Expedientes Físicos
 
 **Sistema Hospitalario HRO — Hospital Regional de Occidente**
-**Backend:** `1.4.0` · **Migraciones BD:** `V6__seguimiento_expedientes_fisicos.sql`, `V9__actas_recepcion_expedientes.sql`
+**Backend:** `1.5.0` · **Migraciones BD:** `V6__seguimiento_expedientes_fisicos.sql`, `V9__actas_recepcion_expedientes.sql`
 **Rol de la estación:** `archivo`
 **Base URL:** `{{baseUrl}}` → `http://localhost:8081/api/v1` (o `https://hro-hospital-api.fly.dev/api/v1`)
 
