@@ -69,7 +69,7 @@ export default function ColaPanel({
                     type="button"
                     disabled={cargandoId === turno.id}
                     onClick={() => onLlamar(turno)}
-                    className={`${botonAccion} bg-primary-container text-on-primary hover:bg-primary`}
+                    className={`${botonAccion} bg-primary-container text-on-primary hover:brightness-110`}
                   >
                     <Icon name="campaign" className="text-[16px]" />
                     Llamar
@@ -81,7 +81,7 @@ export default function ColaPanel({
                       type="button"
                       disabled={cargandoId === turno.id}
                       onClick={() => onAtendido(turno)}
-                      className={`${botonAccion} bg-emerald-600 text-white hover:bg-emerald-700`}
+                      className={`${botonAccion} bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400`}
                     >
                       <Icon name="check_circle" className="text-[16px]" />
                       Atendido
@@ -128,7 +128,7 @@ export default function ColaPanel({
                   type="button"
                   disabled={cargandoId === turno.id}
                   onClick={() => onReintegrar(turno)}
-                  className={`${botonAccion} bg-primary-container text-on-primary hover:bg-primary`}
+                  className={`${botonAccion} bg-primary-container text-on-primary hover:brightness-110`}
                 >
                   <Icon name="undo" className="text-[16px]" />
                   Reintegrar

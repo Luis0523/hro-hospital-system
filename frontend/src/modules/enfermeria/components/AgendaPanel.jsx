@@ -33,7 +33,7 @@ function ComprobanteCita({ cita, onCerrar }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
           <Icon name="event_available" className="text-[28px]" />
         </span>
         <p className="text-headline-sm text-on-surface">Cita agendada</p>

@@ -4,6 +4,56 @@
 
 :root {
   color-scheme: light;
+  --hro-surface: 250 248 255;
+  --hro-surface-container-lowest: 255 255 255;
+  --hro-surface-container-low: 242 243 255;
+  --hro-surface-container: 234 237 255;
+  --hro-surface-container-high: 226 231 255;
+  --hro-surface-container-highest: 218 226 253;
+  --hro-on-surface: 19 27 46;
+  --hro-on-surface-variant: 64 71 79;
+  --hro-outline: 112 120 129;
+  --hro-outline-variant: 192 199 209;
+  --hro-primary: 0 80 125;
+  --hro-primary-container: 3 105 161;
+  --hro-on-primary: 255 255 255;
+  --hro-secondary: 0 101 145;
+  --hro-secondary-container: 57 184 253;
+  --hro-secondary-fixed: 201 230 255;
+  --hro-secondary-fixed-dim: 137 206 255;
+  --hro-on-secondary-container: 0 70 102;
+  --hro-error: 186 26 26;
+  --hro-on-error: 255 255 255;
+  --hro-error-container: 255 218 214;
+  --hro-on-error-container: 147 0 10;
+  --hro-surface-variant: 218 226 253;
+}
+
+.dark {
+  color-scheme: dark;
+  --hro-surface: 15 20 32;
+  --hro-surface-container-lowest: 22 29 46;
+  --hro-surface-container-low: 27 36 55;
+  --hro-surface-container: 32 43 66;
+  --hro-surface-container-high: 39 51 78;
+  --hro-surface-container-highest: 47 61 92;
+  --hro-on-surface: 230 234 245;
+  --hro-on-surface-variant: 179 188 207;
+  --hro-outline: 138 148 168;
+  --hro-outline-variant: 57 67 92;
+  --hro-primary: 143 201 255;
+  --hro-primary-container: 31 111 178;
+  --hro-on-primary: 255 255 255;
+  --hro-secondary: 132 207 255;
+  --hro-secondary-container: 90 200 255;
+  --hro-secondary-fixed: 18 59 87;
+  --hro-secondary-fixed-dim: 43 111 156;
+  --hro-on-secondary-container: 191 226 255;
+  --hro-error: 255 180 171;
+  --hro-on-error: 105 0 5;
+  --hro-error-container: 92 26 23;
+  --hro-on-error-container: 255 218 214;
+  --hro-surface-variant: 47 61 92;
 }
 
 html,

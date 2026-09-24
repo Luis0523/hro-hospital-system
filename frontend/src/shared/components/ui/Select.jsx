@@ -4,7 +4,7 @@ import { Listbox, Transition } from '@headlessui/react'
 function ChevronDown() {
   return (
     <svg
-      className="h-4 w-4 text-slate-400"
+      className="h-4 w-4 text-on-surface-variant"
       viewBox="0 0 20 20"
       fill="currentColor"
       aria-hidden="true"
@@ -30,11 +30,11 @@ export default function Select({
 
   return (
     <div className={`space-y-1 ${className}`}>
-      {label && <span className="block text-sm font-medium text-slate-700">{label}</span>}
+      {label && <span className="block text-sm font-medium text-on-surface">{label}</span>}
       <Listbox value={value} onChange={onChange}>
         <div className="relative">
-          <Listbox.Button className="relative w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-9 text-left text-sm focus:border-hro-blue focus:outline-none focus:ring-2 focus:ring-cyan-100">
-            <span className={seleccionada ? 'text-slate-800' : 'text-slate-400'}>
+          <Listbox.Button className="relative w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-9 text-left text-sm focus:border-primary-container focus:outline-none focus:ring-2 focus:ring-secondary-fixed-dim">
+            <span className={seleccionada ? 'text-on-surface' : 'text-on-surface-variant'}>
               {seleccionada ? seleccionada.label : placeholder}
             </span>
             <span className="absolute inset-y-0 right-2 flex items-center">
@@ -47,12 +47,12 @@ export default function Select({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg focus:outline-none">
+            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-outline-variant bg-surface-container-lowest py-1 text-sm shadow-popover focus:outline-none">
               {options.map((opcion) => (
                 <Listbox.Option
                   key={opcion.value}
                   value={opcion.value}
-                  className="cursor-pointer select-none px-3 py-2 text-slate-700 data-[focus]:bg-cyan-50 data-[selected]:font-semibold"
+                  className="cursor-pointer select-none px-3 py-2 text-on-surface data-[focus]:bg-surface-container-low data-[selected]:font-semibold"
                 >
                   {opcion.label}
                 </Listbox.Option>

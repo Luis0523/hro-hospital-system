@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HRO · Estación de Enfermería</title>
+    <script>
+      ;(function () {
+        try {
+          var guardado = localStorage.getItem('hro_tema')
+          var oscuro = guardado
+            ? guardado === 'oscuro'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+          if (oscuro) document.documentElement.classList.add('dark')
+        } catch (error) {
+          return
+        }
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
