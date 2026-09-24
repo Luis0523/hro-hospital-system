@@ -12,7 +12,7 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `03. Pacientes` (Admisión, Búsqueda por DPI, Consulta de Expedientes)
      - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Programación, Feriados, filtros por estado y reactivación)
      - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
-     - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, ciclos y transiciones del recorrido físico)
+     - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, consulta diaria de jornada, búsqueda por código, ciclos y transiciones, actas de recepción + PDF y resumen operativo + PDF)
      - `07. Panel de Administración (Usuarios, Roles y Permisos)` (Usuarios, roles, permisos por subespecialidad)
      - `08. Dashboard (Admin)` (Resumen administrativo con alertas)
      - `09. Reportes (Admin)` (Citas por estado, demanda por especialidad, utilización de cupos)
@@ -32,14 +32,18 @@ Desde la versión **1.2.0**, los identificadores de `paciente`, `medico`, `medic
 
 ## Módulo de Archivo (Expedientes Físicos)
 
-La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de vida físico del expediente (búsqueda, entrega y retorno) introducido en la migración **V6**:
+La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de vida físico del expediente y las mejoras operativas de la épica **SCRUM-131** (backend **v1.5.0**, migraciones **V6** y **V9**):
 
 - `ubicaciones-archivo` (catálogo), `expedientes` (objeto físico, PK UUID escaneable) y `expediente-ciclos` (un viaje por cita).
 - Transiciones: `iniciar-busqueda`, `localizar`, `despachar`, `entregar`, `retornar`, `archivar`, `no-localizado`, `reintentar-busqueda`.
+- **Consulta diaria de la jornada:** `GET /expedientes/jornada?fecha=&subespecialidadId=`.
+- **Búsqueda por código:** `GET /expedientes/buscar?codigo=` (UUID/QR o número/barras).
+- **Actas de recepción + PDF:** `POST/GET /actas-recepcion` y `GET /actas-recepcion/{id}/pdf`.
+- **Resumen operativo diario + PDF:** `GET /archivo/resumen[/pdf]?fecha=`.
 
-El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md).
+El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md) y la guía para el frontend en [`docs/ACTUALIZACION_ARCHIVO_FRONTEND.md`](../ACTUALIZACION_ARCHIVO_FRONTEND.md).
 
-## Panel de Administración (backend v1.4.0)
+## Panel de Administración (backend v1.5.0)
 
 Las carpetas `07`–`10` cubren el backend del Panel de Administración (épica SCRUM-109): usuarios/roles/permisos, dashboard, reportes y auditoría; además de los filtros por estado y la reactivación en catálogos, médicos y programación (carpeta `04`), y la disponibilidad para reprogramación (carpeta `02`).
 
