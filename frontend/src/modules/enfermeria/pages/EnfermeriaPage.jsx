@@ -174,7 +174,7 @@ export default function EnfermeriaPage() {
           mostrarToast({
             tone: 'error',
             title: 'Paciente no encontrado',
-            message: 'Verifique el DPI o carné escaneado.',
+            message: 'Verifique el código de expediente escaneado.',
           })
           enfocarScanner()
           return
@@ -206,8 +206,8 @@ export default function EnfermeriaPage() {
 
   async function simularScan() {
     const paciente = pacientesMock[0]
-    setScanner(paciente.dpi)
-    await escanear(paciente.dpi)
+    setScanner(paciente.numeroExpediente)
+    await escanear(paciente.numeroExpediente)
   }
 
   async function confirmarLlegada() {

@@ -37,7 +37,7 @@ describe('EnfermeriaPage - flujos', () => {
   it('agenda una cita para un paciente sin cita hoy', async () => {
     renderPagina()
 
-    const lector = screen.getByLabelText('DPI o carné del paciente')
+    const lector = screen.getByLabelText('Código de expediente del paciente')
     await userEvent.type(lector, '3012456780101{Enter}')
 
     const panel = await screen.findByRole('dialog')

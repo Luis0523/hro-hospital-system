@@ -25,7 +25,7 @@ describe('EnfermeriaPage', () => {
     renderPagina()
 
     expect(screen.getByText('Estación de Enfermería')).toBeInTheDocument()
-    expect(screen.getByLabelText('DPI o carné del paciente')).toBeInTheDocument()
+    expect(screen.getByLabelText('Código de expediente del paciente')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText('Filtrar por clínica')).toBeInTheDocument()

@@ -170,15 +170,20 @@ export async function buscarPaciente(identificador) {
     return (
       pacientesMock.find(
         (paciente) =>
-          normalizar(paciente.dpi) === buscado || normalizar(paciente.numeroExpediente) === buscado,
+          normalizar(paciente.numeroExpediente) === buscado || normalizar(paciente.dpi) === buscado,
       ) ?? null
     )
   }
 
+  const codigoExpediente = valor.toUpperCase()
   try {
-    return desenvolver(await client.get(`/pacientes/dpi/${valor}`))
-  } catch {
-    return desenvolver(await client.get(`/pacientes/expediente/${valor}`))
+    return desenvolver(await client.get(`/pacientes/expediente/${codigoExpediente}`))
+  } catch (errorExpediente) {
+    try {
+      return desenvolver(await client.get(`/pacientes/dpi/${valor}`))
+    } catch {
+      throw errorExpediente
+    }
   }
 }
 

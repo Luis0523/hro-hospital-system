@@ -55,6 +55,7 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
   - `POST /turnos/{id}/llamar` · `/no-responde?motivo=` · `/reintegrar` `{motivo}` · `/atendido`
   - `POST /citas` `{ pacienteId, cupoDiarioId }` · `GET /citas/{id}` · `GET /citas/paciente/{id}`
   - `GET /pacientes/buscar?filtro=` (paginado, `data.content`), `/pacientes/dpi/{dpi}`, `/pacientes/expediente/{exp}`
+  - **Búsqueda principal del lector = código de expediente** (`/pacientes/expediente/{exp}`) con **DPI como respaldo** (`buscarPaciente` en `enfermeriaApi.js`). El `id` real del paciente es **UUID** (string).
   - `GET /cupos?clinicaId=&fechaInicio=&fechaFin=` · `GET /dias-no-laborables?anio=`
   - **Catálogos: `/clinicas`, `/especialidades`, `/subespecialidades`, `/medicos`** (NO existe `/catalogos/*`).
 - Código `409` = cupos agotados: mostrar alerta destacada sugiriendo otra fecha/médico.
