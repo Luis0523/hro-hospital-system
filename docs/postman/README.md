@@ -12,9 +12,11 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `03. Pacientes` (Admisión, Búsqueda por DPI, Consulta de Expedientes)
      - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Feriados)
      - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
+     - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, ciclos y transiciones del recorrido físico)
 2. **`HRO_Local_Environment.postman_environment.json`**:
    - Variables de entorno (`baseUrl`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
    - Variables del modelo V4 (`subespecialidadId`, `espacioFisicoId`, `asignacionId`, `medicoSubespecialidadId`).
+   - Variables del módulo de Archivo (`expedienteId`, `numeroExpediente`, `expedienteCicloId`, `ubicacionArchivoId`).
    - Variables de autenticación simulada (`usuarioExterno`, `usuarioRol`, `usuarioNombre`).
 
 ## Identificadores UUID (modelo V5)
@@ -23,6 +25,15 @@ Desde la versión **1.2.0**, los identificadores de `paciente`, `medico`, `medic
 
 - Las variables `pacienteId`, `medicoId`, `cupoDiarioId`, `espacioFisicoId`, `medicoSubespecialidadId`, `asignacionId` del entorno deben contener el UUID real (o el id numérico según corresponda).
 - Copia los valores reales desde las respuestas de `GET /pacientes`, `GET /espacios-fisicos`, `GET /cupos`, etc.
+
+## Módulo de Archivo (Expedientes Físicos)
+
+La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de vida físico del expediente (búsqueda, entrega y retorno) introducido en la migración **V6**:
+
+- `ubicaciones-archivo` (catálogo), `expedientes` (objeto físico, PK UUID escaneable) y `expediente-ciclos` (un viaje por cita).
+- Transiciones: `iniciar-busqueda`, `localizar`, `despachar`, `entregar`, `retornar`, `archivar`, `no-localizado`, `reintentar-busqueda`.
+
+El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md).
 
 ## Autenticación simulada (Mock)
 El backend aún no se conecta al servicio de autenticación externo del hospital. En su lugar, **la colección inyecta automáticamente** las cabeceras `X-Usuario-Id`, `X-Usuario-Rol` y `X-Usuario-Nombre` mediante un *pre-request script* a nivel de colección.

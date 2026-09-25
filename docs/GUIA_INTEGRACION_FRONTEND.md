@@ -398,6 +398,29 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
 
 ---
 
+### MÓDULO 5: `frontend-archivo` (Seguimiento de Expedientes Físicos)
+
+Estación operada por el rol `archivo`. Modela el recorrido físico del expediente (búsqueda, entrega a la clínica y retorno) mediante un ciclo por cita. El contrato completo (entidades, máquina de estados y ejemplos) está en **[`docs/MODULO_ARCHIVO.md`](./MODULO_ARCHIVO.md)**.
+
+1. **Buscar el expediente (escaneo):**
+   - `GET /api/v1/expedientes/{id}` → UUID (código QR).
+   - `GET /api/v1/expedientes/numero/{numeroExpediente}` → número impreso (código de barras).
+   - `GET /api/v1/expedientes/buscar?filtro=&page=&size=` → búsqueda manual (respuesta paginada en `data.content`).
+2. **Iniciar el viaje de una cita:**
+   - `POST /api/v1/expediente-ciclos` `{ expedienteId, citaId }` → estado inicial `pendiente_localizar` (409 si la cita ya tiene ciclo).
+3. **Avanzar el recorrido (cada llamada registra un `expediente_movimiento`):**
+   - `POST /api/v1/expediente-ciclos/{id}/iniciar-busqueda`
+   - `POST /api/v1/expediente-ciclos/{id}/localizar`
+   - `POST /api/v1/expediente-ciclos/{id}/despachar` `{ ubicacionDestinoId? }`
+   - `POST /api/v1/expediente-ciclos/{id}/entregar`
+   - `POST /api/v1/expediente-ciclos/{id}/retornar`
+   - `POST /api/v1/expediente-ciclos/{id}/archivar` `{ ubicacionDestinoId }`
+   - `POST /api/v1/expediente-ciclos/{id}/no-localizado` `{ observacion }` (no terminal)
+   - `POST /api/v1/expediente-ciclos/{id}/reintentar-busqueda`
+4. **Consultar el timeline:** `GET /api/v1/expediente-ciclos/{id}` devuelve el ciclo con su lista de `movimientos` (checkpoints).
+
+---
+
 ## 4. Resumen de Flujo de Datos Completo (End-to-End)
 
 ```mermaid
