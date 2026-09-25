@@ -99,7 +99,7 @@ describe('ArchivoPage — limpiar selección al cambiar filtros', () => {
     await abrirDetalle(user)
 
     fireEvent.change(screen.getByLabelText('Fecha de consulta'), {
-      target: { value: '2026-09-25' },
+      target: { value: '2099-01-01' },
     })
 
     await waitFor(() => {
