@@ -762,90 +762,88 @@ y REFLEJA decisiones del backend.
 
 No replica lógica de negocio del servidor.
 
-## Estado final del módulo (cierre Fase 10)
+## Estado vigente del módulo y contrato de referencia
 
-Esta sección documenta el estado real final del módulo. Complementa las reglas anteriores, no las reemplaza.
+Esta sección **sustituye por completo** a la antigua sección "Estado final del módulo (cierre Fase 10)". Se deriva del contrato/backend vigente y de la documentación técnica del repositorio; donde contradiga reglas anteriores de este documento, prevalece esta sección.
 
 No agregar a este documento datos volátiles (posicionamiento de rama, hashes de Git, cantidad de tests, nombres de bundles del build ni fechas), porque quedan obsoletos con rapidez y no son reglas permanentes.
 
-### Rutas actuales
+Claves usadas en esta sección:
 
-- `/administracion`
-- `/administracion/usuarios`
-- `/administracion/clinicas`
-- `/administracion/cupos`
-- `/administracion/calendario`
-- `/administracion/reportes`
-- `/administracion/auditoria`
+- **[A]** contrato documentado confirmado.
+- **[B]** requerimiento frontend confirmado.
+- **[C]** pendiente de verificación contra backend desplegado.
+
+### Fuentes de verdad (prioridad)
+
+1. Contrato/backend desplegado vigente.
+2. Colección Postman v2.2.0 y documentación técnica vigente.
+3. `ACTUALIZACION_ADMIN_FRONTEND.md`, `GUIA_INTEGRACION_FRONTEND.md` y documentos de flujo.
+4. Jira, para alcance funcional.
+5. `docs/mockups/panelAdmin/`, para UX/presentación.
+6. Este AGENTS, como guía operativa derivada de las anteriores.
+
+Este documento nunca debe contradecir el contrato vigente.
+
+### Convenciones de contrato
+
+- Identidad por cabeceras `X-Usuario-Id`, `X-Usuario-Rol`, `X-Usuario-Nombre` (enviadas por `shared/api/client.js`). No enviar `creadoPorId`.
+- Envoltura de respuesta `ApiResponse`: `{ timestamp, success, codigo, message, data }`.
+- Manejo programático de errores por `codigo` (no por el texto de `message`).
+- Códigos relevantes: `DIA_NO_LABORABLE_CON_CITAS` (409), `DIA_NO_LABORABLE_YA_EXISTE` (400), `CUPOS_AGOTADOS` (409), `ACCESO_DENEGADO` (403).
+- Filtro de estado en listados administrativos: `?estado=activos|inactivos|todos` (omitido = `activos`).
+
+#### Requisito inmediato pendiente — F0B
+
+`frontend/src/shared/api/client.js` **todavía no** preserva `codigo`/`data`/`response`: el `Error` normalizado actual solo conserva `message` y `status`. Debe modificarse de forma retrocompatible para conservar `message`, `status` y agregar `codigo`, `data` y `response` (referencia original de Axios).
+
+Hasta completar F0B, los consumidores **no** deben asumir que `codigo`/`data`/`response` ya están disponibles.
 
 ### Estado por sección
 
-Dashboard:
-- parcialmente integrado;
-- único dato real actual: próximos días no laborables (máximo 3, una sola consulta);
-- citas del día, cupos disponibles, inasistencias y alertas administrativas pendientes de contrato backend (se muestran sin cifras).
+**Dashboard** — [A] `GET /dashboard/resumen?fecha=` devuelve indicadores y `alertas[]`. El frontend solo muestra; no recalcula indicadores.
 
-Usuarios:
-- vista informativa bloqueada;
-- no existen contratos REST administrativos suficientes para usuarios, roles y permisos;
-- no inventar CRUD, contraseñas ni roles.
+**Catálogos (especialidades, subespecialidades, espacios físicos)** — [A] `?estado=` y `PATCH /{id}/reactivar`. [C] La vigencia de los `DELETE /{id}` usados hoy para baja lógica está pendiente de verificación, porque no aparecen documentados en Postman v2.2.0. No inventar un reemplazo.
 
-Clínicas:
-- funcional mediante Especialidades, Subespecialidades y Espacios físicos;
-- NO existe una entidad Clínica vigente;
-- no reintroducir `clinicaId`.
+**Médicos** — [A] `?estado=`, `PATCH /{id}/reactivar` y `POST/PUT` con `numeroColegiado`. [C] Verificar contra el backend desplegado que `numeroColegiado` se persiste/devuelve correctamente (SCRUM-92).
 
-Cupos:
-- Médicos funcional.
-- Programación `MedicoSubespecialidad` funcional para crear, listar y desactivar.
-- La programación NO es editable porque el backend no expone PUT/PATCH.
-- NO generar, reservar ni liberar `CupoDiario` desde Administración.
-- NO agregar fecha exacta a la programación semanal (solo día de la semana).
+**Programación** — [A] listado general `GET /medico-subespecialidades?medicoId=&subespecialidadId=&diaSemana=&estado=`, `PUT /{id}` para editar horario/capacidad/duración (no cambia médico/subespecialidad/día) y `PATCH /{id}/reactivar`. [C] SCRUM-90: comportamiento ante creación parcial (varios días) sin definir (éxito parcial vs. atomicidad vs. batch).
 
-Calendario:
-- días no laborables funcionales;
-- crear, listar y habilitar mediante DELETE según el contrato vigente;
-- sin `force`;
-- sin reprogramación automática;
-- no usar fecha +1.
+**Calendario institucional** — [A] `POST /dias-no-laborables` `{ fecha, motivo, forzar }` con `409` `codigo=DIA_NO_LABORABLE_CON_CITAS` y `data.citas[]`, `PUT /{id}` `{ motivo }` y `DELETE /{id}`. Sin reprogramación automática.
+[B] Navegación directa `[ < ] [ Mes ▼ ] [ Año ▼ ] [ > ]` y **vista anual** agrupada por mes con selector de año.
+[C] La vista anual debe resolverse con una **única** consulta de rango `GET /dias-no-laborables/rango?inicio=YYYY-01-01&fin=YYYY-12-31`; este endpoint está pendiente de smoke test porque no aparece en Postman v2.2.0. No usar 12 requests ni inventar otro endpoint.
 
-Reportes:
-- vista informativa bloqueada;
-- el backend no expone reportes agregados.
+**Usuarios, roles y permisos** — [A] usuarios (`GET /usuarios?estado=&rol=`, `GET /{id}`, `PATCH /{id}/activar|desactivar`, `PUT /{id}/rol`), `GET /roles` y permisos por subespecialidad (`GET`, `POST`, `PATCH /desactivar|reactivar`). El panel no crea usuarios ni administra contraseñas.
 
-Auditoría:
-- vista informativa bloqueada;
-- no consumir `GET /auditoria` hasta corregir el backend;
-- el endpoint presenta actualmente un problema de serialización, autorización pendiente y riesgo de datos sensibles (PII).
+**Reportes** — [A] `GET /reportes/citas-por-estado`, `/reportes/demanda-por-especialidad` y `/reportes/utilizacion-cupos` con rango de fechas. El frontend solo muestra; no agrega en cliente.
 
-### Reactivación
+**Auditoría** — [A] `GET /auditoria` paginado, con filtros, restringido al rol `administrador` (otros roles → `403` `ACCESO_DENEGADO`); `valoresAnteriores`/`valoresNuevos` son JSON en texto. [C] Antes de habilitar datos reales en el frontend debe verificarse contra el backend desplegado que el antiguo error `500` está corregido, que el DTO/paginación coinciden y que la autorización funciona. No exponer `valoresAnteriores`/`valoresNuevos` hasta entonces.
 
-Actualmente no debe implementarse una reactivación falsa de:
+**Disponibilidad / reprogramación** — [A] Existe contrato para el flujo manual (`GET /cupos?...soloDisponibles=`, `GET /citas/{id}/disponibilidad`, `POST /citas/{id}/reprogramar`) y la documentación lo ubica en Administración. [C] El alcance frontend está pendiente de confirmar mediante SCRUM-119 / SCRUM-127. Nunca existe reprogramación automática: cada cambio es una acción manual del administrador.
 
-- especialidades;
-- subespecialidades;
-- espacios;
-- médicos;
-- programación;
+### Reactivación y baja lógica
 
-mientras el backend no exponga un flujo administrable adecuado. La baja existente es lógica (DELETE) y no incluye reactivación.
+La reactivación se realiza con `PATCH /{id}/reactivar` (documentada en especialidades, subespecialidades, espacios físicos, médicos y programación). La baja lógica usada hoy (`DELETE /{id}`) queda [C] pendiente de verificación si no está documentada en Postman v2.2.0. No implementar reactivación fuera del contrato vigente.
 
-### Responsive final
+### Clínicas
 
-- Los catálogos usan tarjetas (cards) por debajo del breakpoint `xl`.
-- La tabla se muestra a partir de `xl`.
-- `ModalCatalogo` tiene scroll interno del cuerpo en móvil, con fallback `vh` y soporte `dvh`.
-- El menú lateral es responsive (overlay + cierre con Escape y botón).
-- Las pestañas (tabs) son accesibles con roving tabindex y navegación por teclado.
+No existe una entidad "Clínica" vigente: el concepto se modela mediante especialidad, subespecialidad y espacio físico. No reintroducir `clinicaId`.
 
-### Deuda técnica conocida (deliberadamente fuera de alcance)
+### Referencia visual del módulo
 
-No corregir sin coordinación; no pertenece al cierre de Fase 10:
+- `docs/mockups/panelAdmin/` es la referencia visual del módulo.
+- Usar los tokens M3 ya definidos en `tailwind.config.js`; no repetir colores hex arbitrarios cuando exista un token.
+- Los mockups gobiernan presentación/UX, **no** contratos backend.
+- Si un mockup contradice el contrato o Jira, prevalece el contrato funcional.
+- Conservar el responsive móvil existente aunque el mockup sea desktop.
+- La alineación visual con los mockups está en alcance y se aplica por fase; no se difiere toda al final.
 
-- `SubespecialidadesTab` y `ProgramacionTab` silencian errores al cargar catálogos de apoyo.
-- `ProgramacionTab` puede mostrar `Alert` y `EmptyState` simultáneamente cuando no hay filtro seleccionado.
-- Componentes de `shared/` (`Input`, `Select`, `Modal`, `Table`) y el scrollbar global presentan limitaciones heredadas.
-- Archivos ajenos al módulo incumplen Prettier (el chequeo global falla por ellos).
+### Deuda técnica conocida (vigente)
+
+- Limitaciones heredadas de `shared/ui` (`Input`, `Select`, `Modal`, `Table`) y del scrollbar global.
+- `format:check` global falla por archivos ajenos al módulo.
+- `shared/api/client.js` pendiente de F0B: todavía no preserva `codigo`/`data`/`response`.
+- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): vigencia de los `DELETE` de catálogos; `numeroColegiado` (SCRUM-92); `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
 
 ### Regla fundamental
 
