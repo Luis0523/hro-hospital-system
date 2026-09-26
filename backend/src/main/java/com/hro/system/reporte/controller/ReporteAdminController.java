@@ -50,13 +50,14 @@ public class ReporteAdminController {
 
     @GetMapping("/utilizacion-cupos")
     @Operation(summary = "Reporte de utilización de cupos",
-            description = "Capacidad, cupos ocupados/disponibles y porcentaje de utilización en un rango. Filtro opcional por subespecialidad. Por defecto, últimos 30 días.")
+            description = "Capacidad, cupos ocupados/disponibles y porcentaje de utilización en un rango. Filtros opcionales por subespecialidad y especialidad. Por defecto, últimos 30 días.")
     public ResponseEntity<ApiResponse<ReporteUtilizacionCuposDTO>> utilizacionCupos(
             @Parameter(description = "Fecha inicial (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @Parameter(description = "Fecha final (ISO: YYYY-MM-DD)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
-            @Parameter(description = "Filtro opcional por subespecialidad") @RequestParam(required = false) Long subespecialidadId) {
+            @Parameter(description = "Filtro opcional por subespecialidad") @RequestParam(required = false) Long subespecialidadId,
+            @Parameter(description = "Filtro opcional por especialidad") @RequestParam(required = false) Long especialidadId) {
         return ResponseEntity.ok(ApiResponse.ok(
-                reporteAdminService.utilizacionCupos(fechaInicio, fechaFin, subespecialidadId),
+                reporteAdminService.utilizacionCupos(fechaInicio, fechaFin, subespecialidadId, especialidadId),
                 "Reporte de utilización de cupos obtenido"));
     }
 }

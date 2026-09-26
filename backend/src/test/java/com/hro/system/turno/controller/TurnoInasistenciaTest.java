@@ -17,9 +17,9 @@ import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
@@ -74,7 +74,7 @@ public class TurnoInasistenciaTest {
     private CupoDiarioRepository cupoDiarioRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
@@ -120,7 +120,7 @@ public class TurnoInasistenciaTest {
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
         asignacionRepository.deleteAllInBatch();
-        medicoSubespecialidadRepository.deleteAllInBatch();
+        subespecialidadHorarioRepository.deleteAllInBatch();
 
         fechaHoy = LocalDate.now();
         String suffix = UUID.randomUUID().toString().substring(0, 5);
@@ -167,8 +167,7 @@ public class TurnoInasistenciaTest {
                 .activo(true)
                 .build());
 
-        MedicoSubespecialidad medicoSubespecialidad = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario medicoSubespecialidad = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) fechaHoy.getDayOfWeek().getValue())
                 .horaInicio(LocalTime.of(8, 0))
@@ -179,7 +178,7 @@ public class TurnoInasistenciaTest {
                 .build());
 
         cupoDiario = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(medicoSubespecialidad)
+                .subespecialidadHorario(medicoSubespecialidad)
                 .fecha(fechaHoy)
                 .capacidadMaxima(15)
                 .cuposOcupados(1)

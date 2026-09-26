@@ -70,13 +70,13 @@ public class TurnoService {
         }
 
         LocalDate fecha = cita.getCupoDiario().getFecha();
-        Long subespecialidadId = cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getId();
+        Long subespecialidadId = cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getId();
 
         AsignacionDiariaEspacio asignacion = asignacionRepository
                 .findBySubespecialidadIdAndFecha(subespecialidadId, fecha)
                 .orElseThrow(() -> new BusinessException(
                         "No hay un espacio físico asignado para la subespecialidad "
-                                + cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getNombre()
+                                + cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getNombre()
                                 + " el " + fecha + ". El jefe de enfermería debe asignar la sala del día."));
 
         Integer numeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(asignacion.getId());
@@ -365,7 +365,6 @@ public class TurnoService {
                 .nivel(a != null ? a.getEspacioFisico().getNivel() : null)
                 .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
                 .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
-                .medicoNombre(turno.getCita().getCupoDiario().getMedicoSubespecialidad().getMedico().getNombres())
                 .horaGenerado(turno.getHoraGenerado())
                 .horaLlamado(turno.getHoraLlamado())
                 .horaAtendido(turno.getHoraAtendido())

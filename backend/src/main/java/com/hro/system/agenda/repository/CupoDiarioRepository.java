@@ -2,6 +2,7 @@ package com.hro.system.agenda.repository;
 
 import com.hro.system.agenda.entity.CupoDiario;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,9 +14,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
+public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID>, JpaSpecificationExecutor<CupoDiario> {
 
-    Optional<CupoDiario> findByMedicoSubespecialidadIdAndFecha(UUID medicoSubespecialidadId, LocalDate fecha);
+    Optional<CupoDiario> findBySubespecialidadHorarioIdAndFecha(UUID subespecialidadHorarioId, LocalDate fecha);
 
     List<CupoDiario> findByFecha(LocalDate fecha);
 
@@ -27,28 +28,17 @@ public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
 
     @Modifying
     @Query(value = """
-            INSERT INTO cupo_diario (medico_subespecialidad_id, fecha, capacidad_maxima, cupos_ocupados, creado_en)
-            VALUES (:medicoSubespecialidadId, :fecha, :capacidadMaxima, 0, now())
-            ON CONFLICT (medico_subespecialidad_id, fecha) DO NOTHING
+            INSERT INTO cupo_diario (subespecialidad_horario_id, fecha, capacidad_maxima, cupos_ocupados, creado_en)
+            VALUES (:subespecialidadHorarioId, :fecha, :capacidadMaxima, 0, now())
+            ON CONFLICT (subespecialidad_horario_id, fecha) DO NOTHING
             """, nativeQuery = true)
     int inicializarCupoSiNoExiste(
-            @Param("medicoSubespecialidadId") UUID medicoSubespecialidadId,
+            @Param("subespecialidadHorarioId") UUID subespecialidadHorarioId,
             @Param("fecha") LocalDate fecha,
             @Param("capacidadMaxima") Integer capacidadMaxima
     );
 
-    List<CupoDiario> findByMedicoSubespecialidad_Subespecialidad_IdAndFechaBetween(Long subespecialidadId, LocalDate desde, LocalDate hasta);
+    List<CupoDiario> findBySubespecialidadHorario_Subespecialidad_IdAndFechaBetween(Long subespecialidadId, LocalDate desde, LocalDate hasta);
 
-    List<CupoDiario> findByMedicoSubespecialidad_Medico_IdAndFechaBetween(UUID medicoId, LocalDate desde, LocalDate hasta);
-
-    List<CupoDiario> findByMedicoSubespecialidadIdAndFechaBetween(UUID medicoSubespecialidadId, LocalDate desde, LocalDate hasta);
-
-    @Query("""
-            SELECT cd FROM CupoDiario cd
-            WHERE cd.fecha BETWEEN :inicio AND :fin
-              AND (:subespecialidadId IS NULL OR cd.medicoSubespecialidad.subespecialidad.id = :subespecialidadId)
-            """)
-    List<CupoDiario> buscarParaUtilizacion(@Param("inicio") LocalDate inicio,
-                                           @Param("fin") LocalDate fin,
-                                           @Param("subespecialidadId") Long subespecialidadId);
+    List<CupoDiario> findBySubespecialidadHorarioIdAndFechaBetween(UUID subespecialidadHorarioId, LocalDate desde, LocalDate hasta);
 }

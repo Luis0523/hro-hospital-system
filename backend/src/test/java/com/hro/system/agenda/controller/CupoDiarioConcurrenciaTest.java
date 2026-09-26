@@ -11,9 +11,9 @@ import com.hro.system.common.CupoAgotadoException;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ public class CupoDiarioConcurrenciaTest {
     private CupoDiarioRepository cupoDiarioRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
@@ -76,7 +76,7 @@ public class CupoDiarioConcurrenciaTest {
     @Autowired
     private com.hro.system.archivo.repository.ExpedienteMovimientoRepository expedienteMovimientoRepository;
 
-    private MedicoSubespecialidad medicoSubespecialidadTest;
+    private SubespecialidadHorario medicoSubespecialidadTest;
     private LocalDate proximoLunes;
 
     @BeforeEach
@@ -125,8 +125,7 @@ public class CupoDiarioConcurrenciaTest {
                 .build());
 
         // Capacidad intencionalmente baja (3 cupos) para probar saturación y concurrencia
-        medicoSubespecialidadTest = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        medicoSubespecialidadTest = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subesp)
                 .diaSemana((short) 1) // Lunes
                 .horaInicio(LocalTime.of(8, 0))
@@ -178,7 +177,7 @@ public class CupoDiarioConcurrenciaTest {
         assertEquals(capacidadEsperada, exitos.get(), "Exactamente 3 reservas deben haber tenido éxito");
         assertEquals(totalHilos - capacidadEsperada, rechazados.get(), "Exactamente 7 solicitudes deben haber sido rechazadas");
 
-        CupoDiario cupoFinal = cupoDiarioRepository.findByMedicoSubespecialidadIdAndFecha(medicoSubespecialidadTest.getId(), proximoLunes).orElseThrow();
+        CupoDiario cupoFinal = cupoDiarioRepository.findBySubespecialidadHorarioIdAndFecha(medicoSubespecialidadTest.getId(), proximoLunes).orElseThrow();
         assertEquals(3, cupoFinal.getCuposOcupados(), "La cantidad física de cupos ocupados en BD debe ser exactamente 3");
         assertEquals(3, cupoFinal.getCapacidadMaxima());
 

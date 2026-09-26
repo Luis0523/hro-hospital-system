@@ -15,6 +15,7 @@ public class ReporteUtilizacionCuposDTO {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
     private Long subespecialidadId;
+    private Long especialidadId;
     private int capacidadTotal;
     private int cuposOcupados;
     private int cuposDisponibles;

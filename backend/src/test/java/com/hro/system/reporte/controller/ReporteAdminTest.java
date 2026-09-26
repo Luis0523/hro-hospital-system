@@ -10,9 +10,9 @@ import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -68,14 +68,14 @@ class ReporteAdminTest {
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     private static final LocalDate FECHA1 = LocalDate.of(2026, 11, 9);
     private static final LocalDate FECHA2 = LocalDate.of(2026, 11, 10);
 
     private UsuarioReferencia usuario;
     private Paciente paciente;
-    private MedicoSubespecialidad programacion;
+    private SubespecialidadHorario programacion;
     private Subespecialidad subespecialidad;
 
     @BeforeEach
@@ -83,7 +83,7 @@ class ReporteAdminTest {
         citaRepository.deleteAll();
         cupoDiarioRepository.deleteAll();
         diaNoLaborableRepository.deleteAll();
-        medicoSubespecialidadRepository.deleteAll();
+        subespecialidadHorarioRepository.deleteAll();
         subespecialidadRepository.deleteAll();
         especialidadRepository.deleteAll();
         medicoRepository.deleteAll();
@@ -114,8 +114,7 @@ class ReporteAdminTest {
                 .activo(true)
                 .build());
 
-        programacion = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        programacion = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) 1)
                 .horaInicio(LocalTime.of(7, 0))
@@ -136,7 +135,7 @@ class ReporteAdminTest {
 
     private CupoDiario crearCupo(LocalDate fecha, int capacidad, int ocupados) {
         return cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(programacion)
+                .subespecialidadHorario(programacion)
                 .fecha(fecha)
                 .capacidadMaxima(capacidad)
                 .cuposOcupados(ocupados)

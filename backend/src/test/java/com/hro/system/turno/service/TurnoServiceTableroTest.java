@@ -10,7 +10,7 @@ import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
 import com.hro.system.turno.dto.TableroTurnoDTO;
@@ -120,13 +120,12 @@ class TurnoServiceTableroTest {
                 .build();
 
         Medico medico = Medico.builder().nombres("Dra. Elena Ramos").build();
-        MedicoSubespecialidad medicoSubespecialidad = MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario medicoSubespecialidad = SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .build();
 
         CupoDiario cupoDiario = CupoDiario.builder()
-                .medicoSubespecialidad(medicoSubespecialidad)
+                .subespecialidadHorario(medicoSubespecialidad)
                 .fecha(LocalDate.now())
                 .build();
 
