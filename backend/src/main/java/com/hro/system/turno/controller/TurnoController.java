@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/turnos")
@@ -84,5 +85,16 @@ public class TurnoController {
     @Operation(summary = "Listar turnos en espera globales")
     public ResponseEntity<ApiResponse<List<TurnoResponseDTO>>> listarActivos() {
         return ResponseEntity.ok(ApiResponse.ok(turnoService.listarTurnosActivos(), "Turnos activos listados con éxito"));
+    }
+
+    @PatchMapping("/{id}/sala")
+    @Operation(summary = "Reasignar la sala de un turno",
+            description = "Mueve el turno a otra sala de la misma subespecialidad (p. ej. si una se desocupa antes). Queda auditado.")
+    public ResponseEntity<ApiResponse<TurnoResponseDTO>> reasignarSala(
+            @PathVariable Long id,
+            @RequestParam UUID nuevoEspacioFisicoId,
+            @RequestParam(required = false) String motivo) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.reasignarSala(id, nuevoEspacioFisicoId, motivo), "Sala del turno reasignada"));
     }
 }

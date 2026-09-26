@@ -20,7 +20,7 @@ public interface AsignacionDiariaEspacioRepository extends JpaRepository<Asignac
 
     Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
-    Optional<AsignacionDiariaEspacio> findBySubespecialidadIdAndFecha(Long subespecialidadId, LocalDate fecha);
+    List<AsignacionDiariaEspacio> findBySubespecialidadIdAndFecha(Long subespecialidadId, LocalDate fecha);
 
     boolean existsByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
