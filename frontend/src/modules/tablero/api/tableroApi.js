@@ -143,10 +143,17 @@ export function ordenarAsignaciones(asignaciones = []) {
     )
     if (porEspacio !== 0) return porEspacio
 
-    return String(a.subespecialidadNombre ?? '').localeCompare(
+    const porSubespecialidad = String(a.subespecialidadNombre ?? '').localeCompare(
       String(b.subespecialidadNombre ?? ''),
       'es',
     )
+    if (porSubespecialidad !== 0) return porSubespecialidad
+
+    const idA = Number(a.asignacionDiariaEspacioId)
+    const idB = Number(b.asignacionDiariaEspacioId)
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB
+
+    return 0
   })
 }
 

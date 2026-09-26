@@ -16,6 +16,7 @@ import { useTemaTablero } from '../hooks/useTemaTablero'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
 import LlamadoGrande from '../components/LlamadoGrande.jsx'
+import SimuladorLlamado, { simuladorHabilitado } from '../components/SimuladorLlamado.jsx'
 import TablaTurnos from '../components/TablaTurnos.jsx'
 import TableroError from '../components/TableroError.jsx'
 import TableroVacio from '../components/TableroVacio.jsx'
@@ -43,9 +44,12 @@ export default function TableroPage() {
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
+  const [puedeRellamar, setPuedeRellamar] = useState(false)
   const { tema, alternarTema } = useTemaTablero()
 
   const montadoRef = useRef(true)
+  const simuladorTurnoRef = useRef(0)
+  const simuladorIntentoRef = useRef(0)
   const configPermitidasRef = useRef(null)
   const configResueltaRef = useRef(false)
   const vozActivaRef = useRef(false)
@@ -211,34 +215,72 @@ export default function TableroPage() {
     }
   }, [])
 
+  // Pipeline único compartido por el WebSocket real y por el simulador DEV.
+  const procesarEventoTablero = useCallback(
+    (estado) => {
+      if (!montadoRef.current) return
+      // No procesar eventos hasta conocer la configuración de la sala.
+      if (!configResueltaRef.current) return
+      const idAsignacion = estado.asignacionDiariaEspacioId
+      if (!estaPermitida(idAsignacion, configPermitidasRef.current)) return
+
+      setError(null)
+      setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
+
+      // Solo un evento explícito de llamado dispara LlamadoGrande + voz + cola.
+      if (
+        estado.tipoEvento === 'LLAMADO' &&
+        estado.turnoActual !== null &&
+        estado.intentosLlamado !== null
+      ) {
+        const firma = `${estado.turnoActual}:${estado.intentosLlamado}`
+        const procesados = ultimoLlamadoProcesadoRef.current
+        if (procesados.get(idAsignacion) !== firma) {
+          procesados.set(idAsignacion, firma)
+          encolarLlamado(estado)
+        }
+      }
+    },
+    [encolarLlamado],
+  )
+
+  const simuladorActivo = simuladorHabilitado()
+
+  const simularLlamado = useCallback(() => {
+    const asignacion = asignaciones[0]
+    if (!asignacion) return
+
+    simuladorTurnoRef.current += 1
+    simuladorIntentoRef.current = 1
+    setPuedeRellamar(true)
+
+    procesarEventoTablero({
+      ...asignacion,
+      turnoActual: simuladorTurnoRef.current,
+      intentosLlamado: 1,
+      tipoEvento: 'LLAMADO',
+    })
+  }, [asignaciones, procesarEventoTablero])
+
+  const rellamar = useCallback(() => {
+    const asignacion = asignaciones[0]
+    if (!asignacion || simuladorTurnoRef.current < 1) return
+
+    simuladorIntentoRef.current += 1
+
+    procesarEventoTablero({
+      ...asignacion,
+      turnoActual: simuladorTurnoRef.current,
+      intentosLlamado: simuladorIntentoRef.current,
+      tipoEvento: 'LLAMADO',
+    })
+  }, [asignaciones, procesarEventoTablero])
+
   useEffect(() => {
     if (estaEnModoMock()) return undefined
 
     const cliente = crearClienteTablero({
-      onMensaje: (estado) => {
-        if (!montadoRef.current) return
-        // No procesar eventos hasta conocer la configuración de la sala.
-        if (!configResueltaRef.current) return
-        const idAsignacion = estado.asignacionDiariaEspacioId
-        if (!estaPermitida(idAsignacion, configPermitidasRef.current)) return
-
-        setError(null)
-        setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
-
-        // Solo un evento explícito de llamado dispara LlamadoGrande + voz + cola.
-        if (
-          estado.tipoEvento === 'LLAMADO' &&
-          estado.turnoActual !== null &&
-          estado.intentosLlamado !== null
-        ) {
-          const firma = `${estado.turnoActual}:${estado.intentosLlamado}`
-          const procesados = ultimoLlamadoProcesadoRef.current
-          if (procesados.get(idAsignacion) !== firma) {
-            procesados.set(idAsignacion, firma)
-            encolarLlamado(estado)
-          }
-        }
-      },
+      onMensaje: procesarEventoTablero,
       onConnected: () => {
         if (montadoRef.current) setEstadoConexion('conectado')
       },
@@ -261,7 +303,7 @@ export default function TableroPage() {
     return () => {
       cliente.desactivar()
     }
-  }, [encolarLlamado])
+  }, [procesarEventoTablero])
 
   return (
     // `dark` es ancestro (no en <html>/<body>) para aislar el tema al tablero.
@@ -272,9 +314,16 @@ export default function TableroPage() {
           <ControlPantallaCompleta />
           <ControlVoz disponible={vozDisponible} activa={vozActiva} onActivar={activarVoz} />
           <EstadoConexion estado={estadoConexion} />
+          <SimuladorLlamado
+            habilitado={simuladorActivo}
+            hayAsignacion={asignaciones.length > 0}
+            puedeRellamar={puedeRellamar}
+            onSimular={simularLlamado}
+            onRellamar={rellamar}
+          />
         </EncabezadoTablero>
 
-        <main className="flex flex-1 flex-col gap-6 px-6 py-4 2xl:py-6">
+        <main className="flex flex-1 flex-col gap-4 px-4 py-2 md:px-6 2xl:gap-6 2xl:py-6">
           {cargando && (
             <div className="flex flex-1 items-center justify-center">
               <Spinner label="Cargando turnos…" />
