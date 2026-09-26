@@ -1,0 +1,471 @@
+import { act, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const {
+  anunciarTurnoMock,
+  crearClienteTableroMock,
+  estaDisponibleVozMock,
+  estaEnModoMockMock,
+  estaPermitidaMock,
+  hablarMock,
+  obtenerEstadoInicialMock,
+} = vi.hoisted(() => ({
+  anunciarTurnoMock: vi.fn(),
+  crearClienteTableroMock: vi.fn(),
+  estaDisponibleVozMock: vi.fn(),
+  estaEnModoMockMock: vi.fn(),
+  estaPermitidaMock: vi.fn(),
+  hablarMock: vi.fn(),
+  obtenerEstadoInicialMock: vi.fn(),
+}))
+
+vi.mock('../api/tableroSocket', () => ({
+  crearClienteTablero: crearClienteTableroMock,
+}))
+
+vi.mock('../api/comunicacionVoz', () => ({
+  estaDisponibleVoz: estaDisponibleVozMock,
+  hablar: hablarMock,
+  anunciarTurno: anunciarTurnoMock,
+  FRASE_ACTIVACION: 'Comunicación por voz activada.',
+}))
+
+vi.mock('../api/tableroApi', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    estaEnModoMock: estaEnModoMockMock,
+    estaPermitida: estaPermitidaMock,
+    obtenerEstadoInicialTablero: obtenerEstadoInicialMock,
+  }
+})
+
+import TableroPage, { clasesGrid } from './TableroPage.jsx'
+
+const ASIGNACIONES_INICIALES = [
+  {
+    asignacionDiariaEspacioId: 1,
+    espacioNumero: '201',
+    nivel: 2,
+    subespecialidadNombre: 'Pediatría General',
+    turnoActual: 7,
+    turnoSiguiente: 8,
+    ultimaActualizacion: null,
+  },
+  {
+    asignacionDiariaEspacioId: 2,
+    espacioNumero: '202',
+    nivel: 2,
+    subespecialidadNombre: 'Medicina General',
+    turnoActual: 14,
+    turnoSiguiente: 15,
+    ultimaActualizacion: null,
+  },
+  {
+    asignacionDiariaEspacioId: 3,
+    espacioNumero: '301',
+    nivel: 3,
+    subespecialidadNombre: 'Cardiología',
+    turnoActual: 3,
+    turnoSiguiente: 4,
+    ultimaActualizacion: null,
+  },
+  {
+    asignacionDiariaEspacioId: 4,
+    espacioNumero: '302',
+    nivel: 3,
+    subespecialidadNombre: 'Traumatología',
+    turnoActual: 21,
+    turnoSiguiente: 22,
+    ultimaActualizacion: null,
+  },
+]
+
+function mensaje(asignacion) {
+  return {
+    espacioNumero: '000',
+    nivel: 1,
+    subespecialidadNombre: 'General',
+    turnoActual: 1,
+    turnoSiguiente: 2,
+    ultimaActualizacion: '2026-09-20T08:05:32-06:00',
+    ...asignacion,
+  }
+}
+
+let handlers
+
+describe('TableroPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    handlers = null
+    estaEnModoMockMock.mockReturnValue(false)
+    estaPermitidaMock.mockReturnValue(true)
+    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
+    estaDisponibleVozMock.mockReturnValue(true)
+    hablarMock.mockReturnValue(true)
+    anunciarTurnoMock.mockReturnValue('mensaje')
+    crearClienteTableroMock.mockImplementation((opciones) => {
+      handlers = opciones
+      return { activar: vi.fn(), desactivar: vi.fn() }
+    })
+  })
+
+  it('en modo mock muestra los datos de prueba y no conecta WebSocket', async () => {
+    estaEnModoMockMock.mockReturnValue(true)
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(4)
+    expect(screen.getByText('Datos de prueba')).toBeInTheDocument()
+    expect(crearClienteTableroMock).not.toHaveBeenCalled()
+  })
+
+  it('en modo real prepara la conexión WebSocket', async () => {
+    render(<TableroPage />)
+
+    await screen.findByText('Pediatría General')
+
+    expect(crearClienteTableroMock).toHaveBeenCalledTimes(1)
+    expect(handlers).toBeTruthy()
+  })
+
+  it('renderiza varias asignaciones con su turno actual y siguiente', async () => {
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect(screen.getByText('Medicina General')).toBeInTheDocument()
+    expect(screen.getByText('Cardiología')).toBeInTheDocument()
+    expect(screen.getByText('Traumatología')).toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(4)
+
+    const primera = screen.getByTestId('asignacion-1')
+    expect(within(primera).getByText('#007')).toBeInTheDocument()
+    expect(within(primera).getByText('#008')).toBeInTheDocument()
+  })
+
+  it('muestra un guion cuando no hay turno actual ni siguiente', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce([
+      {
+        asignacionDiariaEspacioId: 9,
+        espacioNumero: '401',
+        nivel: 4,
+        subespecialidadNombre: 'Dermatología',
+        turnoActual: null,
+        turnoSiguiente: null,
+        ultimaActualizacion: null,
+      },
+    ])
+
+    render(<TableroPage />)
+
+    const tarjeta = await screen.findByTestId('asignacion-9')
+    expect(within(tarjeta).getAllByText('—')).toHaveLength(2)
+  })
+
+  it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 9, turnoSiguiente: 10 }),
+      )
+    })
+
+    expect(within(screen.getByTestId('asignacion-1')).getByText('#009')).toBeInTheDocument()
+    expect(within(screen.getByTestId('asignacion-2')).getByText('#014')).toBeInTheDocument()
+  })
+
+  it('agrega una asignación nueva sin duplicar las existentes', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 99,
+          espacioNumero: '999',
+          subespecialidadNombre: 'Nueva Clínica',
+          turnoActual: 1,
+          turnoSiguiente: 2,
+        }),
+      )
+    })
+
+    expect(screen.getAllByRole('article')).toHaveLength(5)
+    expect(screen.getByText('Nueva Clínica')).toBeInTheDocument()
+    expect(screen.getAllByTestId('asignacion-1')).toHaveLength(1)
+  })
+
+  it('refleja el estado de la conexión WebSocket', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    expect(screen.getByText('Reconectando…')).toBeInTheDocument()
+
+    act(() => handlers.onConnected())
+    expect(screen.getByText('En línea')).toBeInTheDocument()
+
+    act(() => handlers.onDisconnected())
+    expect(screen.getByText('Reconectando…')).toBeInTheDocument()
+
+    act(() => handlers.onError('fallo'))
+    expect(screen.getByText('Sin conexión')).toBeInTheDocument()
+  })
+
+  it('se recupera si el snapshot falla pero luego llega un evento WebSocket válido', async () => {
+    obtenerEstadoInicialMock.mockRejectedValueOnce(
+      new Error('El backend todavía no expone el estado inicial del tablero.'),
+    )
+
+    render(<TableroPage />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByTestId('asignacion-1')).not.toBeInTheDocument()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 5,
+          espacioNumero: '205',
+          subespecialidadNombre: 'Oftalmología',
+          turnoActual: 2,
+          turnoSiguiente: 3,
+        }),
+      )
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Oftalmología')).toBeInTheDocument()
+    expect(screen.getByTestId('asignacion-5')).toBeInTheDocument()
+  })
+
+  it('muestra el estado vacío cuando no hay asignaciones', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce([])
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+  })
+
+  it('muestra el error controlado cuando no hay snapshot disponible', async () => {
+    obtenerEstadoInicialMock.mockRejectedValueOnce(
+      new Error('El backend todavía no expone el estado inicial del tablero.'),
+    )
+
+    render(<TableroPage />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByText('El backend todavía no expone el estado inicial del tablero.'),
+    ).toBeInTheDocument()
+  })
+
+  it('ignora eventos WebSocket de asignaciones fuera del filtro configurado', async () => {
+    estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+      )
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 99, subespecialidadNombre: 'Fuera de filtro' }),
+      )
+    })
+
+    expect(screen.queryByText('Fuera de filtro')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('asignacion-99')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('asignacion-3')).getByText('#003')).toBeInTheDocument()
+    expect(screen.queryByText('#050')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(4)
+  })
+
+  it('no muestra datos personales aunque lleguen por WebSocket', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          nombrePaciente: 'Juan Perez',
+          pacienteNombreCompleto: 'Juan Perez',
+          dpi: '1234567890101',
+          expediente: 'HRO-123',
+          telefono: '55555555',
+        }),
+      )
+    })
+
+    expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
+    expect(screen.queryByText('1234567890101')).not.toBeInTheDocument()
+    expect(screen.queryByText('HRO-123')).not.toBeInTheDocument()
+    expect(screen.queryByText('55555555')).not.toBeInTheDocument()
+  })
+
+  it('no anuncia durante la carga inicial', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(hablarMock).not.toHaveBeenCalled()
+  })
+
+  it('comienza con la voz desactivada y la activa con la frase de confirmación', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    expect(screen.getByRole('button', { name: /activar voz/i })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    expect(hablarMock).toHaveBeenCalledWith('Comunicación por voz activada.')
+    expect(screen.getByText('Voz activa')).toBeInTheDocument()
+  })
+
+  it('no anuncia si la voz no está activada', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('anuncia cuando cambia el turno actual tras activar la voz', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(anunciarTurnoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+    )
+  })
+
+  it('no anuncia si el turno actual no cambió', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 8 }),
+      )
+    })
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('no anuncia si solo cambia el siguiente turno', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 9 }),
+      )
+    })
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('no anuncia asignaciones fuera del filtro aunque cambie el turno', async () => {
+    estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+      )
+    })
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('muestra "Voz no disponible" sin romper el tablero', async () => {
+    estaDisponibleVozMock.mockReturnValue(false)
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect(screen.getByText('Voz no disponible')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /activar voz/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('TableroPage · grid adaptativo', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    estaEnModoMockMock.mockReturnValue(false)
+    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
+    crearClienteTableroMock.mockImplementation(() => ({ activar: vi.fn(), desactivar: vi.fn() }))
+  })
+
+  it('centra una sola tarjeta con ancho acotado', () => {
+    const clases = clasesGrid(1)
+
+    expect(clases).toContain('grid-cols-1')
+    expect(clases).toContain('mx-auto')
+    expect(clases).toContain('max-w-4xl')
+  })
+
+  it('usa dos columnas centradas para dos tarjetas', () => {
+    const clases = clasesGrid(2)
+
+    expect(clases).toContain('md:grid-cols-2')
+    expect(clases).toContain('max-w-7xl')
+    expect(clases).not.toContain('2xl:grid-cols-4')
+  })
+
+  it('usa tres columnas centradas para tres tarjetas', () => {
+    const clases = clasesGrid(3)
+
+    expect(clases).toContain('2xl:grid-cols-3')
+    expect(clases).toContain('mx-auto')
+    expect(clases).toContain('max-w-[90rem]')
+  })
+
+  it('usa cuatro columnas a ancho completo desde cuatro tarjetas', () => {
+    const clases = clasesGrid(4)
+
+    expect(clases).toContain('2xl:grid-cols-4')
+    expect(clases).toContain('w-full')
+    expect(clases).not.toContain('mx-auto')
+    expect(clasesGrid(6)).toContain('2xl:grid-cols-4')
+  })
+
+  it('aplica el grid adaptativo según la cantidad visible', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce(ASIGNACIONES_INICIALES.slice(0, 2))
+
+    render(<TableroPage />)
+
+    const grid = await screen.findByTestId('tablero-grid')
+    expect(grid).toHaveClass('md:grid-cols-2', 'max-w-7xl', 'mx-auto')
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+  })
+})
