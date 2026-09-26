@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import AppRouter from '@/router/AppRouter.jsx'
 import {
@@ -43,22 +44,26 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
 
 function renderPagina() {
   return render(
-    <AuthProvider>
-      <ToastProvider>
-        <ArchivoPage />
-      </ToastProvider>
-    </AuthProvider>,
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <ArchivoPage />
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>,
   )
 }
 
 function renderRuta(ruta) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
-      <AuthProvider>
-        <ToastProvider>
-          <AppRouter />
-        </ToastProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRouter />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   )
 }
