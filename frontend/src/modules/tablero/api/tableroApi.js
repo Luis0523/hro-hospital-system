@@ -1,3 +1,5 @@
+import client from '@/shared/api/client'
+import { hoyIso } from '@/shared/utils/fecha'
 import { estadoInicialMock } from './mockData'
 
 export const CAMPOS_PUBLICOS = [
@@ -122,15 +124,51 @@ export function fusionarAsignacion(asignaciones = [], nueva) {
   return ordenarAsignaciones(copia)
 }
 
-export async function obtenerEstadoInicialTablero({ permitidas = ASIGNACIONES_PERMITIDAS } = {}) {
-  if (estaEnModoMock()) {
+// El DTO REST (AsignacionDiariaResponseDTO) conoce la asignación pero NO los
+// correlativos del contador. Por eso turnoActual/turnoSiguiente/ultimaActualizacion
+// quedan en null hasta que llegue un evento WebSocket.
+export function mapearAsignacionDiaria(dto = {}) {
+  return {
+    asignacionDiariaEspacioId: dto?.id ?? null,
+    espacioNumero: dto?.espacioNumero ?? null,
+    nivel: dto?.nivel ?? null,
+    subespecialidadNombre: dto?.subespecialidadNombre ?? null,
+    turnoActual: null,
+    turnoSiguiente: null,
+    ultimaActualizacion: null,
+  }
+}
+
+function extraerListaRespuesta(cuerpo) {
+  if (Array.isArray(cuerpo)) return cuerpo
+  if (cuerpo && Array.isArray(cuerpo.data)) return cuerpo.data
+  return null
+}
+
+export async function obtenerEstadoInicialTablero({
+  permitidas = ASIGNACIONES_PERMITIDAS,
+  cliente = client,
+  fecha = hoyIso(),
+  modoMock = estaEnModoMock(),
+} = {}) {
+  if (modoMock) {
     const asignaciones = ordenarAsignaciones(normalizarListaAsignaciones(estadoInicialMock))
     return filtrarAsignaciones(asignaciones, permitidas)
   }
 
-  // TODO(backend): cuando exista el snapshot REST del tablero, consumirlo aquí.
-  // No se inventa una URL porque el backend todavía no expone este recurso.
-  const error = new Error('El backend todavía no expone el estado inicial del tablero.')
-  error.code = 'SNAPSHOT_NO_DISPONIBLE'
-  throw error
+  const cuerpo = await cliente.get('/asignaciones-diarias', { params: { fecha } })
+  const lista = extraerListaRespuesta(cuerpo)
+
+  if (lista === null) {
+    const error = new Error(
+      'Respuesta inesperada del servidor al cargar las asignaciones del tablero.',
+    )
+    error.code = 'RESPUESTA_INESPERADA'
+    throw error
+  }
+
+  const asignaciones = ordenarAsignaciones(
+    normalizarListaAsignaciones(lista.map(mapearAsignacionDiaria)),
+  )
+  return filtrarAsignaciones(asignaciones, permitidas)
 }

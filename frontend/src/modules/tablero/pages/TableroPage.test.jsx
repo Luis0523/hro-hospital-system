@@ -332,6 +332,27 @@ describe('TableroPage', () => {
     expect(hablarMock).not.toHaveBeenCalled()
   })
 
+  it('el snapshot parcial con turno desconocido no abre LlamadoGrande ni anuncia', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce([
+      {
+        asignacionDiariaEspacioId: 7,
+        espacioNumero: '205',
+        nivel: 2,
+        subespecialidadNombre: 'Pediatría General',
+        turnoActual: null,
+        turnoSiguiente: null,
+        ultimaActualizacion: null,
+      },
+    ])
+
+    render(<TableroPage />)
+
+    const fila = await screen.findByTestId('fila-turno-7')
+    expect(within(fila).getByText('—')).toBeInTheDocument()
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
   it('comienza con la voz desactivada y la activa con la frase de confirmación', async () => {
     render(<TableroPage />)
     await screen.findByText('Pediatría General')

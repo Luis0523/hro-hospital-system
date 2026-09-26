@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { hoyIso } from '@/shared/utils/fecha'
 import {
   CAMPOS_PUBLICOS,
   estaEnModoMock,
   estaPermitida,
   filtrarAsignaciones,
   fusionarAsignacion,
+  mapearAsignacionDiaria,
   normalizarEstadoTablero,
   normalizarListaAsignaciones,
   obtenerEstadoInicialTablero,
@@ -213,5 +215,178 @@ describe('tableroApi · filtro de asignaciones', () => {
     expect(filtrarAsignaciones(lista, [1, 1, 2]).map((a) => a.asignacionDiariaEspacioId)).toEqual([
       1, 2,
     ])
+  })
+})
+
+describe('tableroApi · estado inicial real (REST)', () => {
+  const DTO = {
+    id: 10,
+    fecha: '2026-09-25',
+    espacioFisicoId: 'uuid-1',
+    espacioNumero: '201',
+    nivel: 2,
+    subespecialidadId: 5,
+    subespecialidadNombre: 'Pediatría General',
+    especialidadId: 1,
+    especialidadNombre: 'Pediatría',
+  }
+
+  function clienteConRespuesta(cuerpo) {
+    return { get: vi.fn().mockResolvedValue(cuerpo) }
+  }
+
+  it('en modo real consulta GET /asignaciones-diarias', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [DTO] })
+
+    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+
+    expect(cliente.get).toHaveBeenCalledTimes(1)
+    expect(cliente.get.mock.calls[0][0]).toBe('/asignaciones-diarias')
+  })
+
+  it('envía el parámetro fecha indicado', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [] })
+
+    await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [],
+      fecha: '2026-09-25',
+    })
+
+    expect(cliente.get.mock.calls[0][1]).toEqual({ params: { fecha: '2026-09-25' } })
+  })
+
+  it('usa la fecha local del cliente por defecto', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [] })
+
+    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+
+    expect(cliente.get.mock.calls[0][1].params.fecha).toBe(hoyIso())
+  })
+
+  it('interpreta el wrapper ApiResponse y mapea el DTO al modelo del tablero', async () => {
+    const cliente = clienteConRespuesta({
+      timestamp: '2026-09-25T08:00:00',
+      success: true,
+      message: 'Asignación del día',
+      data: [DTO],
+    })
+
+    const [asignacion] = await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [],
+    })
+
+    expect(asignacion).toEqual({
+      asignacionDiariaEspacioId: 10,
+      espacioNumero: '201',
+      nivel: 2,
+      subespecialidadNombre: 'Pediatría General',
+      turnoActual: null,
+      turnoSiguiente: null,
+      ultimaActualizacion: null,
+    })
+  })
+
+  it('acepta una respuesta en arreglo directo sin wrapper', async () => {
+    const cliente = clienteConRespuesta([DTO])
+
+    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+
+    expect(estado).toHaveLength(1)
+    expect(estado[0].asignacionDiariaEspacioId).toBe(10)
+  })
+
+  it('deja turnoActual, turnoSiguiente y ultimaActualizacion en null (no inventa turnos)', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [DTO] })
+
+    const [asignacion] = await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [],
+    })
+
+    expect(asignacion.turnoActual).toBeNull()
+    expect(asignacion.turnoSiguiente).toBeNull()
+    expect(asignacion.ultimaActualizacion).toBeNull()
+  })
+
+  it('devuelve [] ante una respuesta exitosa vacía', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [] })
+
+    await expect(
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+    ).resolves.toEqual([])
+  })
+
+  it('propaga errores HTTP/red', async () => {
+    const cliente = { get: vi.fn().mockRejectedValue(new Error('boom')) }
+
+    await expect(
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+    ).rejects.toThrow('boom')
+  })
+
+  it('lanza error controlado ante una estructura inesperada sin inventar información', async () => {
+    const cliente = clienteConRespuesta({ success: true, message: 'sin data' })
+
+    await expect(
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+    ).rejects.toMatchObject({ code: 'RESPUESTA_INESPERADA' })
+  })
+
+  it('descarta entradas sin id válido', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [DTO, { espacioNumero: '999' }] })
+
+    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+
+    expect(estado).toHaveLength(1)
+    expect(estado[0].asignacionDiariaEspacioId).toBe(10)
+  })
+
+  it('aplica el filtro por pantalla (permitidas)', async () => {
+    const dto2 = { ...DTO, id: 11, espacioNumero: '202' }
+    const cliente = clienteConRespuesta({ success: true, data: [DTO, dto2] })
+
+    const estado = await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [11],
+    })
+
+    expect(estado.map((a) => a.asignacionDiariaEspacioId)).toEqual([11])
+  })
+
+  it('no incorpora datos personales aunque vengan en el DTO', async () => {
+    const cliente = clienteConRespuesta({
+      success: true,
+      data: [
+        {
+          ...DTO,
+          nombrePaciente: 'Juan Perez',
+          dpi: '1234567890101',
+          expediente: 'HRO-123',
+          telefono: '55555555',
+        },
+      ],
+    })
+
+    const [asignacion] = await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [],
+    })
+
+    expect(asignacion).not.toHaveProperty('nombrePaciente')
+    expect(asignacion).not.toHaveProperty('dpi')
+    expect(asignacion).not.toHaveProperty('expediente')
+    expect(asignacion).not.toHaveProperty('telefono')
+  })
+
+  it('mapearAsignacionDiaria produce solo el modelo público del tablero', () => {
+    expect(Object.keys(mapearAsignacionDiaria(DTO)).sort()).toEqual([...CAMPOS_PUBLICOS].sort())
+    expect(mapearAsignacionDiaria(DTO).turnoActual).toBeNull()
   })
 })
