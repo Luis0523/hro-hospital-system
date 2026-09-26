@@ -1,6 +1,6 @@
 import client from '@/shared/api/client'
 import { hoyIso } from '@/shared/utils/fecha'
-import { estadoInicialMock } from './mockData'
+import { estadoInicialMock, generarAsignacionesVolumen } from './mockData'
 
 export const CAMPOS_PUBLICOS = [
   'asignacionDiariaEspacioId',
@@ -18,6 +18,19 @@ export const TIPOS_EVENTO = ['LLAMADO', 'ACTUALIZACION']
 
 export function estaEnModoMock(env = import.meta.env) {
   return env.MODE === 'test' || env.VITE_USE_MOCK === 'true'
+}
+
+export const VOLUMENES_MOCK_VALIDOS = [10, 25, 50, 100]
+
+/**
+ * Volumen de asignaciones sintéticas para visualización manual. SOLO aplica en
+ * desarrollo (DEV) y modo mock. En producción o valores inválidos devuelve 0
+ * (mock normal).
+ */
+export function resolverVolumenMock(env = import.meta.env) {
+  if (!env.DEV) return 0
+  const valor = Number(env.VITE_TABLERO_MOCK_VOLUMEN)
+  return VOLUMENES_MOCK_VALIDOS.includes(valor) ? valor : 0
 }
 
 export function parsearAsignacionesFiltradas(valor) {
@@ -123,12 +136,17 @@ export function normalizarListaAsignaciones(payload) {
 
 export function ordenarAsignaciones(asignaciones = []) {
   return [...asignaciones].sort((a, b) => {
-    const nivelA = a.nivel ?? Number.MAX_SAFE_INTEGER
-    const nivelB = b.nivel ?? Number.MAX_SAFE_INTEGER
-    if (nivelA !== nivelB) return nivelA - nivelB
-    return String(a.espacioNumero ?? '').localeCompare(String(b.espacioNumero ?? ''), 'es', {
-      numeric: true,
-    })
+    const porEspacio = String(a.espacioNumero ?? '').localeCompare(
+      String(b.espacioNumero ?? ''),
+      'es',
+      { numeric: true },
+    )
+    if (porEspacio !== 0) return porEspacio
+
+    return String(a.subespecialidadNombre ?? '').localeCompare(
+      String(b.subespecialidadNombre ?? ''),
+      'es',
+    )
   })
 }
 
@@ -179,7 +197,10 @@ export async function obtenerEstadoInicialTablero({
   modoMock = estaEnModoMock(),
 } = {}) {
   if (modoMock) {
-    const asignaciones = ordenarAsignaciones(normalizarListaAsignaciones(estadoInicialMock))
+    const volumen = resolverVolumenMock()
+    const base =
+      volumen > 0 ? { asignaciones: generarAsignacionesVolumen(volumen) } : estadoInicialMock
+    const asignaciones = ordenarAsignaciones(normalizarListaAsignaciones(base))
     return filtrarAsignaciones(asignaciones, permitidas)
   }
 

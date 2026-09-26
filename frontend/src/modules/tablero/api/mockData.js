@@ -40,3 +40,26 @@ export const asignacionesMock = [
 export const estadoInicialMock = {
   asignaciones: asignacionesMock,
 }
+
+/**
+ * Genera asignaciones ficticias deterministas (sin Math.random) para
+ * visualización manual de volumen en modo mock. Nunca se usa en backend real.
+ */
+export function generarAsignacionesVolumen(cantidad, { idBase = 1 } = {}) {
+  const total = Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 0
+
+  return Array.from({ length: total }, (_, indice) => {
+    const numero = indice + 1
+    const turnoActual = 1 + (indice % 7)
+
+    return {
+      asignacionDiariaEspacioId: idBase + indice,
+      espacioNumero: String(100 + numero),
+      nivel: 1 + (indice % 3),
+      subespecialidadNombre: `Clínica ${String(numero).padStart(3, '0')}`,
+      turnoActual,
+      turnoSiguiente: turnoActual + 1,
+      ultimaActualizacion: '2026-09-20T08:00:00-06:00',
+    }
+  })
+}
