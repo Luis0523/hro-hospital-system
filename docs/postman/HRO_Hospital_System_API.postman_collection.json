@@ -1407,6 +1407,61 @@
             },
             "description": "Única vía para cambiar una fecha ya cerrada. Queda auditada."
           }
+        },
+        {
+          "name": "7. Seleccionar/actualizar sala (upsert)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"espacioFisicoId\": \"{{espacioFisicoId}}\",\n  \"subespecialidadId\": {{subespecialidadId}},\n  \"fecha\": \"2026-11-09\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias"
+              ]
+            },
+            "description": "Crea o actualiza la subespecialidad de una sala/fecha en una sola llamada (select del jefe de enfermería). Requiere rol jefe_enfermeria o administrador. Respeta el cierre del día."
+          }
+        },
+        {
+          "name": "8. Vista operativa (salas + selección)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones-diarias/vista?fecha=2026-11-09&nivel=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones-diarias",
+                "vista"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09"
+                },
+                {
+                  "key": "nivel",
+                  "value": "1",
+                  "description": "Opcional"
+                }
+              ]
+            },
+            "description": "Todas las salas activas (del nivel o todas) con la subespecialidad seleccionada para la fecha (o nula)."
+          }
         }
       ]
     },

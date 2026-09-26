@@ -395,6 +395,8 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `POST /api/v1/asignaciones-diarias/cerrar?fecha=YYYY-MM-DD` → bloquea la edición (exige cobertura completa).
    - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.
    - `POST /api/v1/asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=` → "reasignación en caliente" para una fecha ya cerrada (queda auditada).
+   - **Permisos:** las **escrituras** (POST/PUT/DELETE) exigen rol `jefe_enfermeria` o `administrador`; las **lecturas** quedan abiertas. El `<select>` guarda **subespecialidad** (agrupar/filtrar por especialidad en la UI).
+   - **Nota:** el croquis/plano SVG (`plano_hospital`) queda **fuera de alcance** por ahora; no hay endpoint de plano. La selección por sala es la funcionalidad vigente.
 5. **Calendario Institucional:**
    - `GET /api/v1/dias-no-laborables` (todos), `GET /api/v1/dias-no-laborables/futuros`, `GET /api/v1/dias-no-laborables/rango?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`, `GET /api/v1/dias-no-laborables/{id}`.
    - `POST /api/v1/dias-no-laborables` `{ fecha, motivo, creadoPorId?, forzar? }`:
