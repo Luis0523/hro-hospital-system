@@ -43,6 +43,9 @@ client.interceptors.response.use(
       error.response?.data?.message || error.message || 'Error de comunicación con el servidor'
     const normalizado = new Error(mensaje)
     normalizado.status = status
+    normalizado.codigo = error.response?.data?.codigo
+    normalizado.data = error.response?.data?.data
+    normalizado.response = error.response
     return Promise.reject(normalizado)
   },
 )

@@ -793,11 +793,17 @@ Este documento nunca debe contradecir el contrato vigente.
 - Códigos relevantes: `DIA_NO_LABORABLE_CON_CITAS` (409), `DIA_NO_LABORABLE_YA_EXISTE` (400), `CUPOS_AGOTADOS` (409), `ACCESO_DENEGADO` (403).
 - Filtro de estado en listados administrativos: `?estado=activos|inactivos|todos` (omitido = `activos`).
 
-#### Requisito inmediato pendiente — F0B
+#### Errores estructurados — F0B (implementado)
 
-`frontend/src/shared/api/client.js` **todavía no** preserva `codigo`/`data`/`response`: el `Error` normalizado actual solo conserva `message` y `status`. Debe modificarse de forma retrocompatible para conservar `message`, `status` y agregar `codigo`, `data` y `response` (referencia original de Axios).
+`frontend/src/shared/api/client.js` preserva de forma retrocompatible en el `Error` normalizado: `message`, `status`, `codigo`, `data` y `response` (referencia original de Axios).
 
-Hasta completar F0B, los consumidores **no** deben asumir que `codigo`/`data`/`response` ya están disponibles.
+Semántica de las propiedades derivadas de `ApiResponse`:
+
+- propiedad ausente → `undefined`;
+- el backend envía `null` → se conserva `null`;
+- el backend envía un valor → se conserva exactamente.
+
+La lógica frontend debe usar `codigo` para errores estructurados y `message` únicamente para presentación.
 
 ### Estado por sección
 
@@ -842,7 +848,6 @@ No existe una entidad "Clínica" vigente: el concepto se modela mediante especia
 
 - Limitaciones heredadas de `shared/ui` (`Input`, `Select`, `Modal`, `Table`) y del scrollbar global.
 - `format:check` global falla por archivos ajenos al módulo.
-- `shared/api/client.js` pendiente de F0B: todavía no preserva `codigo`/`data`/`response`.
 - Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): vigencia de los `DELETE` de catálogos; `numeroColegiado` (SCRUM-92); `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
 
 ### Regla fundamental
