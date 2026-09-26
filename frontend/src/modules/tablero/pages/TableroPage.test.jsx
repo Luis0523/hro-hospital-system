@@ -41,7 +41,7 @@ vi.mock('../api/tableroApi', async (importOriginal) => {
   }
 })
 
-import TableroPage, { clasesGrid } from './TableroPage.jsx'
+import TableroPage from './TableroPage.jsx'
 
 const ASIGNACIONES_INICIALES = [
   {
@@ -96,6 +96,10 @@ function mensaje(asignacion) {
 
 let handlers
 
+function filasTabla() {
+  return within(screen.getByTestId('tablero-tabla-cuerpo')).getAllByRole('row')
+}
+
 describe('TableroPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -118,7 +122,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(4)
+    expect(filasTabla()).toHaveLength(4)
     expect(screen.getByText('Datos de prueba')).toBeInTheDocument()
     expect(crearClienteTableroMock).not.toHaveBeenCalled()
   })
@@ -132,21 +136,21 @@ describe('TableroPage', () => {
     expect(handlers).toBeTruthy()
   })
 
-  it('renderiza varias asignaciones con su turno actual y siguiente', async () => {
+  it('renderiza una tabla con una fila por asignación y su turno actual', async () => {
     render(<TableroPage />)
 
     expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
     expect(screen.getByText('Medicina General')).toBeInTheDocument()
     expect(screen.getByText('Cardiología')).toBeInTheDocument()
     expect(screen.getByText('Traumatología')).toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(4)
+    expect(filasTabla()).toHaveLength(4)
 
-    const primera = screen.getByTestId('asignacion-1')
+    const primera = screen.getByTestId('fila-turno-1')
     expect(within(primera).getByText('#007')).toBeInTheDocument()
-    expect(within(primera).getByText('#008')).toBeInTheDocument()
+    expect(screen.queryByText('#008')).not.toBeInTheDocument()
   })
 
-  it('muestra un guion cuando no hay turno actual ni siguiente', async () => {
+  it('muestra un guion cuando no hay turno actual', async () => {
     obtenerEstadoInicialMock.mockResolvedValueOnce([
       {
         asignacionDiariaEspacioId: 9,
@@ -161,8 +165,8 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    const tarjeta = await screen.findByTestId('asignacion-9')
-    expect(within(tarjeta).getAllByText('—')).toHaveLength(2)
+    const fila = await screen.findByTestId('fila-turno-9')
+    expect(within(fila).getByText('—')).toBeInTheDocument()
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
@@ -175,8 +179,8 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(within(screen.getByTestId('asignacion-1')).getByText('#009')).toBeInTheDocument()
-    expect(within(screen.getByTestId('asignacion-2')).getByText('#014')).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#009')).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-2')).getByText('#014')).toBeInTheDocument()
   })
 
   it('agrega una asignación nueva sin duplicar las existentes', async () => {
@@ -195,9 +199,9 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(screen.getAllByRole('article')).toHaveLength(5)
+    expect(filasTabla()).toHaveLength(5)
     expect(screen.getByText('Nueva Clínica')).toBeInTheDocument()
-    expect(screen.getAllByTestId('asignacion-1')).toHaveLength(1)
+    expect(screen.getAllByTestId('fila-turno-1')).toHaveLength(1)
   })
 
   it('refleja el estado de la conexión WebSocket', async () => {
@@ -224,7 +228,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(screen.queryByTestId('asignacion-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-1')).not.toBeInTheDocument()
 
     act(() => {
       handlers.onMensaje(
@@ -240,7 +244,7 @@ describe('TableroPage', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Oftalmología')).toBeInTheDocument()
-    expect(screen.getByTestId('asignacion-5')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-5')).toBeInTheDocument()
   })
 
   it('muestra el estado vacío cuando no hay asignaciones', async () => {
@@ -280,10 +284,10 @@ describe('TableroPage', () => {
     })
 
     expect(screen.queryByText('Fuera de filtro')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('asignacion-99')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('asignacion-3')).getByText('#003')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-99')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-3')).getByText('#003')).toBeInTheDocument()
     expect(screen.queryByText('#050')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(4)
+    expect(filasTabla()).toHaveLength(4)
   })
 
   it('no muestra datos personales aunque lleguen por WebSocket', async () => {
@@ -418,54 +422,29 @@ describe('TableroPage', () => {
   })
 })
 
-describe('TableroPage · grid adaptativo', () => {
+describe('TableroPage · tabla dinámica', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     estaEnModoMockMock.mockReturnValue(false)
+    estaPermitidaMock.mockReturnValue(true)
+    estaDisponibleVozMock.mockReturnValue(true)
     obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
     crearClienteTableroMock.mockImplementation(() => ({ activar: vi.fn(), desactivar: vi.fn() }))
   })
 
-  it('centra una sola tarjeta con ancho acotado', () => {
-    const clases = clasesGrid(1)
+  it('muestra la tabla con una fila por asignación visible', async () => {
+    render(<TableroPage />)
 
-    expect(clases).toContain('grid-cols-1')
-    expect(clases).toContain('mx-auto')
-    expect(clases).toContain('max-w-4xl')
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
+    expect(filasTabla()).toHaveLength(4)
   })
 
-  it('usa dos columnas centradas para dos tarjetas', () => {
-    const clases = clasesGrid(2)
-
-    expect(clases).toContain('md:grid-cols-2')
-    expect(clases).toContain('max-w-7xl')
-    expect(clases).not.toContain('2xl:grid-cols-4')
-  })
-
-  it('usa tres columnas centradas para tres tarjetas', () => {
-    const clases = clasesGrid(3)
-
-    expect(clases).toContain('2xl:grid-cols-3')
-    expect(clases).toContain('mx-auto')
-    expect(clases).toContain('max-w-[90rem]')
-  })
-
-  it('usa cuatro columnas a ancho completo desde cuatro tarjetas', () => {
-    const clases = clasesGrid(4)
-
-    expect(clases).toContain('2xl:grid-cols-4')
-    expect(clases).toContain('w-full')
-    expect(clases).not.toContain('mx-auto')
-    expect(clasesGrid(6)).toContain('2xl:grid-cols-4')
-  })
-
-  it('aplica el grid adaptativo según la cantidad visible', async () => {
+  it('ajusta el número de filas a la cantidad de asignaciones', async () => {
     obtenerEstadoInicialMock.mockResolvedValueOnce(ASIGNACIONES_INICIALES.slice(0, 2))
 
     render(<TableroPage />)
 
-    const grid = await screen.findByTestId('tablero-grid')
-    expect(grid).toHaveClass('md:grid-cols-2', 'max-w-7xl', 'mx-auto')
-    expect(screen.getAllByRole('article')).toHaveLength(2)
+    await screen.findByTestId('tablero-tabla')
+    expect(filasTabla()).toHaveLength(2)
   })
 })

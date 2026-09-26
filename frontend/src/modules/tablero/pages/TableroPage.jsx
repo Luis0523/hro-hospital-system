@@ -11,24 +11,9 @@ import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../a
 import ControlVoz from '../components/ControlVoz.jsx'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
-import TarjetaAsignacion from '../components/TarjetaAsignacion.jsx'
+import TablaTurnos from '../components/TablaTurnos.jsx'
 import TableroError from '../components/TableroError.jsx'
 import TableroVacio from '../components/TableroVacio.jsx'
-
-const GRID_BASE = 'grid flex-1 content-start gap-6'
-
-export function clasesGrid(cantidad) {
-  if (cantidad === 1) {
-    return `${GRID_BASE} mx-auto w-full max-w-4xl grid-cols-1`
-  }
-  if (cantidad === 2) {
-    return `${GRID_BASE} mx-auto w-full max-w-7xl grid-cols-1 md:grid-cols-2`
-  }
-  if (cantidad === 3) {
-    return `${GRID_BASE} mx-auto w-full max-w-[90rem] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3`
-  }
-  return `${GRID_BASE} w-full grid-cols-1 md:grid-cols-2 2xl:grid-cols-4`
-}
 
 export default function TableroPage() {
   const [asignaciones, setAsignaciones] = useState([])
@@ -155,14 +140,7 @@ export default function TableroPage() {
         {!cargando && !error && asignaciones.length === 0 && <TableroVacio />}
 
         {!cargando && !error && asignaciones.length > 0 && (
-          <div data-testid="tablero-grid" className={clasesGrid(asignaciones.length)}>
-            {asignaciones.map((asignacion) => (
-              <TarjetaAsignacion
-                key={asignacion.asignacionDiariaEspacioId}
-                asignacion={asignacion}
-              />
-            ))}
-          </div>
+          <TablaTurnos asignaciones={asignaciones} />
         )}
       </main>
     </div>
