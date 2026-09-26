@@ -385,13 +385,17 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
 3. **Médicos y programación por subespecialidad:**
    - `POST /api/v1/medicos` (nombres, número de colegiado).
    - `POST /api/v1/medico-subespecialidades`: Asigna al médico una subespecialidad con día de la semana (`1..7`), hora inicio, hora fin, capacidad máxima y duración estimada. **No** referencia sala física.
-4. **Asignación diaria (rol `jefe_enfermeria`):** define qué subespecialidad ocupa qué sala cada día.
-   - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD`
-   - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }`
+4. **Asignación diaria (rol `jefe_enfermeria`, o `administrador`):** define qué subespecialidad ocupa qué sala cada día.
+   - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD` (lectura abierta; la usa el tablero).
+   - `GET /api/v1/asignaciones-diarias/vista?fecha=YYYY-MM-DD&nivel=` → **todas** las salas activas (del nivel o todas) con la subespecialidad seleccionada (o nula). Ideal para pintar los cuadros con un `<select>`.
+   - `PUT /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }` → **upsert**: crea la selección o la actualiza en una sola llamada (lo que necesita el `<select>`). Respeta el cierre del día y valida que la subespecialidad y su **especialidad padre** estén activas.
+   - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }` → alta estricta (falla con error si ya existe).
    - `GET /api/v1/asignaciones-diarias/cobertura?fecha=YYYY-MM-DD` → subespecialidades con médicos programados sin sala asignada.
    - `POST /api/v1/asignaciones-diarias/cerrar?fecha=YYYY-MM-DD` → bloquea la edición (exige cobertura completa).
    - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.
    - `POST /api/v1/asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=` → "reasignación en caliente" para una fecha ya cerrada (queda auditada).
+   - **Permisos:** las **escrituras** (POST/PUT/DELETE) exigen rol `jefe_enfermeria` o `administrador`; las **lecturas** quedan abiertas. El `<select>` guarda **subespecialidad** (agrupar/filtrar por especialidad en la UI).
+   - **Nota:** el croquis/plano SVG (`plano_hospital`) queda **fuera de alcance** por ahora; no hay endpoint de plano. La selección por sala es la funcionalidad vigente.
 5. **Calendario Institucional:**
    - `GET /api/v1/dias-no-laborables` (todos), `GET /api/v1/dias-no-laborables/futuros`, `GET /api/v1/dias-no-laborables/rango?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`, `GET /api/v1/dias-no-laborables/{id}`.
    - `POST /api/v1/dias-no-laborables` `{ fecha, motivo, creadoPorId?, forzar? }`:

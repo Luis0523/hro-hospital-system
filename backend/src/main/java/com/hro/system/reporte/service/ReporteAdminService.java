@@ -8,8 +8,10 @@ import com.hro.system.reporte.dto.DemandaEspecialidadDTO;
 import com.hro.system.reporte.dto.ReporteCitasPorEstadoDTO;
 import com.hro.system.reporte.dto.ReporteDemandaEspecialidadDTO;
 import com.hro.system.reporte.dto.ReporteUtilizacionCuposDTO;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,12 +79,26 @@ public class ReporteAdminService {
     }
 
     @Transactional(readOnly = true)
-    public ReporteUtilizacionCuposDTO utilizacionCupos(LocalDate inicio, LocalDate fin, Long subespecialidadId) {
+    public ReporteUtilizacionCuposDTO utilizacionCupos(LocalDate inicio, LocalDate fin, Long subespecialidadId, Long especialidadId) {
         Rango rango = normalizar(inicio, fin);
+
+        Specification<CupoDiario> filtro = (root, query, cb) -> {
+            List<Predicate> predicados = new ArrayList<>();
+            predicados.add(cb.between(root.get("fecha"), rango.inicio(), rango.fin()));
+            if (subespecialidadId != null) {
+                predicados.add(cb.equal(root.get("medicoSubespecialidad").get("subespecialidad").get("id"), subespecialidadId));
+            }
+            if (especialidadId != null) {
+                predicados.add(cb.equal(
+                        root.get("medicoSubespecialidad").get("subespecialidad").get("especialidad").get("id"),
+                        especialidadId));
+            }
+            return cb.and(predicados.toArray(new Predicate[0]));
+        };
 
         int capacidadTotal = 0;
         int cuposOcupados = 0;
-        for (CupoDiario cupo : cupoDiarioRepository.buscarParaUtilizacion(rango.inicio(), rango.fin(), subespecialidadId)) {
+        for (CupoDiario cupo : cupoDiarioRepository.findAll(filtro)) {
             capacidadTotal += cupo.getCapacidadMaxima();
             cuposOcupados += cupo.getCuposOcupados();
         }
@@ -95,6 +111,7 @@ public class ReporteAdminService {
                 .fechaInicio(rango.inicio())
                 .fechaFin(rango.fin())
                 .subespecialidadId(subespecialidadId)
+                .especialidadId(especialidadId)
                 .capacidadTotal(capacidadTotal)
                 .cuposOcupados(cuposOcupados)
                 .cuposDisponibles(Math.max(0, capacidadTotal - cuposOcupados))
