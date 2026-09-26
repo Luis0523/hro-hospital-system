@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.hro</groupId>
 	<artifactId>hro-hospital-system</artifactId>
-	<version>1.5.0</version>
+	<version>1.6.0</version>
 	<name>hro-hospital-system</name>
 	<description>Sistema Web de Gestion de Citas, Agendas y Turnos - Hospital Regional de Occidente</description>
 

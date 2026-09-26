@@ -10,7 +10,7 @@ import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
 import com.hro.system.turno.dto.TableroTurnoDTO;
@@ -120,13 +120,12 @@ class TurnoServiceTableroTest {
                 .build();
 
         Medico medico = Medico.builder().nombres("Dra. Elena Ramos").build();
-        MedicoSubespecialidad medicoSubespecialidad = MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario medicoSubespecialidad = SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .build();
 
         CupoDiario cupoDiario = CupoDiario.builder()
-                .medicoSubespecialidad(medicoSubespecialidad)
+                .subespecialidadHorario(medicoSubespecialidad)
                 .fecha(LocalDate.now())
                 .build();
 
@@ -160,6 +159,7 @@ class TurnoServiceTableroTest {
                 .build();
 
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(usuario));
+        when(asignacionRepository.findById(ASIGNACION_ID)).thenReturn(Optional.of(asignacion));
         when(contadorRepository.findByAsignacionDiariaEspacioId(ASIGNACION_ID))
                 .thenReturn(Optional.of(contador));
         when(contadorRepository.save(any(ContadorTurnoDiario.class)))
@@ -256,8 +256,8 @@ class TurnoServiceTableroTest {
         when(citaRepository.findById(1L)).thenReturn(Optional.of(cita));
         when(turnoRepository.findByCitaId(1L)).thenReturn(Optional.empty());
         when(asignacionRepository.findBySubespecialidadIdAndFecha(any(), any()))
-                .thenReturn(Optional.of(asignacion));
-        when(turnoRepository.obtenerSiguienteTurnoAtomico(anyLong())).thenReturn(1);
+                .thenReturn(List.of(asignacion));
+        when(turnoRepository.obtenerSiguienteTurnoGlobal(any())).thenReturn(1);
         when(turnoRepository.save(any(Turno.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
         when(citaRepository.save(any(Cita.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 

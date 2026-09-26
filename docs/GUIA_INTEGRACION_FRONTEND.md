@@ -382,14 +382,15 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `GET /api/v1/espacios-fisicos`
    - `POST /api/v1/espacios-fisicos` (numero, nivel, capacidadCamillas, coordenadasPlano, nombre, ubicacion).
    - `GET /api/v1/espacios-fisicos/nivel/{nivel}`
-3. **Médicos y programación por subespecialidad:**
-   - `POST /api/v1/medicos` (nombres, número de colegiado).
-   - `POST /api/v1/medico-subespecialidades`: Asigna al médico una subespecialidad con día de la semana (`1..7`), hora inicio, hora fin, capacidad máxima y duración estimada. **No** referencia sala física.
-4. **Asignación diaria (rol `jefe_enfermeria`, o `administrador`):** define qué subespecialidad ocupa qué sala cada día.
-   - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD` (lectura abierta; la usa el tablero).
-   - `GET /api/v1/asignaciones-diarias/vista?fecha=YYYY-MM-DD&nivel=` → **todas** las salas activas (del nivel o todas) con la subespecialidad seleccionada (o nula). Ideal para pintar los cuadros con un `<select>`.
-   - `PUT /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }` → **upsert**: crea la selección o la actualiza en una sola llamada (lo que necesita el `<select>`). Respeta el cierre del día y valida que la subespecialidad y su **especialidad padre** estén activas.
-   - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }` → alta estricta (falla con error si ya existe).
+3. **Horario por subespecialidad (días y horas; sin médico):**
+   - `GET /api/v1/subespecialidades/{id}/horarios`, `POST|PUT|DELETE /api/v1/subespecialidad-horarios[/{id}]`, `PATCH /{id}/reactivar`.
+   - `POST /api/v1/subespecialidad-horarios` `{ subespecialidadId, diaSemana (1..7), horaInicio, horaFin, capacidadMaxima, duracionConsultaMinutos? }` — único por subespecialidad+día.
+   - Los **cupos** se generan de este horario (ya no del médico). `GET /api/v1/cupos?subespecialidadId=&fechaInicio=&fechaFin=&soloDisponibles=`.
+   - **Turnos:** el check-in balancea entre las salas de la subespecialidad y el `numeroTurno` es **global del día**; `PATCH /api/v1/turnos/{id}/sala?nuevoEspacioFisicoId=&motivo=` reasigna sala.
+   - El **médico** queda fuera del flujo operativo (solo órdenes de laboratorio y su dashboard).
+4. **Asignación diaria (rol `jefe_enfermeria`):** define qué subespecialidad ocupa qué sala cada día.
+   - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD`
+   - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }`
    - `GET /api/v1/asignaciones-diarias/cobertura?fecha=YYYY-MM-DD` → subespecialidades con médicos programados sin sala asignada.
    - `POST /api/v1/asignaciones-diarias/cerrar?fecha=YYYY-MM-DD` → bloquea la edición (exige cobertura completa).
    - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.

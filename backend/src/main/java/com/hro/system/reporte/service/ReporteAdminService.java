@@ -86,6 +86,11 @@ public class ReporteAdminService {
             List<Predicate> predicados = new ArrayList<>();
             predicados.add(cb.between(root.get("fecha"), rango.inicio(), rango.fin()));
             if (subespecialidadId != null) {
+                predicados.add(cb.equal(root.get("subespecialidadHorario").get("subespecialidad").get("id"), subespecialidadId));
+            }
+            if (especialidadId != null) {
+                predicados.add(cb.equal(
+                        root.get("subespecialidadHorario").get("subespecialidad").get("especialidad").get("id"),
                 predicados.add(cb.equal(root.get("medicoSubespecialidad").get("subespecialidad").get("id"), subespecialidadId));
             }
             if (especialidadId != null) {
