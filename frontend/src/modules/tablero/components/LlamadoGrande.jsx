@@ -13,7 +13,7 @@ export default function LlamadoGrande({ asignacion }) {
       aria-label="Llamado de turno"
       className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-6 text-center"
     >
-      <h2 className="text-[clamp(1.75rem,3vw,3.5rem)] font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
+      <h2 className="max-w-[90%] break-words text-[clamp(1.75rem,3vw,5rem)] font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
         {subespecialidadNombre ?? 'Sin subespecialidad'}
       </h2>
 
@@ -21,7 +21,7 @@ export default function LlamadoGrande({ asignacion }) {
         <span className="text-label-md uppercase tracking-[0.4em] text-primary">Turno</span>
         <span
           data-testid="llamado-turno"
-          className="text-[clamp(6rem,16vw,20rem)] font-bold leading-none tabular-nums text-primary drop-shadow-sm"
+          className="text-[clamp(6rem,16vw,28rem)] font-bold leading-none tabular-nums text-primary drop-shadow-sm"
         >
           {formatearTurno(turnoActual)}
         </span>
@@ -33,7 +33,7 @@ export default function LlamadoGrande({ asignacion }) {
         </span>
         <span
           data-testid="llamado-consultorio"
-          className="text-[clamp(3rem,8vw,10rem)] font-bold leading-none tabular-nums text-on-surface"
+          className="text-[clamp(3rem,8vw,16rem)] font-bold leading-none tabular-nums text-on-surface"
         >
           {espacioNumero ?? '—'}
         </span>

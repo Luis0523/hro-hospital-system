@@ -786,4 +786,67 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(screen.queryByText('HRO-123')).not.toBeInTheDocument()
     expect(screen.queryByText('55555555')).not.toBeInTheDocument()
   })
+
+  it('integra el control de pantalla completa en el encabezado', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    // En jsdom la Fullscreen API no existe: el control se muestra como no disponible.
+    expect(screen.getByText('Pantalla completa no disponible')).toBeInTheDocument()
+  })
+
+  it('limpia el temporizador del llamado al desmontar', async () => {
+    const { unmount } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        )
+      })
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+
+      unmount()
+
+      expect(() => vi.advanceTimersByTime(60000)).not.toThrow()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('un callback tardío tras desmontar no rompe ni continúa la cola pendiente', async () => {
+    let terminar
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminar = opciones.onEnd
+      return 'mensaje'
+    })
+
+    const { unmount } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 15,
+          turnoSiguiente: 16,
+          subespecialidadNombre: 'Medicina General',
+        }),
+      )
+    })
+
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+
+    unmount()
+
+    expect(() => act(() => terminar())).not.toThrow()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+  })
 })

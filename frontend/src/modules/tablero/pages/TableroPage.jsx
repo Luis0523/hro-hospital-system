@@ -8,6 +8,7 @@ import {
 } from '../api/tableroApi'
 import { crearClienteTablero } from '../api/tableroSocket'
 import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
+import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
 import ControlVoz from '../components/ControlVoz.jsx'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
@@ -89,6 +90,8 @@ export default function TableroPage() {
         clearTimeout(timerLlamadoRef.current)
         timerLlamadoRef.current = null
       }
+      colaLlamadosRef.current = []
+      reproduciendoRef.current = false
     }
   }, [cargar])
 
@@ -209,6 +212,7 @@ export default function TableroPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <EncabezadoTablero>
+        <ControlPantallaCompleta />
         <ControlVoz disponible={vozDisponible} activa={vozActiva} onActivar={activarVoz} />
         <EstadoConexion estado={estadoConexion} />
       </EncabezadoTablero>
