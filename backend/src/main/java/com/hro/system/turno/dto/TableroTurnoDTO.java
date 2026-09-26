@@ -19,4 +19,8 @@ public class TableroTurnoDTO {
     private Integer turnoActual;
     private Integer turnoSiguiente;
     private OffsetDateTime ultimaActualizacion;
+    /** Número de intento del turno cuando el evento es un llamado; null en el resto. */
+    private Integer intentosLlamado;
+    /** "LLAMADO" si el evento representa una acción real de llamar; "ACTUALIZACION" en el resto. */
+    private String tipoEvento;
 }

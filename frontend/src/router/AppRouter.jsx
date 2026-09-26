@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
+import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
@@ -30,7 +31,7 @@ export default function AppRouter() {
         <Route path="*" element={<Navigate to="/administracion" replace />} />
       </Route>
 
-      <Route path="/tablero" element={<EstacionNoDisponible nombre="Tablero de Turnos" />} />
+      <Route path="/tablero" element={<TableroPage />} />
 
       <Route path="*" element={<Navigate to="/enfermeria" replace />} />
     </Routes>

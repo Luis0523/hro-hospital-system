@@ -106,7 +106,7 @@ public class TurnoService {
                 .fechaCambio(OffsetDateTime.now())
                 .build());
 
-        notificarActualizacionTablero(asignacion.getId());
+        notificarActualizacionTablero(asignacion.getId(), "ACTUALIZACION", null);
 
         publicarAuditoria("turno", guardado.getId(), "crear", usuario.getId(), null, Map.of(
                 "numeroTurno", numeroTurno,
@@ -137,7 +137,7 @@ public class TurnoService {
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
         actualizarTurnoActualContador(asignacionId, turno.getNumeroTurno());
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "LLAMADO", actualizado.getIntentosLlamado());
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -164,7 +164,7 @@ public class TurnoService {
         Turno actualizado = turnoRepository.save(turno);
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -201,7 +201,7 @@ public class TurnoService {
         turno.setHoraLlamado(null);
 
         Turno actualizado = turnoRepository.save(turno);
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         historialRepository.save(CitaEstadoHistorial.builder()
                 .cita(turno.getCita())
@@ -251,7 +251,7 @@ public class TurnoService {
                 .build());
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -317,7 +317,7 @@ public class TurnoService {
         });
     }
 
-    private void notificarActualizacionTablero(Long asignacionId) {
+    private void notificarActualizacionTablero(Long asignacionId, String tipoEvento, Integer intentosLlamado) {
         if (asignacionId == null) {
             return;
         }
@@ -331,6 +331,8 @@ public class TurnoService {
                     .turnoActual(contador.getTurnoActual())
                     .turnoSiguiente(contador.getTurnoSiguiente())
                     .ultimaActualizacion(OffsetDateTime.now())
+                    .intentosLlamado(intentosLlamado)
+                    .tipoEvento(tipoEvento)
                     .build();
 
             messagingTemplate.convertAndSend("/topic/tablero", tablero);
