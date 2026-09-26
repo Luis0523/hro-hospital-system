@@ -2,7 +2,7 @@ import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { normalizarEstadoTablero } from './tableroApi'
 
-export const WS_URL = import.meta.env.VITE_WS_URL || '/api/v1/ws-turnos'
+export const WS_URL = import.meta.env.VITE_WS_URL || '/api/v1/ws'
 
 export const TOPIC_TABLERO = '/topic/tablero'
 

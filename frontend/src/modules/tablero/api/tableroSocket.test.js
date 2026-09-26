@@ -30,7 +30,7 @@ describe('tableroSocket', () => {
   })
 
   it('usa el endpoint real del backend y los topics acordados', () => {
-    expect(WS_URL).toBe('/api/v1/ws-turnos')
+    expect(WS_URL).toBe('/api/v1/ws')
     expect(TOPIC_TABLERO).toBe('/topic/tablero')
     expect(topicAsignacion(5)).toBe('/topic/clinica/5')
   })
