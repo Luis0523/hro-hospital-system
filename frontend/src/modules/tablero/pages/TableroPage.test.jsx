@@ -93,6 +93,8 @@ function mensaje(asignacion) {
     turnoActual: 1,
     turnoSiguiente: 2,
     ultimaActualizacion: '2026-09-20T08:05:32-06:00',
+    tipoEvento: 'ACTUALIZACION',
+    intentosLlamado: null,
     ...asignacion,
   }
 }
@@ -287,7 +289,13 @@ describe('TableroPage', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+        mensaje({
+          asignacionDiariaEspacioId: 3,
+          turnoActual: 50,
+          turnoSiguiente: 51,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
       handlers.onMensaje(
         mensaje({ asignacionDiariaEspacioId: 99, subespecialidadNombre: 'Fuera de filtro' }),
@@ -371,7 +379,13 @@ describe('TableroPage', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -386,7 +400,13 @@ describe('TableroPage', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -397,7 +417,7 @@ describe('TableroPage', () => {
     )
   })
 
-  it('no anuncia si el turno actual no cambió', async () => {
+  it('un evento ACTUALIZACION no anuncia aunque cambie el turno', async () => {
     render(<TableroPage />)
     await screen.findByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
@@ -405,7 +425,12 @@ describe('TableroPage', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 8 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'ACTUALIZACION',
+        }),
       )
     })
 
@@ -437,7 +462,13 @@ describe('TableroPage', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+        mensaje({
+          asignacionDiariaEspacioId: 3,
+          turnoActual: 50,
+          turnoSiguiente: 51,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -512,7 +543,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -534,7 +571,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
@@ -569,6 +612,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
           asignacionDiariaEspacioId: 1,
           turnoActual: 8,
           turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
           subespecialidadNombre: 'Pediatría General',
           espacioNumero: '201',
         }),
@@ -578,6 +623,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
           asignacionDiariaEspacioId: 2,
           turnoActual: 15,
           turnoSiguiente: 16,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
           subespecialidadNombre: 'Medicina General',
           espacioNumero: '202',
         }),
@@ -630,7 +677,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
@@ -655,7 +708,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     try {
       act(() => {
         handlers.onMensaje(
-          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 8,
+            turnoSiguiente: 9,
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
         )
       })
       expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
@@ -681,7 +740,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     try {
       act(() => {
         handlers.onMensaje(
-          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 8,
+            turnoSiguiente: 9,
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
         )
       })
 
@@ -709,7 +774,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     try {
       act(() => {
         handlers.onMensaje(
-          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 8,
+            turnoSiguiente: 9,
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
         )
       })
 
@@ -727,13 +798,18 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     }
   })
 
-  it('no activa el llamado si el turno actual no cambia', async () => {
+  it('un evento ACTUALIZACION con cambio de turno no activa el llamado', async () => {
     render(<TableroPage />)
     await screen.findByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 8 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'ACTUALIZACION',
+        }),
       )
     })
 
@@ -763,7 +839,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+        mensaje({
+          asignacionDiariaEspacioId: 3,
+          turnoActual: 50,
+          turnoSiguiente: 51,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -786,7 +868,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+        mensaje({
+          asignacionDiariaEspacioId: 3,
+          turnoActual: 50,
+          turnoSiguiente: 51,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -795,7 +883,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
     })
 
@@ -819,6 +913,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
           asignacionDiariaEspacioId: 1,
           turnoActual: 8,
           turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
           nombrePaciente: 'Juan Perez',
           pacienteNombreCompleto: 'Juan Perez',
           dpi: '1234567890101',
@@ -851,7 +947,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     try {
       act(() => {
         handlers.onMensaje(
-          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 8,
+            turnoSiguiente: 9,
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
         )
       })
       expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
@@ -877,13 +979,21 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     act(() => {
       handlers.onMensaje(
-        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
       )
       handlers.onMensaje(
         mensaje({
           asignacionDiariaEspacioId: 2,
           turnoActual: 15,
           turnoSiguiente: 16,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
           subespecialidadNombre: 'Medicina General',
         }),
       )
@@ -896,5 +1006,210 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     expect(() => act(() => terminar())).not.toThrow()
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('un re-llamado con distinto intento vuelve a anunciar', async () => {
+    const terminaciones = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminaciones.push(opciones.onEnd)
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+    act(() => terminaciones[0]())
+    act(() => terminaciones[1]())
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 2,
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('un LLAMADO duplicado (misma firma) no vuelve a anunciar', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    const eventoLlamado = () =>
+      mensaje({
+        asignacionDiariaEspacioId: 1,
+        turnoActual: 8,
+        turnoSiguiente: 9,
+        tipoEvento: 'LLAMADO',
+        intentosLlamado: 2,
+      })
+
+    act(() => handlers.onMensaje(eventoLlamado()))
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+
+    anunciarTurnoMock.mockClear()
+
+    act(() => handlers.onMensaje(eventoLlamado()))
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('un ACTUALIZACION no borra la deduplicación del último llamado', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 2,
+        }),
+      )
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'ACTUALIZACION',
+          intentosLlamado: null,
+        }),
+      )
+    })
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+
+    anunciarTurnoMock.mockClear()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 2,
+        }),
+      )
+    })
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('arranque de TV a mitad de jornada: snapshot nulo y ACTUALIZACION no llama', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce([
+      {
+        asignacionDiariaEspacioId: 1,
+        espacioNumero: '201',
+        nivel: 2,
+        subespecialidadNombre: 'Pediatría General',
+        turnoActual: null,
+        turnoSiguiente: null,
+        ultimaActualizacion: null,
+        intentosLlamado: null,
+        tipoEvento: null,
+      },
+    ])
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'ACTUALIZACION',
+        }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('arranque de TV a mitad de jornada: snapshot nulo y LLAMADO real sí llama', async () => {
+    obtenerEstadoInicialMock.mockResolvedValueOnce([
+      {
+        asignacionDiariaEspacioId: 1,
+        espacioNumero: '201',
+        nivel: 2,
+        subespecialidadNombre: 'Pediatría General',
+        turnoActual: null,
+        turnoSiguiente: null,
+        ultimaActualizacion: null,
+        intentosLlamado: null,
+        tipoEvento: null,
+      },
+    ])
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
+  })
+
+  it('una asignación nueva por LLAMADO se agrega y llama', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 99,
+          espacioNumero: '999',
+          subespecialidadNombre: 'Nueva Clínica',
+          turnoActual: 5,
+          turnoSiguiente: 6,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('llamado-grande')).getByText('Nueva Clínica'),
+    ).toBeInTheDocument()
   })
 })

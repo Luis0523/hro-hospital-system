@@ -10,7 +10,11 @@ export const CAMPOS_PUBLICOS = [
   'turnoActual',
   'turnoSiguiente',
   'ultimaActualizacion',
+  'intentosLlamado',
+  'tipoEvento',
 ]
+
+export const TIPOS_EVENTO = ['LLAMADO', 'ACTUALIZACION']
 
 export function estaEnModoMock(env = import.meta.env) {
   return env.MODE === 'test' || env.VITE_USE_MOCK === 'true'
@@ -73,6 +77,19 @@ function normalizarFecha(valor) {
   return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString()
 }
 
+function normalizarIntentosLlamado(valor) {
+  if (valor === null || valor === undefined || valor === '') return null
+  const numero = Number(valor)
+  if (!Number.isFinite(numero) || numero < 0) return null
+  return Math.trunc(numero)
+}
+
+function normalizarTipoEvento(valor) {
+  if (valor === null || valor === undefined) return null
+  const texto = String(valor).trim().toUpperCase()
+  return TIPOS_EVENTO.includes(texto) ? texto : null
+}
+
 export function normalizarEstadoTablero(payload) {
   if (!payload || typeof payload !== 'object') return null
 
@@ -84,6 +101,8 @@ export function normalizarEstadoTablero(payload) {
     turnoActual: normalizarNumeroTurno(payload.turnoActual),
     turnoSiguiente: normalizarNumeroTurno(payload.turnoSiguiente),
     ultimaActualizacion: normalizarFecha(payload.ultimaActualizacion),
+    intentosLlamado: normalizarIntentosLlamado(payload.intentosLlamado),
+    tipoEvento: normalizarTipoEvento(payload.tipoEvento),
   }
 
   if (estado.asignacionDiariaEspacioId === null) return null
@@ -136,6 +155,8 @@ export function mapearAsignacionDiaria(dto = {}) {
     turnoActual: null,
     turnoSiguiente: null,
     ultimaActualizacion: null,
+    intentosLlamado: null,
+    tipoEvento: null,
   }
 }
 

@@ -43,7 +43,7 @@ export default function TableroPage() {
 
   const montadoRef = useRef(true)
   const vozActivaRef = useRef(false)
-  const ultimosTurnosRef = useRef(new Map())
+  const ultimoLlamadoProcesadoRef = useRef(new Map())
   const colaLlamadosRef = useRef([])
   const reproduciendoRef = useRef(false)
   const timerLlamadoRef = useRef(null)
@@ -55,15 +55,7 @@ export default function TableroPage() {
     setError(null)
     try {
       const estado = await obtenerEstadoInicialTablero()
-      if (montadoRef.current) {
-        setAsignaciones(estado)
-        ultimosTurnosRef.current = new Map(
-          estado.map((asignacion) => [
-            asignacion.asignacionDiariaEspacioId,
-            asignacion.turnoActual,
-          ]),
-        )
-      }
+      if (montadoRef.current) setAsignaciones(estado)
     } catch (err) {
       if (montadoRef.current) {
         setError(err?.message ?? 'Ocurrió un error al obtener el estado inicial.')
@@ -96,16 +88,10 @@ export default function TableroPage() {
   }, [cargar])
 
   const activarVoz = useCallback(() => {
-    ultimosTurnosRef.current = new Map(
-      asignaciones.map((asignacion) => [
-        asignacion.asignacionDiariaEspacioId,
-        asignacion.turnoActual,
-      ]),
-    )
     vozActivaRef.current = true
     setVozActiva(true)
     hablar(FRASE_ACTIVACION)
-  }, [asignaciones])
+  }, [])
 
   const avanzar = useCallback(() => {
     if (!montadoRef.current) return
@@ -216,18 +202,20 @@ export default function TableroPage() {
         if (!estaPermitida(idAsignacion)) return
 
         setError(null)
-
-        const conocidos = ultimosTurnosRef.current
-        const esConocida = conocidos.has(idAsignacion)
-        const turnoAnterior = conocidos.get(idAsignacion)
-        const cambioTurno =
-          esConocida && estado.turnoActual !== null && estado.turnoActual !== turnoAnterior
-        conocidos.set(idAsignacion, estado.turnoActual)
-
         setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
 
-        if (cambioTurno) {
-          encolarLlamado(estado)
+        // Solo un evento explícito de llamado dispara LlamadoGrande + voz + cola.
+        if (
+          estado.tipoEvento === 'LLAMADO' &&
+          estado.turnoActual !== null &&
+          estado.intentosLlamado !== null
+        ) {
+          const firma = `${estado.turnoActual}:${estado.intentosLlamado}`
+          const procesados = ultimoLlamadoProcesadoRef.current
+          if (procesados.get(idAsignacion) !== firma) {
+            procesados.set(idAsignacion, firma)
+            encolarLlamado(estado)
+          }
         }
       },
       onConnected: () => {

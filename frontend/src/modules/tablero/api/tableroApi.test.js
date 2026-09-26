@@ -61,7 +61,43 @@ describe('tableroApi · normalización y privacidad', () => {
       turnoActual: 7,
       turnoSiguiente: 8,
       ultimaActualizacion: '2026-09-20T14:05:32.000Z',
+      intentosLlamado: null,
+      tipoEvento: null,
     })
+  })
+
+  it('normaliza intentosLlamado y tipoEvento válidos', () => {
+    const normalizado = normalizarEstadoTablero({
+      asignacionDiariaEspacioId: 10,
+      turnoActual: 8,
+      intentosLlamado: 2,
+      tipoEvento: 'LLAMADO',
+    })
+
+    expect(normalizado.intentosLlamado).toBe(2)
+    expect(normalizado.tipoEvento).toBe('LLAMADO')
+  })
+
+  it('descarta intentosLlamado inválidos y tipoEvento desconocido', () => {
+    const normalizado = normalizarEstadoTablero({
+      asignacionDiariaEspacioId: 10,
+      intentosLlamado: -1,
+      tipoEvento: 'DESCONOCIDO',
+    })
+
+    expect(normalizado.intentosLlamado).toBeNull()
+    expect(normalizado.tipoEvento).toBeNull()
+  })
+
+  it('acepta intentosLlamado 0 como válido', () => {
+    const normalizado = normalizarEstadoTablero({
+      asignacionDiariaEspacioId: 10,
+      intentosLlamado: 0,
+      tipoEvento: 'ACTUALIZACION',
+    })
+
+    expect(normalizado.intentosLlamado).toBe(0)
+    expect(normalizado.tipoEvento).toBe('ACTUALIZACION')
   })
 
   it('ignora payloads sin identificador de asignación', () => {
@@ -287,7 +323,22 @@ describe('tableroApi · estado inicial real (REST)', () => {
       turnoActual: null,
       turnoSiguiente: null,
       ultimaActualizacion: null,
+      intentosLlamado: null,
+      tipoEvento: null,
     })
+  })
+
+  it('el snapshot REST no representa un evento: intentosLlamado y tipoEvento quedan null', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [DTO] })
+
+    const [asignacion] = await obtenerEstadoInicialTablero({
+      modoMock: false,
+      cliente,
+      permitidas: [],
+    })
+
+    expect(asignacion.intentosLlamado).toBeNull()
+    expect(asignacion.tipoEvento).toBeNull()
   })
 
   it('acepta una respuesta en arreglo directo sin wrapper', async () => {
