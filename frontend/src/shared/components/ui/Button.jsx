@@ -1,8 +1,9 @@
 const variantes = {
-  primary: 'bg-hro-blue text-white hover:bg-blue-800',
-  secondary: 'border border-slate-300 bg-white text-hro-blue hover:bg-cyan-50',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100',
+  primary: 'bg-primary-container text-on-primary hover:brightness-110',
+  secondary:
+    'border border-outline-variant bg-surface-container-lowest text-primary hover:bg-surface-container-low',
+  danger: 'bg-error text-on-error hover:brightness-110',
+  ghost: 'bg-transparent text-on-surface-variant hover:bg-surface-container',
 }
 
 const tamanos = {
