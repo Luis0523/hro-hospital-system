@@ -40,7 +40,14 @@ describe('EnfermeriaPage - flujos', () => {
     const panel = await screen.findByRole('dialog')
     expect(await within(panel).findByText('Ana Lucía Pérez Morales')).toBeInTheDocument()
 
-    await userEvent.click(within(panel).getByRole('button', { name: /Medicina General/i }))
+    const botonesCupo = within(panel).getAllByRole('button', { name: /\d+ cupos?/i })
+    const cupoDisponible = botonesCupo.find((boton) => !boton.disabled)
+
+    expect(cupoDisponible).toBeTruthy()
+
+    await userEvent.click(cupoDisponible)
+    expect(within(panel).getByRole('button', { name: /agendar cita/i })).toBeEnabled()
+
     await userEvent.click(within(panel).getByRole('button', { name: /agendar cita/i }))
 
     expect(await within(panel).findByText('Cita agendada')).toBeInTheDocument()
