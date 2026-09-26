@@ -1,9 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
-import { avanzarEstado, buscarExpedientePorCodigo, listarExpedientes } from '../api/archivoApi'
+import AppRouter from '@/router/AppRouter.jsx'
+import {
+  avanzarEstado,
+  buscarExpedientePorCodigo,
+  crearExpediente,
+  listarClinicas,
+  listarExpedientes,
+  listarMedicos,
+  marcarNoLocalizado,
+} from '../api/archivoApi'
 import ArchivoPage from './ArchivoPage.jsx'
 
 // jsdom no implementa ResizeObserver y Headless UI lo usa al cerrar el Listbox
@@ -21,9 +31,13 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
+    listarClinicas: vi.fn(actual.listarClinicas),
+    listarMedicos: vi.fn(actual.listarMedicos),
     listarExpedientes: vi.fn(actual.listarExpedientes),
     buscarExpedientePorCodigo: vi.fn(actual.buscarExpedientePorCodigo),
     avanzarEstado: vi.fn(actual.avanzarEstado),
+    marcarNoLocalizado: vi.fn(actual.marcarNoLocalizado),
+    crearExpediente: vi.fn(actual.crearExpediente),
   }
 })
 
@@ -37,225 +51,322 @@ function renderPagina() {
   )
 }
 
-const NOMBRE_EXISTENTE = /María Fernanda López García/i
+function renderRuta(ruta) {
+  return render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <AuthProvider>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </AuthProvider>
+    </MemoryRouter>,
+  )
+}
 
-async function abrirDetalle(user) {
-  await user.click(await screen.findByRole('button', { name: NOMBRE_EXISTENTE }))
-  await screen.findByText('Detalle del expediente')
+const regionPendientes = () => screen.getByRole('region', { name: 'Pendientes de localizar' })
+const regionLocalizados = () => screen.getByRole('region', { name: 'Expedientes localizados' })
+
+const NOMBRE_CHECKBOX = /seleccionar expediente EXP-004521 de María Fernanda López García/i
+
+async function esperarChecklist() {
+  await screen.findByRole('region', { name: 'Pendientes de localizar' })
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('ArchivoPage — estados de interfaz', () => {
-  it('muestra carga inicial sin flash de estado vacío', async () => {
-    let resolver
-    listarExpedientes.mockReturnValueOnce(
-      new Promise((res) => {
-        resolver = res
-      }),
-    )
+describe('ArchivoPage — ruta oficial', () => {
+  it('/archivo renderiza la vista oficial', async () => {
+    renderRuta('/archivo')
 
-    renderPagina()
-
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando expedientes...')
-    expect(screen.queryByText('Sin expedientes para esta fecha')).not.toBeInTheDocument()
-
-    await act(async () => {
-      resolver([])
+    expect(
+      screen.getByRole('heading', { name: 'Estación de Archivo / Registro Médico' }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Pendientes de localizar' })).toBeInTheDocument()
     })
   })
 
-  it('muestra alerta cuando falla la carga', async () => {
-    listarExpedientes.mockRejectedValueOnce(new Error('No se pudo conectar'))
+  it('la ruta experimental /archivo/listado-prueba ya no existe', () => {
+    renderRuta('/archivo/listado-prueba')
 
-    renderPagina()
-
-    await waitFor(() => {
-      expect(screen.getByText('No se pudieron cargar los expedientes')).toBeInTheDocument()
-    })
-    expect(screen.getByText('No se pudo conectar')).toBeInTheDocument()
-  })
-
-  it('muestra estado vacío cuando no hay resultados', async () => {
-    renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
-
-    fireEvent.change(screen.getByLabelText('Fecha de consulta'), {
-      target: { value: '2099-01-01' },
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Sin expedientes para esta fecha')).toBeInTheDocument()
-    })
+    expect(screen.queryByText('Vista experimental de listado')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Pendientes de localizar' }),
+    ).not.toBeInTheDocument()
   })
 })
 
-describe('ArchivoPage — limpiar selección al cambiar filtros', () => {
-  it('cierra el detalle al cambiar la fecha', async () => {
-    const user = userEvent.setup()
+describe('ArchivoPage — checklist oficial', () => {
+  it('muestra las dos secciones de trabajo', async () => {
     renderPagina()
-    await abrirDetalle(user)
+    await esperarChecklist()
 
-    fireEvent.change(screen.getByLabelText('Fecha de consulta'), {
-      target: { value: '2099-01-01' },
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
-    })
+    expect(screen.getByRole('heading', { name: 'Pendientes de localizar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Expedientes localizados' })).toBeInTheDocument()
   })
 
-  it('cierra el detalle al cambiar la clínica', async () => {
-    const user = userEvent.setup()
+  it('inicialmente todos los expedientes están en Pendientes de localizar', async () => {
     renderPagina()
-    await abrirDetalle(user)
+    await esperarChecklist()
 
-    await user.click(screen.getByRole('button', { name: /todas las clínicas/i }))
-    await user.click(await screen.findByRole('option', { name: /clínica 02 - pediatría/i }))
-
-    await waitFor(() => {
-      expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
-    })
+    expect(within(regionPendientes()).getAllByRole('checkbox')).toHaveLength(6)
+    expect(within(regionLocalizados()).queryAllByRole('checkbox')).toHaveLength(0)
+    expect(
+      within(regionLocalizados()).getByText(/todavía no se ha localizado/i),
+    ).toBeInTheDocument()
   })
 
-  it('cierra el detalle al cambiar el médico', async () => {
+  it('el checkbox de cada expediente es accesible', async () => {
+    renderPagina()
+    await esperarChecklist()
+
+    expect(
+      within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeChecked()
+  })
+
+  it('marcar un expediente lo mueve a Localizados', async () => {
     const user = userEvent.setup()
     renderPagina()
-    await abrirDetalle(user)
+    await esperarChecklist()
 
-    await user.click(screen.getByRole('button', { name: /todos los médicos/i }))
-    await user.click(await screen.findByRole('option', { name: /dra\. elena marroquín/i }))
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
-    })
+    expect(
+      within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).toBeChecked()
+    expect(
+      within(regionPendientes()).queryByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('desmarcar un expediente lo devuelve a Pendientes', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+    await user.click(within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(
+      within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeChecked()
+    expect(
+      within(regionLocalizados()).queryByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('un expediente nunca aparece en las dos secciones a la vez', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(within(regionPendientes()).queryByRole('checkbox', { name: NOMBRE_CHECKBOX })).toBeNull()
+    expect(
+      within(regionLocalizados()).queryByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeNull()
+
+    const total =
+      within(regionPendientes()).getAllByRole('checkbox').length +
+      within(regionLocalizados()).getAllByRole('checkbox').length
+    expect(total).toBe(6)
+  })
+
+  it('actualiza los contadores Total, Pendientes y Localizados', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    expect(screen.getByText('Total del día').closest('li')).toHaveTextContent('6')
+    expect(screen.getByText('Pendientes').closest('li')).toHaveTextContent('6')
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('0')
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(screen.getByText('Pendientes').closest('li')).toHaveTextContent('5')
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('1')
+    expect(screen.getByText('Total del día').closest('li')).toHaveTextContent('6')
+  })
+
+  it('solo muestra expedientes existentes, todos con numeroExpediente', async () => {
+    renderPagina()
+    await esperarChecklist()
+
+    const checkboxes = [
+      ...within(regionPendientes()).getAllByRole('checkbox'),
+      ...within(regionLocalizados()).queryAllByRole('checkbox'),
+    ]
+
+    expect(checkboxes.length).toBeGreaterThan(0)
+    for (const checkbox of checkboxes) {
+      expect(checkbox).toHaveAccessibleName(/seleccionar expediente exp-\d+/i)
+    }
+  })
+
+  it('no muestra casos de paciente sin expediente', async () => {
+    renderPagina()
+    await esperarChecklist()
+
+    expect(screen.queryByText('Expediente nuevo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sin expediente físico')).not.toBeInTheDocument()
+    expect(screen.queryByText('Crear expediente físico')).not.toBeInTheDocument()
   })
 })
 
-describe('ArchivoPage — buscador', () => {
-  it('abre el detalle correcto al buscar un código válido', async () => {
+describe('ArchivoPage — sin efectos en backend', () => {
+  it('no llama a la API al marcar ni al desmarcar', async () => {
     const user = userEvent.setup()
     renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
+    await esperarChecklist()
 
-    await user.type(screen.getByLabelText('Buscar expediente por código'), 'EXP-004521')
-    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
+    vi.clearAllMocks()
 
-    expect(await screen.findByText('Detalle del expediente')).toBeInTheDocument()
-    expect(screen.getByText('Expediente EXP-004521')).toBeInTheDocument()
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+    await user.click(within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(listarExpedientes).not.toHaveBeenCalled()
+    expect(listarClinicas).not.toHaveBeenCalled()
+    expect(listarMedicos).not.toHaveBeenCalled()
+    expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
+    expect(avanzarEstado).not.toHaveBeenCalled()
+    expect(marcarNoLocalizado).not.toHaveBeenCalled()
+    expect(crearExpediente).not.toHaveBeenCalled()
+  })
+})
+
+describe('ArchivoPage — estructura de la pantalla', () => {
+  it('conserva el scanner', () => {
+    renderPagina()
+
+    expect(screen.getByLabelText('Buscar expediente por código')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Simular' })).toBeInTheDocument()
   })
 
-  it('normaliza mayúsculas y espacios del código', async () => {
-    const user = userEvent.setup()
+  it('conserva los filtros', () => {
     renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
 
-    await user.type(screen.getByLabelText('Buscar expediente por código'), '  exp-004521 ')
-    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
-
-    expect(await screen.findByText('Detalle del expediente')).toBeInTheDocument()
+    expect(screen.getByLabelText('Fecha de consulta')).toBeInTheDocument()
+    expect(screen.getByText('Clínica')).toBeInTheDocument()
+    expect(screen.getByText('Médico')).toBeInTheDocument()
   })
 
-  it('avisa cuando el código no existe', async () => {
+  it('muestra los botones futuros deshabilitados', () => {
+    renderPagina()
+
+    expect(screen.getByRole('button', { name: 'Guardar resumen del día' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Imprimir / generar PDF' })).toBeDisabled()
+  })
+})
+
+describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => {
+  async function buscar(user, codigo) {
+    await user.type(screen.getByLabelText('Buscar expediente por código'), codigo)
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
+  }
+
+  it('identifica y resalta la fila del expediente buscado', async () => {
     const user = userEvent.setup()
     renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
+    await esperarChecklist()
 
-    await user.type(screen.getByLabelText('Buscar expediente por código'), 'NO-EXISTE')
-    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
+    await buscar(user, 'EXP-004521')
 
-    await waitFor(() => {
-      expect(screen.getByText('Expediente no encontrado')).toBeInTheDocument()
-    })
+    const etiqueta = await screen.findByText('Resultado de búsqueda')
+    const fila = etiqueta.closest('li')
+    expect(fila).toHaveAttribute('data-expediente-id', '1')
+    expect(fila).toHaveAttribute('data-resaltado', 'true')
+  })
+
+  it('no abre el detalle del diseño anterior', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await buscar(user, 'EXP-004521')
+    await screen.findByText('Resultado de búsqueda')
+
+    expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
+  })
+
+  it('no marca el checkbox ni mueve el expediente automáticamente', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await buscar(user, 'EXP-004521')
+    await screen.findByText('Resultado de búsqueda')
+
+    expect(
+      within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeChecked()
+    expect(
+      within(regionLocalizados()).queryByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('permite marcar manualmente después de buscar', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await buscar(user, 'EXP-004521')
+    await screen.findByText('Resultado de búsqueda')
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(
+      within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).toBeChecked()
+  })
+
+  it('el checklist sigue funcionando después de una búsqueda', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await buscar(user, 'EXP-004521')
+    await screen.findByText('Resultado de búsqueda')
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+    await user.click(within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+
+    expect(
+      within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }),
+    ).not.toBeChecked()
+    expect(screen.getByText('Pendientes').closest('li')).toHaveTextContent('6')
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('0')
+  })
+
+  it('mantiene el feedback de error cuando el código no existe', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await buscar(user, 'NO-EXISTE')
+
+    expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
+    expect(screen.queryByText('Resultado de búsqueda')).not.toBeInTheDocument()
   })
 
   it('no busca con código vacío o solo espacios', async () => {
     const user = userEvent.setup()
     renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
+    await esperarChecklist()
 
-    const input = screen.getByLabelText('Buscar expediente por código')
-    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
-    await user.type(input, '   ')
-    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
+    await user.type(screen.getByLabelText('Buscar expediente por código'), '   ')
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
     expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
-    expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
-  })
-
-  it('no dispara dos búsquedas por doble envío', async () => {
-    let resolver
-    buscarExpedientePorCodigo.mockReturnValueOnce(
-      new Promise((res) => {
-        resolver = res
-      }),
-    )
-
-    renderPagina()
-    await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
-
-    const input = screen.getByLabelText('Buscar expediente por código')
-    fireEvent.change(input, { target: { value: 'EXP-004521' } })
-    const form = input.closest('form')
-    fireEvent.submit(form)
-    fireEvent.submit(form)
-
-    expect(buscarExpedientePorCodigo).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      resolver(null)
-    })
-  })
-})
-
-describe('ArchivoPage — protección contra doble activación', () => {
-  it('no ejecuta dos veces la mutación al avanzar por doble clic', async () => {
-    let resolver
-    avanzarEstado.mockReturnValueOnce(
-      new Promise((res) => {
-        resolver = res
-      }),
-    )
-
-    const user = userEvent.setup()
-    renderPagina()
-    await abrirDetalle(user)
-
-    const boton = screen.getByRole('button', { name: /avanzar al siguiente estado/i })
-    await user.click(boton)
-    await user.click(boton)
-
-    expect(avanzarEstado).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      resolver({
-        id: 1,
-        pacienteNombre: 'María Fernanda López García',
-        numeroExpediente: 'EXP-004521',
-        expedienteNuevo: false,
-        estado: 'en_busqueda',
-        clinicaNombre: 'Clínica 01 - Medicina General',
-        medicoNombre: 'Dr. Jorge Castillo',
-        fechaCita: '2026-09-21',
-        horaEstimada: '10:20:00',
-        ubicacion: 'Estante A',
-        historial: [],
-      })
-    })
-  })
-})
-
-describe('ArchivoPage — selección accesible', () => {
-  it('refleja la selección con aria-pressed', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-
-    const tarjeta = await screen.findByRole('button', { name: NOMBRE_EXISTENTE })
-    expect(tarjeta).toHaveAttribute('aria-pressed', 'false')
-
-    await user.click(tarjeta)
-    expect(tarjeta).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText('Resultado de búsqueda')).not.toBeInTheDocument()
   })
 })

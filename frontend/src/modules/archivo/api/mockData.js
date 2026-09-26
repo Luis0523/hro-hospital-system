@@ -257,8 +257,13 @@ function registrarCambio(expediente, estado) {
   })
 }
 
+// Listado operativo de la Estación de Archivo: todo expediente recibido ya
+// existe físicamente, por lo que solo se devuelven registros con número de
+// expediente. El registro sin expediente permanece en `expedientesMock` como
+// infraestructura histórica para `crearExpedienteMock` y sus pruebas.
 export function listarExpedientesMock({ fecha, clinicaId, medicoId } = {}) {
   return expedientesMock
+    .filter((expediente) => Boolean(expediente.numeroExpediente))
     .filter((expediente) => !fecha || expediente.fechaCita === fecha)
     .filter((expediente) => !clinicaId || expediente.clinicaId === Number(clinicaId))
     .filter((expediente) => !medicoId || expediente.medicoId === Number(medicoId))

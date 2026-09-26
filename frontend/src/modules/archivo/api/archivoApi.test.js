@@ -23,6 +23,13 @@ describe('archivoApi (mock)', () => {
     expect(lista[0]).toHaveProperty('historial')
   })
 
+  it('no lista expedientes sin número de expediente', async () => {
+    const lista = await listarExpedientes()
+
+    expect(lista.length).toBeGreaterThan(0)
+    expect(lista.every((expediente) => Boolean(expediente.numeroExpediente))).toBe(true)
+  })
+
   it('filtra por fecha, clínica y médico', async () => {
     const [primero] = await listarExpedientes()
 

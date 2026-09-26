@@ -1,38 +1,57 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
-import { metadatosEstado, ORDEN_ESTADOS } from '../estadosExpediente'
 
-export default function ResumenEstados({ resumen = {}, total = 0 }) {
-  const estados = [...ORDEN_ESTADOS, 'no_localizado']
+// Resumen operativo del día adaptado al flujo Pendientes ↔ Localizados.
+//
+// No representa los estados históricos del expediente (pendiente_localizar,
+// en_busqueda, etc.): esos metadatos siguen en `estadosExpediente.js` para la
+// integración futura, pero esta interfaz solo distingue lo que el operador ya
+// marcó como localizado durante la sesión.
+
+const INDICADORES = [
+  {
+    clave: 'total',
+    etiqueta: 'Total del día',
+    icono: 'inventory_2',
+    color: 'bg-surface-container text-on-surface',
+  },
+  {
+    clave: 'pendientes',
+    etiqueta: 'Pendientes',
+    icono: 'pending_actions',
+    color: 'bg-amber-100 text-amber-800',
+  },
+  {
+    clave: 'localizados',
+    etiqueta: 'Localizados',
+    icono: 'check_circle',
+    color: 'bg-emerald-100 text-emerald-800',
+  },
+]
+
+export default function ResumenEstados({ total = 0, pendientes = 0, localizados = 0 }) {
+  const valores = { total, pendientes, localizados }
 
   return (
     <section
-      aria-label="Resumen de expedientes por estado"
+      aria-label="Resumen del día"
       className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-title-md text-on-surface">
-          <Icon name="monitoring" className="text-[20px] text-primary" />
-          Resumen del día
-        </h2>
-        <span className="rounded bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
-          {total} expedientes
-        </span>
-      </div>
+      <h2 className="mb-3 flex items-center gap-2 text-title-md text-on-surface">
+        <Icon name="monitoring" className="text-[20px] text-primary" />
+        Resumen del día
+      </h2>
 
       <ul className="flex flex-wrap gap-2">
-        {estados.map((estado) => {
-          const meta = metadatosEstado(estado)
-          return (
-            <li
-              key={estado}
-              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-label-md ${meta.color}`}
-            >
-              <Icon name={meta.icono} className="text-[16px]" />
-              <span>{meta.etiqueta}</span>
-              <span className="font-bold">{resumen[estado] ?? 0}</span>
-            </li>
-          )
-        })}
+        {INDICADORES.map((indicador) => (
+          <li
+            key={indicador.clave}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-label-md ${indicador.color}`}
+          >
+            <Icon name={indicador.icono} className="text-[16px]" />
+            <span>{indicador.etiqueta}</span>
+            <span className="font-bold">{valores[indicador.clave]}</span>
+          </li>
+        ))}
       </ul>
     </section>
   )
