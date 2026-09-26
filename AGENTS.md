@@ -33,6 +33,8 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
 - Atajos de teclado en la pantalla POS: `Alt+S` enfoca el lector, `Alt+N` pasa el siguiente turno, `Esc` cierra la confirmación.
 - Agendamiento: al seleccionar un día con cupo (o al escanear un paciente sin cita hoy) se abre `AgendaPanel` → elegir cupo (clínica/médico) → **"Agendar cita"** (`POST /citas`) → comprobante con ventana de presentación. El `409` (sin cupo) se detecta por `error.status`.
 - Estados transversales con Context: `src/shared/context/AuthContext.jsx` (usuario simulado en dev) y `ToastContext.jsx`.
+- **Tema claro/oscuro:** `src/shared/context/ThemeContext.jsx` (`useTema`, persistencia `localStorage.hro_tema`, default `prefers-color-scheme`), botón en `TopHud`. Los tokens de color de Tailwind son **variables CSS** definidas en `src/index.css` (`:root` claro / `.dark` oscuro); `darkMode: 'class'` en `tailwind.config.js`. Script anti-FOUC en `index.html`.
+- **Sesión simulada:** `AuthContext` con estado (`autenticado`, `cerrarSesion`, `iniciarSesion`); modal de perfil `MenuUsuario` desde el icono de `TopHud`; pantalla `/sesion-cerrada`; guarda mínima `router/ProtectedRoute.jsx` en `/enfermeria`. El logout es **local** (no hay endpoint de logout en el backend). Pendiente de unificar el ruteo por rol con el resto del equipo.
 - Estructura:
   - `src/router/AppRouter.jsx` — `/` → `/enfermeria` (pantalla POS); otras estaciones como placeholder.
   - `src/modules/enfermeria/{pages,components,api}/`
@@ -54,6 +56,7 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
   - `POST /turnos/{id}/llamar` · `/no-responde?motivo=` · `/reintegrar` `{motivo}` · `/atendido`
   - `POST /citas` `{ pacienteId, cupoDiarioId }` · `GET /citas/{id}` · `GET /citas/paciente/{id}`
   - `GET /pacientes/buscar?filtro=` (paginado, `data.content`), `/pacientes/dpi/{dpi}`, `/pacientes/expediente/{exp}`
+  - **Búsqueda principal del lector = código de expediente** (`/pacientes/expediente/{exp}`) con **DPI como respaldo** (`buscarPaciente` en `enfermeriaApi.js`). El `id` real del paciente es **UUID** (string).
   - `GET /cupos?clinicaId=&fechaInicio=&fechaFin=` · `GET /dias-no-laborables?anio=`
   - **Catálogos: `/clinicas`, `/especialidades`, `/subespecialidades`, `/medicos`** (NO existe `/catalogos/*`).
 - Código `409` = cupos agotados: mostrar alerta destacada sugiriendo otra fecha/médico.

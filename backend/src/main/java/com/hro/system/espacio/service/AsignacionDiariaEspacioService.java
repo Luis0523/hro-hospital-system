@@ -7,6 +7,7 @@ import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.espacio.dto.AsignacionDiariaResponseDTO;
+import com.hro.system.espacio.dto.AsignacionVistaItemDTO;
 import com.hro.system.espacio.dto.CoberturaFaltanteDTO;
 import com.hro.system.espacio.dto.CrearAsignacionDiariaRequestDTO;
 import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.UUID;
 
@@ -65,9 +67,7 @@ public class AsignacionDiariaEspacioService {
 
         Subespecialidad sub = subespecialidadRepository.findById(dto.getSubespecialidadId())
                 .orElseThrow(() -> new ResourceNotFoundException("Subespecialidad", "id", dto.getSubespecialidadId()));
-        if (!Boolean.TRUE.equals(sub.getActivo())) {
-            throw new BusinessException("La subespecialidad " + sub.getNombre() + " está inactiva y no puede asignarse.");
-        }
+        validarSubespecialidadActiva(sub);
 
         if (asignacionRepository.existsByEspacioFisicoIdAndFecha(espacio.getId(), dto.getFecha())) {
             throw new BusinessException("El espacio " + espacio.getNumero() + " ya tiene una subespecialidad asignada el " + dto.getFecha() + ".");
@@ -91,6 +91,88 @@ public class AsignacionDiariaEspacioService {
 
         log.info("Asignación diaria: {} -> {} el {}", espacio.getNumero(), sub.getNombre(), dto.getFecha());
         return mapToDTO(guardada);
+    }
+
+    /**
+     * Upsert de la selección de subespecialidad de una sala en una fecha:
+     * crea la asignación si no existe o actualiza la subespecialidad si ya existe.
+     * Pensado para el &lt;select&gt; del panel del jefe de enfermería.
+     */
+    @Transactional
+    public AsignacionDiariaResponseDTO upsert(CrearAsignacionDiariaRequestDTO dto) {
+        validarDiaAbierto(dto.getFecha());
+
+        EspacioFisico espacio = espacioFisicoRepository.findById(dto.getEspacioFisicoId())
+                .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", dto.getEspacioFisicoId()));
+        if (!Boolean.TRUE.equals(espacio.getActivo())) {
+            throw new BusinessException("El espacio físico " + espacio.getNumero() + " está fuera de servicio.");
+        }
+
+        Subespecialidad sub = subespecialidadRepository.findById(dto.getSubespecialidadId())
+                .orElseThrow(() -> new ResourceNotFoundException("Subespecialidad", "id", dto.getSubespecialidadId()));
+        validarSubespecialidadActiva(sub);
+
+        UsuarioReferencia usuario = usuarioActual();
+        Optional<AsignacionDiariaEspacio> existente =
+                asignacionRepository.findByEspacioFisicoIdAndFecha(espacio.getId(), dto.getFecha());
+
+        AsignacionDiariaEspacio asignacion;
+        String accion;
+        if (existente.isPresent()) {
+            asignacion = existente.get();
+            if (asignacion.getSubespecialidad().getId().equals(sub.getId())) {
+                return mapToDTO(asignacion);
+            }
+            asignacion.setSubespecialidad(sub);
+            accion = "actualizar";
+        } else {
+            asignacion = AsignacionDiariaEspacio.builder()
+                    .espacioFisico(espacio)
+                    .subespecialidad(sub)
+                    .fecha(dto.getFecha())
+                    .creadoPor(usuario)
+                    .creadoEn(OffsetDateTime.now())
+                    .build();
+            accion = "crear";
+        }
+
+        AsignacionDiariaEspacio guardada = asignacionRepository.save(asignacion);
+        publicarAuditoria(accion, guardada, usuario, Map.of(
+                "espacioFisicoId", espacio.getId(),
+                "subespecialidadId", sub.getId(),
+                "fecha", dto.getFecha().toString()));
+
+        log.info("Selección de sala {} -> {} el {} ({})", espacio.getNumero(), sub.getNombre(), dto.getFecha(), accion);
+        return mapToDTO(guardada);
+    }
+
+    /**
+     * Vista operativa: todas las salas activas (del nivel indicado, o todas) con la
+     * subespecialidad seleccionada para la fecha (o nula si aún no se seleccionó).
+     */
+    @Transactional(readOnly = true)
+    public List<AsignacionVistaItemDTO> vista(LocalDate fecha, Short nivel) {
+        List<EspacioFisico> espacios = (nivel != null)
+                ? espacioFisicoRepository.findByNivelAndActivoTrue(nivel)
+                : espacioFisicoRepository.findByActivoTrue();
+
+        Map<UUID, AsignacionDiariaEspacio> porEspacio = asignacionRepository.findByFecha(fecha).stream()
+                .collect(Collectors.toMap(a -> a.getEspacioFisico().getId(), a -> a, (a, b) -> a));
+
+        return espacios.stream().map(espacio -> {
+            AsignacionDiariaEspacio a = porEspacio.get(espacio.getId());
+            return AsignacionVistaItemDTO.builder()
+                    .espacioFisicoId(espacio.getId())
+                    .numero(espacio.getNumero())
+                    .nivel(espacio.getNivel())
+                    .capacidadCamillas(espacio.getCapacidadCamillas())
+                    .asignacionId(a != null ? a.getId() : null)
+                    .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
+                    .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
+                    .especialidadId(a != null ? a.getSubespecialidad().getEspecialidad().getId() : null)
+                    .especialidadNombre(a != null ? a.getSubespecialidad().getEspecialidad().getNombre() : null)
+                    .build();
+        }).toList();
     }
 
     @Transactional
@@ -206,6 +288,16 @@ public class AsignacionDiariaEspacioService {
                     throw new BusinessException("La asignación del " + fecha
                             + " ya fue cerrada. Para cambiarla use una reasignación en caliente.");
                 });
+    }
+
+    private void validarSubespecialidadActiva(Subespecialidad sub) {
+        if (!Boolean.TRUE.equals(sub.getActivo())) {
+            throw new BusinessException("La subespecialidad " + sub.getNombre() + " está inactiva y no puede asignarse.");
+        }
+        if (sub.getEspecialidad() != null && !Boolean.TRUE.equals(sub.getEspecialidad().getActivo())) {
+            throw new BusinessException("La especialidad " + sub.getEspecialidad().getNombre()
+                    + " está inactiva: no se puede asignar una de sus subespecialidades.");
+        }
     }
 
     private UsuarioReferencia usuarioActual() {

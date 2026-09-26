@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +16,8 @@ import java.util.UUID;
 public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo, UUID> {
 
     Optional<ExpedienteCiclo> findByCitaId(Long citaId);
+
+    List<ExpedienteCiclo> findByCitaIdIn(Collection<Long> citaIds);
 
     List<ExpedienteCiclo> findByExpedienteIdOrderByCreadoEnDesc(UUID expedienteId);
 
@@ -27,4 +30,21 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
             ORDER BY ec.creadoEn ASC
             """)
     List<ExpedienteCiclo> buscarCola(@Param("estado") String estado, @Param("fecha") LocalDate fecha);
+
+    @Query("""
+            SELECT ec FROM ExpedienteCiclo ec
+              JOIN FETCH ec.cita c
+              JOIN FETCH c.cupoDiario cd
+            WHERE cd.fecha = :fecha
+            """)
+    List<ExpedienteCiclo> buscarPorFecha(@Param("fecha") LocalDate fecha);
+
+    @Query("""
+            SELECT ec.estadoActual, COUNT(ec) FROM ExpedienteCiclo ec
+              JOIN ec.cita c
+              JOIN c.cupoDiario cd
+            WHERE cd.fecha = :fecha
+            GROUP BY ec.estadoActual
+            """)
+    List<Object[]> contarPorEstadoYFecha(@Param("fecha") LocalDate fecha);
 }

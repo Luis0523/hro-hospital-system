@@ -24,4 +24,11 @@ public class CrearDiaNoLaborableRequestDTO {
     private String motivo;
 
     private Long creadoPorId;
+
+    /**
+     * Si es {@code true}, bloquea la fecha aunque existan citas activas
+     * (las citas quedan pendientes de reprogramación manual).
+     */
+    @Builder.Default
+    private Boolean forzar = false;
 }

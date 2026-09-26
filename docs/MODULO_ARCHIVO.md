@@ -1,7 +1,7 @@
 # Módulo de Archivo — Seguimiento de Expedientes Físicos
 
 **Sistema Hospitalario HRO — Hospital Regional de Occidente**
-**Backend:** `1.3.0` · **Migración BD:** `V6__seguimiento_expedientes_fisicos.sql`
+**Backend:** `1.5.0` · **Migraciones BD:** `V6__seguimiento_expedientes_fisicos.sql`, `V9__actas_recepcion_expedientes.sql`
 **Rol de la estación:** `archivo`
 **Base URL:** `{{baseUrl}}` → `http://localhost:8081/api/v1` (o `https://hro-hospital-api.fly.dev/api/v1`)
 
@@ -36,6 +36,12 @@ Un mismo expediente físico **no hace un solo viaje**: hace un viaje de ida y vu
 | `descripcion` | `VARCHAR(150)` | Opcional. |
 
 Único por `(pasillo, estante, balda)`.
+
+> **Equivalencia con el modelo operativo (Archivo/Estante/Fila/Caja).**
+> La entidad `ubicacion_archivo` **no se renombró** (contrato estable). El mapeo es:
+> `pasillo` = **Archivo**, `estante` = **Estante**, `balda` = **Caja**. El concepto **Fila**
+> no se modela actualmente. Se gestiona con `GET/POST /ubicaciones-archivo` y
+> `PATCH /expedientes/{id}/ubicacion-base`.
 
 ### 2.2 `expediente` (objeto físico)
 | Campo | Tipo | Notas |
@@ -127,6 +133,8 @@ Las peticiones autentican por cabeceras (modo simulado):
 | Método | Ruta | Cuerpo / Query | Descripción |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/expedientes/buscar` | `?filtro=&page=&size=` | Búsqueda paginada por número, DPI o nombre (`data.content`). |
+| `GET` | `/expedientes/buscar` | `?codigo=` | Resuelve el **UUID (QR)** o el **número (barras)** exacto y devuelve `data.content` con ese expediente. Código inexistente → `404`. |
+| `GET` | `/expedientes/jornada` | `?fecha=&subespecialidadId=` | **Jornada diaria:** citas de la fecha (y unidad opcional) con paciente, número de expediente, `expedienteId`, `cicloId`, `estadoActual` (o `sin_ciclo`) y ubicación base. Fecha por defecto: hoy. |
 | `GET` | `/expedientes/{id}` | — | Detalle por UUID (escaneo QR). |
 | `GET` | `/expedientes/numero/{numeroExpediente}` | — | Detalle por número (escaneo código de barras). |
 | `GET` | `/expedientes/paciente/{pacienteId}` | — | Expediente de un paciente. |
@@ -207,6 +215,26 @@ Content-Type: application/json
 
 ---
 
+### 4.5 Actas de recepción
+
+Un acta agrupa **N expedientes** de una jornada/unidad e identifica quién entrega y quién recibe.
+
+| Método | Ruta | Cuerpo / Query | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/actas-recepcion` | `{ fecha?, subespecialidadId?, usuarioEntregaId?, usuarioRecibeId?, observaciones?, expedienteIds[] }` | Crea el acta y genera el número `ACT-YYYY-NNNN`. Si se omite `usuarioEntregaId`, se usa el usuario autenticado. |
+| `GET` | `/actas-recepcion` | `?fecha=&subespecialidadId=` | Lista de actas (resumen). |
+| `GET` | `/actas-recepcion/{id}` | — | Detalle del acta con la lista de expedientes. |
+| `GET` | `/actas-recepcion/{id}/pdf` | — | Descarga el **PDF** oficial del acta (`application/pdf`). |
+
+### 4.6 Resumen operativo diario
+
+| Método | Ruta | Query | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/archivo/resumen` | `?fecha=` | Indicadores del día: `totalCiclos`, `pendienteLocalizar`, `enBusqueda`, `localizado`, `enTransitoEntrega`, `enTransitoRetorno`, `enTransito`, `entregado`, `archivado`, `noLocalizado`, `expedientesNuevos`. |
+| `GET` | `/archivo/resumen/pdf` | `?fecha=` | Descarga el **PDF** del resumen (`application/pdf`), con fecha y usuario generador. |
+
+---
+
 ## 5. Códigos de error y manejo en el frontend
 
 | Código | Cuándo | Acción sugerida en UI |
@@ -238,6 +266,7 @@ La colección oficial (`docs/postman/HRO_Hospital_System_API.postman_collection.
 | `numeroExpediente` | Número impreso (escaneo de barras). |
 | `expedienteCicloId` | UUID del ciclo a operar. |
 | `ubicacionArchivoId` | Id de una ubicación del catálogo. |
+| `actaId` | Id de un acta de recepción (para detalle/PDF). |
 
 Recuerda cambiar el perfil de la estación en el entorno:
 `usuarioExterno = archivo-01`, `usuarioRol = archivo`.

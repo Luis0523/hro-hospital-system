@@ -22,7 +22,6 @@ public class TurnoResponseDTO {
     private Short nivel;
     private Long subespecialidadId;
     private String subespecialidadNombre;
-    private String medicoNombre;
     private OffsetDateTime horaGenerado;
     private OffsetDateTime horaLlamado;
     private OffsetDateTime horaAtendido;

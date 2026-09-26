@@ -1,7 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
-import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
+import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
+import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
+import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
 import UsuariosPage from '@/modules/administracion/pages/UsuariosPage.jsx'
@@ -16,7 +19,16 @@ export default function AppRouter() {
     <Routes>
       <Route path="/" element={<Navigate to="/enfermeria" replace />} />
 
-      <Route path="/enfermeria" element={<EnfermeriaPage />} />
+      <Route
+        path="/enfermeria"
+        element={
+          <ProtectedRoute>
+            <EnfermeriaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
+      <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
 
       <Route path="/archivo" element={<ArchivoPage />} />
 
@@ -30,7 +42,8 @@ export default function AppRouter() {
         <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="*" element={<Navigate to="/administracion" replace />} />
       </Route>
-      <Route path="/tablero" element={<EstacionNoDisponible nombre="Tablero de Turnos" />} />
+
+      <Route path="/tablero" element={<TableroPage />} />
 
       <Route path="*" element={<Navigate to="/enfermeria" replace />} />
     </Routes>

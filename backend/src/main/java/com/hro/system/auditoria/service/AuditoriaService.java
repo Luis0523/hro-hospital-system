@@ -1,20 +1,27 @@
 package com.hro.system.auditoria.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hro.system.auditoria.dto.AuditoriaResponseDTO;
 import com.hro.system.auditoria.entity.AuditoriaGeneral;
 import com.hro.system.auditoria.event.AuditoriaEvent;
 import com.hro.system.auditoria.repository.AuditoriaGeneralRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -60,13 +67,49 @@ public class AuditoriaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditoriaGeneral> listarAuditoria(String tabla, Long usuarioId, Pageable pageable) {
-        if (tabla != null && !tabla.isBlank()) {
-            return auditoriaRepository.findByTablaAfectadaIgnoreCase(tabla, pageable);
-        }
-        if (usuarioId != null) {
-            return auditoriaRepository.findByUsuarioReferenciaId(usuarioId, pageable);
-        }
-        return auditoriaRepository.findAll(pageable);
+    public Page<AuditoriaResponseDTO> listarAuditoria(String tabla, Long usuarioId, String accion,
+                                                      LocalDate fechaInicio, LocalDate fechaFin, Pageable pageable) {
+        Specification<AuditoriaGeneral> filtro = construirFiltro(tabla, usuarioId, accion, fechaInicio, fechaFin);
+        return auditoriaRepository.findAll(filtro, pageable).map(this::mapToDTO);
+    }
+
+    private Specification<AuditoriaGeneral> construirFiltro(String tabla, Long usuarioId, String accion,
+                                                            LocalDate fechaInicio, LocalDate fechaFin) {
+        return (root, query, cb) -> {
+            List<Predicate> predicados = new ArrayList<>();
+            if (tabla != null && !tabla.isBlank()) {
+                predicados.add(cb.equal(cb.lower(root.get("tablaAfectada")), tabla.trim().toLowerCase()));
+            }
+            if (usuarioId != null) {
+                predicados.add(cb.equal(root.get("usuarioReferencia").get("id"), usuarioId));
+            }
+            if (accion != null && !accion.isBlank()) {
+                predicados.add(cb.equal(cb.lower(root.get("accion")), accion.trim().toLowerCase()));
+            }
+            if (fechaInicio != null) {
+                predicados.add(cb.greaterThanOrEqualTo(root.get("fecha"),
+                        fechaInicio.atStartOfDay().atOffset(ZoneOffset.UTC)));
+            }
+            if (fechaFin != null) {
+                predicados.add(cb.lessThan(root.get("fecha"),
+                        fechaFin.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC)));
+            }
+            return cb.and(predicados.toArray(new Predicate[0]));
+        };
+    }
+
+    private AuditoriaResponseDTO mapToDTO(AuditoriaGeneral a) {
+        UsuarioReferencia usuario = a.getUsuarioReferencia();
+        return AuditoriaResponseDTO.builder()
+                .id(a.getId())
+                .tablaAfectada(a.getTablaAfectada())
+                .entidadId(a.getEntidadId())
+                .accion(a.getAccion())
+                .usuarioId(usuario != null ? usuario.getId() : null)
+                .usuarioNombre(usuario != null ? usuario.getNombreMostrar() : null)
+                .valoresAnteriores(a.getValoresAnteriores())
+                .valoresNuevos(a.getValoresNuevos())
+                .fecha(a.getFecha())
+                .build();
     }
 }

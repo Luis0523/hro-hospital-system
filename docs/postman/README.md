@@ -5,14 +5,19 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
 ## Archivos Disponibles
 
 1. **`HRO_Hospital_System_API.postman_collection.json`**:
-   - Colección oficial v2.1.0 con todos los endpoints clasificados por carpetas:
+   - Colección oficial v2.2.0 con todos los endpoints clasificados por carpetas:
      - `00. Autenticación (Mock)` (Modo de autenticación y perfil simulado)
      - `01. Estación de Enfermería y Turnos` (Check-in, Colas, Llamados, Inasistencias, Reintegración, Cierre)
-     - `02. Citas Médicas` (Agendamiento, Cálculo de Horas Estimadas, Reprogramación, Cancelación, Auditoría)
+     - `02. Citas Médicas` (Agendamiento, Cálculo de Horas Estimadas, Reprogramación, Cancelación, Disponibilidad para reprogramación, Auditoría)
      - `03. Pacientes` (Admisión, Búsqueda por DPI, Consulta de Expedientes)
-     - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Feriados)
-     - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
-     - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, ciclos y transiciones del recorrido físico)
+     - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Programación, Feriados, filtros por estado y reactivación)
+     - `05. Asignación Diaria (Jefe de Enfermería)` (Selección de subespecialidad por sala — upsert `PUT` y vista de salas; cobertura, cierre, duplicar y reasignación en caliente)
+     - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, consulta diaria de jornada, búsqueda por código, ciclos y transiciones, actas de recepción + PDF y resumen operativo + PDF)
+     - `07. Panel de Administración (Usuarios, Roles y Permisos)` (Usuarios, roles, permisos por subespecialidad)
+     - `08. Dashboard (Admin)` (Resumen administrativo con alertas)
+     - `09. Reportes (Admin)` (Citas por estado, demanda por especialidad, utilización de cupos)
+     - `10. Auditoría (Admin)` (Bitácora con filtros combinados y paginación; solo rol administrador)
+     - `11. Horario por Subespecialidad` (Días/horas por subespecialidad — sin médico —; cupos por subespecialidad y reasignación de sala de turno)
 2. **`HRO_Local_Environment.postman_environment.json`**:
    - Variables de entorno (`baseUrl`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
    - Variables del modelo V4 (`subespecialidadId`, `espacioFisicoId`, `asignacionId`, `medicoSubespecialidadId`).
@@ -28,12 +33,24 @@ Desde la versión **1.2.0**, los identificadores de `paciente`, `medico`, `medic
 
 ## Módulo de Archivo (Expedientes Físicos)
 
-La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de vida físico del expediente (búsqueda, entrega y retorno) introducido en la migración **V6**:
+La carpeta `06. Estación de Archivo (Expedientes Físicos)` cubre el ciclo de vida físico del expediente y las mejoras operativas de la épica **SCRUM-131** (backend **v1.5.0**, migraciones **V6** y **V9**):
 
 - `ubicaciones-archivo` (catálogo), `expedientes` (objeto físico, PK UUID escaneable) y `expediente-ciclos` (un viaje por cita).
 - Transiciones: `iniciar-busqueda`, `localizar`, `despachar`, `entregar`, `retornar`, `archivar`, `no-localizado`, `reintentar-busqueda`.
+- **Consulta diaria de la jornada:** `GET /expedientes/jornada?fecha=&subespecialidadId=`.
+- **Búsqueda por código:** `GET /expedientes/buscar?codigo=` (UUID/QR o número/barras).
+- **Actas de recepción + PDF:** `POST/GET /actas-recepcion` y `GET /actas-recepcion/{id}/pdf`.
+- **Resumen operativo diario + PDF:** `GET /archivo/resumen[/pdf]?fecha=`.
 
-El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md).
+El contrato completo (entidades, estados y ejemplos de respuesta) está en [`docs/MODULO_ARCHIVO.md`](../MODULO_ARCHIVO.md) y la guía para el frontend en [`docs/ACTUALIZACION_ARCHIVO_FRONTEND.md`](../ACTUALIZACION_ARCHIVO_FRONTEND.md).
+
+## Panel de Administración (backend v1.5.0)
+
+Las carpetas `07`–`10` cubren el backend del Panel de Administración (épica SCRUM-109): usuarios/roles/permisos, dashboard, reportes y auditoría; además de los filtros por estado y la reactivación en catálogos, médicos y programación (carpeta `04`), y la disponibilidad para reprogramación (carpeta `02`).
+
+- Contratos y guía de implementación para el frontend: [`docs/ACTUALIZACION_ADMIN_FRONTEND.md`](../ACTUALIZACION_ADMIN_FRONTEND.md).
+- `GET /auditoria` exige rol `administrador` (otro rol → `403` `ACCESO_DENEGADO`).
+- Requiere las migraciones **V7** (columna `activo` en `permiso_subespecialidad`) y **V8** (índices de auditoría).
 
 ## Autenticación simulada (Mock)
 El backend aún no se conecta al servicio de autenticación externo del hospital. En su lugar, **la colección inyecta automáticamente** las cabeceras `X-Usuario-Id`, `X-Usuario-Rol` y `X-Usuario-Nombre` mediante un *pre-request script* a nivel de colección.

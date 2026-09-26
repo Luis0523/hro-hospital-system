@@ -382,9 +382,12 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `GET /api/v1/espacios-fisicos`
    - `POST /api/v1/espacios-fisicos` (numero, nivel, capacidadCamillas, coordenadasPlano, nombre, ubicacion).
    - `GET /api/v1/espacios-fisicos/nivel/{nivel}`
-3. **Médicos y programación por subespecialidad:**
-   - `POST /api/v1/medicos` (nombres, número de colegiado).
-   - `POST /api/v1/medico-subespecialidades`: Asigna al médico una subespecialidad con día de la semana (`1..7`), hora inicio, hora fin, capacidad máxima y duración estimada. **No** referencia sala física.
+3. **Horario por subespecialidad (días y horas; sin médico):**
+   - `GET /api/v1/subespecialidades/{id}/horarios`, `POST|PUT|DELETE /api/v1/subespecialidad-horarios[/{id}]`, `PATCH /{id}/reactivar`.
+   - `POST /api/v1/subespecialidad-horarios` `{ subespecialidadId, diaSemana (1..7), horaInicio, horaFin, capacidadMaxima, duracionConsultaMinutos? }` — único por subespecialidad+día.
+   - Los **cupos** se generan de este horario (ya no del médico). `GET /api/v1/cupos?subespecialidadId=&fechaInicio=&fechaFin=&soloDisponibles=`.
+   - **Turnos:** el check-in balancea entre las salas de la subespecialidad y el `numeroTurno` es **global del día**; `PATCH /api/v1/turnos/{id}/sala?nuevoEspacioFisicoId=&motivo=` reasigna sala.
+   - El **médico** queda fuera del flujo operativo (solo órdenes de laboratorio y su dashboard).
 4. **Asignación diaria (rol `jefe_enfermeria`):** define qué subespecialidad ocupa qué sala cada día.
    - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD`
    - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }`
@@ -392,9 +395,34 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `POST /api/v1/asignaciones-diarias/cerrar?fecha=YYYY-MM-DD` → bloquea la edición (exige cobertura completa).
    - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.
    - `POST /api/v1/asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=` → "reasignación en caliente" para una fecha ya cerrada (queda auditada).
+   - **Permisos:** las **escrituras** (POST/PUT/DELETE) exigen rol `jefe_enfermeria` o `administrador`; las **lecturas** quedan abiertas. El `<select>` guarda **subespecialidad** (agrupar/filtrar por especialidad en la UI).
+   - **Nota:** el croquis/plano SVG (`plano_hospital`) queda **fuera de alcance** por ahora; no hay endpoint de plano. La selección por sala es la funcionalidad vigente.
 5. **Calendario Institucional:**
-   - `GET /api/v1/dias-no-laborables?anio=2026`
-   - `POST /api/v1/dias-no-laborables`: Registra asuetos o feriados. (Si ya existen citas en esa fecha, el backend devolverá un error impidiendo el registro hasta que se reprogramen).
+   - `GET /api/v1/dias-no-laborables` (todos), `GET /api/v1/dias-no-laborables/futuros`, `GET /api/v1/dias-no-laborables/rango?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`, `GET /api/v1/dias-no-laborables/{id}`.
+   - `POST /api/v1/dias-no-laborables` `{ fecha, motivo, creadoPorId?, forzar? }`:
+     - `201` si la fecha no tiene citas activas.
+     - `409` con `codigo: "DIA_NO_LABORABLE_CON_CITAS"` y `data: { fecha, totalCitas, citas: [{ id, horaEstimada, estado, pacienteNombre, medicoNombre, subespecialidadNombre }] }` si existen citas activas (cualquier estado distinto de `cancelada` o `reprogramada`). El frontend debe mostrar las citas afectadas, pedir confirmación explícita y reintentar con `forzar: true` para bloquear igualmente (las citas quedan pendientes de reprogramación manual).
+     - `400` con `codigo: "DIA_NO_LABORABLE_YA_EXISTE"` si la fecha ya está registrada.
+   - `PUT /api/v1/dias-no-laborables/{id}` `{ motivo }` edita el motivo (la fecha no se modifica; para cambiarla, eliminar y volver a crear).
+   - `DELETE /api/v1/dias-no-laborables/{id}` habilita la fecha de nuevo.
+   - **Códigos de error estructurados:** toda respuesta de `ApiResponse` puede incluir `codigo` (nullable) además de `message`; usar `codigo` para el manejo programático y `message` para mostrar al usuario.
+6. **Disponibilidad y reprogramación (Admin):**
+   - `GET /api/v1/cupos?soloDisponibles=true&subespecialidadId=&medicoId=&medicoSubespecialidadId=&fechaInicio=&fechaFin=` → disponibilidad por programación y rango; `soloDisponibles=true` omite los cupos sin disponibilidad.
+   - `GET /api/v1/citas/{id}/disponibilidad?fechaInicio=&fechaFin=` → cupos de la **misma programación** (médico + subespecialidad) de la cita, para reprogramar **conservando médico y subespecialidad**.
+   - `POST /api/v1/citas/{id}/reprogramar` `{ nuevoCupoDiarioId, motivo }` confirma el cambio (2 pasos: consultar y confirmar). Si el cupo está lleno → `409` (`CUPOS_AGOTADOS`).
+   - **No existe reprogramación automática**: el administrador decide cada cambio. Flujo definido en [`docs/FLUJO_ADMIN_DISPONIBILIDAD.md`](./FLUJO_ADMIN_DISPONIBILIDAD.md).
+7. **Dashboard administrativo:**
+   - `GET /api/v1/dashboard/resumen?fecha=YYYY-MM-DD` (por defecto, hoy) → indicadores agregados calculados en backend: `totalCitas`, `citasPendientes/Confirmadas/Atendidas/Canceladas/Reprogramadas`, `inasistencias`, `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `tasaInasistencia` y `alertas`.
+   - Alertas (`codigo` / `severidad`): `CITAS_EN_DIA_NO_LABORABLE` (CRITICA), `CUPOS_AGOTADOS` (ADVERTENCIA), `DIAS_NO_LABORABLES_PROXIMOS` (INFO). El frontend solo las muestra; no recalcula indicadores.
+8. **Reportes administrativos** (todos con `fechaInicio`/`fechaFin`; por defecto, últimos 30 días):
+   - `GET /api/v1/reportes/citas-por-estado` → `total` y `porEstado` (conteo por estado).
+   - `GET /api/v1/reportes/demanda-por-especialidad` → `items` con `totalCitas`, `atendidas`, `inasistencias` por especialidad.
+   - `GET /api/v1/reportes/utilizacion-cupos?subespecialidadId=` → `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `utilizacionPorcentaje`.
+   - Si `fechaFin < fechaInicio` → `400`. El frontend solo muestra; no agrega en cliente.
+9. **Auditoría administrativa** (solo rol `administrador`; otros roles → `403` `ACCESO_DENEGADO`):
+   - `GET /api/v1/auditoria?tabla=&usuarioId=&accion=&fechaInicio=&fechaFin=&page=&size=` → página de `AuditoriaResponseDTO` (`id`, `tablaAfectada`, `entidadId`, `accion`, `usuarioId`, `usuarioNombre`, `valoresAnteriores`, `valoresNuevos`, `fecha`). Paginada (por defecto `size=20`, orden `fecha` DESC).
+   - No expone la entidad JPA ni relaciones lazy. Vista de solo lectura.
+   - Los valores `anteriores`/`nuevos` son JSON en texto; el endpoint está restringido por rol para reducir la exposición de datos sensibles (PII).
 
 ---
 

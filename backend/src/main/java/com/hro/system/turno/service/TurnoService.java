@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -70,16 +71,18 @@ public class TurnoService {
         }
 
         LocalDate fecha = cita.getCupoDiario().getFecha();
-        Long subespecialidadId = cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getId();
+        Long subespecialidadId = cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getId();
 
-        AsignacionDiariaEspacio asignacion = asignacionRepository
-                .findBySubespecialidadIdAndFecha(subespecialidadId, fecha)
-                .orElseThrow(() -> new BusinessException(
-                        "No hay un espacio físico asignado para la subespecialidad "
-                                + cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getNombre()
-                                + " el " + fecha + ". El jefe de enfermería debe asignar la sala del día."));
+        List<AsignacionDiariaEspacio> salas = asignacionRepository.findBySubespecialidadIdAndFecha(subespecialidadId, fecha);
+        if (salas.isEmpty()) {
+            throw new BusinessException(
+                    "No hay un espacio físico asignado para la subespecialidad "
+                            + cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getNombre()
+                            + " el " + fecha + ". El jefe de enfermería debe asignar la sala del día.");
+        }
+        AsignacionDiariaEspacio asignacion = elegirSalaMenosCargada(salas);
 
-        Integer numeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(asignacion.getId());
+        Integer numeroTurno = turnoRepository.obtenerSiguienteTurnoGlobal(fecha);
 
         Turno turno = Turno.builder()
                 .cita(cita)
@@ -106,7 +109,7 @@ public class TurnoService {
                 .fechaCambio(OffsetDateTime.now())
                 .build());
 
-        notificarActualizacionTablero(asignacion.getId());
+        notificarActualizacionTablero(asignacion.getId(), "ACTUALIZACION", null);
 
         publicarAuditoria("turno", guardado.getId(), "crear", usuario.getId(), null, Map.of(
                 "numeroTurno", numeroTurno,
@@ -137,7 +140,7 @@ public class TurnoService {
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
         actualizarTurnoActualContador(asignacionId, turno.getNumeroTurno());
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "LLAMADO", actualizado.getIntentosLlamado());
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -164,7 +167,7 @@ public class TurnoService {
         Turno actualizado = turnoRepository.save(turno);
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -193,7 +196,8 @@ public class TurnoService {
         }
 
         int turnoAnterior = turno.getNumeroTurno();
-        Integer nuevoNumeroTurno = turnoRepository.obtenerSiguienteTurnoAtomico(asignacionId);
+        Integer nuevoNumeroTurno = turnoRepository.obtenerSiguienteTurnoGlobal(
+                turno.getAsignacionDiariaEspacio().getFecha());
 
         turno.setNumeroTurno(nuevoNumeroTurno);
         turno.setEstado("reintegrado");
@@ -201,7 +205,7 @@ public class TurnoService {
         turno.setHoraLlamado(null);
 
         Turno actualizado = turnoRepository.save(turno);
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         historialRepository.save(CitaEstadoHistorial.builder()
                 .cita(turno.getCita())
@@ -251,7 +255,7 @@ public class TurnoService {
                 .build());
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
-        notificarActualizacionTablero(asignacionId);
+        notificarActualizacionTablero(asignacionId, "ACTUALIZACION", null);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -307,36 +311,102 @@ public class TurnoService {
                 .toList();
     }
 
+    /**
+     * Balanceo: elige la sala de la subespecialidad con menos turnos en espera.
+     */
+    private AsignacionDiariaEspacio elegirSalaMenosCargada(List<AsignacionDiariaEspacio> salas) {
+        AsignacionDiariaEspacio elegida = null;
+        long menor = Long.MAX_VALUE;
+        for (AsignacionDiariaEspacio sala : salas) {
+            long pendientes = turnoRepository.countByAsignacionDiariaEspacioIdAndEstado(sala.getId(), "en_espera");
+            if (pendientes < menor) {
+                menor = pendientes;
+                elegida = sala;
+            }
+        }
+        return elegida;
+    }
+
+    /**
+     * Reasigna un turno a otra sala de la misma subespecialidad (p. ej. si una sala se desocupa antes).
+     */
+    @Transactional
+    public TurnoResponseDTO reasignarSala(Long turnoId, UUID nuevoEspacioFisicoId, String motivo) {
+        Turno turno = turnoRepository.findById(turnoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
+        AsignacionDiariaEspacio actual = turno.getAsignacionDiariaEspacio();
+        if (actual == null) {
+            throw new BusinessException("El turno no tiene una sala asignada; no se puede reasignar.");
+        }
+        AsignacionDiariaEspacio nueva = asignacionRepository.findByEspacioFisicoIdAndFecha(nuevoEspacioFisicoId, actual.getFecha())
+                .orElseThrow(() -> new ResourceNotFoundException("AsignacionDiariaEspacio", "espacioFisicoId", nuevoEspacioFisicoId));
+        if (!nueva.getSubespecialidad().getId().equals(actual.getSubespecialidad().getId())) {
+            throw new BusinessException("La sala destino no atiende la misma subespecialidad del turno.");
+        }
+
+        turno.setAsignacionDiariaEspacio(nueva);
+        Turno guardado = turnoRepository.save(turno);
+
+        publicarAuditoria("turno", guardado.getId(), "actualizar", UsuarioContexto.resolverId(null),
+                Map.of("asignacionDiariaEspacioId", actual.getId()),
+                Map.of("asignacionDiariaEspacioId", nueva.getId(), "motivo", motivo != null ? motivo : "Reasignación de sala"));
+
+        notificarActualizacionTablero(actual.getId(), "ACTUALIZACION", null);
+        notificarActualizacionTablero(nueva.getId(), "ACTUALIZACION", null);
+        log.info("Turno #{} reasignado de la sala {} a la sala {}", guardado.getNumeroTurno(), actual.getId(), nueva.getId());
+        return mapToDTO(guardado);
+    }
+
     private void actualizarTurnoActualContador(Long asignacionId, Integer numeroTurno) {
         if (asignacionId == null) {
             return;
         }
-        contadorRepository.findByAsignacionDiariaEspacioId(asignacionId).ifPresent(contador -> {
-            contador.setTurnoActual(numeroTurno);
-            contadorRepository.save(contador);
-        });
+        ContadorTurnoDiario contador = contadorRepository.findByAsignacionDiariaEspacioId(asignacionId)
+                .orElseGet(() -> {
+                    AsignacionDiariaEspacio a = asignacionRepository.findById(asignacionId).orElse(null);
+                    return (a == null) ? null : ContadorTurnoDiario.builder()
+                            .asignacionDiariaEspacio(a)
+                            .turnoActual(0)
+                            .turnoSiguiente(1)
+                            .build();
+                });
+        if (contador == null) {
+            return;
+        }
+        contador.setTurnoActual(numeroTurno);
+        contador.setTurnoSiguiente(Math.max(contador.getTurnoSiguiente(), numeroTurno + 1));
+        contadorRepository.save(contador);
     }
 
-    private void notificarActualizacionTablero(Long asignacionId) {
+    private void notificarActualizacionTablero(Long asignacionId, String tipoEvento, Integer intentosLlamado) {
         if (asignacionId == null) {
             return;
         }
-        contadorRepository.findByAsignacionDiariaEspacioId(asignacionId).ifPresent(contador -> {
-            AsignacionDiariaEspacio a = contador.getAsignacionDiariaEspacio();
-            TableroTurnoDTO tablero = TableroTurnoDTO.builder()
-                    .asignacionDiariaEspacioId(a.getId())
-                    .espacioNumero(a.getEspacioFisico().getNumero())
-                    .nivel(a.getEspacioFisico().getNivel())
-                    .subespecialidadNombre(a.getSubespecialidad().getNombre())
-                    .turnoActual(contador.getTurnoActual())
-                    .turnoSiguiente(contador.getTurnoSiguiente())
-                    .ultimaActualizacion(OffsetDateTime.now())
-                    .build();
-
-            messagingTemplate.convertAndSend("/topic/tablero", tablero);
-            messagingTemplate.convertAndSend("/topic/clinica/" + a.getId(), tablero);
-            log.debug("Evento WebSocket emitido al tablero para asignación diaria ID: {}", a.getId());
-        });
+        AsignacionDiariaEspacio a = asignacionRepository.findById(asignacionId).orElse(null);
+        if (a == null) {
+            return;
+        }
+        Integer turnoActual = null;
+        Integer turnoSiguiente = null;
+        var contador = contadorRepository.findByAsignacionDiariaEspacioId(asignacionId).orElse(null);
+        if (contador != null) {
+            turnoActual = contador.getTurnoActual();
+            turnoSiguiente = contador.getTurnoSiguiente();
+        }
+        TableroTurnoDTO tablero = TableroTurnoDTO.builder()
+                .asignacionDiariaEspacioId(a.getId())
+                .espacioNumero(a.getEspacioFisico().getNumero())
+                .nivel(a.getEspacioFisico().getNivel())
+                .subespecialidadNombre(a.getSubespecialidad().getNombre())
+                .turnoActual(turnoActual)
+                .turnoSiguiente(turnoSiguiente)
+                .ultimaActualizacion(OffsetDateTime.now())
+                .intentosLlamado(intentosLlamado)
+                .tipoEvento(tipoEvento)
+                .build();
+        messagingTemplate.convertAndSend("/topic/tablero", tablero);
+        messagingTemplate.convertAndSend("/topic/clinica/" + a.getId(), tablero);
+        log.debug("Evento WebSocket emitido al tablero para asignación diaria ID: {}", a.getId());
     }
 
     private void publicarAuditoria(String tabla, Long id, String accion, Long usuarioId, Map<String, Object> ant, Map<String, Object> nue) {
@@ -363,7 +433,6 @@ public class TurnoService {
                 .nivel(a != null ? a.getEspacioFisico().getNivel() : null)
                 .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
                 .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
-                .medicoNombre(turno.getCita().getCupoDiario().getMedicoSubespecialidad().getMedico().getNombres())
                 .horaGenerado(turno.getHoraGenerado())
                 .horaLlamado(turno.getHoraLlamado())
                 .horaAtendido(turno.getHoraAtendido())

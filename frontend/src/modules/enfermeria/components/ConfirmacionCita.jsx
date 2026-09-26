@@ -1,6 +1,5 @@
-import Icon from '@/shared/components/ui/Icon.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
-import { formatearFechaLarga } from '@/shared/utils/fecha'
+import FichaPaciente from './FichaPaciente.jsx'
 
 export default function ConfirmacionCita({
   resultado,
@@ -32,44 +31,9 @@ export default function ConfirmacionCita({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary-fixed text-on-secondary-container">
-                <Icon name="person_check" className="text-[24px]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-headline-sm text-on-surface">
-                  {paciente.nombres} {paciente.apellidos}
-                </p>
-                <p className="text-body-sm text-on-surface-variant">
-                  DPI {paciente.dpi} • {paciente.numeroExpediente}
-                </p>
-              </div>
-            </div>
+            <FichaPaciente paciente={paciente} cita={cita} />
 
-            {cita ? (
-              <dl className="grid grid-cols-2 gap-3 rounded-xl bg-surface-container-low p-3 text-body-sm">
-                <div>
-                  <dt className="text-on-surface-variant">Clínica</dt>
-                  <dd className="font-semibold text-on-surface">{cita.clinicaNombre}</dd>
-                </div>
-                <div>
-                  <dt className="text-on-surface-variant">Médico</dt>
-                  <dd className="font-semibold text-on-surface">{cita.medicoNombre}</dd>
-                </div>
-                <div>
-                  <dt className="text-on-surface-variant">Fecha</dt>
-                  <dd className="font-semibold text-on-surface">
-                    {formatearFechaLarga(cita.fechaCita)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-on-surface-variant">Hora estimada</dt>
-                  <dd className="font-semibold text-on-surface">
-                    {cita.horaEstimada ? cita.horaEstimada.slice(0, 5) : 'Sin hora estimada'}
-                  </dd>
-                </div>
-              </dl>
-            ) : (
+            {!cita && (
               <p className="rounded-lg bg-error-container/60 px-3 py-2 text-body-sm text-on-error-container">
                 El paciente no tiene una cita registrada para el día de hoy.
               </p>

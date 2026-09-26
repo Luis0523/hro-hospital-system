@@ -1,6 +1,7 @@
 package com.hro.system.cita.service;
 
 import com.hro.system.agenda.config.HroAgendaProperties;
+import com.hro.system.agenda.dto.CupoDiarioResponseDTO;
 import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.service.CupoDiarioService;
@@ -13,7 +14,7 @@ import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
 import com.hro.system.cita.repository.CitaRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -65,7 +66,7 @@ public class CitaService {
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         // Reserva atómica en PostgreSQL para prevenir sobreventa ante concurrencia
-        cupoDiarioService.reservarCupoAtomico(cupo.getMedicoSubespecialidad().getId(), cupo.getFecha());
+        cupoDiarioService.reservarCupoAtomico(cupo.getSubespecialidadHorario().getId(), cupo.getFecha());
 
         Cita citaOrigen = null;
         if (dto.getCitaOrigenId() != null) {
@@ -126,7 +127,7 @@ public class CitaService {
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
 
         // 1. Reservar de forma atómica el nuevo cupo
-        cupoDiarioService.reservarCupoAtomico(nuevoCupo.getMedicoSubespecialidad().getId(), nuevoCupo.getFecha());
+        cupoDiarioService.reservarCupoAtomico(nuevoCupo.getSubespecialidadHorario().getId(), nuevoCupo.getFecha());
 
         // 2. Actualizar cita original a 'reprogramada' y liberar su cupo anterior
         String estadoAnterior = citaOriginal.getEstado();
@@ -166,6 +167,22 @@ public class CitaService {
 
         log.info("Cita #{} reprogramada exitosamente hacia nueva cita #{} en fecha {}", citaId, citaNuevaGuardada.getId(), nuevoCupo.getFecha());
         return mapToDTO(citaNuevaGuardada);
+    }
+
+    /**
+     * Disponibilidad para reprogramar una cita conservando la subespecialidad (y su horario):
+     * devuelve los cupos de la misma programación de la cita dentro del rango solicitado.
+     */
+    @Transactional
+    public List<CupoDiarioResponseDTO> consultarDisponibilidadParaCita(Long citaId, LocalDate fechaInicio, LocalDate fechaFin) {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", citaId));
+
+        UUID horarioId = cita.getCupoDiario().getSubespecialidadHorario().getId();
+        Long subespecialidadId = cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getId();
+        return cupoDiarioService.consultarDisponibilidad(subespecialidadId, fechaInicio, fechaFin, null).stream()
+                .filter(c -> horarioId.equals(c.getSubespecialidadHorarioId()))
+                .toList();
     }
 
     /**
@@ -316,9 +333,9 @@ public class CitaService {
 
         // Duración promedio de la consulta
         // TODO: Sustituir valor por defecto por estudio de tiempos promedio por especialidad/médico.
-        int duracion = duracionEfectiva(cupo.getMedicoSubespecialidad());
+        int duracion = duracionEfectiva(cupo.getSubespecialidadHorario());
 
-        LocalTime horaInicioJornada = cupo.getMedicoSubespecialidad().getHoraInicio();
+        LocalTime horaInicioJornada = cupo.getSubespecialidadHorario().getHoraInicio();
 
         // Invocación a función nativa PostgreSQL fn_calcular_hora_estimada
         LocalTime horaEstimada = null;
@@ -332,10 +349,10 @@ public class CitaService {
             horaEstimada = horaInicioJornada.plusMinutes((long) (posicion - 1) * duracion);
         }
 
-        if (horaEstimada.isAfter(cupo.getMedicoSubespecialidad().getHoraFin())) {
+        if (horaEstimada.isAfter(cupo.getSubespecialidadHorario().getHoraFin())) {
             log.warn("Hora estimada {} excede el fin de jornada {} del cupo {} (posición {}). "
                             + "Revise la capacidad/duración configurada para este médico-clínica.",
-                    horaEstimada, cupo.getMedicoSubespecialidad().getHoraFin(), cupo.getId(), posicion);
+                    horaEstimada, cupo.getSubespecialidadHorario().getHoraFin(), cupo.getId(), posicion);
         }
 
         // Cálculo de ventana con margen base e incremento por incertidumbre acumulada
@@ -406,8 +423,8 @@ public class CitaService {
         Integer posicionEnFila = null;
         Long minutosEsperaEstimados = null;
         if (cita.getHoraEstimada() != null) {
-            LocalTime horaInicioJornada = cita.getCupoDiario().getMedicoSubespecialidad().getHoraInicio();
-            int duracion = duracionEfectiva(cita.getCupoDiario().getMedicoSubespecialidad());
+            LocalTime horaInicioJornada = cita.getCupoDiario().getSubespecialidadHorario().getHoraInicio();
+            int duracion = duracionEfectiva(cita.getCupoDiario().getSubespecialidadHorario());
             minutosEsperaEstimados = Math.max(0, Duration.between(horaInicioJornada, cita.getHoraEstimada()).toMinutes());
             posicionEnFila = (int) (minutosEsperaEstimados / duracion) + 1;
         }
@@ -420,8 +437,7 @@ public class CitaService {
                 .pacienteExpediente(cita.getPaciente().getNumeroExpediente())
                 .cupoDiarioId(cita.getCupoDiario().getId())
                 .fechaCita(cita.getCupoDiario().getFecha())
-                .subespecialidadNombre(cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getNombre())
-                .medicoNombre(cita.getCupoDiario().getMedicoSubespecialidad().getMedico().getNombres())
+                .subespecialidadNombre(cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getNombre())
                 .horaEstimada(cita.getHoraEstimada())
                 .horaVentanaInicio(cita.getHoraVentanaInicio())
                 .horaVentanaFin(cita.getHoraVentanaFin())
@@ -438,8 +454,8 @@ public class CitaService {
     /**
      * Duración efectiva de consulta del médico-clínica, con respaldo en la configuración global.
      */
-    private int duracionEfectiva(MedicoSubespecialidad medicoSubespecialidad) {
-        Integer configurada = medicoSubespecialidad.getDuracionConsultaMinutos();
+    private int duracionEfectiva(SubespecialidadHorario horario) {
+        Integer configurada = horario.getDuracionConsultaMinutos();
         return (configurada != null && configurada > 0)
                 ? configurada
                 : agendaProperties.getDuracionConsultaDefaultMinutos();

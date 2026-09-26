@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,7 +19,11 @@ public interface ExpedienteRepository extends JpaRepository<Expediente, UUID> {
 
     Optional<Expediente> findByPacienteId(UUID pacienteId);
 
+    List<Expediente> findByPacienteIdIn(Collection<UUID> pacienteIds);
+
     Optional<Expediente> findByNumeroExpediente(String numeroExpediente);
+
+    long countByCreadoEnBetween(OffsetDateTime inicio, OffsetDateTime fin);
 
     @Query("""
             SELECT e FROM Expediente e JOIN e.paciente p

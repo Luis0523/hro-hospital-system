@@ -2,8 +2,8 @@ import Icon from './Icon.jsx'
 
 const tonos = {
   info: 'bg-primary-container text-on-primary',
-  success: 'bg-emerald-600 text-white',
-  warning: 'bg-amber-500 text-white',
+  success: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950',
+  warning: 'bg-amber-500 text-white dark:bg-amber-400 dark:text-amber-950',
   error: 'bg-error text-on-error',
 }
 

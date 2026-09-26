@@ -1,6 +1,7 @@
 package com.hro.system.archivo.controller;
 
 import com.hro.system.archivo.dto.CrearExpedienteRequestDTO;
+import com.hro.system.archivo.dto.ExpedienteJornadaDTO;
 import com.hro.system.archivo.dto.ExpedienteResponseDTO;
 import com.hro.system.archivo.dto.ReubicarExpedienteRequestDTO;
 import com.hro.system.archivo.service.ArchivoService;
@@ -11,10 +12,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,13 +30,28 @@ public class ExpedienteController {
     private final ArchivoService archivoService;
 
     @GetMapping("/buscar")
-    @Operation(summary = "Buscar expedientes", description = "Búsqueda paginada por número de expediente, DPI o nombre del paciente. Los resultados vienen en data.content.")
+    @Operation(summary = "Buscar expedientes",
+            description = "Búsqueda paginada por número de expediente, DPI o nombre (data.content). Si se envía 'codigo', se resuelve el UUID (QR) o el número (código de barras) exacto y devuelve una página con ese expediente (404 si no existe).")
     public ResponseEntity<ApiResponse<Page<ExpedienteResponseDTO>>> buscar(
             @RequestParam(required = false) String filtro,
+            @RequestParam(required = false) String codigo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<ExpedienteResponseDTO> response = archivoService.buscarExpedientes(filtro, PageRequest.of(page, size));
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<ExpedienteResponseDTO> response = (codigo != null && !codigo.isBlank())
+                ? archivoService.buscarPorCodigo(codigo, pageable)
+                : archivoService.buscarExpedientes(filtro, pageable);
         return ResponseEntity.ok(ApiResponse.ok(response, "Expedientes obtenidos con éxito"));
+    }
+
+    @GetMapping("/jornada")
+    @Operation(summary = "Jornada de archivo",
+            description = "Citas de una fecha (opcionalmente filtradas por subespecialidad) con el expediente físico a preparar y el estado de su ciclo. Fecha por defecto: hoy.")
+    public ResponseEntity<ApiResponse<List<ExpedienteJornadaDTO>>> jornada(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long subespecialidadId) {
+        List<ExpedienteJornadaDTO> jornada = archivoService.obtenerJornada(fecha, subespecialidadId);
+        return ResponseEntity.ok(ApiResponse.ok(jornada, "Jornada de archivo obtenida"));
     }
 
     @GetMapping("/{id}")

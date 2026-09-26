@@ -22,16 +22,20 @@ import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Lógica del ciclo de vida físico del expediente (búsqueda, entrega a la clínica y retorno),
@@ -180,6 +184,82 @@ public class ArchivoService {
     @Transactional(readOnly = true)
     public Page<ExpedienteResponseDTO> buscarExpedientes(String filtro, Pageable pageable) {
         return expedienteRepository.buscar(filtro, pageable).map(this::mapExpediente);
+    }
+
+    /**
+     * Búsqueda directa por código escaneado: acepta el UUID (QR) o el número impreso
+     * (código de barras). Devuelve una página con el expediente o {@code 404} si no existe.
+     */
+    @Transactional(readOnly = true)
+    public Page<ExpedienteResponseDTO> buscarPorCodigo(String codigo, Pageable pageable) {
+        if (codigo == null || codigo.isBlank()) {
+            throw new BusinessException("El código de búsqueda es obligatorio");
+        }
+        String codigoLimpio = codigo.trim();
+        Expediente expediente = resolverExpedientePorCodigo(codigoLimpio)
+                .orElseThrow(() -> new ResourceNotFoundException("Expediente", "codigo", codigoLimpio));
+        return new PageImpl<>(List.of(mapExpediente(expediente)), pageable, 1);
+    }
+
+    private Optional<Expediente> resolverExpedientePorCodigo(String codigo) {
+        try {
+            UUID uuid = UUID.fromString(codigo);
+            Optional<Expediente> porId = expedienteRepository.findById(uuid);
+            if (porId.isPresent()) {
+                return porId;
+            }
+        } catch (IllegalArgumentException noEsUuid) {
+            // No es UUID: se intenta por número de expediente.
+        }
+        return expedienteRepository.findByNumeroExpediente(codigo);
+    }
+
+    /**
+     * Jornada de archivo: citas de una fecha (opcionalmente filtradas por subespecialidad)
+     * con los datos del expediente físico a preparar y el estado de su ciclo.
+     * Usa consultas por lote para evitar N+1.
+     */
+    @Transactional(readOnly = true)
+    public List<ExpedienteJornadaDTO> obtenerJornada(LocalDate fecha, Long subespecialidadId) {
+        LocalDate dia = (fecha != null) ? fecha : LocalDate.now();
+        List<Cita> citas = citaRepository.buscarCitasParaArchivo(dia, subespecialidadId);
+        if (citas.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> pacienteIds = citas.stream()
+                .map(c -> c.getPaciente().getId())
+                .collect(Collectors.toSet());
+        Map<UUID, Expediente> expedientePorPaciente = expedienteRepository.findByPacienteIdIn(pacienteIds).stream()
+                .collect(Collectors.toMap(e -> e.getPaciente().getId(), e -> e, (a, b) -> a));
+
+        Set<Long> citaIds = citas.stream().map(Cita::getId).collect(Collectors.toSet());
+        Map<Long, ExpedienteCiclo> cicloPorCita = expedienteCicloRepository.findByCitaIdIn(citaIds).stream()
+                .collect(Collectors.toMap(c -> c.getCita().getId(), c -> c, (a, b) -> a));
+
+        List<ExpedienteJornadaDTO> jornada = new ArrayList<>();
+        for (Cita cita : citas) {
+            Paciente paciente = cita.getPaciente();
+            Expediente expediente = expedientePorPaciente.get(paciente.getId());
+            ExpedienteCiclo ciclo = cicloPorCita.get(cita.getId());
+            var subespecialidad = cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad();
+
+            jornada.add(ExpedienteJornadaDTO.builder()
+                    .citaId(cita.getId())
+                    .horaEstimada(cita.getHoraEstimada())
+                    .pacienteId(paciente.getId())
+                    .pacienteNombre(paciente.getNombres() + " " + paciente.getApellidos())
+                    .dpi(paciente.getDpi())
+                    .numeroExpediente(expediente != null ? expediente.getNumeroExpediente() : paciente.getNumeroExpediente())
+                    .expedienteId(expediente != null ? expediente.getId() : null)
+                    .subespecialidadId(subespecialidad.getId())
+                    .subespecialidadNombre(subespecialidad.getNombre())
+                    .cicloId(ciclo != null ? ciclo.getId() : null)
+                    .estadoActual(ciclo != null ? ciclo.getEstadoActual() : "sin_ciclo")
+                    .ubicacionBase(expediente != null ? mapUbicacion(expediente.getUbicacionBase()) : null)
+                    .build());
+        }
+        return jornada;
     }
 
     @Transactional

@@ -12,7 +12,11 @@ public interface SubespecialidadRepository extends JpaRepository<Subespecialidad
 
     List<Subespecialidad> findByActivoTrue();
 
+    List<Subespecialidad> findByActivo(boolean activo);
+
     List<Subespecialidad> findByEspecialidadIdAndActivoTrue(Long especialidadId);
+
+    List<Subespecialidad> findByEspecialidadIdAndActivo(Long especialidadId, boolean activo);
 
     List<Subespecialidad> findByEspecialidadId(Long especialidadId);
 

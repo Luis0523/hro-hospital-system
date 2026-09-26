@@ -20,6 +20,11 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     @Query(value = "SELECT fn_siguiente_turno(:asignacionDiariaEspacioId)", nativeQuery = true)
     Integer obtenerSiguienteTurnoAtomico(@Param("asignacionDiariaEspacioId") Long asignacionDiariaEspacioId);
 
+    @Query(value = "SELECT fn_siguiente_turno_fecha(CAST(:fecha AS date))", nativeQuery = true)
+    Integer obtenerSiguienteTurnoGlobal(@Param("fecha") LocalDate fecha);
+
+    long countByAsignacionDiariaEspacioIdAndEstado(Long asignacionDiariaEspacioId, String estado);
+
     @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId")
     List<Turno> buscarPorAsignacion(@Param("asignacionId") Long asignacionId);
 

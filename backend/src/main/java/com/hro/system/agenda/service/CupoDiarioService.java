@@ -4,11 +4,11 @@ import com.hro.system.agenda.dto.CupoDiarioResponseDTO;
 import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.repository.CupoDiarioRepository;
 import com.hro.system.agenda.repository.DiaNoLaborableRepository;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.CupoAgotadoException;
 import com.hro.system.common.ResourceNotFoundException;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,51 +25,53 @@ import java.util.UUID;
 public class CupoDiarioService {
 
     private final CupoDiarioRepository cupoDiarioRepository;
-    private final MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private final SubespecialidadHorarioRepository subespecialidadHorarioRepository;
     private final DiaNoLaborableRepository diaNoLaborableRepository;
 
     /**
-     * Obtiene el cupo diario o lo inicializa atómicamente. Valida día de la semana del médico
-     * y que la fecha no sea día no laborable.
+     * Obtiene el cupo diario o lo inicializa atómicamente a partir del horario de la
+     * subespecialidad. Valida el día de la semana del horario y que no sea día no laborable.
      */
     @Transactional
-    public CupoDiario obtenerOCrearCupoDiario(UUID medicoSubespecialidadId, LocalDate fecha) {
-        MedicoSubespecialidad ms = medicoSubespecialidadRepository.findById(medicoSubespecialidadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Programación médico-subespecialidad no encontrada con ID: " + medicoSubespecialidadId));
+    public CupoDiario obtenerOCrearCupoDiario(UUID subespecialidadHorarioId, LocalDate fecha) {
+        SubespecialidadHorario horario = subespecialidadHorarioRepository.findById(subespecialidadHorarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horario de subespecialidad no encontrado con ID: " + subespecialidadHorarioId));
 
-        if (!Boolean.TRUE.equals(ms.getActivo())) {
-            throw new BusinessException("El horario del médico en esta subespecialidad se encuentra inactivo.");
+        if (!Boolean.TRUE.equals(horario.getActivo())) {
+            throw new BusinessException("El horario de esta subespecialidad se encuentra inactivo.");
         }
 
         short diaSemanaFecha = (short) fecha.getDayOfWeek().getValue();
-        if (diaSemanaFecha != ms.getDiaSemana()) {
+        if (diaSemanaFecha != horario.getDiaSemana()) {
             throw new BusinessException(String.format(
-                    "El médico no atiende el día seleccionado (%s). Atiende únicamente los días con código %d.",
-                    fecha.getDayOfWeek(), ms.getDiaSemana()
-            ));
+                    "La subespecialidad no atiende el día seleccionado (%s). Atiende únicamente los días con código %d.",
+                    fecha.getDayOfWeek(), horario.getDiaSemana()));
         }
 
         if (diaNoLaborableRepository.existsByFecha(fecha)) {
             throw new BusinessException("La fecha " + fecha + " está registrada como día no laborable institucional.");
         }
 
-        cupoDiarioRepository.inicializarCupoSiNoExiste(medicoSubespecialidadId, fecha, ms.getCapacidadMaxima());
+        // Solo inicializa si no existe: evita el INSERT ... ON CONFLICT innecesario
+        // y mantiene la compatibilidad con H2 en pruebas.
+        if (cupoDiarioRepository.findBySubespecialidadHorarioIdAndFecha(subespecialidadHorarioId, fecha).isEmpty()) {
+            cupoDiarioRepository.inicializarCupoSiNoExiste(subespecialidadHorarioId, fecha, horario.getCapacidadMaxima());
+        }
 
-        return cupoDiarioRepository.findByMedicoSubespecialidadIdAndFecha(medicoSubespecialidadId, fecha)
+        return cupoDiarioRepository.findBySubespecialidadHorarioIdAndFecha(subespecialidadHorarioId, fecha)
                 .orElseThrow(() -> new ResourceNotFoundException("Error al inicializar el cupo diario para la fecha: " + fecha));
     }
 
     @Transactional
-    public CupoDiario reservarCupoAtomico(UUID medicoSubespecialidadId, LocalDate fecha) {
-        CupoDiario cupo = obtenerOCrearCupoDiario(medicoSubespecialidadId, fecha);
+    public CupoDiario reservarCupoAtomico(UUID subespecialidadHorarioId, LocalDate fecha) {
+        CupoDiario cupo = obtenerOCrearCupoDiario(subespecialidadHorarioId, fecha);
 
         boolean reservado = cupoDiarioRepository.incrementarCupoAtomico(cupo.getId());
         if (!reservado) {
             log.warn("Intento de sobreventa bloqueado: Cupo diario {} agotado para la fecha {}", cupo.getId(), fecha);
             throw new CupoAgotadoException(String.format(
                     "No hay cupos disponibles para la fecha %s. Se ha alcanzado la capacidad máxima de %d pacientes.",
-                    fecha, cupo.getCapacidadMaxima()
-            ));
+                    fecha, cupo.getCapacidadMaxima()));
         }
 
         return cupoDiarioRepository.findById(cupo.getId())
@@ -87,11 +89,13 @@ public class CupoDiarioService {
     }
 
     /**
-     * Consulta disponibilidad en un rango. El filtro principal ahora es por subespecialidad
-     * (no por sala física), porque la sala se resuelve por día.
+     * Consulta disponibilidad en un rango a partir del horario de las subespecialidades.
+     *
+     * @param soloDisponibles si es {@code true}, omite los cupos sin disponibilidad.
      */
     @Transactional
-    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, UUID medicoId, UUID medicoSubespecialidadId, LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<CupoDiarioResponseDTO> consultarDisponibilidad(Long subespecialidadId, LocalDate fechaInicio,
+                                                               LocalDate fechaFin, Boolean soloDisponibles) {
         LocalDate inicio = (fechaInicio != null) ? fechaInicio : LocalDate.now();
         LocalDate fin = (fechaFin != null) ? fechaFin : inicio.plusDays(14);
 
@@ -99,35 +103,29 @@ public class CupoDiarioService {
             throw new BusinessException("La fecha final no puede ser anterior a la fecha inicial.");
         }
 
-        List<MedicoSubespecialidad> asignaciones = new ArrayList<>();
-        if (medicoSubespecialidadId != null) {
-            medicoSubespecialidadRepository.findById(medicoSubespecialidadId).ifPresent(asignaciones::add);
-        } else if (subespecialidadId != null && medicoId != null) {
-            asignaciones.addAll(medicoSubespecialidadRepository.findByMedicoIdAndSubespecialidadId(medicoId, subespecialidadId));
-        } else if (subespecialidadId != null) {
-            asignaciones.addAll(medicoSubespecialidadRepository.findBySubespecialidadId(subespecialidadId));
-        } else if (medicoId != null) {
-            asignaciones.addAll(medicoSubespecialidadRepository.findByMedicoId(medicoId));
+        List<SubespecialidadHorario> horarios = new ArrayList<>();
+        if (subespecialidadId != null) {
+            horarios.addAll(subespecialidadHorarioRepository.findBySubespecialidadIdAndActivoTrue(subespecialidadId));
         } else {
-            asignaciones.addAll(medicoSubespecialidadRepository.findAll());
+            horarios.addAll(subespecialidadHorarioRepository.findByActivoTrue());
         }
 
         List<CupoDiarioResponseDTO> resultado = new ArrayList<>();
-
-        for (MedicoSubespecialidad ms : asignaciones) {
-            if (!Boolean.TRUE.equals(ms.getActivo())) {
-                continue;
-            }
+        for (SubespecialidadHorario horario : horarios) {
             LocalDate cursor = inicio;
             while (!cursor.isAfter(fin)) {
-                if (cursor.getDayOfWeek().getValue() == ms.getDiaSemana() && !diaNoLaborableRepository.existsByFecha(cursor)) {
-                    CupoDiario cupo = obtenerOCrearCupoDiario(ms.getId(), cursor);
+                if (cursor.getDayOfWeek().getValue() == horario.getDiaSemana()
+                        && !diaNoLaborableRepository.existsByFecha(cursor)) {
+                    CupoDiario cupo = obtenerOCrearCupoDiario(horario.getId(), cursor);
                     resultado.add(CupoDiarioResponseDTO.fromEntity(cupo));
                 }
                 cursor = cursor.plusDays(1);
             }
         }
 
+        if (Boolean.TRUE.equals(soloDisponibles)) {
+            return resultado.stream().filter(CupoDiarioResponseDTO::getDisponible).toList();
+        }
         return resultado;
     }
 }

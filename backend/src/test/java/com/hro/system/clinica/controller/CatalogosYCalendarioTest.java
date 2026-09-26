@@ -19,9 +19,9 @@ import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.dto.AsignarMedicoSubespecialidadRequestDTO;
 import com.hro.system.medico.dto.CrearMedicoRequestDTO;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -69,7 +69,7 @@ class CatalogosYCalendarioTest {
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     @Autowired
     private DiaNoLaborableRepository diaNoLaborableRepository;
@@ -96,7 +96,7 @@ class CatalogosYCalendarioTest {
     void setUp() {
         citaRepository.deleteAll();
         cupoDiarioRepository.deleteAll();
-        medicoSubespecialidadRepository.deleteAll();
+        subespecialidadHorarioRepository.deleteAll();
         diaNoLaborableRepository.deleteAll();
         espacioFisicoRepository.deleteAll();
         subespecialidadRepository.deleteAll();
@@ -272,8 +272,7 @@ class CatalogosYCalendarioTest {
     void registrarDiaNoLaborable_rechazoPorCitasExistentes() throws Exception {
         LocalDate fecha = LocalDate.of(2026, 9, 20);
 
-        MedicoSubespecialidad ms = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario ms = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) 7)
                 .horaInicio(LocalTime.of(8, 0))
@@ -282,7 +281,7 @@ class CatalogosYCalendarioTest {
                 .build());
 
         CupoDiario cupo = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(ms)
+                .subespecialidadHorario(ms)
                 .fecha(fecha)
                 .capacidadMaxima(10)
                 .cuposOcupados(1)
@@ -313,8 +312,225 @@ class CatalogosYCalendarioTest {
         mockMvc.perform(post("/dias-no-laborables")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.codigo", is("DIA_NO_LABORABLE_CON_CITAS")))
+                .andExpect(jsonPath("$.data.totalCitas", is(1)))
+                .andExpect(jsonPath("$.data.citas", hasSize(1)))
+                .andExpect(jsonPath("$.message", containsString("cita(s) activa(s)")));
+    }
+
+    @Test
+    @DisplayName("GET /especialidades - Por defecto solo devuelve activas")
+    void listarEspecialidades_porDefectoActivas() throws Exception {
+        especialidadRepository.save(Especialidad.builder()
+                .nombre("Cardiología")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/especialidades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Medicina Interna")));
+    }
+
+    @Test
+    @DisplayName("GET /especialidades?estado=inactivos - Devuelve solo inactivas")
+    void listarEspecialidades_inactivas() throws Exception {
+        especialidadRepository.save(Especialidad.builder()
+                .nombre("Cardiología")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/especialidades").param("estado", "inactivos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Cardiología")));
+    }
+
+    @Test
+    @DisplayName("GET /especialidades?estado=todos - Devuelve activas e inactivas")
+    void listarEspecialidades_todos() throws Exception {
+        especialidadRepository.save(Especialidad.builder()
+                .nombre("Cardiología")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/especialidades").param("estado", "todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("GET /especialidades?estado=invalido - Responde 400")
+    void listarEspecialidades_estadoInvalido() throws Exception {
+        mockMvc.perform(get("/especialidades").param("estado", "otro"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("PATCH /especialidades/{id}/reactivar - Reactiva una especialidad inactiva")
+    void reactivarEspecialidad_exito() throws Exception {
+        Especialidad inactiva = especialidadRepository.save(Especialidad.builder()
+                .nombre("Cardiología")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(patch("/especialidades/{id}/reactivar", inactiva.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.activo", is(true)));
+    }
+
+    @Test
+    @DisplayName("PATCH /especialidades/{id}/reactivar - Es idempotente si ya está activa")
+    void reactivarEspecialidad_yaActiva() throws Exception {
+        mockMvc.perform(patch("/especialidades/{id}/reactivar", especialidad.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activo", is(true)));
+    }
+
+    @Test
+    @DisplayName("PATCH /subespecialidades/{id}/reactivar - Reactiva si la especialidad padre está activa")
+    void reactivarSubespecialidad_exito() throws Exception {
+        Subespecialidad inactiva = subespecialidadRepository.save(Subespecialidad.builder()
+                .especialidad(especialidad)
+                .nombre("Cardiología Clínica")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(patch("/subespecialidades/{id}/reactivar", inactiva.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activo", is(true)));
+    }
+
+    @Test
+    @DisplayName("PATCH /subespecialidades/{id}/reactivar - Rechaza si la especialidad padre está inactiva")
+    void reactivarSubespecialidad_padreInactiva() throws Exception {
+        Especialidad padreInactiva = especialidadRepository.save(Especialidad.builder()
+                .nombre("Cirugía")
+                .activo(false)
+                .build());
+
+        Subespecialidad hija = subespecialidadRepository.save(Subespecialidad.builder()
+                .especialidad(padreInactiva)
+                .nombre("Cirugía General")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(patch("/subespecialidades/{id}/reactivar", hija.getId()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message", containsString("No se puede registrar como día no laborable: Existen 1 cita(s) programada(s)")));
+                .andExpect(jsonPath("$.message", containsString("especialidad padre está inactiva")));
+    }
+
+    @Test
+    @DisplayName("GET /subespecialidades/especialidad/{id}?estado=inactivos - Filtra por estado")
+    void listarSubespecialidadesPorEspecialidad_inactivas() throws Exception {
+        subespecialidadRepository.save(Subespecialidad.builder()
+                .especialidad(especialidad)
+                .nombre("Cardiología Clínica")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/subespecialidades/especialidad/{id}", especialidad.getId())
+                        .param("estado", "inactivos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Cardiología Clínica")));
+    }
+
+    @Test
+    @DisplayName("GET /espacios-fisicos - Por defecto solo devuelve activos")
+    void listarEspaciosFisicos_porDefectoActivos() throws Exception {
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("201")
+                .nivel((short) 2)
+                .capacidadCamillas(1)
+                .nombre("Sala 201")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/espacios-fisicos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].numero", is("101")));
+    }
+
+    @Test
+    @DisplayName("GET /espacios-fisicos?estado=inactivos - Devuelve solo inactivos")
+    void listarEspaciosFisicos_inactivos() throws Exception {
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("201")
+                .nivel((short) 2)
+                .capacidadCamillas(1)
+                .nombre("Sala 201")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/espacios-fisicos").param("estado", "inactivos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].numero", is("201")));
+    }
+
+    @Test
+    @DisplayName("GET /espacios-fisicos?estado=todos - Devuelve activos e inactivos")
+    void listarEspaciosFisicos_todos() throws Exception {
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("201")
+                .nivel((short) 2)
+                .capacidadCamillas(1)
+                .nombre("Sala 201")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/espacios-fisicos").param("estado", "todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("GET /espacios-fisicos/nivel/{nivel}?estado=inactivos - Filtra por nivel y estado")
+    void listarEspaciosFisicosPorNivel_inactivos() throws Exception {
+        espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("202")
+                .nivel((short) 1)
+                .capacidadCamillas(1)
+                .nombre("Sala 202")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(get("/espacios-fisicos/nivel/{nivel}", (short) 1)
+                        .param("estado", "inactivos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].numero", is("202")));
+    }
+
+    @Test
+    @DisplayName("PATCH /espacios-fisicos/{id}/reactivar - Reactiva un espacio inactivo")
+    void reactivarEspacioFisico_exito() throws Exception {
+        EspacioFisico inactivo = espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("201")
+                .nivel((short) 2)
+                .capacidadCamillas(1)
+                .nombre("Sala 201")
+                .activo(false)
+                .build());
+
+        mockMvc.perform(patch("/espacios-fisicos/{id}/reactivar", inactivo.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.activo", is(true)));
+    }
+
+    @Test
+    @DisplayName("PATCH /espacios-fisicos/{id}/reactivar - Es idempotente si ya está activo")
+    void reactivarEspacioFisico_yaActivo() throws Exception {
+        mockMvc.perform(patch("/espacios-fisicos/{id}/reactivar", espacioFisico.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activo", is(true)));
     }
 }

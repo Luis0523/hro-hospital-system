@@ -13,7 +13,13 @@ public interface EspacioFisicoRepository extends JpaRepository<EspacioFisico, UU
 
     List<EspacioFisico> findByActivoTrue();
 
+    List<EspacioFisico> findByActivo(boolean activo);
+
     List<EspacioFisico> findByNivelAndActivoTrue(Short nivel);
+
+    List<EspacioFisico> findByNivelAndActivo(Short nivel, boolean activo);
+
+    List<EspacioFisico> findByNivel(Short nivel);
 
     Optional<EspacioFisico> findByNumero(String numero);
 }

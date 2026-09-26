@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-highest":"#dae2fd","outline":"#707881","primary-fixed":"#cde5ff","surface":"#faf8ff","background":"#faf8ff","surface-dim":"#d2d9f4","on-tertiary-container":"#d2e3ef","on-secondary-fixed":"#001e2f","tertiary":"#3d4e58","surface-container-lowest":"#ffffff","surface-container-low":"#f2f3ff","surface-variant":"#dae2fd","on-tertiary-fixed":"#0c1e26","inverse-primary":"#94ccff","primary":"#00507d","on-surface":"#131b2e","secondary-fixed":"#c9e6ff","on-primary-fixed":"#001d32","on-primary-container":"#cbe4ff","on-background":"#131b2e","on-surface-variant":"#40474f","error":"#ba1a1a","error-container":"#ffdad6","on-secondary":"#ffffff","tertiary-fixed-dim":"#b7c9d5","primary-container":"#0369a1","on-primary-fixed-variant":"#004b74","on-secondary-container":"#004666","on-tertiary-fixed-variant":"#384953","secondary-container":"#39b8fd","inverse-on-surface":"#eef0ff","secondary-fixed-dim":"#89ceff","on-primary":"#ffffff","tertiary-fixed":"#d3e5f1","primary-fixed-dim":"#94ccff","on-error":"#ffffff","tertiary-container":"#556670","surface-bright":"#faf8ff","surface-tint":"#006399","inverse-surface":"#283044","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#004c6e","surface-container":"#eaedff","secondary":"#006591","on-error-container":"#93000a","outline-variant":"#c0c7d1","surface-container-high":"#e2e7ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-screen":"1rem","space-lg":"1.25rem","space-sm":"0.5rem","gutter-spacious":"1rem","gutter-default":"0.75rem","space-xl":"1.5rem","space-xs":"0.25rem","gutter-compact":"0.5rem","space-base":"1rem","space-md":"0.75rem","space-2xs":"0.125rem","space-2xl":"2rem"},"fontFamily":{"title-sm":["Inter"],"headline-lg":["Inter"],"label-sm":["Inter"],"headline-md":["Inter"],"body-md":["Inter"],"metric-sub":["Inter"],"headline-sm":["Inter"],"body-sm":["Inter"],"body-lg":["Inter"],"title-md":["Inter"],"label-md":["Inter"],"metric-display":["Inter"]},"fontSize":{"title-sm":["13px",{"lineHeight":"18px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"metric-sub":["20px",{"lineHeight":"24px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["15px",{"lineHeight":"22px","fontWeight":"400"}],"title-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.005em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"metric-display":["32px",{"lineHeight":"36px","letterSpacing":"-0.03em","fontWeight":"700"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-surface-container-low flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-base flex items-center gap-space-md border-b border-outline-variant/40 bg-surface-container-lowest"><img alt="Brand logo. - Primary color: #0369a1 - Font: inter - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V8dQA1s0xKMdv3O_9jknB6sbzFupAlZi5lzeK8UG_8BdPdqDGo8BAzS9vgjtQhqFzjXcqh_SoJDbIriZrzQoPD20sZYn8D-pwoDq0L420Zk1-0xDwNlECuUQ9AfjzhZMaRqql1zAAi48sAuXSNo9DLNajSTNggnj5TINcoTt-F2s1tf9AUU-257scNbeA1VdZn9cLeRP_eoGDNKK_WjNt23OX9UFc7GGUXa7947ekuKLT1Pe8IbDZ0GdeQ"/><div class="flex flex-col"><span class="font-title-md text-title-md text-primary tracking-tight leading-none">SIGEH Admin</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Gestión Hospitalaria</span></div></div><div class="px-space-base py-space-sm"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Administración Central</span></div><nav class="flex-1 px-space-sm space-y-space-2xs overflow-y-auto" data-active-classes="bg-primary text-on-primary font-title-sm shadow-sm"><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg transition-colors bg-primary text-on-primary font-title-sm shadow-sm" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span>Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span>Usuarios</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="clinicas-y-especialidades" href="#"><span class="material-symbols-outlined text-[20px]">local_hospital</span><span>Clínicas y Especialidades</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cupos-y-capacidad" href="#"><span class="material-symbols-outlined text-[20px]">event_seat</span><span>Cupos y Capacidad</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="calendario-institucional" href="#"><span class="material-symbols-outlined text-[20px]">calendar_month</span><span>Calendario Institucional</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span>Reportes</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="auditoria" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span>Auditoría</span></a></nav><div class="p-space-base border-t border-outline-variant/40 bg-surface-container-lowest"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Red Hospital Central</span></div><span class="font-label-sm text-label-sm text-outline">v4.2.0</span></div></div></aside><div class="pl-64 min-h-screen flex flex-col"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/40 z-40 px-space-xl flex items-center justify-between"><div class="flex items-center gap-space-md"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">SISTEMA INTEGRADO DE GESTIÓN HOSPITALARIA</span></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-md"><div class="text-right hidden sm:block"><div class="font-title-sm text-title-sm text-on-surface leading-tight">Dr. Alejandro Morales</div><div class="font-label-sm text-label-sm text-primary font-medium leading-none">Administrador General</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary-container border-2 border-surface-container-lowest"></span></div></div></div></header><main class="w-full pt-16 px-space-xl py-space-xl flex-1 bg-background"><div class="flex flex-col w-full gap-space-lg">
+<div class="flex flex-col md:flex-row md:items-end justify-between pb-space-sm gap-space-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm uppercase tracking-wider">
+<span class="inline-block w-2 h-2 rounded-full bg-secondary-container"></span>
+<span>Consola de Comando Central • Red Asistencial</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Dashboard General</h1>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-md py-space-xs rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
+<span class="font-title-sm text-title-sm text-on-surface" id="live-date">Jueves, 24 de Octubre 2024</span>
+<span class="font-label-sm text-label-sm text-outline px-space-2xs">|</span>
+<span class="material-symbols-outlined text-outline text-[18px]">schedule</span>
+<span class="font-title-sm text-title-sm text-primary tabular-nums" id="live-clock">08:42:19 CST</span>
+</div>
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container-lowest text-primary shadow-sm hover:bg-surface-container-high transition-colors font-title-sm text-title-sm">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>Exportar Reporte Ejecutivo</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-base">
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block">Citas del Día (Hospital Total)</span>
+<div class="font-metric-display text-metric-display text-on-surface mt-space-xs tabular-nums">1,248</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Distribución Operativa</span>
+<span class="text-primary font-medium">100% Asignado</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 89%" title="89% Confirmadas"></div>
+<div class="h-full bg-secondary-container" style="width: 7%" title="7% En Sala"></div>
+<div class="h-full bg-outline" style="width: 4%" title="4% Atendidas"></div>
+</div>
+<div class="flex items-center justify-between font-body-sm text-body-sm pt-space-2xs text-on-surface-variant">
+<span class="flex items-center gap-space-2xs"><span class="w-2 h-2 rounded-full bg-primary-container"></span>89% Conf.</span>
+<span class="flex items-center gap-space-2xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span>7% Sala</span>
+<span class="flex items-center gap-space-2xs"><span class="w-2 h-2 rounded-full bg-outline"></span>4% Atend.</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block">Cupos Disponibles Hoy</span>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-metric-display text-metric-display text-on-surface tabular-nums">142</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant tabular-nums">/ 1,390 habilitados</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[20px]">event_seat</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant uppercase">Ocupación General</span>
+<span class="text-error font-title-sm text-title-sm font-semibold tabular-nums">90% Ocupado</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 90%"></div>
+</div>
+<div class="flex items-center justify-between font-body-sm text-body-sm pt-space-2xs text-on-surface-variant">
+<span>Margen crítico operativo:</span>
+<span class="text-primary font-medium tabular-nums">10.2% holgura</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-error uppercase tracking-wider block">Alertas Activas y Conflictos</span>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-metric-display text-metric-display text-error tabular-nums">3</span>
+<span class="font-title-sm text-title-sm text-error font-medium">Críticas de Agenda</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs px-space-xs py-space-2xs rounded bg-error-container/40 text-on-error-container">
+<span class="material-symbols-outlined text-[16px] text-error">event_busy</span>
+<span class="font-body-sm text-body-sm truncate">1 Nov (Feriado): 48 citas en colisión</span>
+</div>
+<div class="flex items-center justify-between font-body-sm text-body-sm text-on-surface-variant pt-space-2xs">
+<span>Sobrecarga en Cardiología:</span>
+<span class="font-title-sm text-title-sm text-error tabular-nums">+18% s/cupo</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block">Médicos en Turno Activo</span>
+<div class="font-metric-display text-metric-display text-on-surface mt-space-xs tabular-nums">58</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">clinical_notes</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant uppercase">Despliegue Asistencial</span>
+<span class="text-primary font-semibold tabular-nums">14 Clínicas</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 42 Consulta Ext.
+          </span>
+<span class="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 16 Pabellón/Qx
+          </span>
+</div>
+<div class="flex items-center justify-between font-body-sm text-body-sm pt-space-2xs text-on-surface-variant">
+<span>Guardias activas sin ausencias</span>
+<span class="text-secondary font-medium">100% Cubierto</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-base items-start">
+<div class="xl:col-span-7 flex flex-col gap-space-base">
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md gap-space-xs">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Capacidad y Demanda Hospitalaria</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Ocupación por Área Quirúrgica y Consultas Externas</h2>
+</div>
+<div class="flex items-center gap-space-xs self-start sm:self-auto bg-surface-container-low p-space-2xs rounded-lg">
+<button class="px-space-sm py-space-2xs rounded text-primary bg-surface-container-lowest shadow-sm font-label-sm text-label-sm uppercase font-semibold">Tiempo Real</button>
+<button class="px-space-sm py-space-2xs rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm uppercase">Semanal</button>
+</div>
+</div>
+<div class="space-y-space-md pt-space-xs">
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Cardiología Clínica e Intervencionista</span>
+<span class="px-space-xs py-space-2xs rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-bold">SOBRECARGA 98%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">196 / 200 cupos</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 98%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Capacidad base: 160 | Turnos adicionales: 40</span>
+<span class="text-error font-medium">4 cupos libres</span>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Bloque Quirúrgico Central (Pabellones 1 - 8)</span>
+<span class="px-space-xs py-space-2xs rounded bg-surface-container-highest text-primary font-label-sm text-label-sm font-semibold">92%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">44 / 48 cirugías prog.</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 92%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>6 Quirófanos en curso | 2 en esterilización</span>
+<span class="text-primary font-medium">4 turnos disponibles</span>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Traumatología y Ortopedia</span>
+<span class="px-space-xs py-space-2xs rounded bg-surface-container-highest text-primary font-label-sm text-label-sm font-semibold">88%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">176 / 200 cupos</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 88%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Consultas ambulatorias y pos-operatorio</span>
+<span class="text-on-surface-variant font-medium">24 cupos libres</span>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Medicina Interna y Especialidades Médicas</span>
+<span class="px-space-xs py-space-2xs rounded bg-surface-container-highest text-primary font-label-sm text-label-sm font-semibold">85%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">298 / 350 cupos</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 85%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Demanda controlada con flujo regular</span>
+<span class="text-on-surface-variant font-medium">52 cupos libres</span>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Pediatría General y Subespecialidades</span>
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold">74%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">148 / 200 cupos</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 74%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Capacidad holgada en turnos vespertinos</span>
+<span class="text-secondary font-medium">52 cupos libres</span>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between font-body-md text-body-md">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-sm text-title-sm text-on-surface">Ginecología y Obstetricia</span>
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold">68%</span>
+</div>
+<div class="font-title-sm text-title-sm text-on-surface tabular-nums">136 / 200 cupos</div>
+</div>
+<div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 68%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Disponibilidad estándar garantizada</span>
+<span class="text-secondary font-medium">64 cupos libres</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-base">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[28px]">notifications_active</span>
+</div>
+<div class="flex flex-col">
+<div class="font-title-sm text-title-sm text-on-surface">Atención prioritaria requerida: Feriado Nacional 1 Noviembre</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Se detectaron 48 pacientes con citaciones asignadas en día declarado inhábil institucionalmente.</div>
+</div>
+</div>
+<div class="flex items-center gap-space-xs flex-shrink-0 w-full md:w-auto">
+<button class="w-full md:w-auto px-space-md py-space-xs rounded-lg bg-primary text-on-primary font-title-sm text-title-sm hover:bg-primary/90 transition-colors shadow-sm">
+            Resolver Conflictos
+          </button>
+</div>
+</div>
+</div>
+<div class="xl:col-span-5 flex flex-col gap-space-base">
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col">
+<div class="flex items-center justify-between pb-space-sm">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Trazabilidad Operativa</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Actividad Reciente del Sistema</h2>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px]">history</span>
+</div>
+<div class="divide-y-0 space-y-space-xs pt-space-xs">
+<div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-error text-[18px]">lock</span>
+<span class="font-title-sm text-title-sm text-on-surface">Bloqueo de Agenda Urgente</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline tabular-nums">Hace 8 min</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+              Dra. Valentina Ríos (Gastroenterología) bloqueó franja 14:00 - 17:00 hrs por emergencia en endoscopía quirúrgica. 6 pacientes reasignados a pool temporal.
+            </p>
+<div class="flex items-center gap-space-xs mt-space-xs">
+<span class="px-space-xs py-space-2xs rounded bg-error-container text-on-error-container font-label-sm text-label-sm">Bloqueo</span>
+<span class="font-label-sm text-label-sm text-outline">Autor: Coord. Quirúrgica</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">add_circle</span>
+<span class="font-title-sm text-title-sm text-on-surface">Aumento de Capacidad Habilitada</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline tabular-nums">Hace 22 min</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+              Se sumaron +20 sobrecupos para Medicina Interna - Sala 4B para absorber derivaciones de triage respiratorio matutino.
+            </p>
+<div class="flex items-center gap-space-xs mt-space-xs">
+<span class="px-space-xs py-space-2xs rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Capacidad +20</span>
+<span class="font-label-sm text-label-sm text-outline">Usuario: Dr. A. Morales</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">swap_horiz</span>
+<span class="font-title-sm text-title-sm text-on-surface">Reasignación de Guardia Médica</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline tabular-nums">Hace 45 min</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+              Dr. Mauricio Cárdenas reemplaza a Dra. Laura Benítez en Turno de Observación Urgencias Adulto (Sector Este).
+            </p>
+<div class="flex items-center gap-space-xs mt-space-xs">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container-highest text-primary font-label-sm text-label-sm">Guardias</span>
+<span class="font-label-sm text-label-sm text-outline">Validador: Jefatura Médica</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[18px]">event_repeat</span>
+<span class="font-title-sm text-title-sm text-on-surface">Cierre Automático de Feriado 01/Nov</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline tabular-nums">Hace 1 h 15m</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+              Regla institucional aplicada: Bloqueo de agendas para 14 clínicas. Generadas 48 notificaciones prioritarias vía SMS/EHR a usuarios con turno previo.
+            </p>
+<div class="flex items-center gap-space-xs mt-space-xs">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Sistema Daemon</span>
+<span class="font-label-sm text-label-sm text-outline">ID Proceso: #SYS-8902</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm">
+<a class="w-full flex items-center justify-center gap-space-xs py-space-xs rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" data-path="auditoria" href="#">
+<span>Ver Registro Completo de Auditoría</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">domain_verification</span>
+</div>
+<div>
+<div class="font-title-sm text-title-sm text-on-surface">Integración HIS / RIS / LIS</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Sincronización de agendas al 100% (latencia 14ms)</div>
+</div>
+</div>
+<span class="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-surface-container-highest text-primary font-label-sm text-label-sm font-semibold">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span> Operativo
+        </span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initDashboardClock() {
+    function updateClock() {
+      const clockEl = document.getElementById('live-clock');
+      if (!clockEl) return;
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      clockEl.textContent = hours + ':' + minutes + ':' + seconds + ' CST';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  })();
+</script></main></div></body></html>
