@@ -202,4 +202,16 @@ describe('tableroApi · filtro de asignaciones', () => {
     ])
     expect(filtrarAsignaciones(lista, [])).toHaveLength(3)
   })
+
+  it('no duplica resultados cuando la lista permitida tiene duplicados', () => {
+    const lista = [
+      { asignacionDiariaEspacioId: 1 },
+      { asignacionDiariaEspacioId: 2 },
+      { asignacionDiariaEspacioId: 3 },
+    ]
+
+    expect(filtrarAsignaciones(lista, [1, 1, 2]).map((a) => a.asignacionDiariaEspacioId)).toEqual([
+      1, 2,
+    ])
+  })
 })

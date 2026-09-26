@@ -724,6 +724,43 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
+  it('un evento fuera del filtro no ocupa la cola FIFO ni la voz', async () => {
+    estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
+
+    let terminar
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminar = opciones.onEnd
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+
+    expect(within(screen.getByTestId('llamado-grande')).getByText('General')).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+
+    act(() => terminar())
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
   it('no muestra datos personales en el llamado', async () => {
     render(<TableroPage />)
     await screen.findByText('Pediatría General')
