@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Arquitectura del Backend — Sistema Hospitalario HRO",
+    "output": "backend-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "request-path", "label": "Ruta de petición", "focus": ["clientes", "api", "db"], "note": "De las estaciones al API REST y a PostgreSQL." },
+      { "id": "realtime", "label": "Tiempo real", "focus": ["api", "ws", "clientes"], "note": "El tablero de turnos se actualiza por WebSocket STOMP." },
+      { "id": "integrations", "label": "Integraciones", "focus": ["auth", "lab", "api"], "note": "Auth externo pendiente y HL7 de laboratorio." }
+    ]
+  },
+  "components": [
+    { "id": "ws", "type": "messagebus", "label": "WebSocket STOMP", "sublabel": "/ws-turnos · SockJS", "pos": [40, 75], "size": [180, 74] },
+    { "id": "clientes", "type": "frontend", "label": "4 Estaciones", "sublabel": "Enfermería · Archivo · Admin · Tablero", "pos": [40, 230], "size": [180, 80] },
+    { "id": "api", "type": "backend", "label": "Backend HRO", "sublabel": "Spring Boot 3.3 · Java 21", "tag": "/api/v1", "pos": [400, 230], "size": [180, 80] },
+    { "id": "db", "type": "database", "label": "PostgreSQL 16", "sublabel": "Flyway V1–V3 · funciones atómicas", "pos": [760, 230], "size": [180, 74] },
+    { "id": "lab", "type": "external", "label": "Laboratorio HL7", "sublabel": "HAPI · órdenes y resultados", "pos": [760, 75], "size": [180, 74] },
+    { "id": "auth", "type": "security", "label": "Auth externo hospital", "sublabel": "Servicio local (pendiente)", "tag": "v1: mock", "pos": [400, 385], "size": [180, 74] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Fly.io · hro-hospital-api (dfw)", "wraps": ["api"] },
+    { "kind": "region", "label": "Neon · PostgreSQL administrado", "wraps": ["db"] }
+  ],
+  "connections": [
+    { "id": "clientes-api", "from": "clientes", "to": "api", "label": "REST /api/v1", "variant": "emphasis" },
+    { "id": "api-db", "from": "api", "to": "db", "label": "JPA · SQL" },
+    { "id": "api-ws", "from": "api", "to": "ws", "label": "publica evento", "fromSide": "top", "toSide": "right" },
+    { "id": "ws-clientes", "from": "ws", "to": "clientes", "label": "STOMP /topic/tablero", "variant": "dashed", "labelDy": 24 },
+    { "id": "auth-api", "from": "auth", "to": "api", "label": "identidad JIT", "variant": "security" },
+    { "id": "api-lab", "from": "api", "to": "lab", "label": "HL7", "variant": "dashed", "fromSide": "top", "toSide": "left" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Backend modular (Spring Boot)", "items": ["Módulos: paciente, cita, agenda, medico, clinica, turno, laboratorio, auditoria, usuario, auth", "API REST bajo /api/v1 y eventos WebSocket STOMP en /ws-turnos"] },
+    { "dot": "cyan", "title": "Datos y atomicidad", "items": ["PostgreSQL 16 en Neon con migraciones Flyway V1–V3", "Funciones atómicas: cupos, siguiente turno, hora estimada y cierre diario", "Trigger que bloquea mutar citas en estado terminal"] },
+    { "dot": "amber", "title": "Integraciones y estado v1", "items": ["Auth del hospital externo aún no disponible: modo mock con cabeceras", "Laboratorio vía HL7 con HAPI (estructura preparada)", "Redis 7 declarado pero sin uso en v1"] }
+  ]
+}

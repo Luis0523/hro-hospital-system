@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-highest":"#dae2fd","outline":"#707881","primary-fixed":"#cde5ff","surface":"#faf8ff","background":"#faf8ff","surface-dim":"#d2d9f4","on-tertiary-container":"#d2e3ef","on-secondary-fixed":"#001e2f","tertiary":"#3d4e58","surface-container-lowest":"#ffffff","surface-container-low":"#f2f3ff","surface-variant":"#dae2fd","on-tertiary-fixed":"#0c1e26","inverse-primary":"#94ccff","primary":"#00507d","on-surface":"#131b2e","secondary-fixed":"#c9e6ff","on-primary-fixed":"#001d32","on-primary-container":"#cbe4ff","on-background":"#131b2e","on-surface-variant":"#40474f","error":"#ba1a1a","error-container":"#ffdad6","on-secondary":"#ffffff","tertiary-fixed-dim":"#b7c9d5","primary-container":"#0369a1","on-primary-fixed-variant":"#004b74","on-secondary-container":"#004666","on-tertiary-fixed-variant":"#384953","secondary-container":"#39b8fd","inverse-on-surface":"#eef0ff","secondary-fixed-dim":"#89ceff","on-primary":"#ffffff","tertiary-fixed":"#d3e5f1","primary-fixed-dim":"#94ccff","on-error":"#ffffff","tertiary-container":"#556670","surface-bright":"#faf8ff","surface-tint":"#006399","inverse-surface":"#283044","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#004c6e","surface-container":"#eaedff","secondary":"#006591","on-error-container":"#93000a","outline-variant":"#c0c7d1","surface-container-high":"#e2e7ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-screen":"1rem","space-lg":"1.25rem","space-sm":"0.5rem","gutter-spacious":"1rem","gutter-default":"0.75rem","space-xl":"1.5rem","space-xs":"0.25rem","gutter-compact":"0.5rem","space-base":"1rem","space-md":"0.75rem","space-2xs":"0.125rem","space-2xl":"2rem"},"fontFamily":{"title-sm":["Inter"],"headline-lg":["Inter"],"label-sm":["Inter"],"headline-md":["Inter"],"body-md":["Inter"],"metric-sub":["Inter"],"headline-sm":["Inter"],"body-sm":["Inter"],"body-lg":["Inter"],"title-md":["Inter"],"label-md":["Inter"],"metric-display":["Inter"]},"fontSize":{"title-sm":["13px",{"lineHeight":"18px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"metric-sub":["20px",{"lineHeight":"24px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["15px",{"lineHeight":"22px","fontWeight":"400"}],"title-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.005em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"metric-display":["32px",{"lineHeight":"36px","letterSpacing":"-0.03em","fontWeight":"700"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-surface-container-low flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-base flex items-center gap-space-md border-b border-outline-variant/40 bg-surface-container-lowest"><img alt="Brand logo. - Primary color: #0369a1 - Font: inter - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V8dQA1s0xKMdv3O_9jknB6sbzFupAlZi5lzeK8UG_8BdPdqDGo8BAzS9vgjtQhqFzjXcqh_SoJDbIriZrzQoPD20sZYn8D-pwoDq0L420Zk1-0xDwNlECuUQ9AfjzhZMaRqql1zAAi48sAuXSNo9DLNajSTNggnj5TINcoTt-F2s1tf9AUU-257scNbeA1VdZn9cLeRP_eoGDNKK_WjNt23OX9UFc7GGUXa7947ekuKLT1Pe8IbDZ0GdeQ"/><div class="flex flex-col"><span class="font-title-md text-title-md text-primary tracking-tight leading-none">SIGEH Admin</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Gestión Hospitalaria</span></div></div><div class="px-space-base py-space-sm"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Administración Central</span></div><nav class="flex-1 px-space-sm space-y-space-2xs overflow-y-auto" data-active-classes="bg-primary text-on-primary font-title-sm shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span>Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span>Usuarios</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="clinicas-y-especialidades" href="#"><span class="material-symbols-outlined text-[20px]">local_hospital</span><span>Clínicas y Especialidades</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cupos-y-capacidad" href="#"><span class="material-symbols-outlined text-[20px]">event_seat</span><span>Cupos y Capacidad</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="calendario-institucional" href="#"><span class="material-symbols-outlined text-[20px]">calendar_month</span><span>Calendario Institucional</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span>Reportes</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="auditoria" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span>Auditoría</span></a></nav><div class="p-space-base border-t border-outline-variant/40 bg-surface-container-lowest"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Red Hospital Central</span></div><span class="font-label-sm text-label-sm text-outline">v4.2.0</span></div></div></aside><div class="pl-64 min-h-screen flex flex-col"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/40 z-40 px-space-xl flex items-center justify-between"><div class="flex items-center gap-space-md"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">SISTEMA INTEGRADO DE GESTIÓN HOSPITALARIA</span></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-md"><div class="text-right hidden sm:block"><div class="font-title-sm text-title-sm text-on-surface leading-tight">Dr. Alejandro Morales</div><div class="font-label-sm text-label-sm text-primary font-medium leading-none">Administrador General</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary-container border-2 border-surface-container-lowest"></span></div></div></div></header><main class="w-full pt-16 px-space-xl py-space-xl flex-1 bg-background"><div class="flex flex-col w-full">
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const links = document.querySelectorAll('aside nav a');
+      links.forEach(l => {
+        if (l.getAttribute('data-path') === 'auditoria') {
+          l.classList.remove('text-on-surface-variant', 'hover:bg-surface-container-high', 'hover:text-on-surface');
+          l.classList.add('bg-primary', 'text-on-primary', 'font-title-sm', 'shadow-sm');
+        } else {
+          l.classList.remove('bg-primary', 'text-on-primary', 'font-title-sm', 'shadow-sm');
+          l.classList.add('text-on-surface-variant', 'hover:bg-surface-container-high', 'hover:text-on-surface');
+        }
+      });
+    });
+
+    function toggleJsonModal(logId) {
+      const modal = document.getElementById('json-modal');
+      const jsonViewer = document.getElementById('json-modal-content');
+      const modalMeta = document.getElementById('json-modal-meta');
+
+      const payloads = {
+        'LOG-98241': {
+          meta: 'LOG-98241 • cupos_capacidad • ACTUALIZAR • Dr. Alejandro Morales',
+          data: {
+            "transaction_id": "tx_984920241024_0012",
+            "timestamp": "2024-10-24T12:40:08.412-06:00",
+            "actor": {
+              "user_id": "usr_00192_morales",
+              "name": "Dr. Alejandro Morales",
+              "role": "Administrador General",
+              "auth_context": "2FA_TOTP_VALIDATED",
+              "client_ip": "172.16.4.18",
+              "terminal_id": "WS-ADM-CENTRAL-01"
+            },
+            "schema": "public",
+            "table": "cupos_capacidad",
+            "action": "UPDATE",
+            "record_id": "cup_sala_302_fm",
+            "changes": {
+              "capacidad_nominal": { "old": 20, "new": 25 },
+              "sobrecupo_autorizado": { "old": 2, "new": 5 },
+              "updated_at": { "old": "2024-10-23T08:00:00Z", "new": "2024-10-24T18:40:08Z" }
+            },
+            "client_fingerprint": "SHA256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "signature_hash": "sec_sig_7f8a92bce1204cba7710"
+          }
+        },
+        'LOG-98240': {
+          meta: 'LOG-98240 • feriados_calendario • CREAR • Licda. Sofía Carrillo',
+          data: {
+            "transaction_id": "tx_984920241024_0011",
+            "timestamp": "2024-10-24T11:15:32.108-06:00",
+            "actor": {
+              "user_id": "usr_00341_carrillo",
+              "name": "Licda. Sofía Carrillo",
+              "role": "Jefatura de Admisión",
+              "auth_context": "SSO_HEALTH_CERT",
+              "client_ip": "172.16.12.84",
+              "terminal_id": "TERM-ADM-N02"
+            },
+            "table": "feriados_calendario",
+            "action": "INSERT",
+            "record_id": "cal_2024_nov_02",
+            "inserted_state": {
+              "fecha": "2024-11-02",
+              "tipo": "INSTITUCIONAL_ASUETO",
+              "descripcion": "Día Conmemorativo Nacional",
+              "bloqueo_agendas": true,
+              "excepciones_emergencia": ["UCI", "URGENCIAS_TRIAGE", "QUIROFANO_GUARDIA"]
+            },
+            "signature_hash": "sec_sig_3d449ab12f458129ac02"
+          }
+        },
+        'LOG-98239': {
+          meta: 'LOG-98239 • usuarios_roles • ELIMINAR / INHABILITAR • Dr. Alejandro Morales',
+          data: {
+            "transaction_id": "tx_984920241024_0010",
+            "timestamp": "2024-10-24T10:04:19.892-06:00",
+            "actor": {
+              "user_id": "usr_00192_morales",
+              "name": "Dr. Alejandro Morales",
+              "role": "Administrador General",
+              "auth_context": "2FA_TOTP_VALIDATED",
+              "client_ip": "172.16.4.18",
+              "terminal_id": "WS-ADM-CENTRAL-01"
+            },
+            "table": "usuarios_roles",
+            "action": "DELETE",
+            "record_id": "usr_rol_84102",
+            "deleted_state": {
+              "target_user_id": "usr_aux_calvo_812",
+              "target_user_name": "Aux. Roberto Calvo",
+              "permiso_revocado": "OVERRIDE_CLINICAL_QUOTA",
+              "motivo_baja": "Reubicación a servicio ambulatorio no prescriptor",
+              "status": "REVOKED_IMMEDIATE"
+            },
+            "signature_hash": "sec_sig_99014dfa9812cc110023"
+          }
+        },
+        'LOG-98238': {
+          meta: 'LOG-98238 • agendas_medicas • ACTUALIZAR • Licda. Sofía Carrillo',
+          data: {
+            "transaction_id": "tx_984920241024_0009",
+            "timestamp": "2024-10-24T09:22:45.021-06:00",
+            "actor": {
+              "user_id": "usr_00341_carrillo",
+              "name": "Licda. Sofía Carrillo",
+              "role": "Jefatura de Admisión",
+              "client_ip": "172.16.12.84",
+              "terminal_id": "TERM-ADM-N02"
+            },
+            "table": "agendas_medicas",
+            "action": "UPDATE",
+            "record_id": "agd_cardio_cons_4",
+            "changes": {
+              "intervalo_minutos": { "old": 15, "new": 20 },
+              "max_citas_turno": { "old": 16, "new": 12 },
+              "medico_asignado": "Dr. Valeriano Soto (Cardiología)"
+            },
+            "signature_hash": "sec_sig_11304abde561234909bf"
+          }
+        },
+        'LOG-98237': {
+          meta: 'LOG-98237 • pacientes_citas • ACTUALIZAR • Aux. Roberto Calvo',
+          data: {
+            "transaction_id": "tx_984920241024_0008",
+            "timestamp": "2024-10-24T08:50:11.774-06:00",
+            "actor": {
+              "user_id": "usr_aux_calvo_812",
+              "name": "Aux. Roberto Calvo",
+              "role": "Auxiliar de Triage",
+              "client_ip": "172.16.20.105",
+              "terminal_id": "MOB-CART-TRG-03"
+            },
+            "table": "pacientes_citas",
+            "action": "UPDATE",
+            "record_id": "cit_20241024_9014",
+            "changes": {
+              "estado_cita": { "old": "PROGRAMADA", "new": "EN_CONSULTORIO_REVALORACION" },
+              "prioridad_triage": { "old": "AMARILLO_3", "new": "NARANJA_2" }
+            },
+            "signature_hash": "sec_sig_88ff1a774c2019ab0011"
+          }
+        }
+      };
+
+      if (logId && payloads[logId]) {
+        modalMeta.textContent = payloads[logId].meta;
+        jsonViewer.textContent = JSON.stringify(payloads[logId].data, null, 2);
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+  </script>
+<!-- High-Trust Audit Header -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-xl">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Trazabilidad de Seguridad Operacional</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-medium">
+<span class="material-symbols-outlined text-[14px] text-primary">verified_user</span>
+          Cumplimiento ISO 27799 / Trazabilidad Clínica
+        </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+          WORM Inmutable
+        </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Bitácora de Auditoría del Sistema (Logs)</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Registro técnico estricto de transacciones DDL/DML, mutaciones de roles clínicos y modificaciones de capacidad nominal hospitalaria.</p>
+</div>
+<!-- Quick Export / Diagnostic Controls -->
+<div class="flex items-center gap-space-sm self-start lg:self-center">
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-surface-container-lowest text-primary rounded-lg font-title-sm text-title-sm hover:bg-surface-container-high transition-colors shadow-sm" onclick="alert('Exportando registro inmutable con firma SHA-256...')">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Exportar Evidencia (CSV)</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-primary text-on-primary rounded-lg font-title-sm text-title-sm hover:bg-primary-container transition-colors shadow-sm" onclick="alert('Firma criptográfica de bloque verificada contra nodo testigo.')">
+<span class="material-symbols-outlined text-[18px]">fingerprint</span>
+<span>Validar Integridad</span>
+</button>
+</div>
+</div>
+<!-- Operational Metrics Micro-strip -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-base mb-space-xl">
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Eventos Últimas 24h</span>
+<span class="material-symbols-outlined text-[18px] text-primary">analytics</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface tabular-nums">14,289</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs flex items-center gap-1">
+<span class="font-label-sm text-label-sm text-primary font-semibold">100%</span>
+<span>persistidos sin anomalías</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Mutaciones Críticas (DML)</span>
+<span class="material-symbols-outlined text-[18px] text-tertiary">edit_calendar</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface tabular-nums">412</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+<span>Agendas y Cuotas Clínicas</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Acciones Administrativas</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">admin_panel_settings</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface tabular-nums">18</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+<span>Roles y Permisos Modificados</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Estado de Sellado Temporal</span>
+<span class="material-symbols-outlined text-[18px] text-secondary-container">lock_clock</span>
+</div>
+<div class="font-metric-sub text-metric-sub text-on-surface tabular-nums">NTP SYNC CST (UTC-6)</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span>Deriva: < 0.4 ms (Certificado)</span>
+</div>
+</div>
+</div>
+<!-- Filter & Query Control Console -->
+<div class="bg-surface-container-lowest rounded-xl p-space-base shadow-sm mb-space-xl">
+<div class="flex items-center justify-between pb-space-sm mb-space-base bg-surface-container-low px-space-base py-space-sm rounded-lg">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">filter_alt</span>
+<span class="font-title-sm text-title-sm text-on-surface">Criterios de Inspección Forense</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Modo Solo Lectura • Audit Tier 1</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-base">
+<!-- Usuario Selector -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold" for="filtro-usuario">Usuario Responsable</label>
+<div class="relative">
+<select class="w-full h-9 pl-space-md pr-8 bg-surface-container-lowest rounded-lg font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low shadow-sm" id="filtro-usuario">
+<option value="all">Todos los usuarios (Cualquier rol)</option>
+<option value="morales">Dr. Alejandro Morales (Administrador General)</option>
+<option value="carrillo">Licda. Sofía Carrillo (Jefatura de Admisión)</option>
+<option value="calvo">Aux. Roberto Calvo (Auxiliar de Triage)</option>
+<option value="system">KERNEL_CRON (Procesos automáticos)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-[18px] text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- Tabla / Entidad Afectada -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold" for="filtro-tabla">Entidad / Tabla Afectada</label>
+<div class="relative">
+<select class="w-full h-9 pl-space-md pr-8 bg-surface-container-lowest rounded-lg font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low shadow-sm font-mono text-[12px]" id="filtro-tabla">
+<option value="all">Todas las tablas técnicas</option>
+<option value="agendas_medicas">agendas_medicas</option>
+<option value="cupos_capacidad">cupos_capacidad</option>
+<option value="usuarios_roles">usuarios_roles</option>
+<option value="feriados_calendario">feriados_calendario</option>
+<option value="pacientes_citas">pacientes_citas</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-[18px] text-on-surface-variant">table_chart</span>
+</div>
+</div>
+<!-- Acción Selector -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold" for="filtro-accion">Tipo de Acción</label>
+<div class="relative">
+<select class="w-full h-9 pl-space-md pr-8 bg-surface-container-lowest rounded-lg font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low shadow-sm" id="filtro-accion">
+<option value="all">Todas las operaciones</option>
+<option value="insert">INSERT / CREAR</option>
+<option value="update">UPDATE / ACTUALIZAR</option>
+<option value="delete">DELETE / INHABILITAR</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-[18px] text-on-surface-variant">bolt</span>
+</div>
+</div>
+<!-- Rango de Fechas y Horas -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Rango Temporal (CST)</label>
+<div class="flex items-center gap-space-xs">
+<input class="w-full h-9 px-space-xs bg-surface-container-lowest rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none shadow-sm font-mono" type="date" value="2024-10-24"/>
+<span class="text-on-surface-variant font-label-sm">—</span>
+<input class="w-full h-9 px-space-xs bg-surface-container-lowest rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none shadow-sm font-mono" type="date" value="2024-10-24"/>
+</div>
+</div>
+</div>
+<!-- Active filter tags strip -->
+<div class="flex flex-wrap items-center gap-space-sm mt-space-md pt-space-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Filtros activos:</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+        Rango: 24 Oct 2024 (00:00:00 a 23:59:59 CST)
+        <button class="hover:text-error ml-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+        Entidades: Todas
+      </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+        Total coincidencias: <strong>1,842 eventos</strong>
+</span>
+<button class="font-label-sm text-label-sm text-primary hover:underline ml-auto">Limpiar filtros</button>
+</div>
+</div>
+<!-- Primary Immutable Audit Ledger Table -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Table Toolbar Header -->
+<div class="px-space-base py-space-sm bg-surface-container flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-primary">policy</span>
+<span class="font-title-sm text-title-sm text-on-surface">Registros Criptográficamente Sellados</span>
+<span class="px-2 py-0.5 rounded-lg bg-surface-container-lowest text-on-surface-variant font-mono text-[11px]">SHA-256 Validated</span>
+</div>
+<div class="flex items-center gap-space-md text-on-surface-variant font-label-sm text-label-sm">
+<span>Mostrando 1 - 5 de 1,842 transacciones</span>
+<div class="flex items-center gap-1">
+<button class="w-7 h-7 flex items-center justify-center rounded-lg bg-surface-container-lowest hover:bg-surface-container-high disabled:opacity-40" disabled="">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<span class="px-2 py-1 font-mono text-on-surface font-semibold">1</span>
+<button class="w-7 h-7 flex items-center justify-center rounded-lg bg-surface-container-lowest hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Responsive Table -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider select-none">
+<th class="py-space-sm px-space-md font-semibold w-48">Fecha / Hora Precisa (CST)</th>
+<th class="py-space-sm px-space-md font-semibold w-64">Usuario & Terminal</th>
+<th class="py-space-sm px-space-md font-semibold w-44">Entidad Técnica</th>
+<th class="py-space-sm px-space-md font-semibold w-36">Acción</th>
+<th class="py-space-sm px-space-md font-semibold">Resumen de Modificación / Mutación</th>
+<th class="py-space-sm px-space-md font-semibold text-right w-28">Auditoría JSON</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md divide-y-0 text-on-surface">
+<!-- Row 1: UPDATE Cupos -->
+<tr class="hover:bg-surface-container-low/70 transition-colors bg-surface-container-lowest">
+<td class="py-space-sm px-space-md align-top">
+<div class="font-mono text-[12px] text-on-surface font-medium tabular-nums">2024-10-24 12:40:08.412</div>
+<div class="font-mono text-[11px] text-outline tabular-nums">UTC-6 (CST) • #98241</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="font-title-sm text-title-sm text-on-surface">Dr. Alejandro Morales</div>
+<div class="font-label-sm text-label-sm text-primary">Administrador General</div>
+<div class="font-mono text-[11px] text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">desktop_windows</span>
+<span>172.16.4.18 [WS-ADM-01]</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-block px-2 py-0.5 rounded-lg bg-surface-container font-mono text-[12px] text-primary font-medium">cupos_capacidad</span>
+<div class="font-label-sm text-label-sm text-outline mt-0.5">ID: cup_sala_302_fm</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                UPDATE / ACTUALIZAR
+              </span>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="text-on-surface font-body-md">
+                Modificación de cupos de <span class="font-mono font-semibold px-1 rounded bg-surface-container">20</span> a <span class="font-mono font-semibold px-1 rounded bg-secondary-fixed text-on-secondary-fixed">25</span> en Dr. Fernando Morales — Sala 302.
+              </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+                Sobrecupo autorizado incrementado de 2 a 5 por contingencia de consulta externa matutina.
+              </div>
+</td>
+<td class="py-space-sm px-space-md align-top text-right">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" onclick="toggleJsonModal('LOG-98241')" title="Inspeccionar estructura JSON cruda">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Ver JSON</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: INSERT Feriado -->
+<tr class="hover:bg-surface-container-low/70 transition-colors bg-surface-container-low/30">
+<td class="py-space-sm px-space-md align-top">
+<div class="font-mono text-[12px] text-on-surface font-medium tabular-nums">2024-10-24 11:15:32.108</div>
+<div class="font-mono text-[11px] text-outline tabular-nums">UTC-6 (CST) • #98240</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="font-title-sm text-title-sm text-on-surface">Licda. Sofía Carrillo</div>
+<div class="font-label-sm text-label-sm text-tertiary">Jefatura de Admisión</div>
+<div class="font-mono text-[11px] text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">computer</span>
+<span>172.16.12.84 [TERM-ADM-N02]</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-block px-2 py-0.5 rounded-lg bg-surface-container font-mono text-[12px] text-primary font-medium">feriados_calendario</span>
+<div class="font-label-sm text-label-sm text-outline mt-0.5">ID: cal_2024_nov_02</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                INSERT / CREAR
+              </span>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="text-on-surface font-body-md">
+                Inclusión de feriado institucional no laborable: <span class="font-semibold text-primary">"02-Nov-2024 (Día Conmemorativo Nacional)"</span>.
+              </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+                Afectación en cadena: 14 agendas médicas bloqueadas automáticamente, derivación a guardias UCI.
+              </div>
+</td>
+<td class="py-space-sm px-space-md align-top text-right">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" onclick="toggleJsonModal('LOG-98240')">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Ver JSON</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: DELETE / REVOKE Rol -->
+<tr class="hover:bg-surface-container-low/70 transition-colors bg-surface-container-lowest">
+<td class="py-space-sm px-space-md align-top">
+<div class="font-mono text-[12px] text-on-surface font-medium tabular-nums">2024-10-24 10:04:19.892</div>
+<div class="font-mono text-[11px] text-outline tabular-nums">UTC-6 (CST) • #98239</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="font-title-sm text-title-sm text-on-surface">Dr. Alejandro Morales</div>
+<div class="font-label-sm text-label-sm text-primary">Administrador General</div>
+<div class="font-mono text-[11px] text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">desktop_windows</span>
+<span>172.16.4.18 [WS-ADM-01]</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-block px-2 py-0.5 rounded-lg bg-surface-container font-mono text-[12px] text-primary font-medium">usuarios_roles</span>
+<div class="font-label-sm text-label-sm text-outline mt-0.5">ID: usr_rol_84102</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                DELETE / INHABILITAR
+              </span>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="text-on-surface font-body-md">
+                Revocación de credencial privilegiada: Permiso <span class="font-mono font-semibold px-1 rounded bg-error-container text-error">OVERRIDE_CLINICAL_QUOTA</span> revocado al usuario Aux. Roberto Calvo.
+              </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+                Motivo: Traslado temporal a servicio de triaje ambulatorio sin atribución de reprogramación libre.
+              </div>
+</td>
+<td class="py-space-sm px-space-md align-top text-right">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" onclick="toggleJsonModal('LOG-98239')">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Ver JSON</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: UPDATE Agenda Médica -->
+<tr class="hover:bg-surface-container-low/70 transition-colors bg-surface-container-low/30">
+<td class="py-space-sm px-space-md align-top">
+<div class="font-mono text-[12px] text-on-surface font-medium tabular-nums">2024-10-24 09:22:45.021</div>
+<div class="font-mono text-[11px] text-outline tabular-nums">UTC-6 (CST) • #98238</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="font-title-sm text-title-sm text-on-surface">Licda. Sofía Carrillo</div>
+<div class="font-label-sm text-label-sm text-tertiary">Jefatura de Admisión</div>
+<div class="font-mono text-[11px] text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">computer</span>
+<span>172.16.12.84 [TERM-ADM-N02]</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-block px-2 py-0.5 rounded-lg bg-surface-container font-mono text-[12px] text-primary font-medium">agendas_medicas</span>
+<div class="font-label-sm text-label-sm text-outline mt-0.5">ID: agd_cardio_cons_4</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                UPDATE / ACTUALIZAR
+              </span>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="text-on-surface font-body-md">
+                Ajuste de intervalo de consulta en Cardiología de <span class="font-mono font-semibold px-1 rounded bg-surface-container">15 min</span> a <span class="font-mono font-semibold px-1 rounded bg-secondary-fixed text-on-secondary-fixed">20 min</span> (Máx 12 citas/turno).
+              </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+                Especialista: Dr. Valeriano Soto — Protocolo de evaluación ecocardiográfica extendida.
+              </div>
+</td>
+<td class="py-space-sm px-space-md align-top text-right">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" onclick="toggleJsonModal('LOG-98238')">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Ver JSON</span>
+</button>
+</td>
+</tr>
+<!-- Row 5: UPDATE Pacientes Citas -->
+<tr class="hover:bg-surface-container-low/70 transition-colors bg-surface-container-lowest">
+<td class="py-space-sm px-space-md align-top">
+<div class="font-mono text-[12px] text-on-surface font-medium tabular-nums">2024-10-24 08:50:11.774</div>
+<div class="font-mono text-[11px] text-outline tabular-nums">UTC-6 (CST) • #98237</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="font-title-sm text-title-sm text-on-surface">Aux. Roberto Calvo</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Auxiliar de Triage</div>
+<div class="font-mono text-[11px] text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">tablet_mac</span>
+<span>172.16.20.105 [CART-TRG-03]</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-block px-2 py-0.5 rounded-lg bg-surface-container font-mono text-[12px] text-primary font-medium">pacientes_citas</span>
+<div class="font-label-sm text-label-sm text-outline mt-0.5">ID: cit_20241024_9014</div>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                UPDATE / ACTUALIZAR
+              </span>
+</td>
+<td class="py-space-sm px-space-md align-top">
+<div class="text-on-surface font-body-md">
+                Reclasificación de prioridad Manchester: Paciente asignado de <span class="font-semibold px-1 rounded bg-surface-container">AMARILLO_3</span> a <span class="font-semibold px-1 rounded bg-error-container text-error">NARANJA_2 (Emergencia)</span>.
+              </div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
+                Registro biométrico adjunto en expediente #77412-B por desaturación repentina (<88%).
+              </div>
+</td>
+<td class="py-space-sm px-space-md align-top text-right">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-title-sm text-title-sm transition-colors" onclick="toggleJsonModal('LOG-98237')">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span>Ver JSON</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Institutional Cryptographic Hash Footer -->
+<div class="p-space-base bg-surface-container-low flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm text-on-surface-variant font-mono text-[11px]">
+<span class="material-symbols-outlined text-[16px] text-primary">enhanced_encryption</span>
+<span>Bloque Ledger: #BLK-7719284 • Hash Actual: 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8</span>
+</div>
+<div class="flex items-center gap-space-base">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Páginas:</span>
+<div class="flex items-center gap-1">
+<button class="px-2.5 py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm font-semibold">1</button>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm">2</button>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm">369</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Detail JSON Payload Modal (Clinical High-Security Viewer) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/60 backdrop-blur-sm hidden p-space-base" id="json-modal">
+<div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[870px]">
+<!-- Modal Header -->
+<div class="px-space-xl py-space-md bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">terminal</span>
+<div class="flex flex-col">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Inspección de Payload Criptográfico</h3>
+<span class="font-mono text-[11px] text-on-surface-variant" id="json-modal-meta">LOG-98241 • cupos_capacidad</span>
+</div>
+</div>
+<button class="w-8 h-8 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" onclick="toggleJsonModal(null)">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Payload Sub-meta bar -->
+<div class="px-space-xl py-space-xs bg-surface-container-low flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">verified</span>
+          Firma verificada por Autoridad Certificadora Hospitalaria
+        </span>
+<button class="hover:text-primary flex items-center gap-1 font-mono text-[11px]" onclick="navigator.clipboard.writeText(document.getElementById('json-modal-content').innerText); alert('Payload JSON copiado al portapapeles.');">
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+          Copiar RAW
+        </button>
+</div>
+<!-- JSON Body Editor / Viewer -->
+<div class="p-space-xl overflow-y-auto bg-surface-container-lowest font-mono text-[12px] leading-relaxed text-on-surface">
+<pre class="bg-surface-container-low p-space-base rounded-lg text-primary overflow-x-auto select-all" id="json-modal-content"></pre>
+</div>
+<!-- Modal Footer -->
+<div class="px-space-xl py-space-sm bg-surface-container flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">Modo de auditoría forense • Acceso con privilegios de Administrador General</span>
+<button class="px-space-lg py-space-xs bg-primary text-on-primary rounded-lg font-title-sm text-title-sm hover:bg-primary-container transition-colors shadow-sm" onclick="toggleJsonModal(null)">
+          Cerrar Inspector
+        </button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

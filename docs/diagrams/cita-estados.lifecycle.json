@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Ciclo de vida de la Cita — HRO",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "flujo",
+        "label": "Flujo principal",
+        "focus": [
+          "pendiente",
+          "confirmada",
+          "atendida"
+        ],
+        "note": "Agendada, presente en sala y consulta concluida."
+      },
+      {
+        "id": "salidas",
+        "label": "Salidas terminales",
+        "focus": [
+          "cancelada",
+          "reprogramada",
+          "no_asistio"
+        ],
+        "note": "Cancelación, reprogramación e inasistencia al cierre."
+      },
+      {
+        "id": "completo",
+        "label": "Ciclo completo",
+        "focus": [
+          "pendiente",
+          "confirmada",
+          "atendida",
+          "cancelada",
+          "reprogramada",
+          "no_asistio"
+        ],
+        "note": "Todas las transiciones desde estados activos."
+      }
+    ],
+    "viewBox": [
+      980,
+      660
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Ciclo de la cita"
+    },
+    {
+      "id": "terminal",
+      "label": "Salidas terminales"
+    }
+  ],
+  "states": [
+    {
+      "id": "pendiente",
+      "type": "start",
+      "label": "pendiente",
+      "sublabel": "cita agendada",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "inicio"
+    },
+    {
+      "id": "confirmada",
+      "type": "active",
+      "label": "confirmada",
+      "sublabel": "check-in en enfermería",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "en sala"
+    },
+    {
+      "id": "atendida",
+      "type": "success",
+      "label": "atendida",
+      "sublabel": "consulta concluida",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "éxito"
+    },
+    {
+      "id": "cancelada",
+      "type": "failure",
+      "label": "cancelada",
+      "sublabel": "cancelar · libera cupo",
+      "lane": "terminal",
+      "col": 0,
+      "tag": "terminal"
+    },
+    {
+      "id": "reprogramada",
+      "type": "failure",
+      "label": "reprogramada",
+      "sublabel": "reprogramar · cita hija",
+      "lane": "terminal",
+      "col": 1,
+      "tag": "terminal"
+    },
+    {
+      "id": "no_asistio",
+      "type": "failure",
+      "label": "no_asistio",
+      "sublabel": "cierre diario",
+      "lane": "terminal",
+      "col": 2,
+      "tag": "terminal"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "pend-conf",
+      "from": "pendiente",
+      "to": "confirmada",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "conf-atend",
+      "from": "confirmada",
+      "to": "atendida",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "conf-reprog",
+      "from": "confirmada",
+      "to": "reprogramada",
+      "route": "drop",
+      "channelY": 320
+    },
+    {
+      "id": "conf-noasis",
+      "from": "confirmada",
+      "to": "no_asistio",
+      "variant": "dashed",
+      "route": "drop",
+      "channelY": 340
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Estados activos",
+      "items": [
+        "pendiente: cita agendada con cupo reservado",
+        "confirmada: el paciente hizo check-in y tiene turno"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Estados terminales",
+      "items": [
+        "atendida, cancelada, reprogramada y no_asistio son finales",
+        "Cancelar y reprogramar liberan el cupo atómicamente",
+        "Reprogramar crea una cita hija con cita_origen_id"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Regla de integridad",
+      "items": [
+        "trg_prevenir_modificacion_estado_terminal_cita (BEFORE UPDATE) rechaza cambiar el estado de una cita terminal",
+        "Toda transición queda registrada en cita_estado_historial"
+      ]
+    }
+  ]
+}

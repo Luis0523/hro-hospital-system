@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: hro-hospital-system
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # Configuración JPA común
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+
+  # Migraciones con Flyway
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /api/v1
+
+# Documentación Swagger / OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# Autenticación (servicio externo del hospital aún no disponible -> modo simulado)
+hro:
+  auth:
+    mode: ${HRO_AUTH_MODE:mock}
+    mock:
+      default-id-externo: ${HRO_AUTH_MOCK_ID:admin-hro-01}
+      default-rol: ${HRO_AUTH_MOCK_ROL:administrador}
+      default-nombre: ${HRO_AUTH_MOCK_NOMBRE:Usuario de Pruebas HRO}
+
+  # Parámetros provisionales v1 para cálculo de agenda y turnos (HRO)
+  agenda:
+    duracion-consulta-default-minutos: 35
+    ventana:
+      margen-base-minutos: 15
+      incremento-por-bloque-minutos: 5
+      tamanio-bloque-posiciones: 5
+      margen-maximo-minutos: 45
+    turnos:
+      tiempo-gracia-llamado-segundos: 180
+      max-reintentos-llamado: 3

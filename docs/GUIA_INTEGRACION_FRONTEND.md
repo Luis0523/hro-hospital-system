@@ -115,7 +115,7 @@ Este módulo es utilizado por el personal de ventanilla para registrar pacientes
 
 #### 2. Consultar Disponibilidad de Cupos en Calendario
 Antes de agendar, la ventanilla debe mostrar qué días y con qué médicos hay cupos disponibles:
-* `GET /api/v1/cupos?clinicaId=1&fechaInicio=2026-09-14&fechaFin=2026-09-28`
+* `GET /api/v1/cupos?subespecialidadId=1&fechaInicio=2026-09-14&fechaFin=2026-09-28`
 
 **Respuesta recibida:**
 ```json
@@ -124,9 +124,9 @@ Antes de agendar, la ventanilla debe mostrar qué días y con qué médicos hay 
   "data": [
     {
       "id": 10,
-      "medicoClinicaId": 3,
+      "medicoSubespecialidadId": 3,
       "medicoNombre": "Dra. Sofía Reyes",
-      "clinicaNombre": "Clínica de Pediatría 1",
+      "subespecialidadNombre": "Pediatría General",
       "fecha": "2026-09-15",
       "horaInicio": "07:00:00",
       "horaFin": "12:00:00",
@@ -164,7 +164,7 @@ Content-Type: application/json
     "pacienteDpi": "2541897450101",
     "pacienteExpediente": "EXP-2026-089",
     "fechaCita": "2026-09-15",
-    "clinicaNombre": "Clínica de Pediatría 1",
+    "subespecialidadNombre": "Pediatría General",
     "medicoNombre": "Dra. Sofía Reyes",
     "horaEstimada": "08:10:00",
     "horaVentanaInicio": "07:55:00",
@@ -179,7 +179,7 @@ Content-Type: application/json
 > [!NOTE]
 > **Hora estimada escalonada:** el backend calcula `horaEstimada = horaInicio + (posicionEnFila - 1) × duracionConsulta`, por lo que **cada cita tiene una hora distinta y no choca con las demás** del mismo médico. `minutosEsperaEstimados` es el tiempo aproximado desde el inicio de la jornada y `posicionEnFila` la posición en la fila. La ventana de presentación (`horaVentanaInicio`–`horaVentanaFin`) es el rango recomendado para que el paciente llegue.
 >
-> **Días habilitados por clínica:** cada clínica/médico atiende solo ciertos días (p. ej. Pediatría Especializada abre **solo lunes y jueves**). Si se intenta agendar en un día no habilitado, el backend responde `400` con el detalle. Consulta los días válidos con `GET /api/v1/medico-clinicas/clinica/{clinicaId}` o mediante `GET /api/v1/cupos`, que solo devuelve las fechas realmente disponibles.
+> **Días habilitados:** cada subespecialidad/médico atiende solo ciertos días (p. ej. Pediatría Especializada abre **solo lunes y jueves**). Si se intenta agendar en un día no habilitado, el backend responde `400`. Consulta los días válidos con `GET /api/v1/medico-subespecialidades/subespecialidad/{subespecialidadId}` o con `GET /api/v1/cupos`.
 
 > [!IMPORTANT]
 > **Diseño del Comprobante Impreso / Ticket para el Paciente:**
@@ -243,7 +243,7 @@ Content-Type: application/json
     "citaId": 42,
     "numeroTurno": 7,
     "estado": "en_espera",
-    "clinicaNombre": "Clínica de Pediatría 1",
+    "subespecialidadNombre": "Pediatría General",
     "medicoNombre": "Dra. Sofía Reyes",
     "horaGenerado": "2026-09-15T07:52:14-06:00"
   }
@@ -256,7 +256,7 @@ Content-Type: application/json
   - El tablero de sala se actualiza en tiempo real vía WebSocket.
 
 #### 2. Visualización de la Fila de Espera en la Clínica
-* `GET /api/v1/turnos/clinica/{clinicaId}?fecha=YYYY-MM-DD`
+* `GET /api/v1/turnos/asignacion/{asignacionDiariaEspacioId}`
 * Muestra la tabla de pacientes en espera ordenados por `numeroTurno`.
 
 #### 3. Llamar a Consultorio (Médico / Enfermera)
@@ -325,7 +325,7 @@ Content-Type: application/json
 
 {
   "fecha": "2026-09-15",
-  "clinicaId": 1,
+  "subespecialidadId": 1,
   "usuarioId": 2
 }
 ```
@@ -342,17 +342,18 @@ Esta aplicación web corre a pantalla completa (*kiosk mode*) en Smart TVs o mon
 * **Librerías recomendadas:** `@stomp/stompjs` y `sockjs-client`.
 * **Broker URL:** `ws://localhost:8081/api/v1/ws`
 * **Suscripciones disponibles:**
-  - Canal General (todas las clínicas de la sala): `/topic/tablero`
-  - Canal Específico por Consultorio/Clínica: `/topic/clinica/{clinicaId}`
+  - Canal General (todas las asignaciones del día): `/topic/tablero`
+  - Canal Específico por asignación diaria (sala + subespecialidad): `/topic/clinica/{asignacionDiariaEspacioId}`
 
 #### 2. Estructura del Payload WebSocket (`TableroTurnoDTO`)
 Cada vez que se hace check-in, se llama a un paciente o se cambia un estado, el backend emite este evento:
 
 ```json
 {
-  "clinicaId": 1,
-  "clinicaNombre": "Clínica de Pediatría 1",
-  "consultorioUbicacion": "Módulo B - Consultorio 104",
+  "asignacionDiariaEspacioId": 1,
+  "espacioNumero": "201",
+  "nivel": 2,
+  "subespecialidadNombre": "Pediatría General",
   "turnoActual": 7,
   "turnoSiguiente": 8,
   "ultimaActualizacion": "2026-09-15T08:05:32-06:00"
@@ -377,15 +378,69 @@ Utilizado por la dirección médica y coordinadores para mantener los catálogos
    - `POST /api/v1/especialidades`
    - `GET /api/v1/subespecialidades?especialidadId={id}`
    - `POST /api/v1/subespecialidades`
-2. **Clínicas y Consultorios:**
-   - `GET /api/v1/clinicas`
-   - `POST /api/v1/clinicas` (nombre, subespecialidadId, ubicación).
-3. **Médicos y Asignación de Horarios:**
+2. **Espacios físicos (salas/consultorios):**
+   - `GET /api/v1/espacios-fisicos`
+   - `POST /api/v1/espacios-fisicos` (numero, nivel, capacidadCamillas, coordenadasPlano, nombre, ubicacion).
+   - `GET /api/v1/espacios-fisicos/nivel/{nivel}`
+3. **Médicos y programación por subespecialidad:**
    - `POST /api/v1/medicos` (nombres, número de colegiado).
-   - `POST /api/v1/medicos-clinicas`: Asigna médico a consultorio con día de la semana (`1..7`), hora inicio, hora fin, capacidad máxima de pacientes y duración estimada en minutos.
-4. **Calendario Institucional:**
-   - `GET /api/v1/dias-no-laborables?anio=2026`
-   - `POST /api/v1/dias-no-laborables`: Registra asuetos o feriados. (Si ya existen citas en esa fecha, el backend devolverá un error impidiendo el registro hasta que se reprogramen).
+   - `POST /api/v1/medico-subespecialidades`: Asigna al médico una subespecialidad con día de la semana (`1..7`), hora inicio, hora fin, capacidad máxima y duración estimada. **No** referencia sala física.
+4. **Asignación diaria (rol `jefe_enfermeria`):** define qué subespecialidad ocupa qué sala cada día.
+   - `GET /api/v1/asignaciones-diarias?fecha=YYYY-MM-DD`
+   - `POST /api/v1/asignaciones-diarias` `{ espacioFisicoId, subespecialidadId, fecha }`
+   - `GET /api/v1/asignaciones-diarias/cobertura?fecha=YYYY-MM-DD` → subespecialidades con médicos programados sin sala asignada.
+   - `POST /api/v1/asignaciones-diarias/cerrar?fecha=YYYY-MM-DD` → bloquea la edición (exige cobertura completa).
+   - `POST /api/v1/asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=` → copia la asignación de una fecha anterior.
+   - `POST /api/v1/asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=` → "reasignación en caliente" para una fecha ya cerrada (queda auditada).
+5. **Calendario Institucional:**
+   - `GET /api/v1/dias-no-laborables` (todos), `GET /api/v1/dias-no-laborables/futuros`, `GET /api/v1/dias-no-laborables/rango?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`, `GET /api/v1/dias-no-laborables/{id}`.
+   - `POST /api/v1/dias-no-laborables` `{ fecha, motivo, creadoPorId?, forzar? }`:
+     - `201` si la fecha no tiene citas activas.
+     - `409` con `codigo: "DIA_NO_LABORABLE_CON_CITAS"` y `data: { fecha, totalCitas, citas: [{ id, horaEstimada, estado, pacienteNombre, medicoNombre, subespecialidadNombre }] }` si existen citas activas (cualquier estado distinto de `cancelada` o `reprogramada`). El frontend debe mostrar las citas afectadas, pedir confirmación explícita y reintentar con `forzar: true` para bloquear igualmente (las citas quedan pendientes de reprogramación manual).
+     - `400` con `codigo: "DIA_NO_LABORABLE_YA_EXISTE"` si la fecha ya está registrada.
+   - `PUT /api/v1/dias-no-laborables/{id}` `{ motivo }` edita el motivo (la fecha no se modifica; para cambiarla, eliminar y volver a crear).
+   - `DELETE /api/v1/dias-no-laborables/{id}` habilita la fecha de nuevo.
+   - **Códigos de error estructurados:** toda respuesta de `ApiResponse` puede incluir `codigo` (nullable) además de `message`; usar `codigo` para el manejo programático y `message` para mostrar al usuario.
+6. **Disponibilidad y reprogramación (Admin):**
+   - `GET /api/v1/cupos?soloDisponibles=true&subespecialidadId=&medicoId=&medicoSubespecialidadId=&fechaInicio=&fechaFin=` → disponibilidad por programación y rango; `soloDisponibles=true` omite los cupos sin disponibilidad.
+   - `GET /api/v1/citas/{id}/disponibilidad?fechaInicio=&fechaFin=` → cupos de la **misma programación** (médico + subespecialidad) de la cita, para reprogramar **conservando médico y subespecialidad**.
+   - `POST /api/v1/citas/{id}/reprogramar` `{ nuevoCupoDiarioId, motivo }` confirma el cambio (2 pasos: consultar y confirmar). Si el cupo está lleno → `409` (`CUPOS_AGOTADOS`).
+   - **No existe reprogramación automática**: el administrador decide cada cambio. Flujo definido en [`docs/FLUJO_ADMIN_DISPONIBILIDAD.md`](./FLUJO_ADMIN_DISPONIBILIDAD.md).
+7. **Dashboard administrativo:**
+   - `GET /api/v1/dashboard/resumen?fecha=YYYY-MM-DD` (por defecto, hoy) → indicadores agregados calculados en backend: `totalCitas`, `citasPendientes/Confirmadas/Atendidas/Canceladas/Reprogramadas`, `inasistencias`, `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `tasaInasistencia` y `alertas`.
+   - Alertas (`codigo` / `severidad`): `CITAS_EN_DIA_NO_LABORABLE` (CRITICA), `CUPOS_AGOTADOS` (ADVERTENCIA), `DIAS_NO_LABORABLES_PROXIMOS` (INFO). El frontend solo las muestra; no recalcula indicadores.
+8. **Reportes administrativos** (todos con `fechaInicio`/`fechaFin`; por defecto, últimos 30 días):
+   - `GET /api/v1/reportes/citas-por-estado` → `total` y `porEstado` (conteo por estado).
+   - `GET /api/v1/reportes/demanda-por-especialidad` → `items` con `totalCitas`, `atendidas`, `inasistencias` por especialidad.
+   - `GET /api/v1/reportes/utilizacion-cupos?subespecialidadId=` → `capacidadTotal`, `cuposOcupados`, `cuposDisponibles`, `utilizacionPorcentaje`.
+   - Si `fechaFin < fechaInicio` → `400`. El frontend solo muestra; no agrega en cliente.
+9. **Auditoría administrativa** (solo rol `administrador`; otros roles → `403` `ACCESO_DENEGADO`):
+   - `GET /api/v1/auditoria?tabla=&usuarioId=&accion=&fechaInicio=&fechaFin=&page=&size=` → página de `AuditoriaResponseDTO` (`id`, `tablaAfectada`, `entidadId`, `accion`, `usuarioId`, `usuarioNombre`, `valoresAnteriores`, `valoresNuevos`, `fecha`). Paginada (por defecto `size=20`, orden `fecha` DESC).
+   - No expone la entidad JPA ni relaciones lazy. Vista de solo lectura.
+   - Los valores `anteriores`/`nuevos` son JSON en texto; el endpoint está restringido por rol para reducir la exposición de datos sensibles (PII).
+
+---
+
+### MÓDULO 5: `frontend-archivo` (Seguimiento de Expedientes Físicos)
+
+Estación operada por el rol `archivo`. Modela el recorrido físico del expediente (búsqueda, entrega a la clínica y retorno) mediante un ciclo por cita. El contrato completo (entidades, máquina de estados y ejemplos) está en **[`docs/MODULO_ARCHIVO.md`](./MODULO_ARCHIVO.md)**.
+
+1. **Buscar el expediente (escaneo):**
+   - `GET /api/v1/expedientes/{id}` → UUID (código QR).
+   - `GET /api/v1/expedientes/numero/{numeroExpediente}` → número impreso (código de barras).
+   - `GET /api/v1/expedientes/buscar?filtro=&page=&size=` → búsqueda manual (respuesta paginada en `data.content`).
+2. **Iniciar el viaje de una cita:**
+   - `POST /api/v1/expediente-ciclos` `{ expedienteId, citaId }` → estado inicial `pendiente_localizar` (409 si la cita ya tiene ciclo).
+3. **Avanzar el recorrido (cada llamada registra un `expediente_movimiento`):**
+   - `POST /api/v1/expediente-ciclos/{id}/iniciar-busqueda`
+   - `POST /api/v1/expediente-ciclos/{id}/localizar`
+   - `POST /api/v1/expediente-ciclos/{id}/despachar` `{ ubicacionDestinoId? }`
+   - `POST /api/v1/expediente-ciclos/{id}/entregar`
+   - `POST /api/v1/expediente-ciclos/{id}/retornar`
+   - `POST /api/v1/expediente-ciclos/{id}/archivar` `{ ubicacionDestinoId }`
+   - `POST /api/v1/expediente-ciclos/{id}/no-localizado` `{ observacion }` (no terminal)
+   - `POST /api/v1/expediente-ciclos/{id}/reintentar-busqueda`
+4. **Consultar el timeline:** `GET /api/v1/expediente-ciclos/{id}` devuelve el ciclo con su lista de `movimientos` (checkpoints).
 
 ---
 

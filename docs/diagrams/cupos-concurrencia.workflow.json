@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Cupos atómicos y concurrencia — HRO",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "reserva", "label": "Reserva atómica", "focus": ["peticiones", "upsert", "incrementar", "resultado"], "note": "Cómo se reserva un cupo sin sobreventa." },
+      { "id": "rechazo", "label": "Sobreventa prevenida", "focus": ["incrementar", "rechazo"], "note": "Cuando la fila UPDATE no afecta filas, responde 409." }
+    ]
+  },
+  "lanes": [
+    { "id": "api", "label": "Peticiones concurrentes" },
+    { "id": "bd", "label": "PostgreSQL" },
+    { "id": "reglas", "label": "Rechazo", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "preparar", "label": "Preparar cupo", "fromCol": 0, "toCol": 1 },
+    { "id": "reservar", "label": "Reservar atómicamente", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "resultar", "label": "Resultado", "fromCol": 3, "toCol": 3, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "bloqueo", "label": "Bloqueo de sobreventa", "lane": "reglas", "fromCol": 2, "toCol": 2, "variant": "security" }
+  ],
+  "mainPath": ["peticiones", "upsert", "incrementar", "resultado"],
+  "nodes": [
+    { "id": "peticiones", "lane": "api", "col": 0, "type": "backend", "label": "N peticiones", "sublabel": "hilos simultáneos", "tag": "race", "width": 120 },
+    { "id": "upsert", "lane": "bd", "col": 1, "type": "database", "label": "Upsert cupo", "sublabel": "ON CONFLICT", "width": 120 },
+    { "id": "incrementar", "lane": "bd", "col": 2, "type": "database", "label": "Incrementar", "sublabel": "UPDATE + CHECK", "tag": "atómico", "width": 120 },
+    { "id": "resultado", "lane": "bd", "col": 3, "type": "database", "label": "Cupo reservado", "sublabel": "commit", "width": 120 },
+    { "id": "rechazo", "lane": "reglas", "col": 2, "type": "security", "label": "409 CupoAgotado", "sublabel": "sin filas", "width": 120 }
+  ],
+  "edges": [
+    { "id": "peticiones-upsert", "from": "peticiones", "to": "upsert", "label": "abre agenda", "variant": "emphasis", "role": "main" },
+    { "id": "upsert-incrementar", "from": "upsert", "to": "incrementar", "label": "intenta reservar", "variant": "emphasis", "role": "main" },
+    { "id": "incrementar-resultado", "from": "incrementar", "to": "resultado", "label": "1 fila", "variant": "emphasis", "role": "main" },
+    { "id": "incrementar-rechazo", "from": "incrementar", "to": "rechazo", "label": "0 filas", "variant": "security", "role": "error" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Atomicidad y doble barrera", "items": ["UPDATE condicional + CHECK (cupos_ocupados <= capacidad_maxima)", "Upsert idempotente ON CONFLICT DO NOTHING y 409 si ROW_COUNT = 0"] },
+    { "dot": "emerald", "title": "Validado con concurrencia", "items": ["CupoDiarioConcurrenciaTest: 10 hilos por 3 cupos", "3 aprobados, 7 rechazados, contador final = 3 (cero sobreventa)"] }
+  ]
+}

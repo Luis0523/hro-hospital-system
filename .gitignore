@@ -30,5 +30,12 @@ frontend/yarn-error.log*
 database/data/
 *.log
 
-cinbtext.md
+cibtext.md
 sprint.md
+
+#la carpeta context no se sube a github
+context/
+
+# AI Agents and Skills
+.agents/
+skills-lock.json

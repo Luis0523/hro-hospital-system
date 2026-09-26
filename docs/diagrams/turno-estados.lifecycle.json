@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Ciclo de vida del Turno — HRO",
+    "quality_profile": "showcase",
+    "viewBox": [
+      980,
+      660
+    ],
+    "views": [
+      {
+        "id": "cola",
+        "label": "Cola del día",
+        "focus": [
+          "en_espera",
+          "llamado",
+          "atendido"
+        ],
+        "note": "Del check-in al consultorio."
+      },
+      {
+        "id": "recuperacion",
+        "label": "Recuperación",
+        "focus": [
+          "llamado",
+          "no_responde",
+          "reintegrado"
+        ],
+        "note": "Si el paciente no responde, puede reintegrarse el mismo día."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Cola de atención"
+    },
+    {
+      "id": "recuperacion",
+      "label": "Recuperación"
+    }
+  ],
+  "states": [
+    {
+      "id": "en_espera",
+      "type": "start",
+      "label": "en_espera",
+      "sublabel": "turno generado",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "en fila"
+    },
+    {
+      "id": "llamado",
+      "type": "active",
+      "label": "llamado",
+      "sublabel": "pasa a consultorio",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "gracia 180 s"
+    },
+    {
+      "id": "atendido",
+      "type": "success",
+      "label": "atendido",
+      "sublabel": "consulta concluida",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "éxito"
+    },
+    {
+      "id": "no_responde",
+      "type": "failure",
+      "label": "no_responde",
+      "sublabel": "no acude tras 3 llamados",
+      "lane": "recuperacion",
+      "col": 0,
+      "tag": "recoverable"
+    },
+    {
+      "id": "reintegrado",
+      "type": "active",
+      "label": "reintegrado",
+      "sublabel": "vuelve al final de la fila",
+      "lane": "recuperacion",
+      "col": 2,
+      "tag": "mismo día"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "espera-llamado",
+      "from": "en_espera",
+      "to": "llamado",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "llamado-atendido",
+      "from": "llamado",
+      "to": "atendido",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "llamado-noresponde",
+      "from": "llamado",
+      "to": "no_responde",
+      "variant": "security",
+      "route": "drop",
+      "channelY": 250,
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "noresponde-reintegrado",
+      "from": "no_responde",
+      "to": "reintegrado",
+      "route": "straight"
+    },
+    {
+      "id": "reintegrado-espera",
+      "from": "reintegrado",
+      "to": "en_espera",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [
+        [
+          710,
+          60
+        ],
+        [
+          94,
+          60
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Cola de atención",
+      "items": [
+        "El turno nace en el check-in con fn_siguiente_turno (correlativo atómico)",
+        "llamado inicia el tiempo de gracia de 180 s; atendido cierra la consulta"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Recuperación",
+      "items": [
+        "Tras 3 llamados sin respuesta pasa a no_responde",
+        "reintegrado reasigna un nuevo turno al final de la fila conservando la misma cita",
+        "El cierre diario pasa los no_responde a no_asistio"
+      ]
+    }
+  ]
+}

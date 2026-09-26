@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Ciclo de una petición en el Backend — HRO",
+    "quality_profile": "showcase",
+    "viewBox": [
+      960,
+      800
+    ],
+    "column_fit": "spread",
+    "views": [
+      {
+        "id": "auth",
+        "label": "Identidad",
+        "focus": [
+          "cliente",
+          "api",
+          "filtro"
+        ],
+        "note": "El filtro resuelve la identidad (mock/JIT) antes del controlador."
+      },
+      {
+        "id": "datos",
+        "label": "Persistencia atómica",
+        "focus": [
+          "api",
+          "repo",
+          "pg"
+        ],
+        "note": "El servicio reserva y persiste mediante funciones PostgreSQL."
+      },
+      {
+        "id": "eventos",
+        "label": "Eventos",
+        "focus": [
+          "api",
+          "eventos"
+        ],
+        "note": "Auditoría asíncrona y difusión del tablero por WebSocket."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "cliente",
+      "type": "external",
+      "label": "Estación",
+      "sublabel": "React / TV"
+    },
+    {
+      "id": "filtro",
+      "type": "security",
+      "label": "Filtro auth",
+      "sublabel": "UsuarioAutenticadoFilter"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API Layer",
+      "sublabel": "Cita / Turno"
+    },
+    {
+      "id": "repo",
+      "type": "backend",
+      "label": "Repository",
+      "sublabel": "JPA + native"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "funciones atómicas"
+    },
+    {
+      "id": "eventos",
+      "type": "messagebus",
+      "label": "Eventos",
+      "sublabel": "auditoría + WebSocket"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 275,
+      "label": "Identidad"
+    },
+    {
+      "from": 290,
+      "to": 460,
+      "label": "Persistencia"
+    },
+    {
+      "from": 475,
+      "to": 590,
+      "label": "Eventos"
+    }
+  ],
+  "messages": [
+    {
+      "id": "request",
+      "from": "cliente",
+      "to": "api",
+      "y": 185,
+      "label": "POST /turnos/check-in",
+      "variant": "emphasis"
+    },
+    {
+      "id": "resolve",
+      "from": "api",
+      "to": "filtro",
+      "y": 225,
+      "label": "resuelve identidad",
+      "variant": "security"
+    },
+    {
+      "id": "identity",
+      "from": "filtro",
+      "to": "api",
+      "y": 258,
+      "label": "IdentidadUsuario",
+      "variant": "return"
+    },
+    {
+      "id": "service",
+      "from": "api",
+      "to": "repo",
+      "y": 300,
+      "label": "generarTurnoParaCita()"
+    },
+    {
+      "id": "atomic",
+      "from": "repo",
+      "to": "pg",
+      "y": 340,
+      "label": "fn_siguiente_turno()",
+      "variant": "emphasis"
+    },
+    {
+      "id": "turn-number",
+      "from": "pg",
+      "to": "repo",
+      "y": 375,
+      "label": "número de turno",
+      "variant": "return"
+    },
+    {
+      "id": "persist",
+      "from": "repo",
+      "to": "pg",
+      "y": 415,
+      "label": "cita + historial"
+    },
+    {
+      "id": "turno",
+      "from": "repo",
+      "to": "api",
+      "y": 450,
+      "label": "Turno",
+      "variant": "return"
+    },
+    {
+      "id": "audit-event",
+      "from": "api",
+      "to": "eventos",
+      "y": 492,
+      "label": "AuditoriaEvent",
+      "variant": "dashed"
+    },
+    {
+      "id": "board",
+      "from": "api",
+      "to": "eventos",
+      "y": 525,
+      "label": "publica tablero",
+      "variant": "dashed"
+    },
+    {
+      "id": "response",
+      "from": "api",
+      "to": "cliente",
+      "y": 565,
+      "label": "201 Created",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 185,
+      "to": 580,
+      "type": "backend"
+    },
+    {
+      "participant": "filtro",
+      "from": 220,
+      "to": 263,
+      "type": "security"
+    },
+    {
+      "participant": "repo",
+      "from": 295,
+      "to": 455,
+      "type": "backend"
+    },
+    {
+      "participant": "pg",
+      "from": 335,
+      "to": 420,
+      "type": "database"
+    },
+    {
+      "participant": "eventos",
+      "from": 487,
+      "to": 570,
+      "type": "messagebus"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Ruta principal",
+      "items": [
+        "Estación → Controller/Service → Repository → PostgreSQL",
+        "La identidad se resuelve en el filtro antes del controlador (mock o servicio externo)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Atomicidad",
+      "items": [
+        "Las reservas y correlativos se ejecutan con funciones PostgreSQL (fn_incrementar_cupo, fn_siguiente_turno)",
+        "El Repository invoca SQL nativo para las operaciones críticas"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Eventos secundarios",
+      "items": [
+        "AuditoriaEvent se persiste de forma asíncrona (REQUIRES_NEW)",
+        "El tablero se actualiza por WebSocket sin bloquear la respuesta"
+      ]
+    }
+  ]
+}

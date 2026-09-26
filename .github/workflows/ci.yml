@@ -24,11 +24,11 @@ jobs:
             echo "backend/pom.xml aún no existe. Saltando compilación hasta que se inicialice Spring Boot."
           fi
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         if: steps.check_pom.outputs.exists == 'true'
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: maven
 

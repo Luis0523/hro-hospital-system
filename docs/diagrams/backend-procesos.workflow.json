@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Procesos internos del Backend — HRO",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "agendamiento", "label": "Agendamiento", "focus": ["peticion", "validar", "reservar", "hora"], "note": "De la petición REST a la reserva atómica del cupo y el cálculo de la hora." },
+      { "id": "operacion", "label": "Operación del día", "focus": ["hora", "checkin", "turno", "ws", "atender"], "note": "Check-in, correlativo de turno y tablero en tiempo real." },
+      { "id": "cierre", "label": "Cierre de jornada", "focus": ["atender", "cierre", "turno"], "note": "Cierre atómico de inasistencias sin liberar cupo." }
+    ]
+  },
+  "lanes": [
+    { "id": "agenda", "label": "Agendamiento" },
+    { "id": "sala", "label": "Operación del día" },
+    { "id": "eventos", "label": "Tiempo real" }
+  ],
+  "phases": [
+    { "id": "recepcion", "label": "Recepción y validación", "fromCol": 0, "toCol": 1 },
+    { "id": "reserva", "label": "Reserva y cita", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "operacion", "label": "Sala y cierre", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "tiempo_real", "label": "Tiempo real", "lane": "eventos", "fromCol": 4, "toCol": 4, "variant": "dashed" }
+  ],
+  "mainPath": ["peticion", "validar", "reservar", "hora", "checkin", "turno", "atender", "cierre"],
+  "nodes": [
+    { "id": "peticion", "lane": "agenda", "col": 0, "type": "backend", "label": "Petición REST", "sublabel": "auth + /api/v1", "width": 120 },
+    { "id": "validar", "lane": "agenda", "col": 1, "type": "backend", "label": "Validaciones", "sublabel": "paciente · cupo · día", "tag": "reglas", "width": 120 },
+    { "id": "reservar", "lane": "agenda", "col": 2, "type": "database", "label": "Reservar cupo", "sublabel": "UPDATE + CHECK", "tag": "atómico", "width": 120 },
+    { "id": "hora", "lane": "agenda", "col": 3, "type": "backend", "label": "Hora + ventana", "sublabel": "fn_calcular_hora", "width": 120 },
+    { "id": "cierre", "lane": "agenda", "col": 5, "type": "database", "label": "Cierre diario", "sublabel": "no_asistio", "tag": "atómico", "width": 120 },
+    { "id": "checkin", "lane": "sala", "col": 3, "type": "backend", "label": "Check-in", "sublabel": "llegada · confirmada", "width": 120 },
+    { "id": "turno", "lane": "sala", "col": 4, "type": "database", "label": "Siguiente turno", "sublabel": "correlativo", "tag": "atómico", "width": 120 },
+    { "id": "atender", "lane": "sala", "col": 5, "type": "backend", "label": "Llamar / Atender", "sublabel": "llamado · atendido", "width": 120 },
+    { "id": "ws", "lane": "eventos", "col": 4, "type": "messagebus", "label": "WebSocket STOMP", "sublabel": "/topic/tablero", "width": 120 }
+  ],
+  "edges": [
+    { "id": "peticion-validar", "from": "peticion", "to": "validar", "label": "valida", "variant": "emphasis", "role": "main" },
+    { "id": "validar-reservar", "from": "validar", "to": "reservar", "label": "reservar", "variant": "emphasis", "role": "main" },
+    { "id": "reservar-hora", "from": "reservar", "to": "hora", "label": "cupo OK", "variant": "emphasis", "role": "main" },
+    { "id": "hora-checkin", "from": "hora", "to": "checkin", "label": "día de la cita", "variant": "emphasis", "role": "main" },
+    { "id": "checkin-turno", "from": "checkin", "to": "turno", "label": "genera turno", "variant": "emphasis", "role": "main" },
+    { "id": "turno-atender", "from": "turno", "to": "atender", "variant": "emphasis", "role": "main" },
+    { "id": "atender-cierre", "from": "atender", "to": "cierre", "label": "fin de jornada", "variant": "emphasis", "role": "main" },
+    { "id": "turno-ws", "from": "turno", "to": "ws", "label": "publica", "variant": "dashed", "role": "async" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Reserva sin sobreventa", "items": ["Reserva con fn_incrementar_cupo (UPDATE condicional)", "El CHECK de cupos_ocupados es la última barrera en la BD", "Rechaza 409 si no hay cupo y 400 si el día no es laborable"] },
+    { "dot": "emerald", "title": "Hora estimada escalonada", "items": ["posición = citas activas del cupo + 1", "horaEstimada = inicio + (posición - 1) × duración", "Ventana: 15 min base + 5 min por bloque de 5 turnos (máx 45)"] },
+    { "dot": "amber", "title": "Cierre y trazabilidad", "items": ["Cierre: pendientes → no_asistio, turnos → no_responde (sin liberar cupo)", "Cada transición se registra en cita_estado_historial", "Toda acción publica un AuditoriaEvent asíncrono"] }
+  ]
+}
