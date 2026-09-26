@@ -6,6 +6,7 @@ import {
   fusionarAsignacion,
   obtenerEstadoInicialTablero,
 } from '../api/tableroApi'
+import { resolverConfiguracionSala } from '../api/configuracionSala'
 import { crearClienteTablero } from '../api/tableroSocket'
 import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
@@ -42,6 +43,8 @@ export default function TableroPage() {
   const [llamadoActual, setLlamadoActual] = useState(null)
 
   const montadoRef = useRef(true)
+  const configPermitidasRef = useRef(null)
+  const configResueltaRef = useRef(false)
   const vozActivaRef = useRef(false)
   const ultimoLlamadoProcesadoRef = useRef(new Map())
   const colaLlamadosRef = useRef([])
@@ -53,12 +56,25 @@ export default function TableroPage() {
   const cargar = useCallback(async () => {
     setCargando(true)
     setError(null)
+    configResueltaRef.current = false
     try {
-      const estado = await obtenerEstadoInicialTablero()
+      // Primero se resuelve la sala/TV; el snapshot y el WebSocket usan la
+      // misma lista de asignaciones permitidas.
+      const config = await resolverConfiguracionSala()
+      if (!montadoRef.current) return
+      configPermitidasRef.current = config?.permitidas ?? null
+      configResueltaRef.current = true
+
+      const estado = await obtenerEstadoInicialTablero({
+        permitidas: configPermitidasRef.current,
+      })
       if (montadoRef.current) setAsignaciones(estado)
     } catch (err) {
+      // Si falla la resolución de sala, el flag sigue en false y el WebSocket
+      // no procesa eventos. Si solo falla el snapshot, el flag ya quedó en
+      // true y un evento WebSocket posterior puede recuperar el tablero.
       if (montadoRef.current) {
-        setError(err?.message ?? 'Ocurrió un error al obtener el estado inicial.')
+        setError(err?.message ?? 'No se pudo cargar la configuración del tablero.')
         setAsignaciones([])
       }
     } finally {
@@ -198,8 +214,10 @@ export default function TableroPage() {
     const cliente = crearClienteTablero({
       onMensaje: (estado) => {
         if (!montadoRef.current) return
+        // No procesar eventos hasta conocer la configuración de la sala.
+        if (!configResueltaRef.current) return
         const idAsignacion = estado.asignacionDiariaEspacioId
-        if (!estaPermitida(idAsignacion)) return
+        if (!estaPermitida(idAsignacion, configPermitidasRef.current)) return
 
         setError(null)
         setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))

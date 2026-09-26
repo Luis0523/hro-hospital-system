@@ -10,6 +10,7 @@ const {
   estaPermitidaMock,
   hablarMock,
   obtenerEstadoInicialMock,
+  resolverConfiguracionSalaMock,
 } = vi.hoisted(() => ({
   anunciarTurnoMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
@@ -18,10 +19,15 @@ const {
   estaPermitidaMock: vi.fn(),
   hablarMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  resolverConfiguracionSalaMock: vi.fn(),
 }))
 
 vi.mock('../api/tableroSocket', () => ({
   crearClienteTablero: crearClienteTableroMock,
+}))
+
+vi.mock('../api/configuracionSala', () => ({
+  resolverConfiguracionSala: resolverConfiguracionSalaMock,
 }))
 
 vi.mock('../api/comunicacionVoz', () => ({
@@ -107,20 +113,41 @@ function filasTabla() {
     .flatMap((cuerpo) => within(cuerpo).getAllByRole('row'))
 }
 
-describe('TableroPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    handlers = null
-    estaEnModoMockMock.mockReturnValue(false)
-    estaPermitidaMock.mockReturnValue(true)
-    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
-    estaDisponibleVozMock.mockReturnValue(true)
-    hablarMock.mockReturnValue(true)
-    anunciarTurnoMock.mockReturnValue('mensaje')
+function configurarAntesDeCada({ capturarHandlers = true } = {}) {
+  vi.clearAllMocks()
+  handlers = null
+  estaEnModoMockMock.mockReturnValue(false)
+  estaPermitidaMock.mockImplementation((id, permitidas) =>
+    permitidas == null ? true : permitidas.includes(Number(id)),
+  )
+  obtenerEstadoInicialMock.mockImplementation(({ permitidas } = {}) =>
+    Promise.resolve(
+      permitidas == null
+        ? ASIGNACIONES_INICIALES
+        : ASIGNACIONES_INICIALES.filter((a) => permitidas.includes(a.asignacionDiariaEspacioId)),
+    ),
+  )
+  resolverConfiguracionSalaMock.mockResolvedValue({
+    modo: 'fallback',
+    sala: null,
+    permitidas: null,
+  })
+  estaDisponibleVozMock.mockReturnValue(true)
+  hablarMock.mockReturnValue(true)
+  anunciarTurnoMock.mockReturnValue('mensaje')
+  if (capturarHandlers) {
     crearClienteTableroMock.mockImplementation((opciones) => {
       handlers = opciones
       return { activar: vi.fn(), desactivar: vi.fn() }
     })
+  } else {
+    crearClienteTableroMock.mockImplementation(() => ({ activar: vi.fn(), desactivar: vi.fn() }))
+  }
+}
+
+describe('TableroPage', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
   })
 
   it('en modo mock muestra los datos de prueba y no conecta WebSocket', async () => {
@@ -488,12 +515,7 @@ describe('TableroPage', () => {
 
 describe('TableroPage · tabla dinámica', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    estaEnModoMockMock.mockReturnValue(false)
-    estaPermitidaMock.mockReturnValue(true)
-    estaDisponibleVozMock.mockReturnValue(true)
-    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
-    crearClienteTableroMock.mockImplementation(() => ({ activar: vi.fn(), desactivar: vi.fn() }))
+    configurarAntesDeCada({ capturarHandlers: false })
   })
 
   it('muestra la tabla con una fila por asignación visible', async () => {
@@ -515,18 +537,7 @@ describe('TableroPage · tabla dinámica', () => {
 
 describe('TableroPage · modo llamado (SCRUM-101)', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    handlers = null
-    estaEnModoMockMock.mockReturnValue(false)
-    estaPermitidaMock.mockReturnValue(true)
-    estaDisponibleVozMock.mockReturnValue(true)
-    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
-    hablarMock.mockReturnValue(true)
-    anunciarTurnoMock.mockReturnValue('mensaje')
-    crearClienteTableroMock.mockImplementation((opciones) => {
-      handlers = opciones
-      return { activar: vi.fn(), desactivar: vi.fn() }
-    })
+    configurarAntesDeCada({ capturarHandlers: true })
   })
 
   it('usa 6000 ms por defecto y respeta VITE_TABLERO_LLAMADO_MS', () => {
@@ -1211,5 +1222,161 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(
       within(screen.getByTestId('llamado-grande')).getByText('Nueva Clínica'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('TableroPage · configuración de sala (runtime)', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  it('sin ?sala conserva el fallback build-time (todas)', async () => {
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect(filasTabla()).toHaveLength(4)
+  })
+
+  it('sala 1 muestra solo sus asignaciones', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect(filasTabla()).toHaveLength(1)
+    expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-2')).not.toBeInTheDocument()
+  })
+
+  it('sala 2 muestra únicamente las suyas', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '2',
+      permitidas: [2],
+    })
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('Medicina General')).toBeInTheDocument()
+    expect(filasTabla()).toHaveLength(1)
+    expect(screen.getByTestId('fila-turno-2')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-1')).not.toBeInTheDocument()
+  })
+
+  it('un WS ACTUALIZACION fuera de sala se ignora', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 9,
+          turnoSiguiente: 10,
+          tipoEvento: 'ACTUALIZACION',
+        }),
+      )
+    })
+
+    expect(filasTabla()).toHaveLength(1)
+    expect(screen.queryByTestId('fila-turno-2')).not.toBeInTheDocument()
+  })
+
+  it('un WS LLAMADO fuera de sala no habla', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 9,
+          turnoSiguiente: 10,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('un WS LLAMADO dentro de sala sí llama', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 9,
+          turnoSiguiente: 10,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+  })
+
+  it('una sala inválida muestra estado seguro (sin mostrar todas)', async () => {
+    resolverConfiguracionSalaMock.mockRejectedValueOnce(
+      new Error(
+        'Esta pantalla no tiene una sala configurada correctamente. Verifique la configuración del tablero.',
+      ),
+    )
+
+    render(<TableroPage />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/no tiene una sala configurada/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
+  })
+
+  it('un fallo de configuración muestra estado seguro', async () => {
+    resolverConfiguracionSalaMock.mockRejectedValueOnce(new Error('fallo de config'))
+
+    render(<TableroPage />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('fallo de config')).toBeInTheDocument()
+    expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
+  })
+
+  it('una sala válida sin asignaciones muestra estado vacío', async () => {
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '2',
+      permitidas: [],
+    })
+
+    render(<TableroPage />)
+
+    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
   })
 })

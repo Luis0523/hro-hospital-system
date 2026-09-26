@@ -32,15 +32,21 @@ export function parsearAsignacionesFiltradas(valor) {
   return Array.from(new Set(ids))
 }
 
-export const ASIGNACIONES_PERMITIDAS = parsearAsignacionesFiltradas()
+// `null` = sin filtro (mostrar todas). `[]` = filtro vacío (no mostrar ninguna).
+function permitidasDesdeEnv(valor) {
+  const lista = parsearAsignacionesFiltradas(valor)
+  return lista.length > 0 ? lista : null
+}
+
+export const ASIGNACIONES_PERMITIDAS = permitidasDesdeEnv(import.meta.env.VITE_TABLERO_ASIGNACIONES)
 
 export function estaPermitida(asignacionDiariaEspacioId, permitidas = ASIGNACIONES_PERMITIDAS) {
-  if (!permitidas || permitidas.length === 0) return true
+  if (permitidas == null) return true
   return permitidas.includes(Number(asignacionDiariaEspacioId))
 }
 
 export function filtrarAsignaciones(asignaciones = [], permitidas = ASIGNACIONES_PERMITIDAS) {
-  if (!permitidas || permitidas.length === 0) return asignaciones
+  if (permitidas == null) return asignaciones
   return asignaciones.filter((asignacion) =>
     estaPermitida(asignacion.asignacionDiariaEspacioId, permitidas),
   )

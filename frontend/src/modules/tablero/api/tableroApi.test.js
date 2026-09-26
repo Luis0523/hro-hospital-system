@@ -178,7 +178,7 @@ describe('tableroApi · orden y fusión', () => {
 
 describe('tableroApi · estado inicial', () => {
   it('devuelve el estado inicial mock en modo test', async () => {
-    const estado = await obtenerEstadoInicialTablero({ permitidas: [] })
+    const estado = await obtenerEstadoInicialTablero({ permitidas: null })
 
     expect(estado.length).toBeGreaterThanOrEqual(4)
     expect(estado[0]).toHaveProperty('asignacionDiariaEspacioId')
@@ -210,10 +210,17 @@ describe('tableroApi · filtro de asignaciones', () => {
     expect(parsearAsignacionesFiltradas('0,-1,3.5,')).toEqual([])
   })
 
-  it('permite todo cuando la lista de permitidas está vacía', () => {
-    expect(estaPermitida(99, [])).toBe(true)
+  it('distingue sin filtro (null) de filtro vacío ([])', () => {
+    expect(estaPermitida(99, null)).toBe(true)
+    expect(estaPermitida(99, [])).toBe(false)
     expect(estaPermitida(2, [1, 2])).toBe(true)
     expect(estaPermitida(3, [1, 2])).toBe(false)
+  })
+
+  it('un filtro vacío deja el estado inicial sin asignaciones', async () => {
+    const estado = await obtenerEstadoInicialTablero({ permitidas: [] })
+
+    expect(estado).toEqual([])
   })
 
   it('filtra el estado inicial dejando solo las asignaciones permitidas', async () => {
@@ -223,7 +230,7 @@ describe('tableroApi · filtro de asignaciones', () => {
   })
 
   it('muestra todas las asignaciones cuando no hay filtro configurado', async () => {
-    const estado = await obtenerEstadoInicialTablero({ permitidas: [] })
+    const estado = await obtenerEstadoInicialTablero({ permitidas: null })
 
     expect(estado.length).toBeGreaterThanOrEqual(4)
   })
@@ -238,7 +245,8 @@ describe('tableroApi · filtro de asignaciones', () => {
     expect(filtrarAsignaciones(lista, [1, 2]).map((a) => a.asignacionDiariaEspacioId)).toEqual([
       1, 2,
     ])
-    expect(filtrarAsignaciones(lista, [])).toHaveLength(3)
+    expect(filtrarAsignaciones(lista, null)).toHaveLength(3)
+    expect(filtrarAsignaciones(lista, [])).toHaveLength(0)
   })
 
   it('no duplica resultados cuando la lista permitida tiene duplicados', () => {
@@ -274,7 +282,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
   it('en modo real consulta GET /asignaciones-diarias', async () => {
     const cliente = clienteConRespuesta({ success: true, data: [DTO] })
 
-    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null })
 
     expect(cliente.get).toHaveBeenCalledTimes(1)
     expect(cliente.get.mock.calls[0][0]).toBe('/asignaciones-diarias')
@@ -286,7 +294,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     await obtenerEstadoInicialTablero({
       modoMock: false,
       cliente,
-      permitidas: [],
+      permitidas: null,
       fecha: '2026-09-25',
     })
 
@@ -296,7 +304,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
   it('usa la fecha local del cliente por defecto', async () => {
     const cliente = clienteConRespuesta({ success: true, data: [] })
 
-    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+    await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null })
 
     expect(cliente.get.mock.calls[0][1].params.fecha).toBe(hoyIso())
   })
@@ -312,7 +320,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const [asignacion] = await obtenerEstadoInicialTablero({
       modoMock: false,
       cliente,
-      permitidas: [],
+      permitidas: null,
     })
 
     expect(asignacion).toEqual({
@@ -334,7 +342,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const [asignacion] = await obtenerEstadoInicialTablero({
       modoMock: false,
       cliente,
-      permitidas: [],
+      permitidas: null,
     })
 
     expect(asignacion.intentosLlamado).toBeNull()
@@ -344,7 +352,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
   it('acepta una respuesta en arreglo directo sin wrapper', async () => {
     const cliente = clienteConRespuesta([DTO])
 
-    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null })
 
     expect(estado).toHaveLength(1)
     expect(estado[0].asignacionDiariaEspacioId).toBe(10)
@@ -356,7 +364,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const [asignacion] = await obtenerEstadoInicialTablero({
       modoMock: false,
       cliente,
-      permitidas: [],
+      permitidas: null,
     })
 
     expect(asignacion.turnoActual).toBeNull()
@@ -368,7 +376,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const cliente = clienteConRespuesta({ success: true, data: [] })
 
     await expect(
-      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null }),
     ).resolves.toEqual([])
   })
 
@@ -376,7 +384,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const cliente = { get: vi.fn().mockRejectedValue(new Error('boom')) }
 
     await expect(
-      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null }),
     ).rejects.toThrow('boom')
   })
 
@@ -384,14 +392,14 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const cliente = clienteConRespuesta({ success: true, message: 'sin data' })
 
     await expect(
-      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] }),
+      obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null }),
     ).rejects.toMatchObject({ code: 'RESPUESTA_INESPERADA' })
   })
 
   it('descarta entradas sin id válido', async () => {
     const cliente = clienteConRespuesta({ success: true, data: [DTO, { espacioNumero: '999' }] })
 
-    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: [] })
+    const estado = await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null })
 
     expect(estado).toHaveLength(1)
     expect(estado[0].asignacionDiariaEspacioId).toBe(10)
@@ -427,7 +435,7 @@ describe('tableroApi · estado inicial real (REST)', () => {
     const [asignacion] = await obtenerEstadoInicialTablero({
       modoMock: false,
       cliente,
-      permitidas: [],
+      permitidas: null,
     })
 
     expect(asignacion).not.toHaveProperty('nombrePaciente')
