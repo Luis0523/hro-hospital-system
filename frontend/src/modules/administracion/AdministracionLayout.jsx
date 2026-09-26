@@ -22,10 +22,10 @@ export default function AdministracionLayout() {
   }, [menuAbierto, cerrarMenu])
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-surface text-on-surface">
       {menuAbierto && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+          className="fixed inset-0 z-30 bg-on-surface/40 md:hidden"
           onClick={cerrarMenu}
           aria-hidden="true"
         />
@@ -33,7 +33,7 @@ export default function AdministracionLayout() {
 
       <div
         id="menu-administracion"
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-slate-200 bg-white transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-outline-variant/40 bg-surface-container-low transition-transform duration-200 md:translate-x-0 ${
           menuAbierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -41,7 +41,7 @@ export default function AdministracionLayout() {
           type="button"
           onClick={cerrarMenu}
           aria-label="Cerrar menú"
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue md:hidden"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
         >
           <Icon name="close" className="text-[24px]" />
         </button>
