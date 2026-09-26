@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-highest":"#dae2fd","outline":"#707881","primary-fixed":"#cde5ff","surface":"#faf8ff","background":"#faf8ff","surface-dim":"#d2d9f4","on-tertiary-container":"#d2e3ef","on-secondary-fixed":"#001e2f","tertiary":"#3d4e58","surface-container-lowest":"#ffffff","surface-container-low":"#f2f3ff","surface-variant":"#dae2fd","on-tertiary-fixed":"#0c1e26","inverse-primary":"#94ccff","primary":"#00507d","on-surface":"#131b2e","secondary-fixed":"#c9e6ff","on-primary-fixed":"#001d32","on-primary-container":"#cbe4ff","on-background":"#131b2e","on-surface-variant":"#40474f","error":"#ba1a1a","error-container":"#ffdad6","on-secondary":"#ffffff","tertiary-fixed-dim":"#b7c9d5","primary-container":"#0369a1","on-primary-fixed-variant":"#004b74","on-secondary-container":"#004666","on-tertiary-fixed-variant":"#384953","secondary-container":"#39b8fd","inverse-on-surface":"#eef0ff","secondary-fixed-dim":"#89ceff","on-primary":"#ffffff","tertiary-fixed":"#d3e5f1","primary-fixed-dim":"#94ccff","on-error":"#ffffff","tertiary-container":"#556670","surface-bright":"#faf8ff","surface-tint":"#006399","inverse-surface":"#283044","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#004c6e","surface-container":"#eaedff","secondary":"#006591","on-error-container":"#93000a","outline-variant":"#c0c7d1","surface-container-high":"#e2e7ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-screen":"1rem","space-lg":"1.25rem","space-sm":"0.5rem","gutter-spacious":"1rem","gutter-default":"0.75rem","space-xl":"1.5rem","space-xs":"0.25rem","gutter-compact":"0.5rem","space-base":"1rem","space-md":"0.75rem","space-2xs":"0.125rem","space-2xl":"2rem"},"fontFamily":{"title-sm":["Inter"],"headline-lg":["Inter"],"label-sm":["Inter"],"headline-md":["Inter"],"body-md":["Inter"],"metric-sub":["Inter"],"headline-sm":["Inter"],"body-sm":["Inter"],"body-lg":["Inter"],"title-md":["Inter"],"label-md":["Inter"],"metric-display":["Inter"]},"fontSize":{"title-sm":["13px",{"lineHeight":"18px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"metric-sub":["20px",{"lineHeight":"24px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["15px",{"lineHeight":"22px","fontWeight":"400"}],"title-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.005em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"metric-display":["32px",{"lineHeight":"36px","letterSpacing":"-0.03em","fontWeight":"700"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-surface-container-low flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-base flex items-center gap-space-md border-b border-outline-variant/40 bg-surface-container-lowest"><img alt="Brand logo. - Primary color: #0369a1 - Font: inter - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V8dQA1s0xKMdv3O_9jknB6sbzFupAlZi5lzeK8UG_8BdPdqDGo8BAzS9vgjtQhqFzjXcqh_SoJDbIriZrzQoPD20sZYn8D-pwoDq0L420Zk1-0xDwNlECuUQ9AfjzhZMaRqql1zAAi48sAuXSNo9DLNajSTNggnj5TINcoTt-F2s1tf9AUU-257scNbeA1VdZn9cLeRP_eoGDNKK_WjNt23OX9UFc7GGUXa7947ekuKLT1Pe8IbDZ0GdeQ"/><div class="flex flex-col"><span class="font-title-md text-title-md text-primary tracking-tight leading-none">SIGEH Admin</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Gestión Hospitalaria</span></div></div><div class="px-space-base py-space-sm"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Administración Central</span></div><nav class="flex-1 px-space-sm space-y-space-2xs overflow-y-auto" data-active-classes="bg-primary text-on-primary font-title-sm shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span>Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span>Usuarios</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="clinicas-y-especialidades" href="#"><span class="material-symbols-outlined text-[20px]">local_hospital</span><span>Clínicas y Especialidades</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cupos-y-capacidad" href="#"><span class="material-symbols-outlined text-[20px]">event_seat</span><span>Cupos y Capacidad</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg transition-colors bg-primary text-on-primary font-title-sm shadow-sm" data-path="calendario-institucional" href="#"><span class="material-symbols-outlined text-[20px]">calendar_month</span><span>Calendario Institucional</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span>Reportes</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="auditoria" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span>Auditoría</span></a></nav><div class="p-space-base border-t border-outline-variant/40 bg-surface-container-lowest"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Red Hospital Central</span></div><span class="font-label-sm text-label-sm text-outline">v4.2.0</span></div></div></aside><div class="pl-64 min-h-screen flex flex-col"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/40 z-40 px-space-xl flex items-center justify-between"><div class="flex items-center gap-space-md"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">SISTEMA INTEGRADO DE GESTIÓN HOSPITALARIA</span></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-md"><div class="text-right hidden sm:block"><div class="font-title-sm text-title-sm text-on-surface leading-tight">Dr. Alejandro Morales</div><div class="font-label-sm text-label-sm text-primary font-medium leading-none">Administrador General</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary-container border-2 border-surface-container-lowest"></span></div></div></div></header><main class="w-full pt-16 px-space-xl py-space-xl flex-1 bg-background"><div class="flex flex-col w-full">
+<div class="space-y-space-lg">
+<!-- Top Action & Institutional Breadcrumb Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-outline font-label-sm uppercase tracking-wider">
+<span>Administración Central</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">Calendario Institucional y Feriados</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mt-space-2xs">Calendario Institucional y Feriados</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Gestión de días hábiles, asuetos oficiales y resolución de contingencias en agenda hospitalaria.</p>
+</div>
+<!-- Quick Operational Controls -->
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-surface-container-lowest text-primary border border-outline-variant/60 rounded-lg hover:bg-surface-container-high transition shadow-sm font-label-md" id="btn-export">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Descargar Decreto Anual</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-primary text-on-primary rounded-lg hover:bg-primary-container transition shadow-sm font-label-md" onclick="toggleModal(true)">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>Declarar Asueto / Feriado</span>
+</button>
+</div>
+</div>
+<!-- Master Control Filter Bar & Summary Ribbon -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-md items-stretch">
+<!-- Selector & Month Navigation (5 cols) -->
+<div class="xl:col-span-5 bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<button class="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center text-on-surface hover:bg-surface-container-high transition">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-md text-headline-md text-on-surface">Noviembre</span>
+<span class="font-title-md text-title-md text-outline">2024</span>
+</div>
+<button class="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center text-on-surface hover:bg-surface-container-high transition">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-1 bg-surface-container-high text-on-surface-variant rounded font-label-sm uppercase">Q4 Activo</span>
+<button class="px-space-sm py-1 bg-surface-container-lowest hover:bg-surface-container text-primary rounded font-label-sm transition">Hoy</button>
+</div>
+</div>
+<div class="flex items-center gap-space-sm pt-space-sm text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[18px]">domain_verification</span>
+<span>Vigencia para: <strong>Hospital Central & Red Periférica Oriente</strong></span>
+</div>
+</div>
+<!-- Quick Metrics Overview (7 cols) -->
+<div class="xl:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
+<div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Días Hábiles</div>
+<div class="font-metric-sub text-metric-sub text-on-surface mt-1">20 <span class="font-body-sm text-body-sm text-outline font-normal">días</span></div>
+<div class="font-label-sm text-label-sm text-secondary-container mt-1">100% cap. operando</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
+<div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Feriados Ley</div>
+<div class="font-metric-sub text-metric-sub text-on-surface mt-1">2 <span class="font-body-sm text-body-sm text-outline font-normal">oficiales</span></div>
+<div class="font-label-sm text-label-sm text-outline mt-1">1 Nov, 20 Oct rec.</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
+<div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Asuetos Red</div>
+<div class="font-metric-sub text-metric-sub text-tertiary mt-1">1 <span class="font-body-sm text-body-sm text-outline font-normal">decretado</span></div>
+<div class="font-label-sm text-label-sm text-tertiary mt-1">Día del Médico (3 Dic)</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
+<div class="font-label-sm text-label-sm text-error uppercase tracking-wider">Citas En Riesgo</div>
+<div class="font-metric-sub text-metric-sub text-error mt-1">48 <span class="font-body-sm text-body-sm text-error/70 font-normal">pacientes</span></div>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-error font-semibold mt-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span> 1 de Noviembre
+          </div>
+</div>
+</div>
+</div>
+<!-- Status Legend Ribbon -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-wrap items-center justify-between gap-space-md text-label-sm">
+<div class="flex items-center gap-space-xs font-title-sm text-on-surface">
+<span class="material-symbols-outlined text-outline text-[18px]">tune</span>
+<span>Leyenda de Clasificación:</span>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-3 rounded-full bg-surface-container-highest"></span>
+<span class="text-on-surface-variant font-medium">Día Laborable Ordinario</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<span class="text-on-surface-variant font-medium">Feriado Oficial / No Laborable</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-3 rounded-full bg-tertiary-container"></span>
+<span class="text-on-surface-variant font-medium">Asueto Institucional Decretado</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-3 rounded-full bg-error animate-pulse"></span>
+<span class="text-error font-semibold">Conflicto Crítico de Citas Pre-programadas</span>
+</div>
+</div>
+<div class="text-outline font-label-sm">
+        Click sobre cualquier fecha para modificar estatus o evaluar impacto.
+      </div>
+</div>
+<!-- Master Monthly Grid -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Days of Week Header -->
+<div class="grid grid-cols-7 bg-surface-container-low text-center font-label-sm uppercase tracking-wider text-outline py-space-sm">
+<div class="py-1">Lunes</div>
+<div class="py-1">Martes</div>
+<div class="py-1">Miércoles</div>
+<div class="py-1">Jueves</div>
+<div class="py-1 text-primary">Viernes</div>
+<div class="py-1">Sábado</div>
+<div class="py-1">Domingo</div>
+</div>
+<!-- Calendar Body Cells (6 Rows x 7 Cols) -->
+<div class="grid grid-cols-7 gap-px bg-outline-variant/30 text-body-sm">
+<!-- Row 1: Previous Month tail (Oct 28 - Oct 31) -->
+<div class="bg-surface-container-low/40 p-space-sm min-h-[110px] flex flex-col justify-between opacity-50">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-outline">28</span>
+<span class="font-label-sm text-outline">OCT</span>
+</div>
+<div class="text-label-sm text-outline">Consulta habitual</div>
+</div>
+<div class="bg-surface-container-low/40 p-space-sm min-h-[110px] flex flex-col justify-between opacity-50">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-outline">29</span>
+<span class="font-label-sm text-outline">OCT</span>
+</div>
+<div class="text-label-sm text-outline">Consulta habitual</div>
+</div>
+<div class="bg-surface-container-low/40 p-space-sm min-h-[110px] flex flex-col justify-between opacity-50">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-outline">30</span>
+<span class="font-label-sm text-outline">OCT</span>
+</div>
+<div class="text-label-sm text-outline">Consulta habitual</div>
+</div>
+<div class="bg-surface-container-low/40 p-space-sm min-h-[110px] flex flex-col justify-between opacity-50">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-outline">31</span>
+<span class="font-label-sm text-outline">OCT</span>
+</div>
+<div class="text-label-sm text-outline">Guardia regular</div>
+</div>
+<!-- TARGET INTERACTION DAY: Viernes 1 de Noviembre (CRITICAL ACTION TRIGGER) -->
+<div class="bg-error-container/40 hover:bg-error-container/60 cursor-pointer p-space-sm min-h-[110px] flex flex-col justify-between transition-all relative group" onclick="toggleModal(true)">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-1">
+<span class="w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center font-title-sm">1</span>
+<span class="font-label-sm text-error font-bold uppercase tracking-tight">NOV</span>
+</div>
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-error text-on-error font-label-sm font-semibold animate-pulse">
+<span class="material-symbols-outlined text-[13px]">warning</span> Conflicto
+            </span>
+</div>
+<div class="space-y-1">
+<div class="px-space-xs py-0.5 bg-error text-on-error rounded font-label-sm font-semibold truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">event_busy</span> Todos los Santos (Ley)
+            </div>
+<div class="p-1 bg-surface-container-lowest/80 rounded font-label-sm text-error text-left">
+<strong>48 Citas programadas</strong>
+<div class="text-[10px] text-outline font-medium">Click para resolver impacto</div>
+</div>
+</div>
+<div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-none transition rounded">
+<span class="bg-on-surface text-surface px-2 py-1 rounded font-label-sm shadow">Revisar Impacto</span>
+</div>
+</div>
+<!-- Sábado 2 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">2</span>
+<span class="font-label-sm text-outline">FIN DE SEMANA</span>
+</div>
+<div class="text-label-sm text-outline">Urgencias y Triage 24/7</div>
+</div>
+<!-- Domingo 3 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">3</span>
+<span class="font-label-sm text-outline">DOMINGO</span>
+</div>
+<div class="text-label-sm text-outline">Guardias pasivas</div>
+</div>
+<!-- Row 2: Nov 4 - Nov 10 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">4</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">124</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">5</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">130</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">6</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">118</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">7</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">140</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">8</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">102</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">9</span>
+<span class="font-label-sm text-outline">SÁBADO</span>
+</div>
+<div class="text-label-sm text-outline">Guardias Clínicas</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">10</span>
+<span class="font-label-sm text-outline">DOMINGO</span>
+</div>
+<div class="text-label-sm text-outline">Emergencias 24h</div>
+</div>
+<!-- Row 3: Nov 11 - Nov 17 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">11</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">135</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">12</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">128</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">13</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">145</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">14</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">119</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">15</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">122</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">16</span>
+<span class="font-label-sm text-outline">SÁBADO</span>
+</div>
+<div class="text-label-sm text-outline">Guardias Clínicas</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">17</span>
+<span class="font-label-sm text-outline">DOMINGO</span>
+</div>
+<div class="text-label-sm text-outline">Emergencias 24h</div>
+</div>
+<!-- Row 4: Nov 18 - Nov 24 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">18</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">110</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">19</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">134</span> turnos agendados
+          </div>
+</div>
+<!-- Wednesday 20: Feriado Decretado / Registro Histórico Revolución -->
+<div class="bg-primary/5 p-space-sm min-h-[110px] flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-title-sm">20</span>
+<span class="px-1.5 py-0.5 rounded bg-primary/20 text-primary font-label-sm font-semibold">Oficial</span>
+</div>
+<div class="p-1 bg-surface-container-lowest rounded">
+<span class="font-label-sm font-bold text-primary block truncate">Día de la Revolución</span>
+<span class="text-[11px] text-outline">Bloqueo Preventivo OK</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">21</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">142</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">22</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">129</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">23</span>
+<span class="font-label-sm text-outline">SÁBADO</span>
+</div>
+<div class="text-label-sm text-outline">Guardias Clínicas</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">24</span>
+<span class="font-label-sm text-outline">DOMINGO</span>
+</div>
+<div class="text-label-sm text-outline">Emergencias 24h</div>
+</div>
+<!-- Row 5: Nov 25 - Nov 30 -->
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">25</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">120</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">26</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">131</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">27</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">115</span> turnos agendados
+          </div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface">28</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="text-label-sm text-on-surface-variant">
+<span class="font-semibold text-primary">126</span> turnos agendados
+          </div>
+</div>
+<!-- Friday 29: Asueto decretado preventivo -->
+<div class="bg-tertiary/10 p-space-sm min-h-[110px] flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="w-6 h-6 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center font-title-sm">29</span>
+<span class="px-1.5 py-0.5 rounded bg-tertiary text-on-tertiary font-label-sm">Asueto</span>
+</div>
+<div class="p-1 bg-surface-container-lowest rounded text-left">
+<span class="font-label-sm font-bold text-tertiary block truncate">Jornada Médica Anual</span>
+<span class="text-[11px] text-outline">Reubicado sin citas</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm min-h-[110px] flex flex-col justify-between hover:bg-surface-container transition">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-on-surface-variant">30</span>
+<span class="font-label-sm text-outline">SÁBADO</span>
+</div>
+<div class="text-label-sm text-outline">Cierre de mes Q4</div>
+</div>
+<!-- Next month tail: Dec 1 -->
+<div class="bg-surface-container-low/40 p-space-sm min-h-[110px] flex flex-col justify-between opacity-50">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-outline">1</span>
+<span class="font-label-sm text-outline">DIC</span>
+</div>
+<div class="text-label-sm text-outline">Guardias pasivas</div>
+</div>
+</div>
+</div>
+<!-- Bottom Contextual Institutional Advisory -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-space-md">
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm space-y-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-title-sm">
+<span class="material-symbols-outlined text-[20px]">policy</span>
+<span>Reglamento Interno Art. 44</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">
+          Las modificaciones de días no laborables con menos de 15 días calendario de antelación requieren autorización expresa de la Dirección Médica y notificación telefónica/SMS prioritaria a pacientes.
+        </p>
+</div>
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm space-y-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-title-sm">
+<span class="material-symbols-outlined text-[20px]">sync_alt</span>
+<span>Protocolo de Reubicación Automática</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">
+          El motor del SIGEH asigna de manera autónoma los primeros cupos de sobrecupo controlados durante los 5 días posteriores a la fecha cancelada, priorizando patologías crónicas y oncología.
+        </p>
+</div>
+<div class="bg-surface-container-lowest p-space-base rounded-xl shadow-sm space-y-space-xs">
+<div class="flex items-center gap-space-xs text-error font-title-sm">
+<span class="material-symbols-outlined text-[20px]">notification_important</span>
+<span>Alerta Operativa Activa</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">
+          Existe 1 fecha con bloqueo legal (1 de Noviembre) que retiene pacientes en cola de espera. Se sugiere ejecutar el asistente de resolución para evitar reclamos en ventanilla única.
+        </p>
+</div>
+</div>
+</div>
+<!-- CRITICAL ALERT & CONFLICT RESOLUTION MODAL -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-space-base bg-on-surface/60 backdrop-blur-sm transition-opacity duration-200" id="conflict-modal">
+<div class="bg-surface-container-lowest max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden flex flex-col transform transition-all scale-100">
+<!-- High Severity Modal Header -->
+<div class="p-space-lg bg-error text-on-error flex items-start justify-between">
+<div class="flex items-start gap-space-md">
+<div class="p-2 bg-on-error/15 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-[28px] text-on-error">warning</span>
+</div>
+<div>
+<div class="font-label-sm text-on-error/80 uppercase tracking-wider font-semibold">Alerta de Integridad Hospitalaria</div>
+<h2 class="font-headline-md text-headline-md text-on-error leading-snug">Conflicto Detectado: Citas Médicas Pre-programadas</h2>
+<div class="font-label-sm text-on-error/90 mt-1">Fecha afectada: <strong>Viernes, 1 de Noviembre de 2024 (Todos los Santos)</strong></div>
+</div>
+</div>
+<button class="text-on-error/80 hover:text-on-error p-1 rounded hover:bg-on-error/10 transition" onclick="toggleModal(false)">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+</div>
+<!-- Modal Body Content & Breakdown -->
+<div class="p-space-xl space-y-space-lg bg-surface">
+<!-- Explanation Box -->
+<div class="bg-error-container/40 p-space-md rounded-lg">
+<p class="font-body-md text-body-md text-on-error-container font-medium leading-relaxed">
+            El día seleccionado tiene <strong>48 citas programadas en 6 especialidades</strong>. Si declara este día como no laborable, las citas deberán ser canceladas o reasignadas automáticamente.
+          </p>
+</div>
+<!-- Specialty Impact Breakdown -->
+<div class="space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Desglose de Citas por Clínica / Especialidad</span>
+<span class="font-label-sm text-label-sm text-error font-semibold">Total: 48 pacientes citados</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm pt-space-xs">
+<!-- Cardiología -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-title-sm text-title-sm text-on-surface">Cardiología</span>
+<span class="material-symbols-outlined text-primary text-[18px]">favorite</span>
+</div>
+<div class="font-headline-md text-headline-md text-error">18 <span class="font-body-sm text-body-sm text-outline font-normal">citas</span></div>
+</div>
+<div class="pt-2">
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 37.5%"></div>
+</div>
+<span class="text-[10px] text-outline mt-1 block">Dr. R. Arévalo (Cons. 3)</span>
+</div>
+</div>
+<!-- Pediatría -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-title-sm text-title-sm text-on-surface">Pediatría</span>
+<span class="material-symbols-outlined text-primary text-[18px]">child_care</span>
+</div>
+<div class="font-headline-md text-headline-md text-error">15 <span class="font-body-sm text-body-sm text-outline font-normal">citas</span></div>
+</div>
+<div class="pt-2">
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 31.2%"></div>
+</div>
+<span class="text-[10px] text-outline mt-1 block">Dra. M. Solares (Cons. 1)</span>
+</div>
+</div>
+<!-- Medicina General -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-title-sm text-title-sm text-on-surface">Medicina General</span>
+<span class="material-symbols-outlined text-primary text-[18px]">stethoscope</span>
+</div>
+<div class="font-headline-md text-headline-md text-error">15 <span class="font-body-sm text-body-sm text-outline font-normal">citas</span></div>
+</div>
+<div class="pt-2">
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 31.2%"></div>
+</div>
+<span class="text-[10px] text-outline mt-1 block">Triage / Externos (Cons. 5 y 6)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Contingency Strategy Selector -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg space-y-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider block">Acción Operativa Sugerida por el Sistema:</span>
+<label class="flex items-start gap-space-sm p-space-xs rounded hover:bg-surface-container cursor-pointer transition">
+<input checked="" class="mt-1 w-4 h-4 text-primary focus:ring-primary" name="action_type" type="radio"/>
+<div>
+<div class="font-title-sm text-title-sm text-on-surface">Reubicación inteligente y envío de SMS oficial (Recomendado)</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Reasigna turnos para el lunes 4 y martes 5 de noviembre sin saturar capacidad clínica (>115%).</p>
+</div>
+</label>
+<label class="flex items-start gap-space-sm p-space-xs rounded hover:bg-surface-container cursor-pointer transition">
+<input class="mt-1 w-4 h-4 text-primary focus:ring-primary" name="action_type" type="radio"/>
+<div>
+<div class="font-title-sm text-title-sm text-on-surface">Cancelación con prioridad en ventanilla</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Marca citas en estado CANCELADO_INSTITUCIONAL y remite caso al Contact Center.</p>
+</div>
+</label>
+</div>
+</div>
+<!-- Action Confirmation Footer -->
+<div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm">
+<button class="w-full sm:w-auto px-space-lg py-space-sm bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition rounded-lg font-label-md" onclick="toggleModal(false)">
+          Cancelar Operación
+        </button>
+<div class="flex items-center gap-space-sm w-full sm:w-auto">
+<button class="w-full sm:w-auto flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-error text-on-error hover:bg-error/90 transition rounded-lg shadow-md font-label-md" onclick="executeHolidayResolution()">
+<span class="material-symbols-outlined text-[18px]">event_busy</span>
+<span>Confirmar Feriado y Reubicar Pacientes</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+    function toggleModal(show) {
+      const modal = document.getElementById('conflict-modal');
+      if (!modal) return;
+      if (show) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function executeHolidayResolution() {
+      const modal = document.getElementById('conflict-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      alert('Operación procesada con éxito: Se ha declarado el día como Asueto Oficial. 48 pacientes han sido reubicados automáticamente y se han encolado 48 notificaciones SMS.');
+    }
+  </script>
+</div></main></div></body></html>

@@ -15,5 +15,7 @@ public interface MedicoRepository extends JpaRepository<Medico, UUID> {
 
     List<Medico> findByActivoTrue();
 
+    List<Medico> findByActivo(boolean activo);
+
     boolean existsByNumeroColegiadoAndIdNot(String numeroColegiado, UUID id);
 }

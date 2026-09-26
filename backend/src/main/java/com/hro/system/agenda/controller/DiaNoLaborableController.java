@@ -1,5 +1,6 @@
 package com.hro.system.agenda.controller;
 
+import com.hro.system.agenda.dto.ActualizarDiaNoLaborableRequestDTO;
 import com.hro.system.agenda.dto.CrearDiaNoLaborableRequestDTO;
 import com.hro.system.agenda.dto.DiaNoLaborableResponseDTO;
 import com.hro.system.agenda.service.DiaNoLaborableService;
@@ -27,11 +28,20 @@ public class DiaNoLaborableController {
 
     @PostMapping
     @Operation(summary = "Registrar día no laborable", 
-               description = "Bloquea una fecha en el calendario institucional. Valida previamente que no existan citas agendadas en dicha fecha.")
+               description = "Bloquea una fecha en el calendario institucional. Si existen citas activas, responde 409 con las citas afectadas; reintente con forzar=true para confirmar.")
     public ResponseEntity<ApiResponse<DiaNoLaborableResponseDTO>> registrar(@Valid @RequestBody CrearDiaNoLaborableRequestDTO dto) {
         DiaNoLaborableResponseDTO response = diaNoLaborableService.registrarDiaNoLaborable(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Día no laborable registrado exitosamente"));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Editar día no laborable", description = "Actualiza el motivo de un día no laborable (la fecha no se modifica).")
+    public ResponseEntity<ApiResponse<DiaNoLaborableResponseDTO>> actualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarDiaNoLaborableRequestDTO dto) {
+        DiaNoLaborableResponseDTO response = diaNoLaborableService.actualizarDiaNoLaborable(id, dto);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Día no laborable actualizado exitosamente"));
     }
 
     @GetMapping
@@ -39,6 +49,12 @@ public class DiaNoLaborableController {
     public ResponseEntity<ApiResponse<List<DiaNoLaborableResponseDTO>>> listarTodos() {
         List<DiaNoLaborableResponseDTO> lista = diaNoLaborableService.listarTodos();
         return ResponseEntity.ok(ApiResponse.ok(lista, "Días no laborables obtenidos"));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Buscar día no laborable por ID")
+    public ResponseEntity<ApiResponse<DiaNoLaborableResponseDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(diaNoLaborableService.buscarPorId(id), "Día no laborable localizado"));
     }
 
     @GetMapping("/futuros")
@@ -59,8 +75,8 @@ public class DiaNoLaborableController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar día no laborable", description = "Habilita nuevamente la fecha para programación médica.")
-    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Long id) {
-        diaNoLaborableService.eliminarDiaNoLaborable(id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Día no laborable eliminado exitosamente"));
+    public ResponseEntity<ApiResponse<DiaNoLaborableResponseDTO>> eliminar(@PathVariable Long id) {
+        DiaNoLaborableResponseDTO response = diaNoLaborableService.eliminarDiaNoLaborable(id);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Día no laborable eliminado exitosamente"));
     }
 }

@@ -35,6 +35,10 @@ public class PermisoSubespecialidad {
     @Column(name = "tipo_permiso", nullable = false, length = 40)
     private String tipoPermiso;
 
+    @Column(name = "activo", nullable = false)
+    @Builder.Default
+    private Boolean activo = true;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     @Builder.Default
     private OffsetDateTime creadoEn = OffsetDateTime.now();

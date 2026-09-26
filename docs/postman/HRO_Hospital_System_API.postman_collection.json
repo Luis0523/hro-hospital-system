@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "hro-api-collection-v1",
-    "name": "HRO Hospital System - API Collection (v1.0)",
-    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Autenticación simulada (perfil y modo mock)\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada escalonada, reprogramación genealógica, cancelación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos, horarios por día de clínica y disponibilidad de cupos diarios\n\nAUTENTICACIÓN (modo mock): todas las peticiones envían automáticamente las cabeceras X-Usuario-Id, X-Usuario-Rol y X-Usuario-Nombre (ver script de pre-request de la colección). Puedes cambiar de estación modificando las variables usuarioExterno y usuarioRol.\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
+    "_postman_id": "hro-api-collection-v2",
+    "name": "HRO Hospital System - API Collection (v2.2.0)",
+    "description": "Colección completa de APIs REST para el Sistema Hospitalario HRO (Hospital Regional de Occidente).\n\nIncluye endpoints para:\n- Autenticación simulada (perfil y modo mock)\n- Estación de Enfermería (Check-in, Colas de Espera, Llamados, Reintegraciones y Cierre)\n- Citas Médicas (Agendamiento con hora estimada escalonada, reprogramación genealógica, cancelación, disponibilidad para reprogramación)\n- Pacientes (Admisión y búsqueda por DPI)\n- Catálogos, horarios por día de clínica y disponibilidad de cupos diarios\n- Panel de Administración (usuarios, roles y permisos; dashboard; reportes; auditoría)\n\nAUTENTICACIÓN (modo mock): todas las peticiones envían automáticamente las cabeceras X-Usuario-Id, X-Usuario-Rol y X-Usuario-Nombre (ver script de pre-request de la colección). Puedes cambiar de estación modificando las variables usuarioExterno y usuarioRol.\n\nNOTA: el endpoint de auditoría (`GET /auditoria`) exige rol administrador; con otro rol responde 403 (ACCESO_DENEGADO).\n\nBase URL por defecto: `http://localhost:8081/api/v1`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -78,6 +78,26 @@
       "value": "1",
       "type": "string",
       "description": "ID de programación médico-subespecialidad"
+    },
+    {
+      "key": "expedienteId",
+      "value": "3f1c0000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "numeroExpediente",
+      "value": "EXP-001234",
+      "type": "string"
+    },
+    {
+      "key": "expedienteCicloId",
+      "value": "a1b20000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "ubicacionArchivoId",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -323,7 +343,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-09-14&fechaFin=2026-09-28&soloDisponibles=true",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -342,10 +362,15 @@
                 {
                   "key": "fechaFin",
                   "value": "2026-09-28"
+                },
+                {
+                  "key": "soloDisponibles",
+                  "value": "true",
+                  "description": "Opcional. Si es true, omite los cupos sin disponibilidad."
                 }
               ]
             },
-            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas."
+            "description": "Devuelve los cupos por médico y subespecialidad en el rango, con cupos libres/ocupados. Solo incluye fechas realmente habilitadas. Filtros: subespecialidadId, medicoId, medicoSubespecialidadId, fechaInicio, fechaFin, soloDisponibles."
           }
         },
         {
@@ -509,6 +534,41 @@
               ]
             },
             "description": "Ejecuta la función atómica `fn_cierre_diario_inasistencias` en PostgreSQL. Pasa citas pendientes a 'no_asistio' sin liberar cupo."
+          }
+        },
+        {
+          "name": "8. Disponibilidad para reprogramar una cita",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/:id/disponibilidad?fechaInicio=2026-09-14&fechaFin=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                ":id",
+                "disponibilidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-14"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-28"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{citaId}}"
+                }
+              ]
+            },
+            "description": "Cupos de la misma programación (médico + subespecialidad) de la cita, para reprogramar conservando médico y subespecialidad. Luego confirmar con POST /citas/:id/reprogramar."
           }
         }
       ]
@@ -805,12 +865,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/dias-no-laborables?anio=2026",
+              "raw": "{{baseUrl}}/dias-no-laborables",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "dias-no-laborables?anio=2026"
+                "dias-no-laborables"
               ]
             }
           }
@@ -836,8 +896,356 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fecha\": \"2026-11-02\",\n  \"motivo\": \"Asueto institucional\"\n}"
+              "raw": "{\n  \"fecha\": \"2026-11-02\",\n  \"motivo\": \"Asueto institucional\",\n  \"forzar\": false\n}"
             }
+          }
+        },
+        {
+          "name": "12. Editar día no laborable",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Asueto institucional (actualizado)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "13. Eliminar día no laborable",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dias-no-laborables/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dias-no-laborables",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "14. Listar especialidades por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/especialidades?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "especialidades"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            },
+            "description": "Filtra el catálogo por estado. Reactivación con PATCH /especialidades/:id/reactivar."
+          }
+        },
+        {
+          "name": "15. Reactivar especialidad",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/especialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "especialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Vuelve a activar una especialidad desactivada (baja lógica). Idempotente."
+          }
+        },
+        {
+          "name": "16. Listar subespecialidades por especialidad y estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades/especialidad/:especialidadId?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidades",
+                "especialidad",
+                ":especialidadId"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "especialidadId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "17. Reactivar subespecialidad",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla con 400 si la especialidad padre está inactiva."
+          }
+        },
+        {
+          "name": "18. Listar espacios físicos por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/espacios-fisicos?estado=inactivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios-fisicos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "inactivos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "19. Reactivar espacio físico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/espacios-fisicos/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios-fisicos",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "20. Listar médicos por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicos?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "21. Reactivar médico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicos/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicos",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "22. Listar programaciones con filtros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades?medicoId=&subespecialidadId=&diaSemana=&estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades"
+              ],
+              "query": [
+                {
+                  "key": "medicoId",
+                  "value": ""
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": ""
+                },
+                {
+                  "key": "diaSemana",
+                  "value": "",
+                  "description": "1 = Lunes ... 7 = Domingo"
+                },
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "23. Actualizar programación médica",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"12:00:00\",\n  \"capacidadMaxima\": 8,\n  \"duracionConsultaMinutos\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Actualiza horario, capacidad y duración. No cambia médico, subespecialidad ni día. Valida solapamiento."
+          }
+        },
+        {
+          "name": "24. Reactivar programación médica",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medico-subespecialidades/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medico-subespecialidades",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla si el médico o la subespecialidad están inactivos, o si hay solapamiento."
           }
         }
       ]
@@ -998,6 +1406,1171 @@
               ]
             },
             "description": "Única vía para cambiar una fecha ya cerrada. Queda auditada."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Estación de Archivo (Expedientes Físicos)",
+      "item": [
+        {
+          "name": "1. Listar ubicaciones de archivo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ubicaciones-archivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ubicaciones-archivo"
+              ]
+            },
+            "description": "Catálogo de ubicaciones físicas (pasillo/estante/balda) del archivo."
+          }
+        },
+        {
+          "name": "2. Crear ubicación de archivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pasillo\": \"B\",\n  \"estante\": \"14\",\n  \"balda\": \"3\",\n  \"descripcion\": \"Pasillo B, estante 14, balda 3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ubicaciones-archivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ubicaciones-archivo"
+              ]
+            },
+            "description": "Registra una ubicación física en el catálogo. Única por (pasillo, estante, balda)."
+          }
+        },
+        {
+          "name": "3. Buscar expedientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/buscar?filtro=&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "filtro",
+                  "value": ""
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Búsqueda paginada de expedientes por número, DPI o nombre de paciente. La respuesta paginada viene en `data.content`."
+          }
+        },
+        {
+          "name": "4. Obtener expediente por UUID (QR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/{{expedienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "{{expedienteId}}"
+              ]
+            },
+            "description": "Detalle del expediente por su UUID. Es el flujo al escanear el código QR de la carpeta física."
+          }
+        },
+        {
+          "name": "5. Obtener expediente por número (código de barras)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/numero/{{numeroExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "numero",
+                "{{numeroExpediente}}"
+              ]
+            },
+            "description": "Detalle del expediente por su número impreso. Flujo al escanear el código de barras."
+          }
+        },
+        {
+          "name": "6. Expediente de un paciente",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/paciente/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "paciente",
+                "{{pacienteId}}"
+              ]
+            },
+            "description": "Devuelve el expediente físico asociado a un paciente (relación 1:1)."
+          }
+        },
+        {
+          "name": "7. Crear expediente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": \"{{pacienteId}}\",\n  \"numeroExpediente\": \"{{numeroExpediente}}\",\n  \"ubicacionBaseId\": {{ubicacionArchivoId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expedientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes"
+              ]
+            },
+            "description": "Crea el expediente físico de un paciente. `numeroExpediente` y `ubicacionBaseId` son opcionales; el número se hereda de `paciente.numero_expediente` si se omite."
+          }
+        },
+        {
+          "name": "8. Iniciar ciclo de un expediente para una cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expedienteId\": \"{{expedienteId}}\",\n  \"citaId\": {{citaId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos"
+              ]
+            },
+            "description": "Crea el ciclo (viaje) del expediente para una cita específica, en estado `pendiente_localizar`. Responde 409 si la cita ya tiene un ciclo."
+          }
+        },
+        {
+          "name": "9. Obtener ciclo por ID (con timeline)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}"
+              ]
+            },
+            "description": "Detalle del ciclo con su lista de `movimientos` (checkpoints) ordenados cronológicamente."
+          }
+        },
+        {
+          "name": "10. Ciclo de una cita",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/cita/{{citaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "cita",
+                "{{citaId}}"
+              ]
+            },
+            "description": "Devuelve el ciclo asociado a una cita. Base para saber en qué punto del recorrido está el expediente."
+          }
+        },
+        {
+          "name": "11. Ciclos de un expediente",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/expediente/{{expedienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "expediente",
+                "{{expedienteId}}"
+              ]
+            },
+            "description": "Historial completo de viajes (ciclos) de un mismo expediente físico."
+          }
+        },
+        {
+          "name": "12. Cola de trabajo por estado",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos?estado=en_busqueda&fecha=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "en_busqueda"
+                },
+                {
+                  "key": "fecha",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Lista los ciclos filtrados por `estado` (y opcionalmente por fecha) para la cola operativa de la estación de Archivo."
+          }
+        },
+        {
+          "name": "13. Iniciar búsqueda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Se inicia búsqueda en estantería B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/iniciar-busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "iniciar-busqueda"
+              ]
+            },
+            "description": "Transición `pendiente_localizar` -> `en_busqueda`."
+          }
+        },
+        {
+          "name": "14. Localizar expediente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Encontrado en pasillo B, estante 14\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/localizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "localizar"
+              ]
+            },
+            "description": "Transición `en_busqueda` -> `localizado`."
+          }
+        },
+        {
+          "name": "15. Despachar a clínica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ubicacionDestinoId\": {{ubicacionArchivoId}},\n  \"observacion\": \"Despachado a consulta externa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/despachar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "despachar"
+              ]
+            },
+            "description": "Transición `localizado` -> `en_transito_entrega`. Registra la ubicación destino."
+          }
+        },
+        {
+          "name": "16. Entregar en clínica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Recibido por enfermería de la clínica\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/entregar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "entregar"
+              ]
+            },
+            "description": "Transición `en_transito_entrega` -> `entregado`. El expediente queda en uso."
+          }
+        },
+        {
+          "name": "17. Retornar a archivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Consulta finalizada, inicia devolución\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/retornar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "retornar"
+              ]
+            },
+            "description": "Transición `entregado` -> `en_transito_retorno`."
+          }
+        },
+        {
+          "name": "18. Archivar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ubicacionDestinoId\": {{ubicacionArchivoId}},\n  \"observacion\": \"Guardado en su casillero permanente\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/archivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "archivar"
+              ]
+            },
+            "description": "Transición `en_transito_retorno` -> `archivado`. Cierra el ciclo."
+          }
+        },
+        {
+          "name": "19. Marcar como no localizado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"No se encontró en la ubicación base; se buscará en préstamos\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/no-localizado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "no-localizado"
+              ]
+            },
+            "description": "Marca el ciclo como `no_localizado` desde cualquier estado activo. No es terminal: permite reintentar."
+          }
+        },
+        {
+          "name": "20. Reintentar búsqueda",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Apareció en el archivo; se retoma la búsqueda\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expediente-ciclos/{{expedienteCicloId}}/reintentar-busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expediente-ciclos",
+                "{{expedienteCicloId}}",
+                "reintentar-busqueda"
+              ]
+            },
+            "description": "Transición `no_localizado` -> `en_busqueda`. Queda registrada como un nuevo movimiento."
+          }
+        },
+        {
+          "name": "21. Consulta diaria de expedientes (jornada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/jornada?fecha=2026-11-09&subespecialidadId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "jornada"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09",
+                  "description": "Opcional (por defecto, hoy)"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": "",
+                  "description": "Opcional (unidad)"
+                }
+              ]
+            },
+            "description": "Citas de la fecha con paciente, número de expediente, ciclo/estado actual y ubicación base."
+          }
+        },
+        {
+          "name": "22. Buscar expediente por código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/expedientes/buscar?codigo={{numeroExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "expedientes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "{{numeroExpediente}}",
+                  "description": "UUID (QR) o número (código de barras)"
+                }
+              ]
+            },
+            "description": "Resuelve UUID o número exacto. Código inexistente -> 404."
+          }
+        },
+        {
+          "name": "23. Crear acta de recepción",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"2026-11-09\",\n  \"subespecialidadId\": 1,\n  \"observaciones\": \"Entrega de expedientes del día\",\n  \"expedienteIds\": [\"{{expedienteId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion"
+              ]
+            },
+            "description": "Crea el acta (número ACT-YYYY-NNNN) con N expedientes; quién entrega por defecto es el usuario autenticado."
+          }
+        },
+        {
+          "name": "24. Listar actas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion?fecha=2026-11-09&subespecialidadId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "25. Obtener acta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "26. PDF de acta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actas-recepcion/:id/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actas-recepcion",
+                ":id",
+                "pdf"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Descarga el PDF del acta (application/pdf)."
+          }
+        },
+        {
+          "name": "27. Resumen operativo diario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivo/resumen?fecha=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivo",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09",
+                  "description": "Opcional (por defecto, hoy)"
+                }
+              ]
+            },
+            "description": "Indicadores diarios por estado del ciclo y expedientes nuevos."
+          }
+        },
+        {
+          "name": "28. PDF del resumen diario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivo/resumen/pdf?fecha=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivo",
+                "resumen",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-09"
+                }
+              ]
+            },
+            "description": "Descarga el PDF del resumen diario (application/pdf)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Panel de Administración (Usuarios, Roles y Permisos)",
+      "description": "Gestión administrativa de usuarios internos (alta externa/JIT), roles y permisos por subespecialidad. No se administran contraseñas ni credenciales.",
+      "item": [
+        {
+          "name": "1. Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios?estado=activos&rol=administrador",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "activos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                },
+                {
+                  "key": "rol",
+                  "value": "administrador",
+                  "description": "Filtro opcional por rol"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Buscar usuario por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Activar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/activar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "activar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Reactiva un usuario desactivado (idempotente, con auditoría)."
+          }
+        },
+        {
+          "name": "4. Desactivar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/desactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "desactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Baja lógica del usuario (idempotente, con auditoría)."
+          }
+        },
+        {
+          "name": "5. Asignar rol",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rolPrincipal\": \"medico\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "rol"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Valores válidos: personal_citas, enfermeria, medico, administrador, archivo, jefe_enfermeria."
+          }
+        },
+        {
+          "name": "6. Listar roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Listar permisos de un usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/:id/permisos?estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                ":id",
+                "permisos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Listar permisos por subespecialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad?subespecialidadId=1&estado=todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad"
+              ],
+              "query": [
+                {
+                  "key": "subespecialidadId",
+                  "value": "1"
+                },
+                {
+                  "key": "estado",
+                  "value": "todos",
+                  "description": "activos (por defecto) | inactivos | todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "9. Asignar permiso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": 1,\n  \"subespecialidadId\": 1,\n  \"tipoPermiso\": \"autorizar_cupo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad"
+              ]
+            },
+            "description": "Tipos válidos: avanzar_turno, generar_orden_laboratorio, autorizar_cupo. Si existía un permiso inactivo igual, lo reactiva."
+          }
+        },
+        {
+          "name": "10. Desactivar permiso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad/:id/desactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad",
+                ":id",
+                "desactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. Reactivar permiso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/permisos-subespecialidad/:id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permisos-subespecialidad",
+                ":id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Falla con 400 si el usuario o la subespecialidad están inactivos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Dashboard (Admin)",
+      "description": "Indicadores agregados del panel administrativo calculados en backend.",
+      "item": [
+        {
+          "name": "1. Resumen administrativo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/resumen?fecha=2026-09-15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-15",
+                  "description": "Opcional (ISO YYYY-MM-DD). Por defecto, hoy."
+                }
+              ]
+            },
+            "description": "Citas del día por estado, cupos disponibles/ocupados, inasistencias, tasa de inasistencia y alertas administrativas (CITAS_EN_DIA_NO_LABORABLE, CUPOS_AGOTADOS, DIAS_NO_LABORABLES_PROXIMOS)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Reportes (Admin)",
+      "description": "Reportes operativos agregados calculados en backend. Todos aceptan fechaInicio/fechaFin (por defecto, últimos 30 días).",
+      "item": [
+        {
+          "name": "1. Citas por estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas-por-estado?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "citas-por-estado"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Conteo de citas por estado en el rango (total + porEstado)."
+          }
+        },
+        {
+          "name": "2. Demanda por especialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/demanda-por-especialidad?fechaInicio=2026-09-01&fechaFin=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "demanda-por-especialidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                }
+              ]
+            },
+            "description": "Total de citas, atendidas e inasistencias por especialidad."
+          }
+        },
+        {
+          "name": "3. Utilización de cupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/utilizacion-cupos?fechaInicio=2026-09-01&fechaFin=2026-09-30&subespecialidadId={{subespecialidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "utilizacion-cupos"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30"
+                },
+                {
+                  "key": "subespecialidadId",
+                  "value": "{{subespecialidadId}}",
+                  "description": "Opcional"
+                }
+              ]
+            },
+            "description": "Capacidad, cupos ocupados/disponibles y porcentaje de utilización. Filtro opcional por subespecialidad."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Auditoría (Admin)",
+      "description": "Consulta de la bitácora. Solo rol administrador (otros roles -> 403 ACCESO_DENEGADO). Paginada y con filtros combinables.",
+      "item": [
+        {
+          "name": "1. Consultar bitácora",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?tabla=&usuarioId=&accion=&fechaInicio=2026-09-01&fechaFin=2026-09-30&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "tabla",
+                  "value": "",
+                  "description": "Opcional (ej. cita, medico)"
+                },
+                {
+                  "key": "usuarioId",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "accion",
+                  "value": "",
+                  "description": "Opcional (crear, actualizar, eliminar, activar, desactivar, reactivar)"
+                },
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-09-01",
+                  "description": "Opcional (ISO YYYY-MM-DD)"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-09-30",
+                  "description": "Opcional (ISO YYYY-MM-DD)"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Devuelve AuditoriaResponseDTO paginado (sin exponer la entidad JPA). Filtros combinables por tabla, usuario, acción y rango de fechas."
           }
         }
       ]

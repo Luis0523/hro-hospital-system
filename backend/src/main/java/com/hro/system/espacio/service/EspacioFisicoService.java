@@ -79,12 +79,31 @@ public class EspacioFisicoService {
     }
 
     @Transactional
-    public void cambiarEstado(UUID id, boolean activo) {
+    public EspacioFisicoResponseDTO cambiarEstado(UUID id, boolean activo) {
         EspacioFisico espacio = espacioFisicoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", id));
+
+        if (Boolean.valueOf(activo).equals(espacio.getActivo())) {
+            return mapToDTO(espacio);
+        }
+
         espacio.setActivo(activo);
-        espacioFisicoRepository.save(espacio);
-        log.info("Espacio físico {} {}", espacio.getNumero(), activo ? "activado" : "fuera de servicio");
+        EspacioFisico guardado = espacioFisicoRepository.save(espacio);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("espacio_fisico")
+                .entidadId(guardado.getId())
+                .accion(activo ? "reactivar" : "desactivar")
+                .valoresNuevos(guardado)
+                .build());
+
+        log.info("Espacio físico {} {}", guardado.getNumero(), activo ? "reactivado" : "fuera de servicio");
+        return mapToDTO(guardado);
+    }
+
+    @Transactional
+    public EspacioFisicoResponseDTO reactivar(UUID id) {
+        return cambiarEstado(id, true);
     }
 
     @Transactional(readOnly = true)
@@ -93,8 +112,19 @@ public class EspacioFisicoService {
     }
 
     @Transactional(readOnly = true)
-    public List<EspacioFisicoResponseDTO> listarPorNivel(Short nivel) {
-        return espacioFisicoRepository.findByNivelAndActivoTrue(nivel).stream().map(this::mapToDTO).toList();
+    public List<EspacioFisicoResponseDTO> listarPorEstado(Boolean activo) {
+        if (activo == null) {
+            return espacioFisicoRepository.findAll().stream().map(this::mapToDTO).toList();
+        }
+        return espacioFisicoRepository.findByActivo(activo).stream().map(this::mapToDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EspacioFisicoResponseDTO> listarPorNivel(Short nivel, Boolean activo) {
+        List<EspacioFisico> resultado = (activo == null)
+                ? espacioFisicoRepository.findByNivel(nivel)
+                : espacioFisicoRepository.findByNivelAndActivo(nivel, activo);
+        return resultado.stream().map(this::mapToDTO).toList();
     }
 
     @Transactional(readOnly = true)

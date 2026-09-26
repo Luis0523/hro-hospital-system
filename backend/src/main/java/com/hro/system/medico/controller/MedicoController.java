@@ -1,6 +1,7 @@
 package com.hro.system.medico.controller;
 
 import com.hro.system.common.ApiResponse;
+import com.hro.system.common.EstadoFiltro;
 import com.hro.system.medico.dto.ActualizarMedicoRequestDTO;
 import com.hro.system.medico.dto.CrearMedicoRequestDTO;
 import com.hro.system.medico.dto.MedicoResponseDTO;
@@ -42,9 +43,10 @@ public class MedicoController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar médicos activos", description = "Retorna el listado de médicos especialistas activos.")
-    public ResponseEntity<ApiResponse<List<MedicoResponseDTO>>> listarActivos() {
-        List<MedicoResponseDTO> lista = medicoService.listarActivos();
+    @Operation(summary = "Listar médicos", description = "Filtra por estado: activos (por defecto), inactivos o todos.")
+    public ResponseEntity<ApiResponse<List<MedicoResponseDTO>>> listar(
+            @RequestParam(required = false) String estado) {
+        List<MedicoResponseDTO> lista = medicoService.listarPorEstado(EstadoFiltro.from(estado).aActivo());
         return ResponseEntity.ok(ApiResponse.ok(lista, "Médicos obtenidos"));
     }
 
@@ -62,10 +64,17 @@ public class MedicoController {
         return ResponseEntity.ok(ApiResponse.ok(response, "Médico localizado"));
     }
 
+    @PatchMapping("/{id}/reactivar")
+    @Operation(summary = "Reactivar médico", description = "Vuelve a activar un médico previamente desactivado (baja lógica).")
+    public ResponseEntity<ApiResponse<MedicoResponseDTO>> reactivar(@PathVariable UUID id) {
+        MedicoResponseDTO response = medicoService.reactivar(id);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Médico reactivado exitosamente"));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Desactivar médico (Soft delete)", description = "Cambia el estado del médico a inactivo.")
-    public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
-        medicoService.cambiarEstado(id, false);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Médico desactivado exitosamente"));
+    public ResponseEntity<ApiResponse<MedicoResponseDTO>> desactivar(@PathVariable UUID id) {
+        MedicoResponseDTO response = medicoService.cambiarEstado(id, false);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Médico desactivado exitosamente"));
     }
 }

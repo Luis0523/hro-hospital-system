@@ -75,16 +75,43 @@ public class SubespecialidadService {
     }
 
     @Transactional
-    public void cambiarEstado(Long id, boolean activo) {
+    public SubespecialidadResponseDTO cambiarEstado(Long id, boolean activo) {
         Subespecialidad sub = subespecialidadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subespecialidad", "id", id));
+
+        if (activo && !Boolean.TRUE.equals(sub.getEspecialidad().getActivo())) {
+            throw new BusinessException("No se puede reactivar la subespecialidad porque su especialidad padre está inactiva");
+        }
+
+        if (Boolean.valueOf(activo).equals(sub.getActivo())) {
+            return mapToDTO(sub);
+        }
+
         sub.setActivo(activo);
-        subespecialidadRepository.save(sub);
+        Subespecialidad guardada = subespecialidadRepository.save(sub);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("subespecialidad")
+                .entidadId(guardada.getId())
+                .accion(activo ? "reactivar" : "desactivar")
+                .valoresNuevos(guardada)
+                .build());
+
+        log.info("Subespecialidad {} {}", guardada.getNombre(), activo ? "reactivada" : "desactivada");
+        return mapToDTO(guardada);
+    }
+
+    @Transactional
+    public SubespecialidadResponseDTO reactivar(Long id) {
+        return cambiarEstado(id, true);
     }
 
     @Transactional(readOnly = true)
-    public List<SubespecialidadResponseDTO> listarPorEspecialidad(Long especialidadId) {
-        return subespecialidadRepository.findByEspecialidadIdAndActivoTrue(especialidadId).stream()
+    public List<SubespecialidadResponseDTO> listarPorEspecialidad(Long especialidadId, Boolean activo) {
+        List<Subespecialidad> resultado = (activo == null)
+                ? subespecialidadRepository.findByEspecialidadId(especialidadId)
+                : subespecialidadRepository.findByEspecialidadIdAndActivo(especialidadId, activo);
+        return resultado.stream()
                 .map(this::mapToDTO)
                 .toList();
     }
@@ -92,6 +119,18 @@ public class SubespecialidadService {
     @Transactional(readOnly = true)
     public List<SubespecialidadResponseDTO> listarTodasActivas() {
         return subespecialidadRepository.findByActivoTrue().stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SubespecialidadResponseDTO> listarPorEstado(Boolean activo) {
+        if (activo == null) {
+            return subespecialidadRepository.findAll().stream()
+                    .map(this::mapToDTO)
+                    .toList();
+        }
+        return subespecialidadRepository.findByActivo(activo).stream()
                 .map(this::mapToDTO)
                 .toList();
     }

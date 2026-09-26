@@ -97,6 +97,12 @@ public class TurnoInasistenciaTest {
     @Autowired
     private UsuarioReferenciaRepository usuarioReferenciaRepository;
 
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteCicloRepository expedienteCicloRepository;
+
+    @Autowired
+    private com.hro.system.archivo.repository.ExpedienteMovimientoRepository expedienteMovimientoRepository;
+
     private Paciente paciente;
     private UsuarioReferencia enfermera;
     private Subespecialidad subespecialidad;
@@ -109,6 +115,8 @@ public class TurnoInasistenciaTest {
         turnoRepository.deleteAllInBatch();
         contadorRepository.deleteAllInBatch();
         historialRepository.deleteAllInBatch();
+        expedienteMovimientoRepository.deleteAllInBatch();
+        expedienteCicloRepository.deleteAllInBatch();
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
         asignacionRepository.deleteAllInBatch();

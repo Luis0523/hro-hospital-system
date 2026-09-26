@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-highest":"#dae2fd","outline":"#707881","primary-fixed":"#cde5ff","surface":"#faf8ff","background":"#faf8ff","surface-dim":"#d2d9f4","on-tertiary-container":"#d2e3ef","on-secondary-fixed":"#001e2f","tertiary":"#3d4e58","surface-container-lowest":"#ffffff","surface-container-low":"#f2f3ff","surface-variant":"#dae2fd","on-tertiary-fixed":"#0c1e26","inverse-primary":"#94ccff","primary":"#00507d","on-surface":"#131b2e","secondary-fixed":"#c9e6ff","on-primary-fixed":"#001d32","on-primary-container":"#cbe4ff","on-background":"#131b2e","on-surface-variant":"#40474f","error":"#ba1a1a","error-container":"#ffdad6","on-secondary":"#ffffff","tertiary-fixed-dim":"#b7c9d5","primary-container":"#0369a1","on-primary-fixed-variant":"#004b74","on-secondary-container":"#004666","on-tertiary-fixed-variant":"#384953","secondary-container":"#39b8fd","inverse-on-surface":"#eef0ff","secondary-fixed-dim":"#89ceff","on-primary":"#ffffff","tertiary-fixed":"#d3e5f1","primary-fixed-dim":"#94ccff","on-error":"#ffffff","tertiary-container":"#556670","surface-bright":"#faf8ff","surface-tint":"#006399","inverse-surface":"#283044","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#004c6e","surface-container":"#eaedff","secondary":"#006591","on-error-container":"#93000a","outline-variant":"#c0c7d1","surface-container-high":"#e2e7ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-screen":"1rem","space-lg":"1.25rem","space-sm":"0.5rem","gutter-spacious":"1rem","gutter-default":"0.75rem","space-xl":"1.5rem","space-xs":"0.25rem","gutter-compact":"0.5rem","space-base":"1rem","space-md":"0.75rem","space-2xs":"0.125rem","space-2xl":"2rem"},"fontFamily":{"title-sm":["Inter"],"headline-lg":["Inter"],"label-sm":["Inter"],"headline-md":["Inter"],"body-md":["Inter"],"metric-sub":["Inter"],"headline-sm":["Inter"],"body-sm":["Inter"],"body-lg":["Inter"],"title-md":["Inter"],"label-md":["Inter"],"metric-display":["Inter"]},"fontSize":{"title-sm":["13px",{"lineHeight":"18px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"metric-sub":["20px",{"lineHeight":"24px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["15px",{"lineHeight":"22px","fontWeight":"400"}],"title-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.005em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"metric-display":["32px",{"lineHeight":"36px","letterSpacing":"-0.03em","fontWeight":"700"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-surface-container-low flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-base flex items-center gap-space-md border-b border-outline-variant/40 bg-surface-container-lowest"><img alt="Brand logo. - Primary color: #0369a1 - Font: inter - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1V8dQA1s0xKMdv3O_9jknB6sbzFupAlZi5lzeK8UG_8BdPdqDGo8BAzS9vgjtQhqFzjXcqh_SoJDbIriZrzQoPD20sZYn8D-pwoDq0L420Zk1-0xDwNlECuUQ9AfjzhZMaRqql1zAAi48sAuXSNo9DLNajSTNggnj5TINcoTt-F2s1tf9AUU-257scNbeA1VdZn9cLeRP_eoGDNKK_WjNt23OX9UFc7GGUXa7947ekuKLT1Pe8IbDZ0GdeQ"/><div class="flex flex-col"><span class="font-title-md text-title-md text-primary tracking-tight leading-none">SIGEH Admin</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Gestión Hospitalaria</span></div></div><div class="px-space-base py-space-sm"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Administración Central</span></div><nav class="flex-1 px-space-sm space-y-space-2xs overflow-y-auto" data-active-classes="bg-primary text-on-primary font-title-sm shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span>Dashboard</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg transition-colors bg-primary text-on-primary font-title-sm shadow-sm" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span>Usuarios</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="clinicas-y-especialidades" href="#"><span class="material-symbols-outlined text-[20px]">local_hospital</span><span>Clínicas y Especialidades</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cupos-y-capacidad" href="#"><span class="material-symbols-outlined text-[20px]">event_seat</span><span>Cupos y Capacidad</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="calendario-institucional" href="#"><span class="material-symbols-outlined text-[20px]">calendar_month</span><span>Calendario Institucional</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span>Reportes</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="auditoria" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span>Auditoría</span></a></nav><div class="p-space-base border-t border-outline-variant/40 bg-surface-container-lowest"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Red Hospital Central</span></div><span class="font-label-sm text-label-sm text-outline">v4.2.0</span></div></div></aside><div class="pl-64 min-h-screen flex flex-col"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/40 z-40 px-space-xl flex items-center justify-between"><div class="flex items-center gap-space-md"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">SISTEMA INTEGRADO DE GESTIÓN HOSPITALARIA</span></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-md"><div class="text-right hidden sm:block"><div class="font-title-sm text-title-sm text-on-surface leading-tight">Dr. Alejandro Morales</div><div class="font-label-sm text-label-sm text-primary font-medium leading-none">Administrador General</div></div><div class="relative"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary-container border-2 border-surface-container-lowest"></span></div></div></div></header><main class="w-full pt-16 px-space-xl py-space-xl flex-1 bg-background"><div class="flex flex-col w-full">
+<div class="flex flex-col gap-space-lg w-full">
+<!-- Breadcrumb and Context Summary Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs text-outline font-label-sm">
+<span>CONFIGURACIÓN DE SISTEMA</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-semibold">SEGURIDAD Y CONTROL DE ACCESOS</span>
+</div>
+<div class="flex items-baseline gap-space-md">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Gestión de Usuarios</h1>
+<span class="font-label-sm text-label-sm px-space-sm py-0.5 rounded-full bg-surface-container-highest text-primary font-semibold">
+            184 cuentas activas
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Supervisión de identidades institucionales, credenciales clínicas y delegación de privilegios departamentales.
+        </p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="inline-flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-primary font-title-sm text-title-sm hover:bg-surface-container shadow-sm transition-all duration-150" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Exportar Matriz</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-title-sm text-title-sm shadow-sm hover:bg-primary transition-all duration-150" type="button">
+<span class="material-symbols-outlined text-[18px]">person_add</span>
+<span>+ Nuevo Usuario</span>
+</button>
+</div>
+</div>
+<!-- Quick Metric Ribbons -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Cuentas Clínicas</span>
+<span class="font-metric-display text-metric-display text-on-surface">142</span>
+<span class="font-body-sm text-body-sm text-primary font-medium">Médicos y Residentes</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">stethoscope</span>
+</div>
+</div>
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Enfermería & Jefaturas</span>
+<span class="font-metric-display text-metric-display text-on-surface">36</span>
+<span class="font-body-sm text-body-sm text-secondary font-medium">Triajes y Hospitalización</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">medical_services</span>
+</div>
+</div>
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Admisiones & Archivo</span>
+<span class="font-metric-display text-metric-display text-on-surface">28</span>
+<span class="font-body-sm text-body-sm text-tertiary font-medium">Ventanillas y Récords</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[22px]">badge</span>
+</div>
+</div>
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Sesiones en Turno</span>
+<span class="font-metric-display text-metric-display text-on-surface">89</span>
+<span class="font-body-sm text-body-sm text-secondary-container font-semibold">Conectados ahora</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[22px]">wifi_tethering</span>
+</div>
+</div>
+</div>
+<!-- Main Workspace with Split Table and Permission Drawer Context -->
+<div class="flex flex-col xl:flex-row gap-space-lg items-start w-full">
+<!-- Left / Center: Interactive User Table Area -->
+<div class="flex-1 w-full bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Filter Toolbar -->
+<div class="p-space-md bg-surface-container-low flex flex-col md:flex-row gap-space-sm justify-between items-center">
+<div class="relative w-full md:w-80">
+<span class="material-symbols-outlined absolute left-2.5 top-2.5 text-[18px] text-outline">search</span>
+<input class="w-full h-9 pl-9 pr-3 rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="Buscar por nombre, correo o DPI..." type="text" value="Carlos Mendoza"/>
+</div>
+<div class="flex items-center gap-space-sm w-full md:w-auto flex-wrap">
+<!-- Filter: Role -->
+<div class="relative flex items-center">
+<label class="sr-only" for="filter-rol">Filtrar por Rol</label>
+<select class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-title-sm text-title-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="filter-rol">
+<option value="">Rol: Todos</option>
+<option value="admin">Administrador Central</option>
+<option selected="" value="medico">Médico Especialista</option>
+<option value="enfermeria">Enfermería Jefatura</option>
+<option value="archivo">Auxiliar de Archivo</option>
+<option value="admision">Admisión y Citas</option>
+</select>
+</div>
+<!-- Filter: Status -->
+<div class="relative flex items-center">
+<label class="sr-only" for="filter-estado">Filtrar por Estado</label>
+<select class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-title-sm text-title-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="filter-estado">
+<option value="">Estado: Todos</option>
+<option selected="" value="activo">Activo</option>
+<option value="inactivo">Inactivo</option>
+</select>
+</div>
+<button class="w-9 h-9 rounded-lg bg-surface-container-lowest text-outline hover:text-on-surface flex items-center justify-center shadow-sm" title="Limpiar filtros" type="button">
+<span class="material-symbols-outlined text-[18px]">filter_list_off</span>
+</button>
+</div>
+</div>
+<!-- Table View -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider select-none">
+<th class="py-space-sm px-space-md font-semibold">Usuario / Profesional</th>
+<th class="py-space-sm px-space-md font-semibold">Rol Hospitalario</th>
+<th class="py-space-sm px-space-md font-semibold">Clínicas / Servicios</th>
+<th class="py-space-sm px-space-md font-semibold">Último Acceso</th>
+<th class="py-space-sm px-space-md font-semibold text-center">Estado</th>
+<th class="py-space-sm px-space-md font-semibold text-right">Acciones de Control</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container text-body-md font-body-md text-on-surface">
+<!-- Row 1: Selected (Dr. Carlos Mendoza) -->
+<tr class="bg-surface-container-low transition-colors duration-150">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-md min-w-[220px]">
+<div class="w-9 h-9 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-title-sm text-title-sm uppercase font-bold shadow-sm">
+                      CM
+                    </div>
+<div class="flex flex-col min-w-0">
+<div class="font-title-sm text-title-sm text-on-surface font-semibold flex items-center gap-1.5">
+<span class="truncate">Dr. Carlos Mendoza</span>
+<span class="material-symbols-outlined text-primary text-[16px]" title="Validado en Colegio de Médicos">verified</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">carlos.mendoza@sigeh.gob</span>
+<span class="font-label-sm text-label-sm text-outline">DPI: 2490 89201 0101</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    Médico Especialista
+                  </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col gap-1 max-w-[210px]">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Consulta Externa #01</span>
+<span class="font-label-sm text-label-sm text-outline truncate">Sala 105 - Cardiología</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-body-sm text-body-sm whitespace-nowrap">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Hoy, 08:14 a.m.</span>
+<span class="text-outline text-label-sm">IP: 192.168.10.42</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container relative"></div>
+</label>
+<span class="block font-label-sm text-label-sm text-primary font-medium">Activo</span>
+</td>
+<td class="py-space-md px-space-md text-right">
+<div class="inline-flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-primary text-on-primary font-label-sm text-label-sm hover:bg-on-primary-fixed-variant transition-colors shadow-sm" title="Configurar áreas autorizadas" type="button">
+<span class="material-symbols-outlined text-[15px]">room_preferences</span>
+<span>Permisos</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Dra. Beatriz Elena Solórzano -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-md min-w-[220px]">
+<div class="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-title-sm text-title-sm uppercase font-bold shadow-sm">
+                      BS
+                    </div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-sm text-title-sm text-on-surface font-semibold truncate">Dra. Beatriz Solórzano</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">beatriz.solorzano@sigeh.gob</span>
+<span class="font-label-sm text-label-sm text-outline">DPI: 1892 44321 0101</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    Médico Especialista
+                  </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col gap-1 max-w-[210px]">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Medicina Interna B</span>
+<span class="font-label-sm text-label-sm text-outline truncate">Módulo Citas Frecuentes</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-body-sm text-body-sm whitespace-nowrap">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Ayer, 06:40 p.m.</span>
+<span class="text-outline text-label-sm">IP: 192.168.10.19</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container relative"></div>
+</label>
+<span class="block font-label-sm text-label-sm text-primary font-medium">Activo</span>
+</td>
+<td class="py-space-md px-space-md text-right">
+<div class="inline-flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Configurar áreas autorizadas" type="button">
+<span class="material-symbols-outlined text-[15px]">room_preferences</span>
+<span>Permisos</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Licda. Mariana Valenzuela -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-md min-w-[220px]">
+<div class="w-9 h-9 rounded-full bg-tertiary-container text-on-tertiary flex items-center justify-center font-title-sm text-title-sm uppercase font-bold shadow-sm">
+                      MV
+                    </div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-sm text-title-sm text-on-surface font-semibold truncate">Licda. Mariana Valenzuela</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">mariana.valenzuela@sigeh.gob</span>
+<span class="font-label-sm text-label-sm text-outline">DPI: 3012 11094 0101</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                    Enfermería Jefatura
+                  </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col gap-1 max-w-[210px]">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Pabellón Quirúrgico</span>
+<span class="font-label-sm text-label-sm text-outline truncate">Sala de Cuidados Intensivos</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-body-sm text-body-sm whitespace-nowrap">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Hoy, 07:05 a.m.</span>
+<span class="text-outline text-label-sm">IP: 192.168.10.88</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container relative"></div>
+</label>
+<span class="block font-label-sm text-label-sm text-primary font-medium">Activo</span>
+</td>
+<td class="py-space-md px-space-md text-right">
+<div class="inline-flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Configurar áreas autorizadas" type="button">
+<span class="material-symbols-outlined text-[15px]">room_preferences</span>
+<span>Permisos</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Rodrigo Estuardo Fuentes -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-md min-w-[220px]">
+<div class="w-9 h-9 rounded-full bg-outline-variant text-on-surface flex items-center justify-center font-title-sm text-title-sm uppercase font-bold shadow-sm">
+                      RF
+                    </div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-sm text-title-sm text-on-surface font-semibold truncate">Rodrigo E. Fuentes</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">rodrigo.fuentes@sigeh.gob</span>
+<span class="font-label-sm text-label-sm text-outline">DPI: 2190 77123 0101</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                    Auxiliar de Archivo
+                  </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col gap-1 max-w-[210px]">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Archivo Clínico Central</span>
+<span class="font-label-sm text-label-sm text-outline truncate">Digitalización de Expedientes</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-body-sm text-body-sm whitespace-nowrap">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">12 Feb, 16:30</span>
+<span class="text-outline text-label-sm">IP: 192.168.10.104</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container relative"></div>
+</label>
+<span class="block font-label-sm text-label-sm text-outline font-medium">Inactivo</span>
+</td>
+<td class="py-space-md px-space-md text-right">
+<div class="inline-flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Configurar áreas autorizadas" type="button">
+<span class="material-symbols-outlined text-[15px]">room_preferences</span>
+<span>Permisos</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5: Sandra Milena Ramos -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-md min-w-[220px]">
+<div class="w-9 h-9 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-title-sm text-title-sm uppercase font-bold shadow-sm">
+                      SR
+                    </div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-sm text-title-sm text-on-surface font-semibold truncate">Sandra Milena Ramos</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">sandra.ramos@sigeh.gob</span>
+<span class="font-label-sm text-label-sm text-outline">DPI: 2901 33418 0101</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                    Admisión y Citas
+                  </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col gap-1 max-w-[210px]">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Módulo Central de Citas</span>
+<span class="font-label-sm text-label-sm text-outline truncate">Recepción General</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-body-sm text-body-sm whitespace-nowrap">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface">Hoy, 08:02 a.m.</span>
+<span class="text-outline text-label-sm">IP: 192.168.10.12</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container relative"></div>
+</label>
+<span class="block font-label-sm text-label-sm text-primary font-medium">Activo</span>
+</td>
+<td class="py-space-md px-space-md text-right">
+<div class="inline-flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-colors" title="Configurar áreas autorizadas" type="button">
+<span class="material-symbols-outlined text-[15px]">room_preferences</span>
+<span>Permisos</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination and Density Footer -->
+<div class="px-space-md py-space-sm bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+<span>Mostrando 1 - 5 de 184 registros</span>
+<span class="text-outline">•</span>
+<span>Filas por página: 10</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="w-8 h-8 rounded bg-surface-container-lowest text-outline hover:text-on-surface flex items-center justify-center shadow-sm disabled:opacity-40" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary font-title-sm text-title-sm flex items-center justify-center shadow-sm">1</button>
+<button class="w-8 h-8 rounded bg-surface-container-lowest text-on-surface font-title-sm text-title-sm hover:bg-surface-container flex items-center justify-center shadow-sm">2</button>
+<button class="w-8 h-8 rounded bg-surface-container-lowest text-on-surface font-title-sm text-title-sm hover:bg-surface-container flex items-center justify-center shadow-sm">3</button>
+<span class="px-1 text-outline">...</span>
+<button class="w-8 h-8 rounded bg-surface-container-lowest text-on-surface font-title-sm text-title-sm hover:bg-surface-container flex items-center justify-center shadow-sm">19</button>
+<button class="w-8 h-8 rounded bg-surface-container-lowest text-outline hover:text-on-surface flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: Detailed Context Panel for Clinic-Level Permission Matrix -->
+<div class="w-full xl:w-[420px] bg-surface-container-lowest rounded-xl shadow-md flex flex-col shrink-0">
+<!-- Panel Title & Identity Header -->
+<div class="p-space-base bg-surface-container-low rounded-t-xl flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 text-primary font-label-sm text-label-sm font-semibold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+<span>Delegación Granular</span>
+</div>
+<button class="w-7 h-7 rounded-full hover:bg-surface-container flex items-center justify-center text-outline hover:text-on-surface" title="Cerrar panel" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<h2 class="font-title-md text-title-md text-on-surface font-bold leading-snug">
+            Permisos de Acceso por Clínica
+          </h2>
+<!-- Identity Summary Box -->
+<div class="mt-space-xs p-space-sm bg-surface-container-lowest rounded-lg flex items-center gap-space-md shadow-sm">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-title-sm text-title-sm font-bold">
+              CM
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="font-title-sm text-title-sm text-on-surface truncate">Dr. Carlos Mendoza</div>
+<div class="font-label-sm text-label-sm text-secondary truncate">Colegiado Activo #10294-A</div>
+<div class="font-body-sm text-body-sm text-outline truncate">Cardiología Clínica y Adultos</div>
+</div>
+</div>
+</div>
+<!-- Permissions Body -->
+<div class="p-space-base flex flex-col gap-space-lg max-h-[640px] overflow-y-auto">
+<!-- Permission Group 1 -->
+<div class="flex flex-col gap-space-sm p-space-md rounded-lg bg-surface-container-low">
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-space-sm">
+<input checked="" class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary focus:ring-2 cursor-pointer" id="chk-clinica-01" type="checkbox"/>
+<label class="cursor-pointer" for="chk-clinica-01">
+<span class="block font-title-sm text-title-sm text-on-surface">Clínica 01 - Consulta Externa</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Edificio A, Nivel 1 • Consultorio Matutino</span>
+</label>
+</div>
+<span class="px-space-xs py-0.5 rounded text-[10px] uppercase font-bold bg-primary-fixed text-on-primary-fixed">Asignado</span>
+</div>
+<!-- Granular Capability Switches -->
+<div class="ml-6 pl-space-sm flex flex-col gap-space-xs pt-space-xs">
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">visibility</span>
+<span>Lectura de Fichas e Historial</span>
+</span>
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">edit_calendar</span>
+<span>Edición y Sobrecupo (Capacidad)</span>
+</span>
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">lock</span>
+<span>Cierre e Inhabilitación de Agenda</span>
+</span>
+<input class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+</div>
+</div>
+<!-- Permission Group 2 -->
+<div class="flex flex-col gap-space-sm p-space-md rounded-lg bg-surface-container-low">
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-space-sm">
+<input checked="" class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary focus:ring-2 cursor-pointer" id="chk-sala-105" type="checkbox"/>
+<label class="cursor-pointer" for="chk-sala-105">
+<span class="block font-title-sm text-title-sm text-on-surface">Sala 105 - Cardiología</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Área Especializada • Gabinete de Ecocardiografía</span>
+</label>
+</div>
+<span class="px-space-xs py-0.5 rounded text-[10px] uppercase font-bold bg-primary-fixed text-on-primary-fixed">Asignado</span>
+</div>
+<!-- Granular Capability Switches -->
+<div class="ml-6 pl-space-sm flex flex-col gap-space-xs pt-space-xs">
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">visibility</span>
+<span>Lectura de Fichas e Historial</span>
+</span>
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">edit_calendar</span>
+<span>Edición y Sobrecupo (Capacidad)</span>
+</span>
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between text-body-sm font-body-sm text-on-surface py-1 cursor-pointer">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-error">lock_open</span>
+<span>Cierre e Inhabilitación de Agenda</span>
+</span>
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary" type="checkbox"/>
+</label>
+</div>
+</div>
+<!-- Permission Group 3: Available for Expansion -->
+<div class="flex flex-col gap-space-sm p-space-md rounded-lg bg-surface-container opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-space-sm">
+<input class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary focus:ring-2 cursor-pointer" id="chk-triage-urg" type="checkbox"/>
+<label class="cursor-pointer" for="chk-triage-urg">
+<span class="block font-title-sm text-title-sm text-on-surface">Módulo Triaje - Emergencias Adultos</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Bloque Quirúrgico Urgente • Turnos Nocturnos</span>
+</label>
+</div>
+<span class="px-space-xs py-0.5 rounded text-[10px] uppercase font-bold bg-surface-container-highest text-outline">Sin Asignar</span>
+</div>
+</div>
+<!-- Institutional Notice -->
+<div class="p-space-sm bg-surface-container rounded-lg flex items-center gap-space-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-outline text-[18px]">info</span>
+<p class="font-label-sm text-label-sm">
+              Cualquier modificación será registrada bajo la norma ISO 27799 y visible de forma inmediata en el registro de Auditoría.
+            </p>
+</div>
+</div>
+<!-- Drawer Action Footer -->
+<div class="p-space-base bg-surface-container-low rounded-b-xl flex items-center justify-between gap-space-sm">
+<button class="px-space-md h-9 rounded-lg bg-surface-container-lowest text-outline font-title-sm text-title-sm hover:text-on-surface shadow-sm" type="button">
+            Restablecer
+          </button>
+<button class="px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-title-sm text-title-sm hover:bg-primary shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[18px]">check</span>
+<span>Guardar Privilegios</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

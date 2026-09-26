@@ -4,6 +4,8 @@ import com.hro.system.auth.dto.IdentidadUsuario;
 import com.hro.system.common.BusinessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
@@ -21,7 +23,10 @@ public final class UsuarioContexto {
     }
 
     public static void establecer(IdentidadUsuario identidad) {
-        Authentication authentication = new UsernamePasswordAuthenticationToken(identidad, null, List.of());
+        List<GrantedAuthority> authorities = (identidad.rolPrincipal() != null && !identidad.rolPrincipal().isBlank())
+                ? List.of(new SimpleGrantedAuthority("ROLE_" + identidad.rolPrincipal()))
+                : List.of();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(identidad, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
