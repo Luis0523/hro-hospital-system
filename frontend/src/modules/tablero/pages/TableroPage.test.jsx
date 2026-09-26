@@ -115,6 +115,11 @@ function filasTabla() {
 
 function configurarAntesDeCada({ capturarHandlers = true } = {}) {
   vi.clearAllMocks()
+  try {
+    globalThis.localStorage?.clear()
+  } catch {
+    // localStorage no disponible: se ignora.
+  }
   handlers = null
   estaEnModoMockMock.mockReturnValue(false)
   estaPermitidaMock.mockImplementation((id, permitidas) =>
@@ -1378,5 +1383,89 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 
     expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+  })
+})
+
+describe('TableroPage · tema claro/oscuro', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  it('por defecto usa tema claro (sin clase dark)', async () => {
+    const { container } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    expect(container.firstChild).not.toHaveClass('dark')
+  })
+
+  it('una preferencia dark guardada aplica el wrapper dark', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+
+    const { container } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    expect(container.firstChild).toHaveClass('dark')
+  })
+
+  it('el botón alterna dark y de nuevo claro, persistiendo', async () => {
+    const { container } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
+    expect(container.firstChild).toHaveClass('dark')
+    expect(globalThis.localStorage.getItem('hro-tablero-tema')).toBe('dark')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modo claro' }))
+    expect(container.firstChild).not.toHaveClass('dark')
+    expect(globalThis.localStorage.getItem('hro-tablero-tema')).toBe('light')
+  })
+
+  it('mantiene la tabla y las asignaciones visibles en tema oscuro', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+
+    render(<TableroPage />)
+
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
+    expect(filasTabla()).toHaveLength(4)
+  })
+
+  it('el tema no altera la configuración de sala', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+
+    expect(await screen.findByTestId('fila-turno-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-2')).not.toBeInTheDocument()
+  })
+
+  it('mantiene TableroVacio y TableroError en tema oscuro', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+    obtenerEstadoInicialMock.mockResolvedValueOnce([])
+
+    const { unmount } = render(<TableroPage />)
+    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+    unmount()
+
+    obtenerEstadoInicialMock.mockRejectedValueOnce(new Error('fallo'))
+    render(<TableroPage />)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+  })
+
+  it('un fullscreenchange no altera el tema', async () => {
+    const { container } = render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
+
+    act(() => {
+      document.dispatchEvent(new Event('fullscreenchange'))
+    })
+
+    expect(container.firstChild).toHaveClass('dark')
   })
 })

@@ -1,7 +1,7 @@
 import FilaTurno from './FilaTurno.jsx'
 
 const CLASE_ENCABEZADO =
-  'border-b-2 border-outline-variant/60 px-2 pb-3 text-label-md uppercase tracking-[0.2em] text-on-surface-variant md:px-4'
+  'border-b-2 border-outline-variant/60 px-2 pb-3 text-label-md uppercase tracking-[0.2em] text-on-surface-variant dark:border-slate-700 dark:text-slate-300 md:px-4'
 
 export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
   return (
@@ -25,7 +25,10 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
           </th>
         </tr>
       </thead>
-      <tbody data-testid="tablero-tabla-cuerpo" className="divide-y divide-outline-variant/50">
+      <tbody
+        data-testid="tablero-tabla-cuerpo"
+        className="divide-y divide-outline-variant/50 dark:divide-slate-800"
+      >
         {asignaciones.map((asignacion) => (
           <FilaTurno key={asignacion.asignacionDiariaEspacioId} asignacion={asignacion} />
         ))}

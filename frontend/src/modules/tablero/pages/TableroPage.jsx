@@ -10,7 +10,9 @@ import { resolverConfiguracionSala } from '../api/configuracionSala'
 import { crearClienteTablero } from '../api/tableroSocket'
 import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
+import ControlTema from '../components/ControlTema.jsx'
 import ControlVoz from '../components/ControlVoz.jsx'
+import { useTemaTablero } from '../hooks/useTemaTablero'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
 import LlamadoGrande from '../components/LlamadoGrande.jsx'
@@ -41,6 +43,7 @@ export default function TableroPage() {
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
+  const { tema, alternarTema } = useTemaTablero()
 
   const montadoRef = useRef(true)
   const configPermitidasRef = useRef(null)
@@ -261,32 +264,38 @@ export default function TableroPage() {
   }, [encolarLlamado])
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface">
-      <EncabezadoTablero>
-        <ControlPantallaCompleta />
-        <ControlVoz disponible={vozDisponible} activa={vozActiva} onActivar={activarVoz} />
-        <EstadoConexion estado={estadoConexion} />
-      </EncabezadoTablero>
+    // `dark` es ancestro (no en <html>/<body>) para aislar el tema al tablero.
+    <div className={tema === 'dark' ? 'dark' : undefined}>
+      <div className="flex min-h-screen flex-col bg-surface dark:bg-slate-950">
+        <EncabezadoTablero>
+          <ControlTema tema={tema} onAlternar={alternarTema} />
+          <ControlPantallaCompleta />
+          <ControlVoz disponible={vozDisponible} activa={vozActiva} onActivar={activarVoz} />
+          <EstadoConexion estado={estadoConexion} />
+        </EncabezadoTablero>
 
-      <main className="flex flex-1 flex-col gap-6 px-6 py-4 2xl:py-6">
-        {cargando && (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner label="Cargando turnos…" />
-          </div>
-        )}
+        <main className="flex flex-1 flex-col gap-6 px-6 py-4 2xl:py-6">
+          {cargando && (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner label="Cargando turnos…" />
+            </div>
+          )}
 
-        {!cargando && error && <TableroError mensaje={error} onReintentar={cargar} />}
+          {!cargando && error && <TableroError mensaje={error} onReintentar={cargar} />}
 
-        {!cargando && !error && vista === 'llamado' && llamadoActual && (
-          <LlamadoGrande asignacion={llamadoActual} />
-        )}
+          {!cargando && !error && vista === 'llamado' && llamadoActual && (
+            <LlamadoGrande asignacion={llamadoActual} />
+          )}
 
-        {!cargando && !error && vista === 'tabla' && asignaciones.length === 0 && <TableroVacio />}
+          {!cargando && !error && vista === 'tabla' && asignaciones.length === 0 && (
+            <TableroVacio />
+          )}
 
-        {!cargando && !error && vista === 'tabla' && asignaciones.length > 0 && (
-          <TablaTurnos asignaciones={asignaciones} />
-        )}
-      </main>
+          {!cargando && !error && vista === 'tabla' && asignaciones.length > 0 && (
+            <TablaTurnos asignaciones={asignaciones} />
+          )}
+        </main>
+      </div>
     </div>
   )
 }
