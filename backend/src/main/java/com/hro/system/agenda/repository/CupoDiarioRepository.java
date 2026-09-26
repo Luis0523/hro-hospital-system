@@ -2,6 +2,7 @@ package com.hro.system.agenda.repository;
 
 import com.hro.system.agenda.entity.CupoDiario;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
+public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID>, JpaSpecificationExecutor<CupoDiario> {
 
     Optional<CupoDiario> findByMedicoSubespecialidadIdAndFecha(UUID medicoSubespecialidadId, LocalDate fecha);
 
@@ -42,13 +43,4 @@ public interface CupoDiarioRepository extends JpaRepository<CupoDiario, UUID> {
     List<CupoDiario> findByMedicoSubespecialidad_Medico_IdAndFechaBetween(UUID medicoId, LocalDate desde, LocalDate hasta);
 
     List<CupoDiario> findByMedicoSubespecialidadIdAndFechaBetween(UUID medicoSubespecialidadId, LocalDate desde, LocalDate hasta);
-
-    @Query("""
-            SELECT cd FROM CupoDiario cd
-            WHERE cd.fecha BETWEEN :inicio AND :fin
-              AND (:subespecialidadId IS NULL OR cd.medicoSubespecialidad.subespecialidad.id = :subespecialidadId)
-            """)
-    List<CupoDiario> buscarParaUtilizacion(@Param("inicio") LocalDate inicio,
-                                           @Param("fin") LocalDate fin,
-                                           @Param("subespecialidadId") Long subespecialidadId);
 }

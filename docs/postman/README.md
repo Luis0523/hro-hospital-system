@@ -11,7 +11,7 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `02. Citas Médicas` (Agendamiento, Cálculo de Horas Estimadas, Reprogramación, Cancelación, Disponibilidad para reprogramación, Auditoría)
      - `03. Pacientes` (Admisión, Búsqueda por DPI, Consulta de Expedientes)
      - `04. Catálogos y Calendario` (Especialidades, Subespecialidades, Espacios físicos, Médicos, Programación, Feriados, filtros por estado y reactivación)
-     - `05. Asignación Diaria (Jefe de Enfermería)` (Asignar sala por día, cobertura, cierre, duplicar y reasignación en caliente)
+     - `05. Asignación Diaria (Jefe de Enfermería)` (Selección de subespecialidad por sala — upsert `PUT` y vista de salas; cobertura, cierre, duplicar y reasignación en caliente)
      - `06. Estación de Archivo (Expedientes Físicos)` (Ubicaciones, expedientes, consulta diaria de jornada, búsqueda por código, ciclos y transiciones, actas de recepción + PDF y resumen operativo + PDF)
      - `07. Panel de Administración (Usuarios, Roles y Permisos)` (Usuarios, roles, permisos por subespecialidad)
      - `08. Dashboard (Admin)` (Resumen administrativo con alertas)
