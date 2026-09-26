@@ -2574,6 +2574,90 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Horario por Subespecialidad",
+      "description": "Días y horas de atención por subespecialidad (sin médico) y reasignación de sala de un turno. Cambios de la epica SCRUM-81 (V10/V11).",
+      "item": [
+        {
+          "name": "1. Listar horarios de una subespecialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidades/{{subespecialidadId}}/horarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["subespecialidades", "{{subespecialidadId}}", "horarios"]
+            }
+          }
+        },
+        {
+          "name": "2. Crear horario (día)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subespecialidadId\": {{subespecialidadId}},\n  \"diaSemana\": 1,\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"12:00:00\",\n  \"capacidadMaxima\": 20,\n  \"duracionConsultaMinutos\": 30\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/subespecialidad-horarios", "host": ["{{baseUrl}}"], "path": ["subespecialidad-horarios"] },
+            "description": "Requiere rol jefe_enfermeria o administrador. Unico por subespecialidad+dia."
+          }
+        },
+        {
+          "name": "3. Actualizar horario (día)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subespecialidadId\": {{subespecialidadId}},\n  \"diaSemana\": 1,\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"13:00:00\",\n  \"capacidadMaxima\": 18,\n  \"duracionConsultaMinutos\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidad-horarios/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["subespecialidad-horarios", ":id"],
+              "variable": [{ "key": "id", "value": "00000000-0000-0000-0000-000000000000" }]
+            }
+          }
+        },
+        {
+          "name": "4. Consultar cupos por subespecialidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-11-09&fechaFin=2026-11-15&soloDisponibles=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["cupos"],
+              "query": [
+                { "key": "subespecialidadId", "value": "{{subespecialidadId}}" },
+                { "key": "fechaInicio", "value": "2026-11-09" },
+                { "key": "fechaFin", "value": "2026-11-15" },
+                { "key": "soloDisponibles", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Reasignar sala de un turno",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/turnos/:id/sala?nuevoEspacioFisicoId={{espacioFisicoId}}&motivo=Sala%20desocupada",
+              "host": ["{{baseUrl}}"],
+              "path": ["turnos", ":id", "sala"],
+              "query": [
+                { "key": "nuevoEspacioFisicoId", "value": "{{espacioFisicoId}}" },
+                { "key": "motivo", "value": "Sala desocupada" }
+              ],
+              "variable": [{ "key": "id", "value": "1" }]
+            },
+            "description": "Mueve el turno a otra sala de la misma subespecialidad (auditado)."
+          }
+        }
+      ]
     }
   ],
   "event": [
