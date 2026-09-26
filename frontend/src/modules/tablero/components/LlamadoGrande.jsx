@@ -5,7 +5,7 @@ function formatearTurno(valor) {
 }
 
 export default function LlamadoGrande({ asignacion }) {
-  const { espacioNumero, nivel, subespecialidadNombre, turnoActual } = asignacion ?? {}
+  const { espacioNumero, subespecialidadNombre, turnoActual } = asignacion ?? {}
 
   return (
     <section
@@ -38,10 +38,6 @@ export default function LlamadoGrande({ asignacion }) {
           {espacioNumero ?? '—'}
         </span>
       </div>
-
-      {typeof nivel === 'number' && (
-        <span className="text-title-md uppercase text-on-surface-variant">Nivel {nivel}</span>
-      )}
     </section>
   )
 }

@@ -133,23 +133,68 @@ export default function TableroPage() {
     setLlamadoActual(siguiente)
     setVista('llamado')
 
-    const terminar = () => {
+    const baseMs = resolverDuracionLlamadoMs()
+    const conVoz = vozActivaRef.current && estaDisponibleVoz()
+    const totalRepeticiones = conVoz ? 2 : 0
+    let repeticionActual = 0
+    let atendido = false
+
+    const avanzarDeVerdad = () => {
       if (!montadoRef.current) return
       if (generacionLlamadoRef.current !== generacion) return
       avanzar()
     }
 
-    const baseMs = resolverDuracionLlamadoMs()
+    const programarVisual = () => {
+      atendido = false
+      timerLlamadoRef.current = setTimeout(() => {
+        if (atendido) return
+        atendido = true
+        avanzarDeVerdad()
+      }, baseMs)
+    }
 
-    if (vozActivaRef.current && estaDisponibleVoz()) {
-      const mensaje = anunciarTurno(siguiente, { onEnd: terminar, onError: terminar })
-      if (mensaje) {
-        timerLlamadoRef.current = setTimeout(terminar, estimarDuracionVozMs(mensaje, baseMs))
-        return
+    const finalizarRepeticion = () => {
+      if (atendido) return
+      atendido = true
+      if (!montadoRef.current) return
+      if (generacionLlamadoRef.current !== generacion) return
+
+      limpiarTimerLlamado()
+
+      if (repeticionActual < totalRepeticiones) {
+        reproducir()
+      } else {
+        avanzarDeVerdad()
       }
     }
 
-    timerLlamadoRef.current = setTimeout(terminar, baseMs)
+    const reproducir = () => {
+      repeticionActual += 1
+      atendido = false
+      const mensaje = anunciarTurno(siguiente, {
+        onEnd: finalizarRepeticion,
+        onError: finalizarRepeticion,
+      })
+
+      if (generacionLlamadoRef.current !== generacion) return
+
+      if (!mensaje) {
+        programarVisual()
+        return
+      }
+
+      timerLlamadoRef.current = setTimeout(
+        () => finalizarRepeticion(),
+        estimarDuracionVozMs(mensaje, baseMs),
+      )
+    }
+
+    if (conVoz) {
+      reproducir()
+    } else {
+      programarVisual()
+    }
   }, [limpiarTimerLlamado, avanzar])
 
   iniciarSiguienteRef.current = iniciarSiguiente

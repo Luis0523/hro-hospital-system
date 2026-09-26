@@ -100,7 +100,9 @@ function mensaje(asignacion) {
 let handlers
 
 function filasTabla() {
-  return within(screen.getByTestId('tablero-tabla-cuerpo')).getAllByRole('row')
+  return screen
+    .getAllByTestId('tablero-tabla-cuerpo')
+    .flatMap((cuerpo) => within(cuerpo).getAllByRole('row'))
 }
 
 describe('TableroPage', () => {
@@ -498,10 +500,10 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
   })
 
-  it('vuelve a la tabla al recibir onEnd con la cola vacía', async () => {
-    let terminar
+  it('vuelve a la tabla tras las dos repeticiones de voz', async () => {
+    const terminaciones = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminar = opciones.onEnd
+      terminaciones.push(opciones.onEnd)
       return 'mensaje'
     })
 
@@ -515,17 +517,24 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
 
-    act(() => terminar())
+    act(() => terminaciones[0]())
+
+    // Segunda repetición: mismo turno visible, misma asignación.
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+
+    act(() => terminaciones[1]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
-  it('procesa dos llamados en orden FIFO sin interrumpir y vuelve a la tabla', async () => {
-    const terminaciones = []
+  it('procesa dos llamados FIFO con dos repeticiones cada uno sin interrumpir', async () => {
+    const anuncios = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
+      anuncios.push({ asignacion, onEnd: opciones.onEnd })
       return 'mensaje'
     })
 
@@ -554,31 +563,43 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
 
+    // Pediatría, repetición 1 (Cardiología/Medicina queda en cola, sin interrumpir).
     expect(
       within(screen.getByTestId('llamado-grande')).getByText('Pediatría General'),
     ).toBeInTheDocument()
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
-    expect(terminaciones).toHaveLength(1)
+    expect(anuncios).toHaveLength(1)
 
-    act(() => terminaciones[0]())
+    // Pediatría, repetición 2.
+    act(() => anuncios[0].onEnd())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    expect(anuncios[1].asignacion).toMatchObject({ asignacionDiariaEspacioId: 1 })
+    expect(
+      within(screen.getByTestId('llamado-grande')).getByText('Pediatría General'),
+    ).toBeInTheDocument()
 
+    // Avanza a Medicina.
+    act(() => anuncios[1].onEnd())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(3)
+    expect(anuncios[2].asignacion).toMatchObject({ asignacionDiariaEspacioId: 2 })
     expect(
       within(screen.getByTestId('llamado-grande')).getByText('Medicina General'),
     ).toBeInTheDocument()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
-    expect(terminaciones).toHaveLength(2)
 
-    act(() => terminaciones[1]())
+    // Medicina, repetición 2 y fin de la cola.
+    act(() => anuncios[2].onEnd())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(4)
+    act(() => anuncios[3].onEnd())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
     expect(within(screen.getByTestId('fila-turno-2')).getByText('#015')).toBeInTheDocument()
   })
 
-  it('avanza correctamente al recibir onError', async () => {
-    let fallar
+  it('avanza correctamente al recibir onError sin bloquear el tablero', async () => {
+    const fallos = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      fallar = opciones.onError
+      fallos.push(opciones.onError)
       return 'mensaje'
     })
 
@@ -593,7 +614,10 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
-    act(() => fallar())
+    act(() => fallos[0]())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+
+    act(() => fallos[1]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
@@ -619,6 +643,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
         vi.advanceTimersByTime(40000)
       })
 
+      // El fallback no duplica: dos repeticiones y vuelve a la tabla.
+      expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
       expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
       expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
     } finally {
@@ -727,9 +753,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
   it('un evento fuera del filtro no ocupa la cola FIFO ni la voz', async () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
-    let terminar
+    const terminaciones = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminar = opciones.onEnd
+      terminaciones.push(opciones.onEnd)
       return 'mensaje'
     })
 
@@ -755,7 +781,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(within(screen.getByTestId('llamado-grande')).getByText('General')).toBeInTheDocument()
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
 
-    act(() => terminar())
+    act(() => terminaciones[0]())
+    act(() => terminaciones[1]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()

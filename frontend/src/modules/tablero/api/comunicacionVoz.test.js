@@ -22,16 +22,18 @@ afterEach(() => {
 })
 
 describe('construirMensajeTurno', () => {
-  it('construye el mensaje completo con turno actual, subespecialidad, consultorio y siguiente', () => {
+  it('construye el mensaje con turno actual, subespecialidad y consultorio', () => {
     expect(construirMensajeTurno(ASIGNACION)).toBe(
-      'Turno número 7, favor pasar a Pediatría General, consultorio 201. Turno número 8, favor prepararse.',
+      'Turno número 7, favor pasar a Pediatría General, consultorio 201.',
     )
   })
 
-  it('omite la preparación cuando no hay turno siguiente', () => {
-    expect(construirMensajeTurno({ ...ASIGNACION, turnoSiguiente: null })).toBe(
-      'Turno número 7, favor pasar a Pediatría General, consultorio 201.',
-    )
+  it('no menciona el turno siguiente aunque exista en el objeto', () => {
+    const mensaje = construirMensajeTurno({ ...ASIGNACION, turnoSiguiente: 8 })
+
+    expect(mensaje).not.toContain('8')
+    expect(mensaje).not.toContain('prepararse')
+    expect(mensaje).not.toContain('Turno número 8')
   })
 
   it('usa el formato sin subespecialidad cuando esta no existe', () => {

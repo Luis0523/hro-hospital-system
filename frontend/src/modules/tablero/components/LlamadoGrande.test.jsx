@@ -31,10 +31,11 @@ describe('LlamadoGrande', () => {
     expect(screen.getByTestId('llamado-consultorio')).toHaveTextContent('201')
   })
 
-  it('muestra el nivel como información secundaria', () => {
+  it('no muestra el nivel aunque venga en el objeto', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
-    expect(screen.getByText('Nivel 2')).toBeInTheDocument()
+    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Nivel 2')).not.toBeInTheDocument()
   })
 
   it('no muestra el siguiente turno', () => {
@@ -68,7 +69,7 @@ describe('LlamadoGrande', () => {
   })
 
   it('maneja valores faltantes de forma segura', () => {
-    render(<LlamadoGrande asignacion={{ asignacionDiariaEspacioId: 9 }} />)
+    render(<LlamadoGrande asignacion={{ asignacionDiariaEspacioId: 9, nivel: 2 }} />)
 
     expect(screen.getByText('Sin subespecialidad')).toBeInTheDocument()
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('—')

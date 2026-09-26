@@ -35,14 +35,9 @@ export function construirMensajeTurno(asignacion = {}) {
   const subespecialidad = String(asignacion.subespecialidadNombre ?? '').trim()
   const consultorio = String(asignacion.espacioNumero ?? '').trim() || '—'
 
-  const llamada = subespecialidad
+  return subespecialidad
     ? `Turno número ${turnoActual}, favor pasar a ${subespecialidad}, consultorio ${consultorio}.`
     : `Turno número ${turnoActual}, favor pasar al consultorio ${consultorio}.`
-
-  const turnoSiguiente = comoTurno(asignacion.turnoSiguiente)
-  if (!turnoSiguiente) return llamada
-
-  return `${llamada} Turno número ${turnoSiguiente}, favor prepararse.`
 }
 
 export function hablar(

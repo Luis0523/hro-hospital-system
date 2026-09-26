@@ -23,13 +23,19 @@ function renderFila(asignacion) {
 }
 
 describe('FilaTurno', () => {
-  it('muestra subespecialidad, consultorio, nivel y turno actual', () => {
+  it('muestra subespecialidad, consultorio y turno actual', () => {
     renderFila(ASIGNACION)
 
     expect(screen.getByText('Pediatría General')).toBeInTheDocument()
     expect(screen.getByText('201')).toBeInTheDocument()
-    expect(screen.getByText('Nivel 2')).toBeInTheDocument()
     expect(screen.getByText('#007')).toBeInTheDocument()
+  })
+
+  it('no muestra el nivel aunque venga en el objeto', () => {
+    renderFila(ASIGNACION)
+
+    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Nivel 2')).not.toBeInTheDocument()
   })
 
   it('no muestra el siguiente turno en la vista normal', () => {
@@ -62,7 +68,7 @@ describe('FilaTurno', () => {
     renderFila({
       asignacionDiariaEspacioId: 9,
       espacioNumero: null,
-      nivel: null,
+      nivel: 2,
       subespecialidadNombre: null,
       turnoActual: null,
     })
