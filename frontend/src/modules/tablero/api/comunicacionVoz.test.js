@@ -134,6 +134,81 @@ describe('disponibilidad y locución', () => {
     expect(hablados[0].text).toBe(mensaje)
   })
 
+  it('conecta onEnd y onError a la utterance', () => {
+    const hablados = []
+
+    class FakeUtterance {
+      constructor(texto) {
+        this.text = texto
+      }
+    }
+
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+    vi.stubGlobal('speechSynthesis', {
+      getVoices: () => [{ lang: 'es-GT' }],
+      speak: (utterance) => hablados.push(utterance),
+    })
+
+    const onEnd = vi.fn()
+    const onError = vi.fn()
+
+    expect(hablar('Hola', { onEnd, onError })).toBe(true)
+
+    const utterance = hablados[0]
+    expect(typeof utterance.onend).toBe('function')
+    expect(typeof utterance.onerror).toBe('function')
+
+    utterance.onend()
+    expect(onEnd).toHaveBeenCalledTimes(1)
+
+    utterance.onerror({ error: 'synthesis-failed' })
+    expect(onError).toHaveBeenCalledTimes(1)
+  })
+
+  it('propaga los callbacks de anunciarTurno hacia hablar', () => {
+    const hablados = []
+
+    class FakeUtterance {
+      constructor(texto) {
+        this.text = texto
+      }
+    }
+
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+    vi.stubGlobal('speechSynthesis', {
+      getVoices: () => [{ lang: 'es-GT' }],
+      speak: (utterance) => hablados.push(utterance),
+    })
+
+    const onEnd = vi.fn()
+
+    expect(anunciarTurno(ASIGNACION, { onEnd })).toBe(construirMensajeTurno(ASIGNACION))
+    hablados[0].onend()
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+  })
+
+  it('habla sin callbacks sin romper el comportamiento existente', () => {
+    const hablados = []
+
+    class FakeUtterance {
+      constructor(texto) {
+        this.text = texto
+      }
+    }
+
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+    vi.stubGlobal('speechSynthesis', {
+      getVoices: () => [],
+      speak: (utterance) => hablados.push(utterance),
+    })
+
+    expect(hablar('Hola')).toBe(true)
+    expect(hablados[0].text).toBe('Hola')
+    expect(hablados[0].onend).toBeUndefined()
+    expect(hablados[0].onerror).toBeUndefined()
+  })
+
   it('expone la frase de activación', () => {
     expect(FRASE_ACTIVACION).toBe('Comunicación por voz activada.')
   })

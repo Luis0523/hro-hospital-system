@@ -45,7 +45,10 @@ export function construirMensajeTurno(asignacion = {}) {
   return `${llamada} Turno número ${turnoSiguiente}, favor prepararse.`
 }
 
-export function hablar(texto, { entorno = globalThis, rate = 0.9, pitch = 1, volume = 1 } = {}) {
+export function hablar(
+  texto,
+  { entorno = globalThis, rate = 0.9, pitch = 1, volume = 1, onEnd, onError } = {},
+) {
   if (!texto || !estaDisponibleVoz(entorno)) return false
 
   const Constructor = entorno.SpeechSynthesisUtterance
@@ -54,6 +57,13 @@ export function hablar(texto, { entorno = globalThis, rate = 0.9, pitch = 1, vol
   utterance.rate = rate
   utterance.pitch = pitch
   utterance.volume = volume
+
+  if (typeof onEnd === 'function') {
+    utterance.onend = () => onEnd()
+  }
+  if (typeof onError === 'function') {
+    utterance.onerror = (evento) => onError(evento)
+  }
 
   const voces =
     typeof entorno.speechSynthesis.getVoices === 'function'

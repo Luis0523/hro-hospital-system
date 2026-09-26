@@ -41,7 +41,10 @@ vi.mock('../api/tableroApi', async (importOriginal) => {
   }
 })
 
-import TableroPage from './TableroPage.jsx'
+import TableroPage, {
+  DURACION_LLAMADO_SIN_VOZ_MS,
+  resolverDuracionLlamadoMs,
+} from './TableroPage.jsx'
 
 const ASIGNACIONES_INICIALES = [
   {
@@ -170,8 +173,14 @@ describe('TableroPage', () => {
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      opciones?.onEnd?.()
+      return 'mensaje'
+    })
+
     render(<TableroPage />)
     await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
       handlers.onMensaje(
@@ -361,6 +370,7 @@ describe('TableroPage', () => {
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
     expect(anunciarTurnoMock).toHaveBeenCalledWith(
       expect.objectContaining({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      expect.objectContaining({ onEnd: expect.any(Function), onError: expect.any(Function) }),
     )
   })
 
@@ -446,5 +456,297 @@ describe('TableroPage · tabla dinámica', () => {
 
     await screen.findByTestId('tablero-tabla')
     expect(filasTabla()).toHaveLength(2)
+  })
+})
+
+describe('TableroPage · modo llamado (SCRUM-101)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    handlers = null
+    estaEnModoMockMock.mockReturnValue(false)
+    estaPermitidaMock.mockReturnValue(true)
+    estaDisponibleVozMock.mockReturnValue(true)
+    obtenerEstadoInicialMock.mockResolvedValue(ASIGNACIONES_INICIALES)
+    hablarMock.mockReturnValue(true)
+    anunciarTurnoMock.mockReturnValue('mensaje')
+    crearClienteTableroMock.mockImplementation((opciones) => {
+      handlers = opciones
+      return { activar: vi.fn(), desactivar: vi.fn() }
+    })
+  })
+
+  it('usa 6000 ms por defecto y respeta VITE_TABLERO_LLAMADO_MS', () => {
+    expect(DURACION_LLAMADO_SIN_VOZ_MS).toBe(6000)
+    expect(resolverDuracionLlamadoMs({})).toBe(6000)
+    expect(resolverDuracionLlamadoMs({ VITE_TABLERO_LLAMADO_MS: '3000' })).toBe(3000)
+    expect(resolverDuracionLlamadoMs({ VITE_TABLERO_LLAMADO_MS: 'abc' })).toBe(6000)
+    expect(resolverDuracionLlamadoMs({ VITE_TABLERO_LLAMADO_MS: '-5' })).toBe(6000)
+  })
+
+  it('muestra LlamadoGrande y oculta la tabla al cambiar el turno actual', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
+    expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
+  })
+
+  it('vuelve a la tabla al recibir onEnd con la cola vacía', async () => {
+    let terminar
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminar = opciones.onEnd
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+
+    act(() => terminar())
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('procesa dos llamados en orden FIFO sin interrumpir y vuelve a la tabla', async () => {
+    const terminaciones = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminaciones.push(opciones.onEnd)
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          subespecialidadNombre: 'Pediatría General',
+          espacioNumero: '201',
+        }),
+      )
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 15,
+          turnoSiguiente: 16,
+          subespecialidadNombre: 'Medicina General',
+          espacioNumero: '202',
+        }),
+      )
+    })
+
+    expect(
+      within(screen.getByTestId('llamado-grande')).getByText('Pediatría General'),
+    ).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(terminaciones).toHaveLength(1)
+
+    act(() => terminaciones[0]())
+
+    expect(
+      within(screen.getByTestId('llamado-grande')).getByText('Medicina General'),
+    ).toBeInTheDocument()
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    expect(terminaciones).toHaveLength(2)
+
+    act(() => terminaciones[1]())
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-2')).getByText('#015')).toBeInTheDocument()
+  })
+
+  it('avanza correctamente al recibir onError', async () => {
+    let fallar
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      fallar = opciones.onError
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+      )
+    })
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+
+    act(() => fallar())
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('usa el fallback por timeout si onEnd no ocurre', async () => {
+    anunciarTurnoMock.mockReturnValue('mensaje')
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        )
+      })
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(40000)
+      })
+
+      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('con la voz desactivada muestra el llamado y vuelve por tiempo visual', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        )
+      })
+
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+      expect(anunciarTurnoMock).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(7000)
+      })
+
+      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sin SpeechSynthesis muestra el llamado y avanza por tiempo sin errores', async () => {
+    estaDisponibleVozMock.mockReturnValue(false)
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
+        )
+      })
+
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+      expect(anunciarTurnoMock).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(7000)
+      })
+
+      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('no activa el llamado si el turno actual no cambia', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 8 }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('no activa el llamado si solo cambia el siguiente turno', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 1, turnoActual: 7, turnoSiguiente: 99 }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('no activa el llamado para asignaciones fuera del filtro', async () => {
+    estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
+
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({ asignacionDiariaEspacioId: 3, turnoActual: 50, turnoSiguiente: 51 }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('no muestra datos personales en el llamado', async () => {
+    render(<TableroPage />)
+    await screen.findByText('Pediatría General')
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          nombrePaciente: 'Juan Perez',
+          pacienteNombreCompleto: 'Juan Perez',
+          dpi: '1234567890101',
+          expediente: 'HRO-123',
+          telefono: '55555555',
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
+    expect(screen.queryByText('1234567890101')).not.toBeInTheDocument()
+    expect(screen.queryByText('HRO-123')).not.toBeInTheDocument()
+    expect(screen.queryByText('55555555')).not.toBeInTheDocument()
   })
 })

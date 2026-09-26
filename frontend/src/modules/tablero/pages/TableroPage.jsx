@@ -11,9 +11,22 @@ import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../a
 import ControlVoz from '../components/ControlVoz.jsx'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
+import LlamadoGrande from '../components/LlamadoGrande.jsx'
 import TablaTurnos from '../components/TablaTurnos.jsx'
 import TableroError from '../components/TableroError.jsx'
 import TableroVacio from '../components/TableroVacio.jsx'
+
+export const DURACION_LLAMADO_SIN_VOZ_MS = 6000
+
+export function resolverDuracionLlamadoMs(env = import.meta.env) {
+  const valor = Number(env.VITE_TABLERO_LLAMADO_MS)
+  return Number.isFinite(valor) && valor > 0 ? valor : DURACION_LLAMADO_SIN_VOZ_MS
+}
+
+function estimarDuracionVozMs(mensaje, baseMs) {
+  if (!mensaje) return baseMs
+  return Math.max(baseMs, Math.min(30000, 2000 + mensaje.length * 80))
+}
 
 export default function TableroPage() {
   const [asignaciones, setAsignaciones] = useState([])
@@ -24,10 +37,17 @@ export default function TableroPage() {
   )
   const [vozDisponible] = useState(() => estaDisponibleVoz())
   const [vozActiva, setVozActiva] = useState(false)
+  const [vista, setVista] = useState('tabla')
+  const [llamadoActual, setLlamadoActual] = useState(null)
 
   const montadoRef = useRef(true)
   const vozActivaRef = useRef(false)
   const ultimosTurnosRef = useRef(new Map())
+  const colaLlamadosRef = useRef([])
+  const reproduciendoRef = useRef(false)
+  const timerLlamadoRef = useRef(null)
+  const generacionLlamadoRef = useRef(0)
+  const iniciarSiguienteRef = useRef(() => {})
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -53,11 +73,22 @@ export default function TableroPage() {
     }
   }, [])
 
+  const limpiarTimerLlamado = useCallback(() => {
+    if (timerLlamadoRef.current !== null) {
+      clearTimeout(timerLlamadoRef.current)
+      timerLlamadoRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     montadoRef.current = true
     cargar()
     return () => {
       montadoRef.current = false
+      if (timerLlamadoRef.current !== null) {
+        clearTimeout(timerLlamadoRef.current)
+        timerLlamadoRef.current = null
+      }
     }
   }, [cargar])
 
@@ -72,6 +103,60 @@ export default function TableroPage() {
     setVozActiva(true)
     hablar(FRASE_ACTIVACION)
   }, [asignaciones])
+
+  const avanzar = useCallback(() => {
+    if (!montadoRef.current) return
+    limpiarTimerLlamado()
+    reproduciendoRef.current = false
+    iniciarSiguienteRef.current()
+  }, [limpiarTimerLlamado])
+
+  const iniciarSiguiente = useCallback(() => {
+    if (!montadoRef.current) return
+
+    limpiarTimerLlamado()
+    const generacion = ++generacionLlamadoRef.current
+
+    const cola = colaLlamadosRef.current
+    if (cola.length === 0) {
+      reproduciendoRef.current = false
+      setLlamadoActual(null)
+      setVista('tabla')
+      return
+    }
+
+    const siguiente = cola.shift()
+    reproduciendoRef.current = true
+    setLlamadoActual(siguiente)
+    setVista('llamado')
+
+    const terminar = () => {
+      if (!montadoRef.current) return
+      if (generacionLlamadoRef.current !== generacion) return
+      avanzar()
+    }
+
+    const baseMs = resolverDuracionLlamadoMs()
+
+    if (vozActivaRef.current && estaDisponibleVoz()) {
+      const mensaje = anunciarTurno(siguiente, { onEnd: terminar, onError: terminar })
+      if (mensaje) {
+        timerLlamadoRef.current = setTimeout(terminar, estimarDuracionVozMs(mensaje, baseMs))
+        return
+      }
+    }
+
+    timerLlamadoRef.current = setTimeout(terminar, baseMs)
+  }, [limpiarTimerLlamado, avanzar])
+
+  iniciarSiguienteRef.current = iniciarSiguiente
+
+  const encolarLlamado = useCallback((asignacion) => {
+    colaLlamadosRef.current.push(asignacion)
+    if (!reproduciendoRef.current) {
+      iniciarSiguienteRef.current()
+    }
+  }, [])
 
   useEffect(() => {
     if (estaEnModoMock()) return undefined
@@ -93,8 +178,8 @@ export default function TableroPage() {
 
         setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
 
-        if (cambioTurno && vozActivaRef.current) {
-          anunciarTurno(estado)
+        if (cambioTurno) {
+          encolarLlamado(estado)
         }
       },
       onConnected: () => {
@@ -119,7 +204,7 @@ export default function TableroPage() {
     return () => {
       cliente.desactivar()
     }
-  }, [])
+  }, [encolarLlamado])
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -137,9 +222,13 @@ export default function TableroPage() {
 
         {!cargando && error && <TableroError mensaje={error} onReintentar={cargar} />}
 
-        {!cargando && !error && asignaciones.length === 0 && <TableroVacio />}
+        {!cargando && !error && vista === 'llamado' && llamadoActual && (
+          <LlamadoGrande asignacion={llamadoActual} />
+        )}
 
-        {!cargando && !error && asignaciones.length > 0 && (
+        {!cargando && !error && vista === 'tabla' && asignaciones.length === 0 && <TableroVacio />}
+
+        {!cargando && !error && vista === 'tabla' && asignaciones.length > 0 && (
           <TablaTurnos asignaciones={asignaciones} />
         )}
       </main>
