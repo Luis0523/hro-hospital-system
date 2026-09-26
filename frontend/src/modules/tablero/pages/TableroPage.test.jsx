@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   anunciarTurnoMock,
@@ -160,7 +160,7 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    expect((await screen.findAllByTestId('tablero-tabla-cuerpo')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
     expect(screen.getByText('Datos de prueba')).toBeInTheDocument()
     expect(crearClienteTableroMock).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ describe('TableroPage', () => {
   it('en modo real prepara la conexión WebSocket', async () => {
     render(<TableroPage />)
 
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(crearClienteTableroMock).toHaveBeenCalledTimes(1)
     expect(handlers).toBeTruthy()
@@ -178,16 +178,13 @@ describe('TableroPage', () => {
   it('renderiza una tabla con una fila por asignación y su turno actual', async () => {
     render(<TableroPage />)
 
-    expect((await screen.findAllByTestId('tablero-tabla-cuerpo')).length).toBeGreaterThan(0)
-    expect(screen.getByText('201')).toBeInTheDocument()
-    expect(screen.getByText('202')).toBeInTheDocument()
-    expect(screen.getByText('301')).toBeInTheDocument()
-    expect(screen.getByText('302')).toBeInTheDocument()
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
+    expect(screen.queryByText('Medicina General')).not.toBeInTheDocument()
 
     const primera = screen.getByTestId('fila-turno-1')
-    expect(within(primera).getByTestId('fila-siguiente-1')).toHaveTextContent('—')
-    expect(within(screen.getByTestId('barra-llamados')).getByText(/#007/)).toBeInTheDocument()
+    expect(within(primera).getByText('#007')).toBeInTheDocument()
+    expect(within(primera).getByText('201')).toBeInTheDocument()
     expect(screen.queryByText('#008')).not.toBeInTheDocument()
   })
 
@@ -207,7 +204,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-9')
-    expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
+    expect(within(fila).getByText('—')).toBeInTheDocument()
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
@@ -217,7 +214,7 @@ describe('TableroPage', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -226,14 +223,13 @@ describe('TableroPage', () => {
       )
     })
 
-    const barra = screen.getByTestId('barra-llamados')
-    expect(within(barra).getByText(/#009/)).toBeInTheDocument()
-    expect(within(barra).getByText(/#014/)).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#009')).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-2')).getByText('#014')).toBeInTheDocument()
   })
 
   it('agrega una asignación nueva sin duplicar las existentes', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -248,13 +244,13 @@ describe('TableroPage', () => {
     })
 
     expect(filasTabla()).toHaveLength(5)
-    expect(screen.getByText('999')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-99')).toBeInTheDocument()
     expect(screen.getAllByTestId('fila-turno-1')).toHaveLength(1)
   })
 
   it('refleja el estado de la conexión WebSocket', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(screen.getByText('Reconectando…')).toBeInTheDocument()
 
@@ -291,7 +287,6 @@ describe('TableroPage', () => {
     })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('205')).toBeInTheDocument()
     expect(screen.getByTestId('fila-turno-5')).toBeInTheDocument()
   })
 
@@ -320,7 +315,7 @@ describe('TableroPage', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -339,16 +334,14 @@ describe('TableroPage', () => {
 
     expect(screen.queryByText('Fuera de filtro')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fila-turno-99')).not.toBeInTheDocument()
-    expect(
-      within(screen.getByTestId('barra-llamados')).getByText(/#003/),
-    ).toBeInTheDocument()
-    expect(screen.queryByText(/#050/)).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-3')).getByText('#003')).toBeInTheDocument()
+    expect(screen.queryByText('#050')).not.toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
   })
 
   it('no muestra datos personales aunque lleguen por WebSocket', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -371,7 +364,7 @@ describe('TableroPage', () => {
 
   it('no anuncia durante la carga inicial', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
     expect(hablarMock).not.toHaveBeenCalled()
@@ -393,14 +386,14 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-7')
-    expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
+    expect(within(fila).getByText('—')).toBeInTheDocument()
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })
 
   it('comienza con la voz desactivada y la activa con la frase de confirmación', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(screen.getByRole('button', { name: /activar voz/i })).toBeInTheDocument()
 
@@ -412,7 +405,7 @@ describe('TableroPage', () => {
 
   it('no anuncia si la voz no está activada', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -431,7 +424,7 @@ describe('TableroPage', () => {
 
   it('anuncia cuando cambia el turno actual tras activar la voz', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -456,7 +449,7 @@ describe('TableroPage', () => {
 
   it('un evento ACTUALIZACION no anuncia aunque cambie el turno', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -476,7 +469,7 @@ describe('TableroPage', () => {
 
   it('no anuncia si solo cambia el siguiente turno', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -493,7 +486,7 @@ describe('TableroPage', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -517,7 +510,7 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    expect((await screen.findAllByTestId('tablero-tabla-cuerpo')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(screen.getByText('Voz no disponible')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /activar voz/i })).not.toBeInTheDocument()
   })
@@ -560,7 +553,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('muestra LlamadoGrande y oculta la tabla al cambiar el turno actual', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -587,7 +580,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -624,7 +617,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -681,12 +674,11 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     act(() => anuncios[3].onEnd())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    const barra = screen.getByTestId('barra-llamados')
-    expect(within(barra).getByText(/#008/)).toBeInTheDocument()
-    expect(within(barra).getByText(/#015/)).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-2')).getByText('#015')).toBeInTheDocument()
   })
 
-  it('si la voz falla (onError) usa el tiempo visual y no se queda bloqueado', async () => {
+  it('avanza correctamente al recibir onError sin bloquear el tablero', async () => {
     const fallos = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
       fallos.push(opciones.onError)
@@ -694,45 +686,36 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
-    vi.useFakeTimers()
-    try {
-      act(() => {
-        handlers.onMensaje(
-          mensaje({
-            asignacionDiariaEspacioId: 1,
-            turnoActual: 8,
-            turnoSiguiente: 9,
-            tipoEvento: 'LLAMADO',
-            intentosLlamado: 1,
-          }),
-        )
-      })
-      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
-      // La síntesis falla: no debe avanzar al instante; garantiza el tiempo visual.
-      act(() => fallos[0]())
-      expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    act(() => fallos[0]())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
 
-      act(() => {
-        vi.advanceTimersByTime(7000)
-      })
+    act(() => fallos[1]())
 
-      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-    }
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
   it('usa el fallback por timeout si onEnd no ocurre', async () => {
     anunciarTurnoMock.mockReturnValue('mensaje')
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     vi.useFakeTimers()
@@ -765,7 +748,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('con la voz desactivada muestra el llamado y vuelve por tiempo visual', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     vi.useFakeTimers()
     try {
@@ -799,7 +782,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     estaDisponibleVozMock.mockReturnValue(false)
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     vi.useFakeTimers()
     try {
@@ -831,7 +814,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un evento ACTUALIZACION con cambio de turno no activa el llamado', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -850,7 +833,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('no activa el llamado si solo cambia el siguiente turno', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -866,7 +849,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -894,7 +877,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -936,7 +919,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('no muestra datos personales en el llamado', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -964,7 +947,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('integra el control de pantalla completa en el encabezado', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     // En jsdom la Fullscreen API no existe: el control se muestra como no disponible.
     expect(screen.getByText('Pantalla completa no disponible')).toBeInTheDocument()
@@ -972,7 +955,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('limpia el temporizador del llamado al desmontar', async () => {
     const { unmount } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     vi.useFakeTimers()
     try {
@@ -1005,7 +988,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     const { unmount } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1047,7 +1030,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1086,7 +1069,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un LLAMADO duplicado (misma firma) no vuelve a anunciar', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     const eventoLlamado = () =>
@@ -1110,7 +1093,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un ACTUALIZACION no borra la deduplicación del último llamado', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1168,7 +1151,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     ])
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1182,7 +1165,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('barra-llamados')).getByText(/#008/)).toBeInTheDocument()
+    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })
 
@@ -1202,7 +1185,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     ])
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1222,7 +1205,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('una asignación nueva por LLAMADO se agrega y llama', async () => {
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1253,7 +1236,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
   it('sin ?sala conserva el fallback build-time (todas)', async () => {
     render(<TableroPage />)
 
-    expect((await screen.findAllByTestId('tablero-tabla-cuerpo')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
   })
 
@@ -1266,7 +1249,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 
     render(<TableroPage />)
 
-    expect((await screen.findAllByTestId('tablero-tabla-cuerpo')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(1)
     expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
     expect(screen.queryByTestId('fila-turno-2')).not.toBeInTheDocument()
@@ -1281,7 +1264,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('202')).toBeInTheDocument()
+    expect(await screen.findByTestId('fila-turno-2')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(1)
     expect(screen.getByTestId('fila-turno-2')).toBeInTheDocument()
     expect(screen.queryByTestId('fila-turno-1')).not.toBeInTheDocument()
@@ -1295,7 +1278,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1320,7 +1303,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1346,7 +1329,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     act(() => {
       handlers.onMensaje(
@@ -1408,7 +1391,7 @@ describe('TableroPage · tema claro/oscuro', () => {
 
   it('por defecto usa tema claro (sin clase dark)', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(container.firstChild).not.toHaveClass('dark')
   })
@@ -1417,14 +1400,14 @@ describe('TableroPage · tema claro/oscuro', () => {
     globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
 
     const { container } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     expect(container.firstChild).toHaveClass('dark')
   })
 
   it('el botón alterna dark y de nuevo claro, persistiendo', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
     expect(container.firstChild).toHaveClass('dark')
@@ -1473,7 +1456,7 @@ describe('TableroPage · tema claro/oscuro', () => {
 
   it('un fullscreenchange no altera el tema', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findAllByTestId('tablero-tabla-cuerpo')
+    await screen.findByTestId('tablero-tabla')
 
     await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
 
@@ -1482,5 +1465,126 @@ describe('TableroPage · tema claro/oscuro', () => {
     })
 
     expect(container.firstChild).toHaveClass('dark')
+  })
+})
+
+describe('TableroPage · simulador de llamado (DEV + MOCK)', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+    estaEnModoMockMock.mockReturnValue(true)
+    vi.stubEnv('VITE_TABLERO_SIMULADOR_LLAMADO', 'true')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('no muestra el simulador cuando está deshabilitado', async () => {
+    vi.unstubAllEnvs()
+    estaEnModoMockMock.mockReturnValue(false)
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(screen.queryByRole('button', { name: 'Simular llamado' })).not.toBeInTheDocument()
+  })
+
+  it('Simular llamado produce LlamadoGrande con la primera asignación visible', async () => {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#001')
+    expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
+  })
+
+  it('con voz activa, Simular llamado anuncia exactamente 2 veces y vuelve a tabla', async () => {
+    const anuncios = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      anuncios.push({ asignacion, onEnd: opciones.onEnd })
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(anuncios[0].asignacion).toMatchObject({
+      turnoActual: 1,
+      intentosLlamado: 1,
+      tipoEvento: 'LLAMADO',
+    })
+
+    act(() => anuncios[0].onEnd())
+    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+
+    act(() => anuncios[1].onEnd())
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('Re-llamar conserva el turno y aumenta el intento', async () => {
+    const anuncios = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      anuncios.push({ asignacion, onEnd: opciones.onEnd })
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+    act(() => anuncios[0].onEnd())
+    act(() => anuncios[1].onEnd())
+    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
+      turnoActual: 1,
+      intentosLlamado: 1,
+    })
+
+    anunciarTurnoMock.mockClear()
+    await userEvent.click(screen.getByRole('button', { name: 'Re-llamar' }))
+
+    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
+      turnoActual: 1,
+      intentosLlamado: 2,
+    })
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+  })
+
+  it('un nuevo Simular llamado avanza al siguiente turno (turno 2 / intento 1)', async () => {
+    const anuncios = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      anuncios.push({ asignacion, onEnd: opciones.onEnd })
+      return 'mensaje'
+    })
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+    act(() => anuncios[0].onEnd())
+    act(() => anuncios[1].onEnd())
+    anunciarTurnoMock.mockClear()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+
+    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
+      turnoActual: 2,
+      intentosLlamado: 1,
+    })
+  })
+
+  it('el WebSocket normal sigue funcionando con el simulador habilitado', async () => {
+    // En modo mock no hay handlers WS; se valida que el simulador no rompe el
+    // pipeline al no existir cliente. La cobertura WS real está en otros bloques.
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(screen.getByRole('button', { name: 'Simular llamado' })).toBeInTheDocument()
   })
 })

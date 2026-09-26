@@ -23,23 +23,23 @@ export default function EncabezadoTablero({ children }) {
   }, [])
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 bg-primary px-6 py-4 text-on-primary">
-      <div className="flex items-center gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-on-primary/15">
-          <Icon name="local_hospital" className="text-[32px]" />
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-primary px-4 py-2 text-on-primary md:px-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-on-primary/15">
+          <Icon name="local_hospital" className="text-[24px]" />
         </div>
         <div className="leading-tight">
-          <p className="text-label-md uppercase tracking-[0.3em] text-on-primary/70">
+          <p className="text-label-sm uppercase tracking-[0.3em] text-on-primary/70">
             Hospital Regional de Occidente
           </p>
-          <h1 className="text-headline-lg uppercase">Consulta Externa · Turnos</h1>
+          <h1 className="text-headline-md uppercase">Consulta Externa · Turnos</h1>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="text-right leading-tight">
-          <p className="text-headline-lg tabular-nums">{formatearHora(ahora)}</p>
-          <p className="text-label-md capitalize text-on-primary/80">{formatearFecha(ahora)}</p>
+          <p className="text-headline-md tabular-nums">{formatearHora(ahora)}</p>
+          <p className="text-label-sm capitalize text-on-primary/80">{formatearFecha(ahora)}</p>
         </div>
         {children}
       </div>
