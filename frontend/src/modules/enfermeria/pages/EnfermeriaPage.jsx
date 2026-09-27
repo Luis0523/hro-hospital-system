@@ -5,6 +5,7 @@ import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
 import { reproducirBeep } from '@/shared/utils/sonido'
+import { crearClienteTurnos, topicEstacion } from '@/shared/ws/turnosSocket'
 import {
   agendarCita,
   buscarCitaDelDia,
@@ -37,6 +38,8 @@ import MenuUsuario from '../components/MenuUsuario.jsx'
 
 const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
+const USE_MOCK =
+  import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
 export default function EnfermeriaPage() {
   const { usuario, cerrarSesion } = useAuth()
@@ -135,6 +138,37 @@ export default function EnfermeriaPage() {
   useEffect(() => {
     refrescarCola().catch(() => {})
   }, [refrescarCola])
+
+  // Auto-refresco en tiempo real: la estación se suscribe al topic de su estación
+  // y refresca la cola ante cualquier cambio (propio o de otra terminal).
+  const refrescoTimerRef = useRef(null)
+  const programarRefresco = useCallback(() => {
+    if (refrescoTimerRef.current) clearTimeout(refrescoTimerRef.current)
+    refrescoTimerRef.current = setTimeout(() => {
+      refrescarCola().catch(() => {})
+    }, 300)
+  }, [refrescarCola])
+
+  useEffect(() => {
+    if (!estacionId || USE_MOCK) return undefined
+    const cliente = crearClienteTurnos({
+      topics: [topicEstacion(estacionId)],
+      onMensaje: (evento) => {
+        if (evento?.tipoEvento === 'LLAMADO' && evento.turnoActual != null) {
+          setTurnoActual(evento.turnoActual)
+        }
+        programarRefresco()
+      },
+    })
+    cliente.activate()
+    return () => {
+      cliente.deactivate()
+      if (refrescoTimerRef.current) {
+        clearTimeout(refrescoTimerRef.current)
+        refrescoTimerRef.current = null
+      }
+    }
+  }, [estacionId, programarRefresco])
 
   useEffect(() => {
     if (!turnoEnGracia?.id) return
