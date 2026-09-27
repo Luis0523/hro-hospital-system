@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
+// Identidad simulada (modo dev, sin auth real). Los valores se pueden
+// sobreescribir por variables de entorno para probar áreas con otro rol,
+// p. ej. el área de Jefe de Enfermería (VITE_USUARIO_ROL=jefe_enfermeria,
+// VITE_USUARIO_ID=jefe-enfermeria-01).
 const USUARIO_DEV = {
   id: 2,
-  idExterno: 'enfermeria-01',
-  nombre: 'Lic. Carmen Vega',
-  puesto: 'Enfermera Jefe de Turno',
-  rol: 'enfermeria',
-  terminal: 'BOX-04 Triage',
+  idExterno: import.meta.env.VITE_USUARIO_ID || 'enfermeria-01',
+  nombre: import.meta.env.VITE_USUARIO_NOMBRE || 'Lic. Carmen Vega',
+  puesto: import.meta.env.VITE_USUARIO_PUESTO || 'Enfermera Jefe de Turno',
+  rol: import.meta.env.VITE_USUARIO_ROL || 'enfermeria',
+  terminal: import.meta.env.VITE_USUARIO_TERMINAL || 'BOX-04 Triage',
 }
 
 const TOKEN_DEV = 'token-simulado-dev'
