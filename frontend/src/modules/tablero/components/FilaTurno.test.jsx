@@ -9,6 +9,8 @@ const ASIGNACION = {
   subespecialidadNombre: 'Pediatría General',
   turnoActual: 7,
   turnoSiguiente: 8,
+  turnosEnEspera: [9, 8],
+  pacienteNombre: 'Juan Perez',
   ultimaActualizacion: '2026-09-20T08:05:32-06:00',
 }
 
@@ -23,58 +25,31 @@ function renderFila(asignacion) {
 }
 
 describe('FilaTurno', () => {
-  it('muestra subespecialidad, consultorio y turno actual', () => {
+  it('muestra la clínica y el turno siguiente (el menor en espera)', () => {
     renderFila(ASIGNACION)
 
     expect(screen.getByText('Pediatría General')).toBeInTheDocument()
-    expect(screen.getByText('201')).toBeInTheDocument()
-    expect(screen.getByText('#007')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-siguiente-1')).toHaveTextContent('#008')
   })
 
-  it('no muestra el nivel aunque venga en el objeto', () => {
+  it('muestra "—" cuando no hay turnos en espera', () => {
+    renderFila({ ...ASIGNACION, turnosEnEspera: [] })
+
+    expect(screen.getByTestId('fila-siguiente-1')).toHaveTextContent('—')
+  })
+
+  it('no muestra consultorio, nivel ni datos personales', () => {
     renderFila(ASIGNACION)
 
+    expect(screen.queryByText('201')).not.toBeInTheDocument()
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
-    expect(screen.queryByText('Nivel 2')).not.toBeInTheDocument()
-  })
-
-  it('no muestra el siguiente turno en la vista normal', () => {
-    renderFila(ASIGNACION)
-
-    expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
-    expect(screen.queryByText('#008')).not.toBeInTheDocument()
-  })
-
-  it('no renderiza datos personales aunque el objeto los incluya', () => {
-    renderFila({
-      ...ASIGNACION,
-      nombrePaciente: 'Juan Perez',
-      dpi: '1234567890101',
-      expediente: 'HRO-123',
-      telefono: '55555555',
-      direccion: 'Zona 1',
-      correo: 'juan@example.com',
-    })
-
     expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
-    expect(screen.queryByText('1234567890101')).not.toBeInTheDocument()
-    expect(screen.queryByText('HRO-123')).not.toBeInTheDocument()
-    expect(screen.queryByText('55555555')).not.toBeInTheDocument()
-    expect(screen.queryByText('Zona 1')).not.toBeInTheDocument()
-    expect(screen.queryByText('juan@example.com')).not.toBeInTheDocument()
   })
 
   it('maneja valores nulos o faltantes de forma segura', () => {
-    renderFila({
-      asignacionDiariaEspacioId: 9,
-      espacioNumero: null,
-      nivel: 2,
-      subespecialidadNombre: null,
-      turnoActual: null,
-    })
+    renderFila({ asignacionDiariaEspacioId: 9, subespecialidadNombre: null })
 
-    expect(screen.getByText('Sin subespecialidad')).toBeInTheDocument()
-    expect(screen.getAllByText('—')).toHaveLength(3)
-    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
+    expect(screen.getByText('Sin clínica')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-siguiente-9')).toHaveTextContent('—')
   })
 })

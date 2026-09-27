@@ -54,28 +54,47 @@ export function hablar(
 ) {
   if (!texto || !estaDisponibleVoz(entorno)) return false
 
+  const synth = entorno.speechSynthesis
   const Constructor = entorno.SpeechSynthesisUtterance
-  const utterance = new Constructor(texto)
-  utterance.lang = 'es-GT'
-  utterance.rate = rate
-  utterance.pitch = pitch
-  utterance.volume = volume
 
-  if (typeof onEnd === 'function') {
-    utterance.onend = () => onEnd()
+  const emitir = () => {
+    const utterance = new Constructor(texto)
+    utterance.lang = 'es-GT'
+    utterance.rate = rate
+    utterance.pitch = pitch
+    utterance.volume = volume
+
+    if (typeof onEnd === 'function') {
+      utterance.onend = () => onEnd()
+    }
+    if (typeof onError === 'function') {
+      utterance.onerror = (evento) => onError(evento)
+    }
+
+    const voces = typeof synth.getVoices === 'function' ? synth.getVoices() : []
+    const voz = buscarVozEspanol(voces)
+    if (voz) utterance.voice = voz
+
+    try {
+      synth.resume?.()
+    } catch {
+      /* algunos motores no exponen resume() */
+    }
+    synth.speak(utterance)
   }
-  if (typeof onError === 'function') {
-    utterance.onerror = (evento) => onError(evento)
+
+  const voces = typeof synth.getVoices === 'function' ? synth.getVoices() : []
+  if (voces.length === 0 && typeof synth.addEventListener === 'function') {
+    // Las voces pueden cargar de forma asíncrona: esperar una vez al evento.
+    const alCargar = () => {
+      synth.removeEventListener('voiceschanged', alCargar)
+      emitir()
+    }
+    synth.addEventListener('voiceschanged', alCargar)
+    return true
   }
 
-  const voces =
-    typeof entorno.speechSynthesis.getVoices === 'function'
-      ? entorno.speechSynthesis.getVoices()
-      : []
-  const voz = buscarVozEspanol(voces)
-  if (voz) utterance.voice = voz
-
-  entorno.speechSynthesis.speak(utterance)
+  emitir()
   return true
 }
 

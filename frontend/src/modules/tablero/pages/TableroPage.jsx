@@ -19,6 +19,7 @@ import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
 import LlamadoGrande from '../components/LlamadoGrande.jsx'
 import TablaTurnos from '../components/TablaTurnos.jsx'
+import BarraLlamados from '../components/BarraLlamados.jsx'
 import TableroError from '../components/TableroError.jsx'
 import TableroVacio from '../components/TableroVacio.jsx'
 
@@ -317,6 +318,8 @@ export default function TableroPage() {
             <TablaTurnos asignaciones={asignaciones} />
           )}
         </main>
+
+        {!cargando && !error && <BarraLlamados asignaciones={asignaciones} />}
       </div>
     </div>
   )

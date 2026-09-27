@@ -8,24 +8,16 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
     <table className="w-full table-fixed border-collapse">
       <caption className="sr-only">{etiqueta ?? 'Turnos por clínica'}</caption>
       <colgroup>
-        <col style={{ width: '38%' }} />
-        <col style={{ width: '20%' }} />
-        <col style={{ width: '22%' }} />
-        <col style={{ width: '20%' }} />
+        <col style={{ width: '60%' }} />
+        <col style={{ width: '40%' }} />
       </colgroup>
       <thead>
         <tr>
           <th scope="col" className={`${CLASE_ENCABEZADO} text-left`}>
-            Clínica / Subespecialidad
-          </th>
-          <th scope="col" className={`${CLASE_ENCABEZADO} text-left`}>
-            Consultorio
+            Clínica
           </th>
           <th scope="col" className={`${CLASE_ENCABEZADO} text-right`}>
-            Turno actual
-          </th>
-          <th scope="col" className={`${CLASE_ENCABEZADO} text-right`}>
-            En espera
+            Turno siguiente
           </th>
         </tr>
       </thead>

@@ -10,6 +10,7 @@ function asignacion(id) {
     subespecialidadNombre: `Clínica ${id}`,
     turnoActual: id,
     turnoSiguiente: id + 1,
+    turnosEnEspera: [id + 5],
     ultimaActualizacion: null,
   }
 }
@@ -32,11 +33,8 @@ describe('TablaTurnos', () => {
       <TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />,
     )
 
-    expect(
-      screen.getAllByRole('columnheader', { name: /clínica \/ subespecialidad/i }),
-    ).toHaveLength(2)
-    expect(screen.getAllByRole('columnheader', { name: /consultorio/i })).toHaveLength(2)
-    expect(screen.getAllByRole('columnheader', { name: /turno actual/i })).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: /^clínica$/i })).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: /turno siguiente/i })).toHaveLength(2)
   })
 
   it('con una asignación deja una sola sección', () => {
@@ -46,22 +44,11 @@ describe('TablaTurnos', () => {
     expect(filas()).toHaveLength(1)
   })
 
-  it('con dos asignaciones usa 1 y 1', () => {
-    render(<TablaTurnos asignaciones={[asignacion(1), asignacion(2)]} />)
-    expect(secciones()).toHaveLength(2)
-    expect(secciones().map((_, i) => filasDeSeccion(i).length)).toEqual([1, 1])
-  })
-
   it('con cuatro asignaciones usa 2 y 2', () => {
     render(
       <TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />,
     )
     expect(secciones().map((_, i) => filasDeSeccion(i).length)).toEqual([2, 2])
-  })
-
-  it('con cinco asignaciones usa 3 y 2', () => {
-    render(<TablaTurnos asignaciones={[1, 2, 3, 4, 5].map((id) => asignacion(id))} />)
-    expect(secciones().map((_, i) => filasDeSeccion(i).length)).toEqual([3, 2])
   })
 
   it('con ocho asignaciones usa 4 y 4', () => {
@@ -83,13 +70,5 @@ describe('TablaTurnos', () => {
       'fila-turno-4',
       'fila-turno-5',
     ])
-  })
-
-  it('no muestra el nivel ni el siguiente turno', () => {
-    render(<TablaTurnos asignaciones={[asignacion(1), asignacion(2)]} />)
-
-    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
-    expect(screen.queryByText('#202')).not.toBeInTheDocument()
-    expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
   })
 })

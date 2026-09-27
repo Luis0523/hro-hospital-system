@@ -160,7 +160,7 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect((await screen.findAllByText('Pediatría General')).length).toBeGreaterThan(0)
     expect(filasTabla()).toHaveLength(4)
     expect(screen.getByText('Datos de prueba')).toBeInTheDocument()
     expect(crearClienteTableroMock).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ describe('TableroPage', () => {
   it('en modo real prepara la conexión WebSocket', async () => {
     render(<TableroPage />)
 
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(crearClienteTableroMock).toHaveBeenCalledTimes(1)
     expect(handlers).toBeTruthy()
@@ -178,14 +178,15 @@ describe('TableroPage', () => {
   it('renderiza una tabla con una fila por asignación y su turno actual', async () => {
     render(<TableroPage />)
 
-    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect((await screen.findAllByText('Pediatría General')).length).toBeGreaterThan(0)
     expect(screen.getByText('Medicina General')).toBeInTheDocument()
     expect(screen.getByText('Cardiología')).toBeInTheDocument()
     expect(screen.getByText('Traumatología')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
 
     const primera = screen.getByTestId('fila-turno-1')
-    expect(within(primera).getByText('#007')).toBeInTheDocument()
+    expect(within(primera).getByTestId('fila-siguiente-1')).toHaveTextContent('—')
+    expect(within(screen.getByTestId('barra-llamados')).getByText(/#007/)).toBeInTheDocument()
     expect(screen.queryByText('#008')).not.toBeInTheDocument()
   })
 
@@ -215,7 +216,7 @@ describe('TableroPage', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -224,13 +225,14 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(within(screen.getByTestId('fila-turno-1')).getByText('#009')).toBeInTheDocument()
-    expect(within(screen.getByTestId('fila-turno-2')).getByText('#014')).toBeInTheDocument()
+    const barra = screen.getByTestId('barra-llamados')
+    expect(within(barra).getByText(/#009/)).toBeInTheDocument()
+    expect(within(barra).getByText(/#014/)).toBeInTheDocument()
   })
 
   it('agrega una asignación nueva sin duplicar las existentes', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -251,7 +253,7 @@ describe('TableroPage', () => {
 
   it('refleja el estado de la conexión WebSocket', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(screen.getByText('Reconectando…')).toBeInTheDocument()
 
@@ -317,7 +319,7 @@ describe('TableroPage', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -336,14 +338,16 @@ describe('TableroPage', () => {
 
     expect(screen.queryByText('Fuera de filtro')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fila-turno-99')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('fila-turno-3')).getByText('#003')).toBeInTheDocument()
-    expect(screen.queryByText('#050')).not.toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('barra-llamados')).getByText(/#003/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/#050/)).not.toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
   })
 
   it('no muestra datos personales aunque lleguen por WebSocket', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -366,7 +370,7 @@ describe('TableroPage', () => {
 
   it('no anuncia durante la carga inicial', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
     expect(hablarMock).not.toHaveBeenCalled()
@@ -395,7 +399,7 @@ describe('TableroPage', () => {
 
   it('comienza con la voz desactivada y la activa con la frase de confirmación', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(screen.getByRole('button', { name: /activar voz/i })).toBeInTheDocument()
 
@@ -407,7 +411,7 @@ describe('TableroPage', () => {
 
   it('no anuncia si la voz no está activada', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -426,7 +430,7 @@ describe('TableroPage', () => {
 
   it('anuncia cuando cambia el turno actual tras activar la voz', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -451,7 +455,7 @@ describe('TableroPage', () => {
 
   it('un evento ACTUALIZACION no anuncia aunque cambie el turno', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -471,7 +475,7 @@ describe('TableroPage', () => {
 
   it('no anuncia si solo cambia el siguiente turno', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -488,7 +492,7 @@ describe('TableroPage', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     anunciarTurnoMock.mockClear()
 
@@ -512,7 +516,7 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect((await screen.findAllByText('Pediatría General')).length).toBeGreaterThan(0)
     expect(screen.getByText('Voz no disponible')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /activar voz/i })).not.toBeInTheDocument()
   })
@@ -555,7 +559,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('muestra LlamadoGrande y oculta la tabla al cambiar el turno actual', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -582,7 +586,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -619,7 +623,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -676,8 +680,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     act(() => anuncios[3].onEnd())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
-    expect(within(screen.getByTestId('fila-turno-2')).getByText('#015')).toBeInTheDocument()
+    const barra = screen.getByTestId('barra-llamados')
+    expect(within(barra).getByText(/#008/)).toBeInTheDocument()
+    expect(within(barra).getByText(/#015/)).toBeInTheDocument()
   })
 
   it('si la voz falla (onError) usa el tiempo visual y no se queda bloqueado', async () => {
@@ -688,7 +693,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     vi.useFakeTimers()
@@ -726,7 +731,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     anunciarTurnoMock.mockReturnValue('mensaje')
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     vi.useFakeTimers()
@@ -759,7 +764,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('con la voz desactivada muestra el llamado y vuelve por tiempo visual', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     vi.useFakeTimers()
     try {
@@ -793,7 +798,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     estaDisponibleVozMock.mockReturnValue(false)
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     vi.useFakeTimers()
     try {
@@ -825,7 +830,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un evento ACTUALIZACION con cambio de turno no activa el llamado', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -844,7 +849,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('no activa el llamado si solo cambia el siguiente turno', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -860,7 +865,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -888,7 +893,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -930,7 +935,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('no muestra datos personales en el llamado', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -958,7 +963,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('integra el control de pantalla completa en el encabezado', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     // En jsdom la Fullscreen API no existe: el control se muestra como no disponible.
     expect(screen.getByText('Pantalla completa no disponible')).toBeInTheDocument()
@@ -966,7 +971,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('limpia el temporizador del llamado al desmontar', async () => {
     const { unmount } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     vi.useFakeTimers()
     try {
@@ -999,7 +1004,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     const { unmount } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1041,7 +1046,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1080,7 +1085,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un LLAMADO duplicado (misma firma) no vuelve a anunciar', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     const eventoLlamado = () =>
@@ -1104,7 +1109,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un ACTUALIZACION no borra la deduplicación del último llamado', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
@@ -1162,7 +1167,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     ])
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1176,7 +1181,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
+    expect(within(screen.getByTestId('barra-llamados')).getByText(/#008/)).toBeInTheDocument()
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })
 
@@ -1196,7 +1201,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     ])
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1216,7 +1221,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('una asignación nueva por LLAMADO se agrega y llama', async () => {
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1247,7 +1252,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
   it('sin ?sala conserva el fallback build-time (todas)', async () => {
     render(<TableroPage />)
 
-    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect((await screen.findAllByText('Pediatría General')).length).toBeGreaterThan(0)
     expect(filasTabla()).toHaveLength(4)
   })
 
@@ -1260,7 +1265,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('Pediatría General')).toBeInTheDocument()
+    expect((await screen.findAllByText('Pediatría General')).length).toBeGreaterThan(0)
     expect(filasTabla()).toHaveLength(1)
     expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
     expect(screen.queryByTestId('fila-turno-2')).not.toBeInTheDocument()
@@ -1289,7 +1294,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1314,7 +1319,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1340,7 +1345,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     act(() => {
       handlers.onMensaje(
@@ -1402,7 +1407,7 @@ describe('TableroPage · tema claro/oscuro', () => {
 
   it('por defecto usa tema claro (sin clase dark)', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(container.firstChild).not.toHaveClass('dark')
   })
@@ -1411,14 +1416,14 @@ describe('TableroPage · tema claro/oscuro', () => {
     globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
 
     const { container } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     expect(container.firstChild).toHaveClass('dark')
   })
 
   it('el botón alterna dark y de nuevo claro, persistiendo', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
     expect(container.firstChild).toHaveClass('dark')
@@ -1467,7 +1472,7 @@ describe('TableroPage · tema claro/oscuro', () => {
 
   it('un fullscreenchange no altera el tema', async () => {
     const { container } = render(<TableroPage />)
-    await screen.findByText('Pediatría General')
+    await screen.findAllByText('Pediatría General')
 
     await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
 
