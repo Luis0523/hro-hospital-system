@@ -106,3 +106,58 @@ describe('TablaTurnos', () => {
     expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
   })
 })
+
+describe('TablaTurnos · últimos llamados', () => {
+  function reciente(id, turnoActual, espacioNumero) {
+    return { asignacionDiariaEspacioId: id, turnoActual, espacioNumero, completadoEn: 1 }
+  }
+
+  it('sin recientes mantiene las dos secciones normales', () => {
+    render(<TablaTurnos asignaciones={[1, 2, 3, 4].map((id) => asignacion(id))} />)
+
+    expect(secciones()).toHaveLength(2)
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+  })
+
+  it('con recientes usa la izquierda normal y Últimos llamados a la derecha', () => {
+    render(
+      <TablaTurnos
+        asignaciones={[1, 2, 3, 4].map((id) => asignacion(id))}
+        ultimosLlamados={[reciente(3, 21, '107'), reciente(2, 14, '101')]}
+      />,
+    )
+
+    expect(secciones()).toHaveLength(1)
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Últimos llamados' })).toBeInTheDocument()
+  })
+
+  it('no renderiza la segunda mitad normal mientras hay recientes', () => {
+    render(
+      <TablaTurnos
+        asignaciones={[1, 2, 3, 4].map((id) => asignacion(id))}
+        ultimosLlamados={[reciente(3, 21, '107')]}
+      />,
+    )
+
+    expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-2')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-3')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-4')).not.toBeInTheDocument()
+  })
+
+  it('al recibir una lista vacía vuelve la segunda mitad normal', () => {
+    const asignaciones = [1, 2, 3, 4].map((id) => asignacion(id))
+    const { rerender } = render(
+      <TablaTurnos asignaciones={asignaciones} ultimosLlamados={[reciente(3, 21, '107')]} />,
+    )
+
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+
+    rerender(<TablaTurnos asignaciones={asignaciones} ultimosLlamados={[]} />)
+
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    expect(secciones()).toHaveLength(2)
+    expect(screen.getByTestId('fila-turno-3')).toBeInTheDocument()
+  })
+})

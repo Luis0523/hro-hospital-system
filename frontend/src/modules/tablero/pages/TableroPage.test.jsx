@@ -49,6 +49,7 @@ vi.mock('../api/tableroApi', async (importOriginal) => {
 
 import TableroPage, {
   DURACION_LLAMADO_SIN_VOZ_MS,
+  debeLimpiarRecientes,
   resolverDuracionLlamadoMs,
 } from './TableroPage.jsx'
 
@@ -185,7 +186,8 @@ describe('TableroPage', () => {
     const primera = screen.getByTestId('fila-turno-1')
     expect(within(primera).getByText('#007')).toBeInTheDocument()
     expect(within(primera).getByText('201')).toBeInTheDocument()
-    expect(screen.queryByText('#008')).not.toBeInTheDocument()
+    // La tabla nunca muestra turnoSiguiente; la franja inferior sí puede mostrarlo.
+    expect(within(primera).queryByText('#008')).not.toBeInTheDocument()
   })
 
   it('muestra un guion cuando no hay turno actual', async () => {
@@ -645,10 +647,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
 
-    // Pediatría, repetición 1 (Cardiología/Medicina queda en cola, sin interrumpir).
-    expect(
-      within(screen.getByTestId('llamado-grande')).getByText('Pediatría General'),
-    ).toBeInTheDocument()
+    // Primer llamado visible (turno #008), sin interrumpir la cola.
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
     expect(anuncios).toHaveLength(1)
 
@@ -656,17 +656,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     act(() => anuncios[0].onEnd())
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
     expect(anuncios[1].asignacion).toMatchObject({ asignacionDiariaEspacioId: 1 })
-    expect(
-      within(screen.getByTestId('llamado-grande')).getByText('Pediatría General'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
 
     // Avanza a Medicina.
     act(() => anuncios[1].onEnd())
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(3)
     expect(anuncios[2].asignacion).toMatchObject({ asignacionDiariaEspacioId: 2 })
-    expect(
-      within(screen.getByTestId('llamado-grande')).getByText('Medicina General'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#015')
 
     // Medicina, repetición 2 y fin de la cola.
     act(() => anuncios[2].onEnd())
@@ -907,7 +903,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
 
-    expect(within(screen.getByTestId('llamado-grande')).getByText('General')).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
     expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
 
     act(() => terminaciones[0]())
@@ -1222,9 +1218,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-    expect(
-      within(screen.getByTestId('llamado-grande')).getByText('Nueva Clínica'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#005')
   })
 })
 
@@ -1586,5 +1580,681 @@ describe('TableroPage · simulador de llamado (DEV + MOCK)', () => {
     await screen.findByTestId('tablero-tabla')
 
     expect(screen.getByRole('button', { name: 'Simular llamado' })).toBeInTheDocument()
+  })
+})
+
+describe('TableroPage · últimos llamados en columna derecha', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  function capturarTerminaciones() {
+    const terminaciones = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminaciones.push(opciones.onEnd)
+      return 'mensaje'
+    })
+    return terminaciones
+  }
+
+  function mensajeLlamado(overrides) {
+    return mensaje({
+      tipoEvento: 'LLAMADO',
+      intentosLlamado: 1,
+      ...overrides,
+    })
+  }
+
+  function completar(terminaciones, indices) {
+    for (const indice of indices) {
+      act(() => terminaciones[indice]())
+    }
+  }
+
+  function filasRecientes() {
+    return screen.queryAllByTestId(/^ultimo-llamado-/)
+  }
+
+  it('sin llamados recientes mantiene las dos secciones normales', async () => {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('tablero-tabla-cuerpo')).toHaveLength(2)
+  })
+
+  it('durante LlamadoGrande no muestra tabla ni últimos llamados', async () => {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(screen.queryByTestId('tablero-tabla')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+  })
+
+  it('al completar un LLAMADO aparece en Últimos llamados', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toHaveTextContent('#005')
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toHaveTextContent('103')
+  })
+
+  it('ordena los recientes con el más reciente primero', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+      )
+    })
+    completar(terminaciones, [2, 3])
+
+    expect(filasRecientes().map((fila) => fila.getAttribute('data-testid'))).toEqual([
+      'ultimo-llamado-2-14',
+      'ultimo-llamado-1-5',
+    ])
+  })
+
+  it('limita a 5 los últimos llamados', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    for (let i = 1; i <= 6; i += 1) {
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({
+            asignacionDiariaEspacioId: i,
+            turnoActual: 100 + i,
+            espacioNumero: String(200 + i),
+          }),
+        )
+      })
+      const base = (i - 1) * 2
+      completar(terminaciones, [base, base + 1])
+    }
+
+    const filas = filasRecientes()
+    expect(filas).toHaveLength(5)
+    expect(filas[0]).toHaveAttribute('data-testid', 'ultimo-llamado-6-106')
+    expect(filas[4]).toHaveAttribute('data-testid', 'ultimo-llamado-2-102')
+  })
+
+  it('FIFO A/B/C: durante los llamados no hay recientes y al final quedan los tres', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+      )
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 3, turnoActual: 21, espacioNumero: '107' }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#005')
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+
+    completar(terminaciones, [0, 1])
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#014')
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+
+    completar(terminaciones, [2, 3])
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#021')
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+
+    completar(terminaciones, [4, 5])
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    expect(filasRecientes().map((fila) => fila.getAttribute('data-testid'))).toEqual([
+      'ultimo-llamado-3-21',
+      'ultimo-llamado-2-14',
+      'ultimo-llamado-1-5',
+    ])
+  })
+
+  it('expira exactamente a los 120000 ms', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-26T10:00:00.000Z'))
+    try {
+      render(<TableroPage />)
+      await act(async () => {})
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(119999))
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(1))
+      expect(screen.queryByTestId('ultimo-llamado-1-5')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('expira cada llamado de forma independiente', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-26T10:00:00.000Z'))
+    try {
+      render(<TableroPage />)
+      await act(async () => {})
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+
+      act(() => vi.advanceTimersByTime(10000))
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+      expect(screen.getByTestId('ultimo-llamado-2-14')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(103999))
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+      expect(screen.getByTestId('ultimo-llamado-2-14')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(1))
+      expect(screen.queryByTestId('ultimo-llamado-1-5')).not.toBeInTheDocument()
+      expect(screen.getByTestId('ultimo-llamado-2-14')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(16000))
+      expect(screen.queryByTestId('ultimo-llamado-2-14')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('al expirar el último vuelve la columna derecha normal', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-26T10:00:00.000Z'))
+    try {
+      render(<TableroPage />)
+      await act(async () => {})
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+      expect(screen.queryByTestId('fila-turno-3')).not.toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(120000))
+
+      expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+      expect(screen.getByTestId('fila-turno-3')).toBeInTheDocument()
+      expect(screen.getByTestId('fila-turno-4')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('un re-llamado no duplica, sube y reinicia el tiempo', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-26T10:00:00.000Z'))
+    try {
+      render(<TableroPage />)
+      await act(async () => {})
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000)) // A completa t=+6s
+
+      act(() => vi.advanceTimersByTime(16000)) // t=+22s
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000)) // B completa t=+22s
+
+      expect(filasRecientes().map((fila) => fila.getAttribute('data-testid'))).toEqual([
+        'ultimo-llamado-2-14',
+        'ultimo-llamado-1-5',
+      ])
+
+      act(() => vi.advanceTimersByTime(16000)) // t=+38s
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 5,
+            espacioNumero: '103',
+            intentosLlamado: 2,
+          }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000)) // re-llamado A completa t=+38s
+
+      expect(filasRecientes()).toHaveLength(2)
+      expect(filasRecientes()[0]).toHaveAttribute('data-testid', 'ultimo-llamado-1-5')
+
+      // A reinició su ventana: a t=+148s B ya expiró (t=+142s) y A sigue (vence t=+158s).
+      act(() => vi.advanceTimersByTime(110000))
+      expect(screen.queryByTestId('ultimo-llamado-2-14')).not.toBeInTheDocument()
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('permite dos turnos distintos de la misma asignación', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 6, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [2, 3])
+
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+    expect(screen.getByTestId('ultimo-llamado-1-6')).toBeInTheDocument()
+    expect(filasRecientes()).toHaveLength(2)
+  })
+
+  it('un duplicado WS no crea una entrada adicional', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    const evento = () =>
+      mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' })
+
+    act(() => handlers.onMensaje(evento()))
+    completar(terminaciones, [0, 1])
+
+    anunciarTurnoMock.mockClear()
+    act(() => handlers.onMensaje(evento()))
+
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(filasRecientes()).toHaveLength(1)
+  })
+
+  it('un ACTUALIZACION no afecta los recientes', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+    expect(filasRecientes()).toHaveLength(1)
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 8,
+          turnoSiguiente: 9,
+          tipoEvento: 'ACTUALIZACION',
+        }),
+      )
+    })
+
+    expect(filasRecientes()).toHaveLength(1)
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+  })
+
+  it('un LLAMADO fuera de sala no aparece', async () => {
+    capturarTerminaciones()
+    resolverConfiguracionSalaMock.mockResolvedValueOnce({
+      modo: 'sala',
+      sala: '1',
+      permitidas: [1],
+    })
+
+    render(<TableroPage />)
+    await screen.findByTestId('fila-turno-1')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+      )
+    })
+
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+  })
+
+  it('una reconexión/error de conexión conserva los recientes', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+    expect(filasRecientes()).toHaveLength(1)
+
+    act(() => handlers.onError('fallo'))
+    act(() => handlers.onDisconnected())
+
+    expect(filasRecientes()).toHaveLength(1)
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+  })
+
+  it('debeLimpiarRecientes limpia solo ante un cambio real de sala', () => {
+    expect(debeLimpiarRecientes({ salaAnterior: undefined, salaNueva: '1' })).toBe(false)
+    expect(debeLimpiarRecientes({ salaAnterior: '1', salaNueva: '1' })).toBe(false)
+    expect(debeLimpiarRecientes({ salaAnterior: null, salaNueva: null })).toBe(false)
+    expect(debeLimpiarRecientes({ salaAnterior: '1', salaNueva: '2' })).toBe(true)
+    expect(debeLimpiarRecientes({ salaAnterior: '1', salaNueva: null })).toBe(true)
+  })
+
+  it('no muestra datos personales en los recientes', async () => {
+    const terminaciones = capturarTerminaciones()
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 5,
+          espacioNumero: '103',
+          nombrePaciente: 'Juan Perez',
+          dpi: '1234567890101',
+          expediente: 'HRO-123',
+          telefono: '55555555',
+        }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    expect(screen.getByTestId('ultimo-llamado-1-5')).toHaveTextContent('#005')
+    expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
+    expect(screen.queryByText('1234567890101')).not.toBeInTheDocument()
+    expect(screen.queryByText('HRO-123')).not.toBeInTheDocument()
+    expect(screen.queryByText('55555555')).not.toBeInTheDocument()
+  })
+
+  it('mantiene los recientes en tema oscuro', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+    const terminaciones = capturarTerminaciones()
+    const { container } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    expect(container.firstChild).toHaveClass('dark')
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+  })
+
+  it('el simulador DEV deja el llamado en Últimos llamados', async () => {
+    vi.stubEnv('VITE_TABLERO_SIMULADOR_LLAMADO', 'true')
+    try {
+      configurarAntesDeCada({ capturarHandlers: true })
+      estaEnModoMockMock.mockReturnValue(true)
+      const terminaciones = capturarTerminaciones()
+
+      render(<TableroPage />)
+      await screen.findByTestId('tablero-tabla')
+      await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+      await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
+
+      completar(terminaciones, [0, 1])
+
+      expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+      expect(screen.getByTestId('ultimo-llamado-1-1')).toHaveTextContent('#001')
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+})
+
+describe('TableroPage · limpieza manual de últimos llamados', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  function capturarTerminaciones() {
+    const terminaciones = []
+    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
+      terminaciones.push(opciones.onEnd)
+      return 'mensaje'
+    })
+    return terminaciones
+  }
+
+  function mensajeLlamado(overrides) {
+    return mensaje({
+      tipoEvento: 'LLAMADO',
+      intentosLlamado: 1,
+      ...overrides,
+    })
+  }
+
+  function completar(terminaciones, indices) {
+    for (const indice of indices) {
+      act(() => terminaciones[indice]())
+    }
+  }
+
+  function botonLimpiar() {
+    return screen.queryByRole('button', { name: /limpiar últimos/i })
+  }
+
+  async function prepararConReciente(terminaciones) {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+  }
+
+  it('sin recientes no muestra el botón "Limpiar últimos"', async () => {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(botonLimpiar()).not.toBeInTheDocument()
+  })
+
+  it('con un reciente completado aparece el botón', async () => {
+    const terminaciones = capturarTerminaciones()
+    await prepararConReciente(terminaciones)
+
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+    expect(botonLimpiar()).toBeInTheDocument()
+  })
+
+  it('limpiar manualmente restaura la tabla normal y conserva la izquierda', async () => {
+    const terminaciones = capturarTerminaciones()
+    await prepararConReciente(terminaciones)
+
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+    expect(screen.queryByTestId('fila-turno-3')).not.toBeInTheDocument()
+
+    await userEvent.click(botonLimpiar())
+
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    expect(botonLimpiar()).not.toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-2')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-3')).toBeInTheDocument()
+    expect(screen.getByTestId('fila-turno-4')).toBeInTheDocument()
+    expect(screen.getAllByTestId('tablero-tabla-cuerpo')).toHaveLength(2)
+  })
+
+  it('limpiar no vuelve a cargar asignaciones', async () => {
+    const terminaciones = capturarTerminaciones()
+    await prepararConReciente(terminaciones)
+
+    expect(obtenerEstadoInicialMock).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(botonLimpiar())
+
+    expect(obtenerEstadoInicialMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('fila-turno-1')).toBeInTheDocument()
+  })
+
+  it('tras limpiar, un nuevo LLAMADO vuelve a crear Últimos llamados', async () => {
+    const terminaciones = capturarTerminaciones()
+    await prepararConReciente(terminaciones)
+
+    await userEvent.click(botonLimpiar())
+    expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+      )
+    })
+    completar(terminaciones, [2, 3])
+
+    expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
+    expect(screen.getByTestId('ultimo-llamado-2-14')).toHaveTextContent('#014')
+  })
+
+  it('durante LlamadoGrande el botón no es visible', async () => {
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+
+    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    expect(botonLimpiar()).not.toBeInTheDocument()
+  })
+
+  it('el timer automático de 2 minutos sigue funcionando tras limpiar', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-26T10:00:00.000Z'))
+    try {
+      render(<TableroPage />)
+      await act(async () => {})
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+      expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
+
+      act(() => botonLimpiar().click())
+      expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+
+      act(() => {
+        handlers.onMensaje(
+          mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
+        )
+      })
+      act(() => vi.advanceTimersByTime(6000))
+      expect(screen.getByTestId('ultimo-llamado-2-14')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(120000))
+      expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('el control es visible en tema oscuro', async () => {
+    globalThis.localStorage.setItem('hro-tablero-tema', 'dark')
+    const terminaciones = capturarTerminaciones()
+    const { container } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
+      )
+    })
+    completar(terminaciones, [0, 1])
+
+    expect(container.firstChild).toHaveClass('dark')
+    expect(botonLimpiar()).toBeInTheDocument()
   })
 })
