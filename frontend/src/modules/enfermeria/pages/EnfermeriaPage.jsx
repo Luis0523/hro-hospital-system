@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
+import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
 import { reproducirBeep } from '@/shared/utils/sonido'
@@ -11,16 +12,16 @@ import {
   cambiarEstadoTablero,
   consultarDisponibilidad,
   hacerCheckIn,
-  listarClinicas,
   listarCuposDelDia,
   listarPacientes,
+  listarSubespecialidadesEstacion,
   listarTurnosActivos,
-  listarTurnosClinica,
+  listarTurnosEstacion,
   llamarTurno,
   marcarAtendido,
   marcarNoResponde,
   obtenerEstadoTablero,
-  pasarSiguiente as pasarSiguienteApi,
+  pasarSiguienteEstacion,
   reintegrarTurno,
 } from '../api/enfermeriaApi'
 import { pacientesMock } from '../api/mockData'
@@ -39,6 +40,7 @@ const ESTADOS_EN_COLA = ['en_espera', 'llamado']
 
 export default function EnfermeriaPage() {
   const { usuario, cerrarSesion } = useAuth()
+  const { estacion } = useEstacion()
   const { mostrarToast } = useToast()
   const navigate = useNavigate()
 
@@ -77,11 +79,19 @@ export default function EnfermeriaPage() {
   const [pacientesAbierto, setPacientesAbierto] = useState(false)
   const [perfilAbierto, setPerfilAbierto] = useState(false)
 
-  const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
+  const estacionId = estacion?.id ?? null
+  const subespecialidadIds = useMemo(
+    () => (seleccionadas.length > 0 ? seleccionadas : clinicas.map((c) => c.id)),
+    [seleccionadas, clinicas],
+  )
 
   useEffect(() => {
-    listarClinicas()
-      .then(setClinicas)
+    if (!estacionId) {
+      setClinicas([])
+      return
+    }
+    listarSubespecialidadesEstacion(estacionId)
+      .then((subs) => setClinicas(subs.map((sub) => ({ id: sub.id, nombre: sub.nombre }))))
       .catch(() => setClinicas([]))
     obtenerEstadoTablero()
       .then((estado) => setTableroActivo(estado.activo))
@@ -93,34 +103,34 @@ export default function EnfermeriaPage() {
         setTurnoActual(ultimo)
       })
       .catch(() => {})
-  }, [])
+  }, [estacionId])
 
   useEffect(() => {
     const { fechaInicio, fechaFin } = rangoDelMes(mes.getFullYear(), mes.getMonth())
     setCargandoDias(true)
-    consultarDisponibilidad({ clinicaIds: seleccionadas, fechaInicio, fechaFin })
+    consultarDisponibilidad({ subespecialidadIds, fechaInicio, fechaFin })
       .then(setDias)
       .catch(() => setDias([]))
       .finally(() => setCargandoDias(false))
-  }, [mes, seleccionadas])
+  }, [mes, subespecialidadIds])
 
   useEffect(() => {
     if (!agendaAbierta) return
     setCargandoCupos(true)
-    listarCuposDelDia(seleccionada, seleccionadas)
+    listarCuposDelDia(seleccionada, subespecialidadIds)
       .then(setCuposDelDia)
       .catch(() => setCuposDelDia([]))
       .finally(() => setCargandoCupos(false))
-  }, [agendaAbierta, seleccionada, seleccionadas])
+  }, [agendaAbierta, seleccionada, subespecialidadIds])
 
   const refrescarCola = useCallback(async () => {
-    if (!clinicaActivaId) return
-    const lista = await listarTurnosClinica(clinicaActivaId)
+    if (!estacionId) return
+    const lista = await listarTurnosEstacion(estacionId, hoyIso())
     const enCola = lista.filter((turno) => ESTADOS_EN_COLA.includes(turno.estado))
     setTurnos(enCola)
     setNoRespondidos(lista.filter((turno) => turno.estado === 'no_responde'))
     setColaEnEspera(enCola.length)
-  }, [clinicaActivaId])
+  }, [estacionId])
 
   useEffect(() => {
     refrescarCola().catch(() => {})
@@ -264,7 +274,7 @@ export default function EnfermeriaPage() {
   async function manejarPasarSiguiente() {
     setPasando(true)
     try {
-      const llamado = await pasarSiguienteApi(clinicaActivaId)
+      const llamado = await pasarSiguienteEstacion(estacionId, hoyIso())
       if (llamado?.numeroTurno) setTurnoActual(llamado.numeroTurno)
       if (llamado?.pacienteNombre) setPacienteActual(llamado.pacienteNombre)
       activarGracia(llamado)
@@ -406,7 +416,7 @@ export default function EnfermeriaPage() {
       mostrarToast({ tone: 'error', title: 'No se pudo agendar', message: error.message })
     } finally {
       setAgendando(false)
-      listarCuposDelDia(seleccionada, seleccionadas)
+      listarCuposDelDia(seleccionada, subespecialidadIds)
         .then(setCuposDelDia)
         .catch(() => {})
     }
@@ -439,7 +449,7 @@ export default function EnfermeriaPage() {
     <div className="min-h-screen bg-surface pb-28">
       <TopHud
         usuario={usuario}
-        terminal={usuario?.terminal}
+        terminal={estacion?.codigo ?? estacion?.nombre ?? usuario?.terminal}
         turnoActual={turnoActual}
         pacienteActual={pacienteActual}
         tableroActivo={tableroActivo}
@@ -532,7 +542,7 @@ export default function EnfermeriaPage() {
         abierto={perfilAbierto}
         onCerrar={() => setPerfilAbierto(false)}
         usuario={usuario}
-        terminal={usuario?.terminal}
+        terminal={estacion?.codigo ?? estacion?.nombre ?? usuario?.terminal}
         onCerrarSesion={confirmarCierreSesion}
       />
 

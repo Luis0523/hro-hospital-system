@@ -2,14 +2,16 @@ import { useNavigate } from 'react-router-dom'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
+import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 
 export default function SesionCerradaPage() {
   const { iniciarSesion } = useAuth()
+  const { estacion } = useEstacion()
   const navigate = useNavigate()
 
   function volverAEntrar() {
     iniciarSesion()
-    navigate('/enfermeria')
+    navigate(estacion ? '/enfermeria' : '/seleccion-estacion')
   }
 
   return (

@@ -43,6 +43,33 @@ export const estacionesMock = [
   },
 ]
 
+/** Respuesta simulada de `GET /estaciones` (forma real del backend). */
+export const estacionesApiMock = estacionesMock.map((estacion) => ({
+  id: estacion.id,
+  codigo: estacion.terminal,
+  nombre: estacion.clinicaNombre,
+  ubicacion: estacion.ubicacion,
+  activo: true,
+  subespecialidades: [],
+}))
+
+/** Subespecialidades por estación (mock). Los ids coinciden con clinicasMock para reusar cupos/turnos. */
+export const SUBESPECIALIDADES_POR_ESTACION = {
+  'box-04': [{ id: 1, nombre: 'Medicina General' }],
+  'box-05': [{ id: 2, nombre: 'Pediatría General' }],
+  'box-06': [{ id: 4, nombre: 'Cardiología Clínica' }],
+  'box-07': [{ id: 7, nombre: 'Traumatología General' }],
+}
+
+export function subespecialidadesEstacionMock(estacionId) {
+  return SUBESPECIALIDADES_POR_ESTACION[estacionId] ?? []
+}
+
+export function turnosEstacionMock(estacionId) {
+  const ids = subespecialidadesEstacionMock(estacionId).map((sub) => sub.id)
+  return turnosMock.filter((turno) => ids.includes(turno.clinicaId))
+}
+
 export const pacientesMock = [
   {
     id: 1,

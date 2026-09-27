@@ -1,7 +1,9 @@
 package com.hro.system.turno.repository;
 
 import com.hro.system.turno.entity.Turno;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +18,15 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     Optional<Turno> findByCitaId(Long citaId);
 
     List<Turno> findByEstado(String estado);
+
+    /**
+     * Primer turno en espera de una asignación diaria (sala del día), ordenado por correlativo.
+     * Toma un lock pesimista de escritura para que dos terminales no llamen al mismo turno
+     * de forma concurrente (avance atómico de "pasar siguiente").
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Turno> findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoAsc(
+            Long asignacionDiariaEspacioId, String estado);
 
     @Query(value = "SELECT fn_siguiente_turno(:asignacionDiariaEspacioId)", nativeQuery = true)
     Integer obtenerSiguienteTurnoAtomico(@Param("asignacionDiariaEspacioId") Long asignacionDiariaEspacioId);

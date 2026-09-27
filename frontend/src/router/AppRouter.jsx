@@ -4,8 +4,8 @@ import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionP
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
+import RequiereEstacion from './RequiereEstacion.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
-import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
 import UsuariosPage from '@/modules/administracion/pages/UsuariosPage.jsx'
@@ -24,7 +24,9 @@ export default function AppRouter() {
         path="/enfermeria"
         element={
           <ProtectedRoute>
-            <EnfermeriaPage />
+            <RequiereEstacion>
+              <EnfermeriaPage />
+            </RequiereEstacion>
           </ProtectedRoute>
         }
       />

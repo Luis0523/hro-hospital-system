@@ -16,6 +16,8 @@ public class TableroTurnoDTO {
     private String espacioNumero;
     private Short nivel;
     private String subespecialidadNombre;
+    private Long subespecialidadId;
+    private Long especialidadId;
     private Integer turnoActual;
     private Integer turnoSiguiente;
     private OffsetDateTime ultimaActualizacion;
