@@ -1,17 +1,36 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
-// Identidad simulada (modo dev, sin auth real). Los valores se pueden
-// sobreescribir por variables de entorno para probar áreas con otro rol,
-// p. ej. el área de Jefe de Enfermería (VITE_USUARIO_ROL=jefe_enfermeria,
-// VITE_USUARIO_ID=jefe-enfermeria-01).
-const USUARIO_DEV = {
+// Identidad simulada (modo dev, sin auth real). Se puede fijar por variables de
+// entorno para probar áreas con otro rol, p. ej. el área de Jefe de Enfermería
+// (VITE_USUARIO_ID=jefe-enfermeria-01, VITE_USUARIO_ROL=jefe_enfermeria).
+const USUARIO_BASE = {
   id: 2,
-  idExterno: import.meta.env.VITE_USUARIO_ID || 'enfermeria-01',
-  nombre: import.meta.env.VITE_USUARIO_NOMBRE || 'Lic. Carmen Vega',
-  puesto: import.meta.env.VITE_USUARIO_PUESTO || 'Enfermera Jefe de Turno',
-  rol: import.meta.env.VITE_USUARIO_ROL || 'enfermeria',
-  terminal: import.meta.env.VITE_USUARIO_TERMINAL || 'BOX-04 Triage',
+  idExterno: 'enfermeria-01',
+  nombre: 'Lic. Carmen Vega',
+  puesto: 'Enfermera Jefe de Turno',
+  rol: 'enfermeria',
+  terminal: 'BOX-04 Triage',
 }
+
+const IDENTIDAD_ENV = {
+  idExterno: import.meta.env.VITE_USUARIO_ID,
+  nombre: import.meta.env.VITE_USUARIO_NOMBRE,
+  puesto: import.meta.env.VITE_USUARIO_PUESTO,
+  rol: import.meta.env.VITE_USUARIO_ROL,
+  terminal: import.meta.env.VITE_USUARIO_TERMINAL,
+}
+
+// La identidad por entorno aplica solo fuera de tests (en tests se usa la base,
+// para que los tests no dependan del `.env` local).
+const APLICAR_ENV = import.meta.env.MODE !== 'test'
+const envOverrides = APLICAR_ENV
+  ? Object.fromEntries(Object.entries(IDENTIDAD_ENV).filter(([, valor]) => valor))
+  : {}
+
+// Si el entorno fija identidad, manda sobre lo guardado en localStorage.
+const IDENTIDAD_FIJADA = APLICAR_ENV && Object.keys(envOverrides).length > 0
+
+const USUARIO_DEV = { ...USUARIO_BASE, ...envOverrides }
 
 const TOKEN_DEV = 'token-simulado-dev'
 const CLAVE_SESION = 'hro_sesion'
@@ -20,6 +39,7 @@ const AuthContext = createContext(null)
 
 function leerUsuario() {
   try {
+    if (IDENTIDAD_FIJADA) return { ...USUARIO_DEV }
     const guardado = localStorage.getItem('hro_usuario')
     return guardado ? { ...USUARIO_DEV, ...JSON.parse(guardado) } : USUARIO_DEV
   } catch {
