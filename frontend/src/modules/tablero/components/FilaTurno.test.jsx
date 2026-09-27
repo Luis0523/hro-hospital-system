@@ -4,14 +4,11 @@ import FilaTurno from './FilaTurno.jsx'
 
 const ASIGNACION = {
   asignacionDiariaEspacioId: 1,
-  espacioNumero: '201',
-  nivel: 2,
+  espacioNumero: '203',
   subespecialidadNombre: 'Pediatría General',
   turnoActual: 7,
-  turnoSiguiente: 8,
   turnosEnEspera: [9, 8],
   pacienteNombre: 'Juan Perez',
-  ultimaActualizacion: '2026-09-20T08:05:32-06:00',
 }
 
 function renderFila(asignacion) {
@@ -25,10 +22,10 @@ function renderFila(asignacion) {
 }
 
 describe('FilaTurno', () => {
-  it('muestra la clínica y el turno siguiente (el menor en espera)', () => {
+  it('muestra el número de clínica y el turno siguiente (el menor en espera)', () => {
     renderFila(ASIGNACION)
 
-    expect(screen.getByText('Pediatría General')).toBeInTheDocument()
+    expect(screen.getByText('203')).toBeInTheDocument()
     expect(screen.getByTestId('fila-siguiente-1')).toHaveTextContent('#008')
   })
 
@@ -38,18 +35,16 @@ describe('FilaTurno', () => {
     expect(screen.getByTestId('fila-siguiente-1')).toHaveTextContent('—')
   })
 
-  it('no muestra consultorio, nivel ni datos personales', () => {
+  it('no muestra la subespecialidad ni datos personales', () => {
     renderFila(ASIGNACION)
 
-    expect(screen.queryByText('201')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Pediatría General')).not.toBeInTheDocument()
     expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
   })
 
   it('maneja valores nulos o faltantes de forma segura', () => {
-    renderFila({ asignacionDiariaEspacioId: 9, subespecialidadNombre: null })
+    renderFila({ asignacionDiariaEspacioId: 9 })
 
-    expect(screen.getByText('Sin clínica')).toBeInTheDocument()
-    expect(screen.getByTestId('fila-siguiente-9')).toHaveTextContent('—')
+    expect(screen.getAllByText('—')).toHaveLength(2)
   })
 })

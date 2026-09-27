@@ -13,14 +13,14 @@ function primerEnEspera(turnosEnEspera) {
 }
 
 export default function FilaTurno({ asignacion }) {
-  const { asignacionDiariaEspacioId, subespecialidadNombre, turnosEnEspera } = asignacion
+  const { asignacionDiariaEspacioId, espacioNumero, turnosEnEspera } = asignacion
   const siguiente = primerEnEspera(turnosEnEspera)
 
   return (
     <tr data-testid={`fila-turno-${asignacionDiariaEspacioId}`} className="align-middle">
       <td className="px-2 py-4 md:px-4 md:py-5">
-        <h2 className="text-headline-md uppercase tracking-tight text-on-surface dark:text-slate-100">
-          {subespecialidadNombre ?? 'Sin clínica'}
+        <h2 className="text-[clamp(2.5rem,5vw,11rem)] font-bold uppercase leading-none tabular-nums tracking-tight text-on-surface dark:text-slate-100">
+          {espacioNumero ?? '—'}
         </h2>
       </td>
 

@@ -28,9 +28,9 @@ export default function BarraLlamados({ asignaciones = [] }) {
         <ul className="flex flex-wrap items-center gap-x-8 gap-y-2">
           {llamados.map((asignacion) => (
             <li key={asignacion.asignacionDiariaEspacioId} className="text-headline-sm font-semibold">
-              {`${formatearTurno(asignacion.turnoActual)} · ${
-                asignacion.subespecialidadNombre ?? '—'
-              } · Consultorio ${asignacion.espacioNumero ?? '—'}${
+              {`${formatearTurno(asignacion.turnoActual)} · Clínica ${
+                asignacion.espacioNumero ?? '—'
+              }${
                 asignacion.pacienteNombre ? ` · ${asignacion.pacienteNombre}` : ''
               }`}
             </li>
