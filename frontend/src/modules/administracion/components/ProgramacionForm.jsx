@@ -9,9 +9,11 @@ export default function ProgramacionForm({
   medicoFijoId,
   subespecialidadFijaId,
   valoresIniciales,
+  modo = 'crear',
   soloLectura = false,
   onSubmit,
 }) {
+  const esEdicion = modo === 'editar'
   const [medicoId, setMedicoId] = useState(valoresIniciales?.medicoId ?? medicoFijoId ?? '')
   const [subespecialidadId, setSubespecialidadId] = useState(
     valoresIniciales?.subespecialidadId ?? subespecialidadFijaId ?? '',
@@ -39,9 +41,11 @@ export default function ProgramacionForm({
     evento.preventDefault()
     const nuevos = {}
 
-    if (!medicoId) nuevos.medicoId = 'Seleccione un médico'
-    if (!subespecialidadId) nuevos.subespecialidadId = 'Seleccione una subespecialidad'
-    if (!diaSemana) nuevos.diaSemana = 'Seleccione un día'
+    if (!esEdicion) {
+      if (!medicoId) nuevos.medicoId = 'Seleccione un médico'
+      if (!subespecialidadId) nuevos.subespecialidadId = 'Seleccione una subespecialidad'
+      if (!diaSemana) nuevos.diaSemana = 'Seleccione un día'
+    }
     if (!horaInicio) nuevos.horaInicio = 'Indique la hora de inicio'
     if (!horaFin) nuevos.horaFin = 'Indique la hora de fin'
 
@@ -58,14 +62,25 @@ export default function ProgramacionForm({
     setErrores(nuevos)
     if (Object.keys(nuevos).length > 0) return
 
-    onSubmit({
-      medicoId,
-      subespecialidadId,
-      diaSemana: Number(diaSemana),
+    const horario = {
       horaInicio: normalizarHora(horaInicio),
       horaFin: normalizarHora(horaFin),
       capacidadMaxima: capacidad,
       duracionConsultaMinutos: duracion,
+    }
+
+    // El contrato PUT solo admite horario, capacidad y duración: no se envían
+    // medicoId, subespecialidadId ni diaSemana en edición.
+    if (esEdicion) {
+      onSubmit(horario)
+      return
+    }
+
+    onSubmit({
+      medicoId,
+      subespecialidadId,
+      diaSemana: Number(diaSemana),
+      ...horario,
     })
   }
 
@@ -97,44 +112,64 @@ export default function ProgramacionForm({
 
   return (
     <form id="form-catalogo" onSubmit={manejarEnvio} className="space-y-4" noValidate>
-      <div>
-        <Select
-          label="Médico"
-          value={medicoId}
-          onChange={setMedicoId}
-          options={opcionesMedicos}
-          placeholder="Seleccione un médico"
-        />
-        {errores.medicoId && (
-          <span className="mt-1 block text-xs text-red-600">{errores.medicoId}</span>
-        )}
-      </div>
+      {esEdicion ? (
+        <>
+          <Input label="Médico" value={valoresIniciales?.medicoNombre ?? ''} disabled />
+          <Input
+            label="Subespecialidad"
+            value={valoresIniciales?.subespecialidadNombre ?? ''}
+            disabled
+          />
+          <Input
+            label="Día"
+            value={
+              valoresIniciales?.diaSemanaNombre ?? nombreDia(valoresIniciales?.diaSemana) ?? ''
+            }
+            disabled
+          />
+        </>
+      ) : (
+        <>
+          <div>
+            <Select
+              label="Médico"
+              value={medicoId}
+              onChange={setMedicoId}
+              options={opcionesMedicos}
+              placeholder="Seleccione un médico"
+            />
+            {errores.medicoId && (
+              <span className="mt-1 block text-xs text-red-600">{errores.medicoId}</span>
+            )}
+          </div>
 
-      <div>
-        <Select
-          label="Subespecialidad"
-          value={subespecialidadId}
-          onChange={setSubespecialidadId}
-          options={opcionesSubespecialidades}
-          placeholder="Seleccione una subespecialidad"
-        />
-        {errores.subespecialidadId && (
-          <span className="mt-1 block text-xs text-red-600">{errores.subespecialidadId}</span>
-        )}
-      </div>
+          <div>
+            <Select
+              label="Subespecialidad"
+              value={subespecialidadId}
+              onChange={setSubespecialidadId}
+              options={opcionesSubespecialidades}
+              placeholder="Seleccione una subespecialidad"
+            />
+            {errores.subespecialidadId && (
+              <span className="mt-1 block text-xs text-red-600">{errores.subespecialidadId}</span>
+            )}
+          </div>
 
-      <div>
-        <Select
-          label="Día"
-          value={diaSemana}
-          onChange={setDiaSemana}
-          options={opcionesDias}
-          placeholder="Seleccione un día"
-        />
-        {errores.diaSemana && (
-          <span className="mt-1 block text-xs text-red-600">{errores.diaSemana}</span>
-        )}
-      </div>
+          <div>
+            <Select
+              label="Día"
+              value={diaSemana}
+              onChange={setDiaSemana}
+              options={opcionesDias}
+              placeholder="Seleccione un día"
+            />
+            {errores.diaSemana && (
+              <span className="mt-1 block text-xs text-red-600">{errores.diaSemana}</span>
+            )}
+          </div>
+        </>
+      )}
 
       <Input
         name="horaInicio"

@@ -37,9 +37,13 @@ import {
   listarMedicos,
   listarProgramacionesPorMedico,
   listarProgramacionesPorSubespecialidad,
+  listarProgramaciones,
   listarSubespecialidades,
+  actualizarProgramacion,
   reactivarEspecialidad,
   reactivarEspacioFisico,
+  reactivarMedico,
+  reactivarProgramacion,
   reactivarSubespecialidad,
 } from './administracionApi'
 import { reiniciarCatalogosMock } from './mockData'
@@ -328,6 +332,23 @@ describe('administracionApi (mock)', () => {
 
       expect((await listarMedicos()).some((item) => item.id === primero.id)).toBe(false)
     })
+
+    it('filtra médicos por estado y reactiva', async () => {
+      expect((await listarMedicos()).every((item) => item.activo)).toBe(true)
+
+      const inactivos = await listarMedicos('inactivos')
+      expect(inactivos.length).toBeGreaterThan(0)
+      expect(inactivos.every((item) => !item.activo)).toBe(true)
+
+      const todas = await listarMedicos('todos')
+      expect(todas.length).toBeGreaterThan(inactivos.length)
+
+      const reactivado = await reactivarMedico(inactivos[0].id)
+      expect(reactivado.activo).toBe(true)
+      expect(
+        (await listarMedicos('activos')).some((item) => item.id === inactivos[0].id),
+      ).toBe(true)
+    })
   })
 
   describe('programación médico-subespecialidad', () => {
@@ -456,10 +477,84 @@ describe('administracionApi (mock)', () => {
       expect(lista.some((item) => item.id === creada.id)).toBe(false)
     })
 
-    it('no expone funciones que el contrato backend no ofrece', () => {
-      expect(administracionApi.actualizarProgramacion).toBeUndefined()
-      expect(administracionApi.reactivarMedico).toBeUndefined()
-      expect(administracionApi.reactivarProgramacion).toBeUndefined()
+    it('lista la programación general con filtros combinados', async () => {
+      const medico = await primerMedico()
+
+      const todas = await listarProgramaciones()
+      expect(todas.length).toBeGreaterThan(0)
+      expect(todas.every((item) => item.activo)).toBe(true)
+
+      const porMedico = await listarProgramaciones({ medicoId: medico.id })
+      expect(porMedico.length).toBeGreaterThan(0)
+      expect(porMedico.every((item) => item.medicoId === medico.id)).toBe(true)
+
+      const porDia = await listarProgramaciones({ diaSemana: 1 })
+      expect(porDia.length).toBeGreaterThan(0)
+      expect(porDia.every((item) => item.diaSemana === 1)).toBe(true)
+
+      const inactivas = await listarProgramaciones({ estado: 'inactivos' })
+      expect(inactivas.length).toBeGreaterThan(0)
+      expect(inactivas.every((item) => !item.activo)).toBe(true)
+    })
+
+    it('actualiza horario, capacidad y duración sin cambiar médico/subespecialidad/día', async () => {
+      const medico = await primerMedico()
+      const [programacion] = await listarProgramaciones({ medicoId: medico.id })
+
+      const actualizada = await actualizarProgramacion(programacion.id, {
+        horaInicio: '08:00',
+        horaFin: '11:00',
+        capacidadMaxima: 6,
+        duracionConsultaMinutos: 30,
+      })
+
+      expect(actualizada.medicoId).toBe(programacion.medicoId)
+      expect(actualizada.subespecialidadId).toBe(programacion.subespecialidadId)
+      expect(actualizada.diaSemana).toBe(programacion.diaSemana)
+      expect(actualizada.horaInicio).toBe('08:00:00')
+      expect(actualizada.horaFin).toBe('11:00:00')
+      expect(actualizada.capacidadMaxima).toBe(6)
+      expect(actualizada.duracionConsultaMinutos).toBe(30)
+    })
+
+    it('rechaza una actualización con capacidad que no cabe en la jornada', async () => {
+      const medico = await primerMedico()
+      const [programacion] = await listarProgramaciones({ medicoId: medico.id })
+
+      await expect(
+        actualizarProgramacion(programacion.id, {
+          horaInicio: '08:00',
+          horaFin: '09:00',
+          capacidadMaxima: 50,
+          duracionConsultaMinutos: 60,
+        }),
+      ).rejects.toThrow(/no cabe en la jornada/i)
+    })
+
+    it('reactiva una programación con médico y subespecialidad activos', async () => {
+      const reactivable = await reactivarProgramacion(
+        '6f0d3a2c-1a11-4d21-9c01-000000000207',
+      )
+
+      expect(reactivable.activo).toBe(true)
+    })
+
+    it('rechaza reactivar una programación con médico inactivo', async () => {
+      await expect(
+        reactivarProgramacion('6f0d3a2c-1a11-4d21-9c01-000000000205'),
+      ).rejects.toThrow(/médico/i)
+    })
+
+    it('rechaza reactivar una programación con subespecialidad inactiva', async () => {
+      await expect(
+        reactivarProgramacion('6f0d3a2c-1a11-4d21-9c01-000000000206'),
+      ).rejects.toThrow(/subespecialidad/i)
+    })
+
+    it('no expone operaciones que el backend no ofrece', () => {
+      expect(typeof actualizarProgramacion).toBe('function')
+      expect(typeof reactivarProgramacion).toBe('function')
+      expect(typeof reactivarMedico).toBe('function')
     })
   })
 

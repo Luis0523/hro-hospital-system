@@ -3,6 +3,7 @@ import {
   actualizarEspecialidadMock,
   actualizarEspacioFisicoMock,
   actualizarMedicoMock,
+  actualizarProgramacionMock,
   actualizarSubespecialidadMock,
   crearDiaNoLaborableMock,
   crearEspecialidadMock,
@@ -22,11 +23,14 @@ import {
   listarEspecialidadesMock,
   listarEspaciosFisicosMock,
   listarMedicosMock,
+  listarProgramacionesMock,
   listarProgramacionesPorMedicoMock,
   listarProgramacionesPorSubespecialidadMock,
   listarSubespecialidadesMock,
   reactivarEspecialidadMock,
   reactivarEspacioFisicoMock,
+  reactivarMedicoMock,
+  reactivarProgramacionMock,
   reactivarSubespecialidadMock,
 } from './mockData.js'
 
@@ -141,9 +145,9 @@ export async function reactivarEspacioFisico(id) {
 // Médicos — /medicos
 // ---------------------------------------------------------------------------
 
-export async function listarMedicos() {
-  if (USE_MOCK) return listarMedicosMock()
-  return desenvolver(await client.get('/medicos'))
+export async function listarMedicos(estado) {
+  if (USE_MOCK) return listarMedicosMock(estado)
+  return desenvolver(await client.get('/medicos', { params: paramsEstado(estado) }))
 }
 
 export async function crearMedico({ nombres, numeroColegiado }) {
@@ -168,10 +172,29 @@ export async function desactivarMedico(id) {
   return desenvolver(await client.delete(`/medicos/${id}`))
 }
 
+export async function reactivarMedico(id) {
+  if (USE_MOCK) return reactivarMedicoMock(id)
+  return desenvolver(await client.patch(`/medicos/${id}/reactivar`))
+}
+
 // ---------------------------------------------------------------------------
 // Programación médico-subespecialidad — /medico-subespecialidades
-// El contrato vigente no expone PUT/PATCH: la programación no se edita.
 // ---------------------------------------------------------------------------
+
+export async function listarProgramaciones({
+  medicoId,
+  subespecialidadId,
+  diaSemana,
+  estado,
+} = {}) {
+  if (USE_MOCK) return listarProgramacionesMock({ medicoId, subespecialidadId, diaSemana, estado })
+  const params = {}
+  if (medicoId) params.medicoId = medicoId
+  if (subespecialidadId) params.subespecialidadId = subespecialidadId
+  if (diaSemana) params.diaSemana = diaSemana
+  if (estado) params.estado = estado
+  return desenvolver(await client.get('/medico-subespecialidades', { params }))
+}
 
 export async function listarProgramacionesPorMedico(medicoId) {
   if (USE_MOCK) return listarProgramacionesPorMedicoMock(medicoId)
@@ -190,9 +213,23 @@ export async function crearProgramacion(datos) {
   return desenvolver(await client.post('/medico-subespecialidades', datos))
 }
 
+export async function actualizarProgramacion(
+  id,
+  { horaInicio, horaFin, capacidadMaxima, duracionConsultaMinutos },
+) {
+  const datos = { horaInicio, horaFin, capacidadMaxima, duracionConsultaMinutos }
+  if (USE_MOCK) return actualizarProgramacionMock(id, datos)
+  return desenvolver(await client.put(`/medico-subespecialidades/${id}`, datos))
+}
+
 export async function desactivarProgramacion(id) {
   if (USE_MOCK) return desactivarProgramacionMock(id)
   return desenvolver(await client.delete(`/medico-subespecialidades/${id}`))
+}
+
+export async function reactivarProgramacion(id) {
+  if (USE_MOCK) return reactivarProgramacionMock(id)
+  return desenvolver(await client.patch(`/medico-subespecialidades/${id}/reactivar`))
 }
 
 // ---------------------------------------------------------------------------

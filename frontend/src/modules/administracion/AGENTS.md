@@ -811,7 +811,7 @@ La lógica frontend debe usar `codigo` para errores estructurados y `message` ú
 
 **Catálogos (especialidades, subespecialidades, espacios físicos)** — [A] `?estado=` (default `activos`), `DELETE /{id}` (baja lógica: `activo=false`, HTTP 200) y `PATCH /{id}/reactivar` (`activo=true`, HTTP 200, idempotente). Confirmado en el backend vigente (`origin/backend-admin` y `origin/main`).
 
-**Médicos** — [A] `?estado=`, `PATCH /{id}/reactivar` y `POST/PUT` con `numeroColegiado`. [C] Verificar contra el backend desplegado que `numeroColegiado` se persiste/devuelve correctamente (SCRUM-92).
+**Médicos** — [A] `?estado=`, `PATCH /{id}/reactivar` y `POST/PUT` con `numeroColegiado` (obligatorio, ≤50, único, persistido y presente en `MedicoResponseDTO` y `MedicoSubespecialidadResponseDTO`; SCRUM-92 cubierto).
 
 **Programación** — [A] listado general `GET /medico-subespecialidades?medicoId=&subespecialidadId=&diaSemana=&estado=`, `PUT /{id}` para editar horario/capacidad/duración (no cambia médico/subespecialidad/día) y `PATCH /{id}/reactivar`. [C] SCRUM-90: comportamiento ante creación parcial (varios días) sin definir (éxito parcial vs. atomicidad vs. batch).
 
@@ -848,7 +848,7 @@ No existe una entidad "Clínica" vigente: el concepto se modela mediante especia
 
 - Limitaciones heredadas de `shared/ui` (`Input`, `Select`, `Modal`, `Table`) y del scrollbar global.
 - `format:check` global falla por archivos ajenos al módulo.
-- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): `numeroColegiado` (SCRUM-92); `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
+- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
 
 ### Regla fundamental
 

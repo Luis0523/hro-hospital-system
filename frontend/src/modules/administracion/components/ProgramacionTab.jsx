@@ -4,22 +4,35 @@ import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Select from '@/shared/components/ui/Select.jsx'
 import {
+  actualizarProgramacion,
   crearProgramacion,
   desactivarProgramacion,
   listarMedicos,
-  listarProgramacionesPorMedico,
-  listarProgramacionesPorSubespecialidad,
+  listarProgramaciones,
   listarSubespecialidades,
+  reactivarProgramacion,
 } from '../api/administracionApi.js'
-import { horaCorta } from '../utils/dias.js'
+import { DIAS_SEMANA, horaCorta } from '../utils/dias.js'
 import useGestionCatalogo from '../hooks/useGestionCatalogo.js'
+import FiltroEstado from './FiltroEstado.jsx'
 import ModalCatalogo from './ModalCatalogo.jsx'
 import ModalConfirmacion from './ModalConfirmacion.jsx'
 import ProgramacionForm from './ProgramacionForm.jsx'
 import TablaCatalogo from './TablaCatalogo.jsx'
 
 const COLUMNAS = [
-  { key: 'medicoNombre', label: 'Médico' },
+  {
+    key: 'medicoNombre',
+    label: 'Médico',
+    render: (fila) => (
+      <span className="block">
+        <span className="block text-on-surface">{fila.medicoNombre}</span>
+        {fila.numeroColegiado && (
+          <span className="block text-xs text-outline">Colegiado: {fila.numeroColegiado}</span>
+        )}
+      </span>
+    ),
+  },
   { key: 'subespecialidadNombre', label: 'Subespecialidad' },
   { key: 'diaSemanaNombre', label: 'Día' },
   {
@@ -34,20 +47,18 @@ const COLUMNAS = [
 
 const MENSAJES = {
   crear: 'Programación creada',
+  editar: 'Programación actualizada',
   desactivar: 'Programación desactivada',
+  reactivar: 'Programación reactivada',
 }
 
-const MODOS_FILTRO = [
-  { value: 'medico', label: 'Médico' },
-  { value: 'subespecialidad', label: 'Subespecialidad' },
-]
+const ESTADO_INICIAL_FILTROS = { medicoId: '', subespecialidadId: '', diaSemana: '' }
 
 export default function ProgramacionTab() {
   const [medicos, setMedicos] = useState([])
   const [subespecialidades, setSubespecialidades] = useState([])
-  const [modoFiltro, setModoFiltro] = useState('medico')
-  const [medicoId, setMedicoId] = useState('')
-  const [subespecialidadId, setSubespecialidadId] = useState('')
+  const [filtros, setFiltros] = useState(ESTADO_INICIAL_FILTROS)
+  const [estado, setEstado] = useState('activos')
 
   useEffect(() => {
     let vigente = true
@@ -67,69 +78,92 @@ export default function ProgramacionTab() {
     }
   }, [])
 
-  const cargar = useCallback(() => {
-    if (modoFiltro === 'medico') {
-      return medicoId ? listarProgramacionesPorMedico(medicoId) : Promise.resolve([])
-    }
-    return subespecialidadId
-      ? listarProgramacionesPorSubespecialidad(subespecialidadId)
-      : Promise.resolve([])
-  }, [modoFiltro, medicoId, subespecialidadId])
+  const { medicoId, subespecialidadId, diaSemana } = filtros
+
+  const cargar = useCallback(
+    () =>
+      listarProgramaciones({
+        medicoId: medicoId || undefined,
+        subespecialidadId: subespecialidadId || undefined,
+        diaSemana: diaSemana ? Number(diaSemana) : undefined,
+        estado,
+      }),
+    [medicoId, subespecialidadId, diaSemana, estado],
+  )
 
   const gestion = useGestionCatalogo({
     cargar,
     crear: crearProgramacion,
+    actualizar: actualizarProgramacion,
     desactivar: desactivarProgramacion,
+    reactivar: reactivarProgramacion,
     mensajes: MENSAJES,
   })
 
-  const tituloModal =
-    gestion.modal?.modo === 'consultar' ? 'Detalle de programación' : 'Nueva programación'
+  const actualizarFiltro = (clave, valor) => setFiltros((previo) => ({ ...previo, [clave]: valor }))
 
-  const opcionesMedicos = medicos.map((medico) => ({
-    value: medico.id,
-    label: medico.nombres,
-  }))
-  const opcionesSubespecialidades = subespecialidades.map((subespecialidad) => ({
-    value: subespecialidad.id,
-    label: subespecialidad.nombre,
-  }))
+  const limpiarFiltros = () => {
+    setFiltros(ESTADO_INICIAL_FILTROS)
+    setEstado('activos')
+  }
+
+  const tituloModal =
+    gestion.modal?.modo === 'crear'
+      ? 'Nueva programación'
+      : gestion.modal?.modo === 'editar'
+        ? 'Editar programación'
+        : 'Detalle de programación'
+
+  const opcionesMedicos = [
+    { value: '', label: 'Todos los médicos' },
+    ...medicos.map((medico) => ({ value: medico.id, label: medico.nombres })),
+  ]
+  const opcionesSubespecialidades = [
+    { value: '', label: 'Todas las subespecialidades' },
+    ...subespecialidades.map((subespecialidad) => ({
+      value: subespecialidad.id,
+      label: subespecialidad.nombre,
+    })),
+  ]
+  const opcionesDias = [{ value: '', label: 'Todos los días' }, ...DIAS_SEMANA]
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex w-full flex-wrap items-end gap-3">
-          <div className="w-full max-w-[200px]">
-            <Select
-              label="Ver por"
-              value={modoFiltro}
-              onChange={setModoFiltro}
-              options={MODOS_FILTRO}
-              placeholder="Ver por"
-            />
-          </div>
-          {modoFiltro === 'medico' ? (
-            <div className="w-full max-w-xs">
-              <Select
-                label="Médico"
-                value={medicoId}
-                onChange={setMedicoId}
-                options={opcionesMedicos}
-                placeholder="Filtrar por médico"
-              />
-            </div>
-          ) : (
-            <div className="w-full max-w-xs">
-              <Select
-                label="Subespecialidad"
-                value={subespecialidadId}
-                onChange={setSubespecialidadId}
-                options={opcionesSubespecialidades}
-                placeholder="Filtrar por subespecialidad"
-              />
-            </div>
-          )}
+      <div className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-3 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 xl:items-end">
+          <Select
+            label="Médico"
+            value={medicoId}
+            onChange={(valor) => actualizarFiltro('medicoId', valor)}
+            options={opcionesMedicos}
+            placeholder="Todos los médicos"
+          />
+          <Select
+            label="Subespecialidad"
+            value={subespecialidadId}
+            onChange={(valor) => actualizarFiltro('subespecialidadId', valor)}
+            options={opcionesSubespecialidades}
+            placeholder="Todas las subespecialidades"
+          />
+          <Select
+            label="Día"
+            value={diaSemana}
+            onChange={(valor) => actualizarFiltro('diaSemana', valor)}
+            options={opcionesDias}
+            placeholder="Todos los días"
+          />
+          <FiltroEstado valor={estado} onChange={setEstado} />
+          <Button variant="secondary" onClick={limpiarFiltros}>
+            <Icon name="filter_alt_off" className="text-[18px]" />
+            Limpiar filtros
+          </Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-md text-sm text-outline">
+          Programación semanal del médico por subespecialidad. Los filtros son opcionales.
+        </p>
         <Button onClick={gestion.abrirCrear}>
           <Icon name="add" className="text-[18px]" />
           Agregar
@@ -142,13 +176,6 @@ export default function ProgramacionTab() {
         cupos ocupados son gestionados por el sistema, no desde este panel.
       </Alert>
 
-      {medicoId === '' && modoFiltro === 'medico' && (
-        <Alert tone="warning">Seleccione un médico para consultar su programación.</Alert>
-      )}
-      {subespecialidadId === '' && modoFiltro === 'subespecialidad' && (
-        <Alert tone="warning">Seleccione una subespecialidad para consultar su programación.</Alert>
-      )}
-
       <TablaCatalogo
         columnas={COLUMNAS}
         datos={gestion.datos}
@@ -156,10 +183,11 @@ export default function ProgramacionTab() {
         error={gestion.error}
         onReintentar={gestion.recargar}
         onVer={gestion.abrirVer}
+        onEditar={gestion.abrirEditar}
         onDesactivar={gestion.solicitarDesactivar}
-        permitirEditar={false}
+        onReactivar={gestion.solicitarReactivar}
         vacioTitulo="Sin programación registrada"
-        vacioDescripcion="La programación del médico por subespecialidad no tiene edición: el backend vigente solo ofrece crear y desactivar."
+        vacioDescripcion="Cree la primera programación del médico por subespecialidad."
       />
 
       <ModalCatalogo
@@ -168,15 +196,14 @@ export default function ProgramacionTab() {
         titulo={tituloModal}
         onCerrar={gestion.cerrarModal}
         guardando={gestion.guardando}
-        textoGuardar="Crear"
+        textoGuardar={gestion.modal?.modo === 'editar' ? 'Guardar cambios' : 'Crear'}
       >
         {gestion.modal && (
           <ProgramacionForm
             medicos={medicos}
             subespecialidades={subespecialidades}
-            medicoFijoId={modoFiltro === 'medico' ? medicoId : ''}
-            subespecialidadFijaId={modoFiltro === 'subespecialidad' ? subespecialidadId : ''}
             valoresIniciales={gestion.modal.registro}
+            modo={gestion.modal.modo}
             soloLectura={gestion.modal.modo === 'consultar'}
             onSubmit={gestion.guardar}
           />
@@ -192,6 +219,18 @@ export default function ProgramacionTab() {
         onConfirmar={gestion.confirmarDesactivar}
         onCancelar={gestion.cancelarDesactivar}
         procesando={gestion.desactivando}
+      />
+
+      <ModalConfirmacion
+        abierto={Boolean(gestion.porReactivar)}
+        titulo="Reactivar programación"
+        mensaje={`¿Deseas reactivar este registro? Programación de ${
+          gestion.porReactivar?.medicoNombre ?? ''
+        }`}
+        textoConfirmar="Sí, reactivar"
+        onConfirmar={gestion.confirmarReactivar}
+        onCancelar={gestion.cancelarReactivar}
+        procesando={gestion.reactivando}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import {
@@ -6,8 +6,10 @@ import {
   crearMedico,
   desactivarMedico,
   listarMedicos,
+  reactivarMedico,
 } from '../api/administracionApi.js'
 import useGestionCatalogo from '../hooks/useGestionCatalogo.js'
+import FiltroEstado from './FiltroEstado.jsx'
 import MedicoForm from './MedicoForm.jsx'
 import ModalCatalogo from './ModalCatalogo.jsx'
 import ModalConfirmacion from './ModalConfirmacion.jsx'
@@ -23,15 +25,18 @@ const MENSAJES = {
   crear: 'Médico registrado',
   editar: 'Médico actualizado',
   desactivar: 'Médico desactivado',
+  reactivar: 'Médico reactivado',
 }
 
 export default function MedicosTab() {
-  const cargar = useCallback(() => listarMedicos(), [])
+  const [estado, setEstado] = useState('activos')
+  const cargar = useCallback(() => listarMedicos(estado), [estado])
   const gestion = useGestionCatalogo({
     cargar,
     crear: crearMedico,
     actualizar: actualizarMedico,
     desactivar: desactivarMedico,
+    reactivar: reactivarMedico,
     mensajes: MENSAJES,
   })
 
@@ -44,14 +49,17 @@ export default function MedicosTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
-          Médicos especialistas activos. La desactivación es una baja lógica.
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="max-w-md text-sm text-outline">
+          Médicos especialistas. La desactivación es una baja lógica.
         </p>
-        <Button onClick={gestion.abrirCrear}>
-          <Icon name="add" className="text-[18px]" />
-          Agregar
-        </Button>
+        <div className="flex w-full flex-wrap items-end justify-end gap-3 sm:w-auto">
+          <FiltroEstado valor={estado} onChange={setEstado} className="w-full sm:w-48" />
+          <Button onClick={gestion.abrirCrear}>
+            <Icon name="add" className="text-[18px]" />
+            Agregar
+          </Button>
+        </div>
       </div>
 
       <TablaCatalogo
@@ -63,6 +71,7 @@ export default function MedicosTab() {
         onVer={gestion.abrirVer}
         onEditar={gestion.abrirEditar}
         onDesactivar={gestion.solicitarDesactivar}
+        onReactivar={gestion.solicitarReactivar}
         vacioTitulo="Sin médicos registrados"
         vacioDescripcion="Registre el primer médico especialista del hospital."
       />
@@ -94,6 +103,18 @@ export default function MedicosTab() {
         onConfirmar={gestion.confirmarDesactivar}
         onCancelar={gestion.cancelarDesactivar}
         procesando={gestion.desactivando}
+      />
+
+      <ModalConfirmacion
+        abierto={Boolean(gestion.porReactivar)}
+        titulo="Reactivar médico"
+        mensaje={`¿Deseas reactivar este registro? Médico: ${
+          gestion.porReactivar?.nombres ?? ''
+        }`}
+        textoConfirmar="Sí, reactivar"
+        onConfirmar={gestion.confirmarReactivar}
+        onCancelar={gestion.cancelarReactivar}
+        procesando={gestion.reactivando}
       />
     </div>
   )
