@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
-import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { buscarExpedientePorCodigo } from '../api/archivoApi'
 import { expedientesMock } from '../api/mockData'
-import { resolverUsuarioArchivo } from '../identidadArchivo'
 import { useExpedientes } from '../hooks/useExpedientes'
-import ArchivoHeader from '../components/ArchivoHeader.jsx'
+import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import FiltrosArchivo from '../components/FiltrosArchivo.jsx'
 import ResumenEstados from '../components/ResumenEstados.jsx'
 import ListadoCompactoExpediente from '../components/ListadoCompactoExpediente.jsx'
@@ -68,9 +66,7 @@ function SeccionChecklist({
 }
 
 export default function ArchivoPage() {
-  const { usuario } = useAuth()
   const { mostrarToast } = useToast()
-  const usuarioArchivo = resolverUsuarioArchivo(usuario)
   const {
     fecha,
     setFecha,
@@ -187,9 +183,7 @@ export default function ArchivoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface pb-10">
-      <ArchivoHeader usuario={usuarioArchivo} />
-
+    <ArchivoLayout>
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
         <ScannerExpediente
           value={codigo}
@@ -272,6 +266,6 @@ export default function ArchivoPage() {
           </div>
         </section>
       </main>
-    </div>
+    </ArchivoLayout>
   )
 }

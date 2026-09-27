@@ -40,15 +40,17 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   }
 })
 
-function renderPagina() {
+function renderPagina(ruta = '/archivo') {
   return render(
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <ArchivoPage />
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={[ruta]}>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <ArchivoPage />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -404,5 +406,63 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
 
     expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
     expect(screen.queryByText('Resultado de búsqueda')).not.toBeInTheDocument()
+  })
+})
+
+describe('ArchivoPage — navegación de la estación', () => {
+  it('muestra la navegación con las cuatro opciones requeridas', async () => {
+    renderPagina()
+    await esperarChecklist()
+
+    const nav = screen.getByRole('navigation', { name: 'Navegación de la Estación de Archivo' })
+
+    expect(within(nav).getByRole('link', { name: 'Expedientes para COEX' })).toHaveAttribute(
+      'href',
+      '/archivo',
+    )
+    expect(within(nav).getByRole('link', { name: 'Depuración de expedientes' })).toHaveAttribute(
+      'href',
+      '/archivo/depuracion',
+    )
+    expect(
+      within(nav).getByRole('link', { name: 'Salidas externas de expedientes' }),
+    ).toHaveAttribute('href', '/archivo/salidas-externas')
+    expect(within(nav).getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
+  })
+
+  it('marca "Expedientes para COEX" como sección activa en /archivo', async () => {
+    renderPagina('/archivo')
+    await esperarChecklist()
+
+    expect(screen.getByRole('link', { name: 'Expedientes para COEX' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('la sección provisional de depuración no rompe la aplicación', async () => {
+    renderRuta('/archivo/depuracion')
+
+    expect(await screen.findByText(/sección provisional/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('navigation', { name: 'Navegación de la Estación de Archivo' }),
+    ).toBeInTheDocument()
+  })
+
+  it('la sección provisional de salidas externas no rompe la aplicación', async () => {
+    renderRuta('/archivo/salidas-externas')
+
+    expect(await screen.findByText(/sección provisional/i)).toBeInTheDocument()
+  })
+
+  it('cerrar sesión usa el mecanismo existente y navega a /sesion-cerrada', async () => {
+    const user = userEvent.setup()
+    renderRuta('/archivo')
+    await esperarChecklist()
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+
+    expect(localStorage.getItem('hro_sesion')).toBe('cerrada')
+    expect(await screen.findByText('Sesión cerrada')).toBeInTheDocument()
   })
 })
