@@ -1,9 +1,13 @@
 import client from '@/shared/api/client'
 import {
+  cerrarDiaMock,
+  duplicarAsignacionMock,
   eliminarAsignacionMock,
   guardarAsignacionMock,
   listarEspaciosFisicosMock,
   listarSubespecialidadesMock,
+  obtenerCoberturaMock,
+  reasignarEnCalienteMock,
   vistaAsignacionMock,
 } from './mockData.js'
 
@@ -52,4 +56,40 @@ export async function listarEspaciosFisicos(nivel) {
 export async function listarSubespecialidades() {
   if (USE_MOCK) return listarSubespecialidadesMock()
   return desenvolver(await client.get('/subespecialidades'))
+}
+
+// ---------------------------------------------------------------------------
+// Operación del día: cobertura, cierre, duplicar y reasignación en caliente
+// ---------------------------------------------------------------------------
+
+/** Subespecialidades con programación ese día que aún no tienen espacio. */
+export async function obtenerCobertura(fecha) {
+  if (USE_MOCK) return obtenerCoberturaMock(fecha)
+  return desenvolver(await client.get('/asignaciones-diarias/cobertura', { params: { fecha } }))
+}
+
+/** Cierra la asignación del día (bloquea la edición libre; exige cobertura). */
+export async function cerrarDia(fecha) {
+  if (USE_MOCK) return cerrarDiaMock(fecha)
+  return desenvolver(await client.post('/asignaciones-diarias/cerrar', null, { params: { fecha } }))
+}
+
+/** Duplica la asignación de una fecha anterior hacia la fecha destino. */
+export async function duplicarAsignacion(fechaOrigen, fechaDestino) {
+  if (USE_MOCK) return duplicarAsignacionMock(fechaOrigen, fechaDestino)
+  return desenvolver(
+    await client.post('/asignaciones-diarias/duplicar', null, {
+      params: { fechaOrigen, fechaDestino },
+    }),
+  )
+}
+
+/** Reasignación en caliente: mueve una asignación a otro espacio (aun con el día cerrado). */
+export async function reasignarEnCaliente(id, nuevoEspacioFisicoId, motivo) {
+  if (USE_MOCK) return reasignarEnCalienteMock(id, nuevoEspacioFisicoId, motivo)
+  return desenvolver(
+    await client.post(`/asignaciones-diarias/${id}/reasignar`, null, {
+      params: { nuevoEspacioFisicoId, motivo },
+    }),
+  )
 }

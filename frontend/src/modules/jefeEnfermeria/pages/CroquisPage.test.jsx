@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import { reiniciarJefeMock } from '../api/mockData.js'
 import CroquisPage from './CroquisPage.jsx'
+
+function renderPagina() {
+  return render(
+    <ToastProvider>
+      <CroquisPage />
+    </ToastProvider>,
+  )
+}
 
 describe('CroquisPage', () => {
   beforeEach(() => {
@@ -10,7 +19,7 @@ describe('CroquisPage', () => {
   })
 
   it('muestra las salas sin asignar del día', async () => {
-    render(<CroquisPage />)
+    renderPagina()
 
     const sala = await screen.findByTestId('sala-101')
     expect(within(sala).getByText('Sin asignar')).toBeInTheDocument()
@@ -18,7 +27,7 @@ describe('CroquisPage', () => {
 
   it('asigna y luego quita una subespecialidad de una sala', async () => {
     const user = userEvent.setup()
-    render(<CroquisPage />)
+    renderPagina()
 
     const sala = await screen.findByTestId('sala-101')
     await user.click(sala)
@@ -35,5 +44,18 @@ describe('CroquisPage', () => {
     await user.click(within(dialogo2).getByRole('button', { name: /quitar/i }))
 
     expect(await within(screen.getByTestId('sala-101')).findByText('Sin asignar')).toBeInTheDocument()
+  })
+
+  it('cierra el día con confirmación', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('sala-101')
+    await user.click(screen.getByRole('button', { name: /cerrar día/i }))
+
+    const dialogo = await screen.findByRole('dialog')
+    await user.click(within(dialogo).getByRole('button', { name: /sí, cerrar día/i }))
+
+    expect(await screen.findByText('Asignación del día cerrada')).toBeInTheDocument()
   })
 })

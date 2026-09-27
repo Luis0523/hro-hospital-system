@@ -38,6 +38,7 @@ export const subespecialidadesMock = SUBESPECIALIDADES_BASE.map((sub) => ({ ...s
 
 /** fecha -> Map(espacioFisicoId -> { id, subespecialidadId }) */
 const asignacionesPorFecha = new Map()
+const diasCerrados = new Set()
 let contadorAsignacion = 1
 
 function mapaDe(fecha) {
@@ -47,6 +48,26 @@ function mapaDe(fecha) {
 
 function subDe(id) {
   return subespecialidadesMock.find((sub) => sub.id === Number(id)) ?? null
+}
+
+function espacioDe(id) {
+  return espaciosMock.find((espacio) => espacio.id === id) ?? null
+}
+
+function itemDesdeAsignacion(fecha, espacioId, asignacion) {
+  const espacio = espacioDe(espacioId)
+  const sub = asignacion ? subDe(asignacion.subespecialidadId) : null
+  return {
+    espacioFisicoId: espacioId,
+    numero: espacio?.numero ?? null,
+    nivel: espacio?.nivel ?? null,
+    capacidadCamillas: espacio?.capacidadCamillas ?? 1,
+    asignacionId: asignacion?.id ?? null,
+    subespecialidadId: sub?.id ?? null,
+    subespecialidadNombre: sub?.nombre ?? null,
+    especialidadId: sub?.especialidadId ?? null,
+    especialidadNombre: sub?.especialidadNombre ?? null,
+  }
 }
 
 export function listarEspaciosFisicosMock(nivel) {
@@ -63,44 +84,39 @@ export function vistaAsignacionMock(fecha, nivel) {
   const mapa = mapaDe(fecha)
   return espaciosMock
     .filter((espacio) => !nivel || Number(espacio.nivel) === Number(nivel))
-    .map((espacio) => {
-      const asignacion = mapa.get(espacio.id)
-      const sub = asignacion ? subDe(asignacion.subespecialidadId) : null
-      return {
-        espacioFisicoId: espacio.id,
-        numero: espacio.numero,
-        nivel: espacio.nivel,
-        capacidadCamillas: espacio.capacidadCamillas,
-        asignacionId: asignacion?.id ?? null,
-        subespecialidadId: sub?.id ?? null,
-        subespecialidadNombre: sub?.nombre ?? null,
-        especialidadId: sub?.especialidadId ?? null,
-        especialidadNombre: sub?.especialidadNombre ?? null,
-      }
-    })
+    .map((espacio) => itemDesdeAsignacion(fecha, espacio.id, mapa.get(espacio.id)))
 }
 
 export function guardarAsignacionMock({ espacioFisicoId, subespecialidadId, fecha }) {
+  if (diasCerrados.has(fecha)) {
+    const error = new Error('La asignación del día está cerrada. Use reasignación en caliente.')
+    error.status = 409
+    throw error
+  }
   const mapa = mapaDe(fecha)
   const existente = mapa.get(espacioFisicoId)
   const asignacion = existente ?? { id: contadorAsignacion++, subespecialidadId: null }
   asignacion.subespecialidadId = Number(subespecialidadId)
   mapa.set(espacioFisicoId, asignacion)
 
-  const sub = subDe(asignacion.subespecialidadId)
   return {
     id: asignacion.id,
     fecha,
     espacioFisicoId,
-    subespecialidadId: sub?.id ?? null,
-    subespecialidadNombre: sub?.nombre ?? null,
+    subespecialidadId: asignacion.subespecialidadId,
+    subespecialidadNombre: subDe(asignacion.subespecialidadId)?.nombre ?? null,
   }
 }
 
 export function eliminarAsignacionMock(id) {
-  for (const mapa of asignacionesPorFecha.values()) {
+  for (const [fecha, mapa] of asignacionesPorFecha.entries()) {
     for (const [espacioFisicoId, asignacion] of mapa.entries()) {
       if (asignacion.id === Number(id)) {
+        if (diasCerrados.has(fecha)) {
+          const error = new Error('La asignación del día está cerrada; no se puede quitar.')
+          error.status = 409
+          throw error
+        }
         mapa.delete(espacioFisicoId)
         return { ok: true }
       }
@@ -109,7 +125,61 @@ export function eliminarAsignacionMock(id) {
   return { ok: true }
 }
 
+export function obtenerCoberturaMock(fecha) {
+  const mapa = asignacionesPorFecha.get(fecha) ?? new Map()
+  const asignadas = new Set([...mapa.values()].map((a) => a.subespecialidadId))
+  return subespecialidadesMock
+    .filter((sub) => !asignadas.has(sub.id))
+    .map((sub) => ({ subespecialidadId: sub.id, subespecialidadNombre: sub.nombre }))
+}
+
+export function cerrarDiaMock(fecha) {
+  diasCerrados.add(fecha)
+  return { ok: true }
+}
+
+export function estaCerradoMock(fecha) {
+  return diasCerrados.has(fecha)
+}
+
+export function duplicarAsignacionMock(fechaOrigen, fechaDestino) {
+  const origen = asignacionesPorFecha.get(fechaOrigen)
+  if (!origen) return 0
+  if (diasCerrados.has(fechaDestino)) {
+    const error = new Error('La asignación del día destino está cerrada.')
+    error.status = 409
+    throw error
+  }
+  const destino = mapaDe(fechaDestino)
+  let copiadas = 0
+  for (const [espacioId, asignacion] of origen.entries()) {
+    const existente = destino.get(espacioId)
+    if (existente) {
+      existente.subespecialidadId = asignacion.subespecialidadId
+    } else {
+      destino.set(espacioId, { id: contadorAsignacion++, subespecialidadId: asignacion.subespecialidadId })
+    }
+    copiadas++
+  }
+  return copiadas
+}
+
+export function reasignarEnCalienteMock(id, nuevoEspacioFisicoId, motivo) {
+  for (const [fecha, mapa] of asignacionesPorFecha.entries()) {
+    for (const [espacioId, asignacion] of mapa.entries()) {
+      if (asignacion.id === Number(id)) {
+        mapa.delete(espacioId)
+        mapa.set(nuevoEspacioFisicoId, asignacion)
+        const item = itemDesdeAsignacion(fecha, nuevoEspacioFisicoId, asignacion)
+        return { ...item, fecha, motivo: motivo ?? null }
+      }
+    }
+  }
+  return null
+}
+
 export function reiniciarJefeMock() {
   asignacionesPorFecha.clear()
+  diasCerrados.clear()
   contadorAsignacion = 1
 }

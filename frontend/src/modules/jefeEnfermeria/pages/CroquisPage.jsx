@@ -4,37 +4,60 @@ import Button from '@/shared/components/ui/Button.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import Modal from '@/shared/components/ui/Modal.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
+import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import {
+  cerrarDia,
+  duplicarAsignacion,
   eliminarAsignacion,
   guardarAsignacion,
   listarSubespecialidades,
   listarVistaAsignacion,
+  obtenerCobertura,
+  reasignarEnCaliente,
 } from '../api/jefeEnfermeriaApi'
 import TarjetaSala from '../components/TarjetaSala.jsx'
 
 const NIVELES = [1, 2, 3, 4]
 
 export default function CroquisPage() {
+  const { mostrarToast } = useToast()
+
   const [fecha, setFecha] = useState(hoyIso())
   const [nivel, setNivel] = useState('')
   const [items, setItems] = useState([])
+  const [cobertura, setCobertura] = useState([])
   const [subespecialidades, setSubespecialidades] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+
+  // Modal de la sala (asignar/cambiar/quitar + reasignar en caliente)
   const [seleccion, setSeleccion] = useState(null)
   const [subElegida, setSubElegida] = useState('')
+  const [destinoReasignar, setDestinoReasignar] = useState('')
+  const [motivoReasignar, setMotivoReasignar] = useState('')
   const [guardando, setGuardando] = useState(false)
+
+  // Cerrar día / duplicar
+  const [confirmarCierre, setConfirmarCierre] = useState(false)
+  const [duplicarAbierto, setDuplicarAbierto] = useState(false)
+  const [fechaOrigen, setFechaOrigen] = useState('')
+  const [procesando, setProcesando] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     setError(null)
     try {
-      const data = await listarVistaAsignacion({ fecha, nivel: nivel || undefined })
+      const [data, faltantes] = await Promise.all([
+        listarVistaAsignacion({ fecha, nivel: nivel || undefined }),
+        obtenerCobertura(fecha),
+      ])
       setItems(Array.isArray(data) ? data : [])
+      setCobertura(Array.isArray(faltantes) ? faltantes : [])
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo cargar la asignación del día.')
       setItems([])
+      setCobertura([])
     } finally {
       setCargando(false)
     }
@@ -59,11 +82,15 @@ export default function CroquisPage() {
   function abrir(item) {
     setSeleccion(item)
     setSubElegida(item.subespecialidadId ? String(item.subespecialidadId) : '')
+    setDestinoReasignar('')
+    setMotivoReasignar('')
   }
 
   function cerrar() {
     setSeleccion(null)
     setSubElegida('')
+    setDestinoReasignar('')
+    setMotivoReasignar('')
   }
 
   async function guardar() {
@@ -77,6 +104,7 @@ export default function CroquisPage() {
       })
       cerrar()
       await cargar()
+      mostrarToast({ tone: 'success', title: 'Asignación guardada' })
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo guardar la asignación.')
     } finally {
@@ -91,12 +119,65 @@ export default function CroquisPage() {
       await eliminarAsignacion(seleccion.asignacionId)
       cerrar()
       await cargar()
+      mostrarToast({ tone: 'info', title: 'Asignación eliminada' })
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo quitar la asignación.')
     } finally {
       setGuardando(false)
     }
   }
+
+  async function reasignar() {
+    if (!seleccion?.asignacionId || !destinoReasignar) return
+    setGuardando(true)
+    try {
+      await reasignarEnCaliente(seleccion.asignacionId, destinoReasignar, motivoReasignar || undefined)
+      cerrar()
+      await cargar()
+      mostrarToast({ tone: 'success', title: 'Reasignación en caliente aplicada' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo reasignar.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function confirmarCerrarDia() {
+    setProcesando(true)
+    try {
+      await cerrarDia(fecha)
+      setConfirmarCierre(false)
+      await cargar()
+      mostrarToast({ tone: 'success', title: 'Asignación del día cerrada' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo cerrar el día (verifique la cobertura).')
+      setConfirmarCierre(false)
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  async function confirmarDuplicar() {
+    if (!fechaOrigen) return
+    setProcesando(true)
+    try {
+      const copiadas = await duplicarAsignacion(fechaOrigen, fecha)
+      setDuplicarAbierto(false)
+      setFechaOrigen('')
+      await cargar()
+      mostrarToast({ tone: 'success', title: `Asignaciones duplicadas: ${copiadas ?? 0}` })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo duplicar la asignación.')
+      setDuplicarAbierto(false)
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const otrasSalas = useMemo(
+    () => items.filter((item) => item.espacioFisicoId !== seleccion?.espacioFisicoId),
+    [items, seleccion],
+  )
 
   return (
     <section className="space-y-5">
@@ -106,6 +187,16 @@ export default function CroquisPage() {
           <p className="text-body-md text-on-surface-variant">
             Asignación de subespecialidad por espacio físico para la fecha seleccionada.
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => setDuplicarAbierto(true)}>
+            <Icon name="content_copy" className="text-[18px]" />
+            Duplicar de otra fecha
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirmarCierre(true)}>
+            <Icon name="lock" className="text-[18px]" />
+            Cerrar día
+          </Button>
         </div>
       </header>
 
@@ -152,7 +243,20 @@ export default function CroquisPage() {
         </div>
       </div>
 
-      {error && <Alert tone="error" title="Atención">{error}</Alert>}
+      {cobertura.length > 0 && (
+        <Alert tone="warning" title={`Cobertura incompleta (${cobertura.length})`}>
+          <p className="mb-1 text-body-sm">
+            Estas subespecialidades tienen programación ese día pero aún no tienen sala asignada:
+          </p>
+          <p className="text-body-sm text-on-surface">{cobertura.map((c) => c.subespecialidadNombre).join(' · ')}</p>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert tone="error" title="Atención">
+          {error}
+        </Alert>
+      )}
 
       {cargando ? (
         <div className="flex justify-center py-16">
@@ -170,6 +274,7 @@ export default function CroquisPage() {
         </div>
       )}
 
+      {/* Modal de la sala */}
       <Modal
         open={Boolean(seleccion)}
         onClose={cerrar}
@@ -192,7 +297,7 @@ export default function CroquisPage() {
         }
       >
         {seleccion && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-body-sm text-on-surface-variant">
               Nivel {seleccion.nivel} · {fecha}
             </p>
@@ -213,8 +318,94 @@ export default function CroquisPage() {
                 ))}
               </select>
             </label>
+
+            {seleccion.asignacionId && (
+              <div className="rounded-lg border border-outline-variant bg-surface-container-low p-3">
+                <p className="mb-2 flex items-center gap-1 text-label-sm uppercase tracking-wide text-on-surface-variant">
+                  <Icon name="swap_horiz" className="text-[16px] text-primary" />
+                  Reasignar en caliente (otra sala)
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <select
+                    value={destinoReasignar}
+                    onChange={(evento) => setDestinoReasignar(evento.target.value)}
+                    className="h-10 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                  >
+                    <option value="">Sala destino…</option>
+                    {otrasSalas.map((sala) => (
+                      <option key={sala.espacioFisicoId} value={sala.espacioFisicoId}>
+                        Sala {sala.numero}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={motivoReasignar}
+                    onChange={(evento) => setMotivoReasignar(evento.target.value)}
+                    placeholder="Motivo (opcional)"
+                    className="h-10 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                  />
+                  <Button onClick={reasignar} disabled={guardando || !destinoReasignar}>
+                    Reasignar
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
+      </Modal>
+
+      {/* Confirmar cierre del día */}
+      <Modal
+        open={confirmarCierre}
+        onClose={() => setConfirmarCierre(false)}
+        title="Cerrar asignación del día"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmarCierre(false)} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarCerrarDia} disabled={procesando}>
+              {procesando ? 'Cerrando…' : 'Sí, cerrar día'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-body-md text-on-surface-variant">
+          Se bloqueará la edición libre de la asignación del <b>{fecha}</b>. Después solo se podrán
+          hacer <b>reasignaciones en caliente</b>. El backend exige cobertura completa.
+        </p>
+      </Modal>
+
+      {/* Duplicar de otra fecha */}
+      <Modal
+        open={duplicarAbierto}
+        onClose={() => setDuplicarAbierto(false)}
+        title="Duplicar asignación de otra fecha"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDuplicarAbierto(false)} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarDuplicar} disabled={procesando || !fechaOrigen}>
+              {procesando ? 'Duplicando…' : 'Duplicar'}
+            </Button>
+          </>
+        }
+      >
+        <label className="flex flex-col gap-1">
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+            Fecha origen
+          </span>
+          <input
+            type="date"
+            value={fechaOrigen}
+            onChange={(evento) => setFechaOrigen(evento.target.value)}
+            className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary-container"
+          />
+        </label>
+        <p className="mt-2 text-body-sm text-on-surface-variant">
+          Se copiarán las asignaciones de la fecha origen hacia <b>{fecha}</b> (quedan editables).
+        </p>
       </Modal>
     </section>
   )
