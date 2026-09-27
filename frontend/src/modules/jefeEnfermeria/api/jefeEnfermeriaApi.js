@@ -19,6 +19,9 @@ import {
   obtenerCoberturaMock,
   reactivarHorarioMock,
   reasignarEnCalienteMock,
+  reporteCitasPorEstadoMock,
+  reporteDemandaPorEspecialidadMock,
+  reporteUtilizacionCuposMock,
   vistaAsignacionMock,
 } from './mockData.js'
 
@@ -170,5 +173,39 @@ export async function listarAccesosEstacion(estacionId, { abiertos = false } = {
   if (USE_MOCK) return listarAccesosMock(estacionId, abiertos)
   return desenvolver(
     await client.get(`/estaciones/${estacionId}/accesos`, { params: { abiertos } }),
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Reportes (agregados del backend)
+// ---------------------------------------------------------------------------
+
+export async function reporteCitasPorEstado({ fechaInicio, fechaFin } = {}) {
+  if (USE_MOCK) return reporteCitasPorEstadoMock(fechaInicio, fechaFin)
+  return desenvolver(
+    await client.get('/reportes/citas-por-estado', { params: { fechaInicio, fechaFin } }),
+  )
+}
+
+export async function reporteDemandaPorEspecialidad({ fechaInicio, fechaFin } = {}) {
+  if (USE_MOCK) return reporteDemandaPorEspecialidadMock(fechaInicio, fechaFin)
+  return desenvolver(
+    await client.get('/reportes/demanda-por-especialidad', { params: { fechaInicio, fechaFin } }),
+  )
+}
+
+export async function reporteUtilizacionCupos({
+  fechaInicio,
+  fechaFin,
+  subespecialidadId,
+  especialidadId,
+} = {}) {
+  if (USE_MOCK) {
+    return reporteUtilizacionCuposMock(fechaInicio, fechaFin, subespecialidadId, especialidadId)
+  }
+  return desenvolver(
+    await client.get('/reportes/utilizacion-cupos', {
+      params: { fechaInicio, fechaFin, subespecialidadId, especialidadId },
+    }),
   )
 }

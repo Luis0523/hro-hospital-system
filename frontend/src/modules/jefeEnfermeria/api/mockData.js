@@ -395,6 +395,51 @@ export function listarAccesosMock(estacionId, abiertos = false) {
     .map((a) => ({ ...a }))
 }
 
+// ---------------------------------------------------------------------------
+// Reportes (agregados calculados por el backend; aquí solo para dev/mock)
+// ---------------------------------------------------------------------------
+
+export function reporteCitasPorEstadoMock(fechaInicio, fechaFin) {
+  const porEstado = {
+    pendiente: 12,
+    confirmada: 30,
+    atendida: 48,
+    cancelada: 6,
+    reprogramada: 4,
+    no_asistio: 9,
+  }
+  const total = Object.values(porEstado).reduce((acumulado, valor) => acumulado + valor, 0)
+  return { fechaInicio, fechaFin, total, porEstado }
+}
+
+export function reporteDemandaPorEspecialidadMock(fechaInicio, fechaFin) {
+  const base = [
+    { especialidadId: 1, especialidadNombre: 'Medicina Interna', totalCitas: 62, atendidas: 54, inasistencias: 8 },
+    { especialidadId: 2, especialidadNombre: 'Pediatría', totalCitas: 48, atendidas: 43, inasistencias: 5 },
+    { especialidadId: 3, especialidadNombre: 'Ginecología y Obstetricia', totalCitas: 33, atendidas: 30, inasistencias: 3 },
+    { especialidadId: 4, especialidadNombre: 'Cirugía General', totalCitas: 21, atendidas: 18, inasistencias: 3 },
+    { especialidadId: 5, especialidadNombre: 'Traumatología y Ortopedia', totalCitas: 18, atendidas: 16, inasistencias: 2 },
+    { especialidadId: 6, especialidadNombre: 'Cardiología', totalCitas: 15, atendidas: 13, inasistencias: 2 },
+  ]
+  return { fechaInicio, fechaFin, items: base }
+}
+
+export function reporteUtilizacionCuposMock(fechaInicio, fechaFin, subespecialidadId, especialidadId) {
+  const capacidadTotal = 400
+  const cuposOcupados = 368
+  const cuposDisponibles = Math.max(0, capacidadTotal - cuposOcupados)
+  return {
+    fechaInicio,
+    fechaFin,
+    subespecialidadId: subespecialidadId ?? null,
+    especialidadId: especialidadId ?? null,
+    capacidadTotal,
+    cuposOcupados,
+    cuposDisponibles,
+    utilizacionPorcentaje: Math.round((cuposOcupados / capacidadTotal) * 1000) / 10,
+  }
+}
+
 export function reiniciarJefeMock() {
   asignacionesPorFecha.clear()
   diasCerrados.clear()
