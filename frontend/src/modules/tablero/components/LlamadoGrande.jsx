@@ -5,7 +5,7 @@ function formatearTurno(valor) {
 }
 
 export default function LlamadoGrande({ asignacion }) {
-  const { espacioNumero, subespecialidadNombre, turnoActual, pacienteNombre } = asignacion ?? {}
+  const { espacioNumero, turnoActual } = asignacion ?? {}
 
   return (
     <section
@@ -13,10 +13,6 @@ export default function LlamadoGrande({ asignacion }) {
       aria-label="Llamado de turno"
       className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-6 text-center"
     >
-      <h2 className="max-w-[90%] break-words text-[clamp(1.75rem,3vw,5rem)] font-semibold uppercase tracking-[0.15em] text-on-surface-variant dark:text-slate-300">
-        {subespecialidadNombre ?? 'Sin subespecialidad'}
-      </h2>
-
       <div className="flex flex-col items-center">
         <span className="text-label-md uppercase tracking-[0.4em] text-primary dark:text-sky-400">
           Turno
@@ -40,15 +36,6 @@ export default function LlamadoGrande({ asignacion }) {
           {espacioNumero ?? '—'}
         </span>
       </div>
-
-      {pacienteNombre && (
-        <p
-          data-testid="llamado-paciente"
-          className="max-w-[90%] break-words text-[clamp(1.5rem,2.5vw,3.5rem)] font-semibold text-on-surface dark:text-slate-100"
-        >
-          {pacienteNombre}
-        </p>
-      )}
     </section>
   )
 }
