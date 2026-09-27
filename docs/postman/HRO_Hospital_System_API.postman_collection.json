@@ -2910,7 +2910,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/estacion/{{estacionId}}?fecha=2026-09-28",
+              "raw": "{{baseUrl}}/turnos/estacion/{{estacionId}}?fecha=2026-09-28&incluirNoResponde=true",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2923,10 +2923,14 @@
                 {
                   "key": "fecha",
                   "value": "2026-09-28"
+                },
+                {
+                  "key": "incluirNoResponde",
+                  "value": "true"
                 }
               ]
             },
-            "description": "Turnos activos de las salas de la estación (hoy si se omite fecha)."
+            "description": "Turnos de la estación (hoy si se omite fecha). Por defecto solo activos; con incluirNoResponde=true agrega los no respondidos."
           }
         },
         {

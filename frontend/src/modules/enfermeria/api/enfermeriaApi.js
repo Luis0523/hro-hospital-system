@@ -126,11 +126,12 @@ export async function listarSubespecialidadesEstacion(estacionId, fecha) {
   return Array.isArray(lista) ? lista : []
 }
 
-export async function listarTurnosEstacion(estacionId, fecha) {
+export async function listarTurnosEstacion(estacionId, fecha, incluirNoResponde = false) {
   if (USE_MOCK) return turnosEstacionMock(estacionId)
-  return desenvolver(
-    await client.get(`/turnos/estacion/${estacionId}`, { params: fecha ? { fecha } : {} }),
-  )
+  const params = {}
+  if (fecha) params.fecha = fecha
+  if (incluirNoResponde) params.incluirNoResponde = true
+  return desenvolver(await client.get(`/turnos/estacion/${estacionId}`, { params }))
 }
 
 export async function pasarSiguienteEstacion(estacionId, fecha) {

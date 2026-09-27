@@ -125,7 +125,7 @@ export default function EnfermeriaPage() {
 
   const refrescarCola = useCallback(async () => {
     if (!estacionId) return
-    const lista = await listarTurnosEstacion(estacionId, hoyIso())
+    const lista = await listarTurnosEstacion(estacionId, hoyIso(), true)
     const enCola = lista.filter((turno) => ESTADOS_EN_COLA.includes(turno.estado))
     setTurnos(enCola)
     setNoRespondidos(lista.filter((turno) => turno.estado === 'no_responde'))

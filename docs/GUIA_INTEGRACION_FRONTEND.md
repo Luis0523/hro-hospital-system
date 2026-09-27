@@ -542,7 +542,7 @@ expone en contexto y lo usa, por ejemplo, para validar el check-in. Si falta, la
 ### 6.4 Turnos por estación
 | Método | Ruta | Descripción |
 | --- | --- | --- |
-| GET | `/turnos/estacion/{id}?fecha=YYYY-MM-DD` | Cola de turnos activos de la estación |
+| GET | `/turnos/estacion/{id}?fecha=YYYY-MM-DD&incluirNoResponde=true` | Cola de la estación: activos (`en_espera`/`llamado`/`reintegrado`); con `incluirNoResponde=true` agrega los `no_responde` |
 | GET | `/turnos/estacion/{id}/tablero?fecha=YYYY-MM-DD` | Estado inicial del tablero de la estación |
 
 > El tablero (`/tablero?estacion=CODE`) resuelve la estación vía `GET /estaciones`, se suscribe a

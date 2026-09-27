@@ -20,6 +20,7 @@ import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
 import com.hro.system.turno.dto.TableroTurnoDTO;
+import com.hro.system.turno.dto.TurnoResponseDTO;
 import com.hro.system.turno.entity.ContadorTurnoDiario;
 import com.hro.system.turno.entity.Turno;
 import com.hro.system.turno.repository.ContadorTurnoDiarioRepository;
@@ -394,6 +395,32 @@ class TurnoServiceTableroTest {
         assertEquals(1, tablero.size());
         assertEquals(5L, tablero.get(0).getSubespecialidadId());
         assertEquals("201", tablero.get(0).getEspacioNumero());
+    }
+
+    @Test
+    @DisplayName("La cola de la estación incluye no respondidos solo cuando se solicita")
+    void testListarTurnosEstacionIncluyeNoResponde() {
+        EstacionEnfermeria estacion = EstacionEnfermeria.builder()
+                .id(77L).codigo("EST-07").nombre("Estación 7").build();
+        EstacionSubespecialidad asignacionSub = EstacionSubespecialidad.builder()
+                .id(1L).estacion(estacion).subespecialidad(asignacion.getSubespecialidad()).build();
+        when(estacionRepository.findById(77L)).thenReturn(Optional.of(estacion));
+        when(estacionSubespecialidadRepository.findByEstacionIdAndActivoTrue(77L)).thenReturn(List.of(asignacionSub));
+        when(asignacionRepository.findByFechaAndSubespecialidadIdIn(any(), anyList())).thenReturn(List.of(asignacion));
+
+        Turno enEspera = Turno.builder().id(1L).cita(cita).asignacionDiariaEspacio(asignacion)
+                .numeroTurno(8).estado("en_espera").intentosLlamado(0).build();
+        Turno noResponde = Turno.builder().id(2L).cita(cita).asignacionDiariaEspacio(asignacion)
+                .numeroTurno(9).estado("no_responde").intentosLlamado(1).build();
+        when(turnoRepository.buscarTurnosEnEsperaPorAsignacion(ASIGNACION_ID)).thenReturn(List.of(enEspera));
+        when(turnoRepository.buscarNoRespondePorAsignacion(ASIGNACION_ID)).thenReturn(List.of(noResponde));
+
+        List<TurnoResponseDTO> conNoResponde = service.listarTurnosEstacion(77L, LocalDate.now(), true);
+        assertEquals(2, conNoResponde.size());
+
+        List<TurnoResponseDTO> soloActivos = service.listarTurnosEstacion(77L, LocalDate.now(), false);
+        assertEquals(1, soloActivos.size());
+        assertEquals("en_espera", soloActivos.get(0).getEstado());
     }
 
     /** Canal que acepta los mensajes; el converter ya registró el payload. */

@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -372,13 +373,20 @@ public class TurnoService {
     }
 
     /**
-     * Cola de turnos activos (en espera/llamado/reintegrado) de todas las salas de la estación.
+     * Cola de turnos de todas las salas de la estación. Por defecto incluye solo los activos
+     * (en espera/llamado/reintegrado); con {@code incluirNoResponde} agrega los no respondidos.
      */
     @Transactional(readOnly = true)
-    public List<TurnoResponseDTO> listarTurnosEstacion(Long estacionId, LocalDate fecha) {
+    public List<TurnoResponseDTO> listarTurnosEstacion(Long estacionId, LocalDate fecha, boolean incluirNoResponde) {
         LocalDate f = (fecha != null) ? fecha : LocalDate.now();
-        return asignacionesDeEstacion(estacionId, f).stream()
-                .flatMap(a -> turnoRepository.buscarTurnosEnEsperaPorAsignacion(a.getId()).stream())
+        List<Turno> turnos = new ArrayList<>();
+        for (AsignacionDiariaEspacio asignacion : asignacionesDeEstacion(estacionId, f)) {
+            turnos.addAll(turnoRepository.buscarTurnosEnEsperaPorAsignacion(asignacion.getId()));
+            if (incluirNoResponde) {
+                turnos.addAll(turnoRepository.buscarNoRespondePorAsignacion(asignacion.getId()));
+            }
+        }
+        return turnos.stream()
                 .sorted(Comparator.comparing(Turno::getNumeroTurno))
                 .map(this::mapToDTO)
                 .toList();

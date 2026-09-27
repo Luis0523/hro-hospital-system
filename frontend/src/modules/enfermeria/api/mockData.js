@@ -337,7 +337,7 @@ export function cuposDiaMock(fecha, clinicaIds = []) {
 
   return OFERTA_CUPOS.filter((oferta) => filtro.includes(oferta.clinicaId)).map((oferta) => {
     const id = oferta.clinicaId * 1000 + dia
-    const base = (dia * (oferta.clinicaId + 3)) % (oferta.capacidadMaxima + 1)
+    const base = (dia * (oferta.clinicaId + 3)) % oferta.capacidadMaxima
     const ocupados = Math.min(oferta.capacidadMaxima, base + (cuposReservados.get(id) ?? 0))
     const disponibles = Math.max(0, oferta.capacidadMaxima - ocupados)
 

@@ -51,4 +51,9 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId " +
             "AND t.estado IN ('en_espera', 'llamado', 'reintegrado') ORDER BY t.numeroTurno ASC")
     List<Turno> buscarTurnosEnEsperaPorAsignacion(@Param("asignacionId") Long asignacionId);
+
+    /** Turnos no respondidos de una sala (para el panel de reintegración de la estación). */
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId " +
+            "AND t.estado = 'no_responde' ORDER BY t.numeroTurno ASC")
+    List<Turno> buscarNoRespondePorAsignacion(@Param("asignacionId") Long asignacionId);
 }

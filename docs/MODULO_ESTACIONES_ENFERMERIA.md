@@ -156,7 +156,8 @@ estacion_enfermeria ─1:N─ estacion_acceso ─N:1─ usuario_referencia
   y publicar en **`/topic/estacion/{estacionId}`** (además de los actuales, por compatibilidad).
 - Nuevo `GET /turnos/estacion/{estacionId}/tablero?fecha=` → `List<TableroTurnoDTO>` de todas las
   asignaciones del día cuyas subespecialidades pertenecen a la estación (carga inicial sin esperar WS).
-- Filtro de cola por estación: `GET /turnos/estacion/{estacionId}?fecha=`.
+- Filtro de cola por estación: `GET /turnos/estacion/{estacionId}?fecha=&incluirNoResponde=true`
+  (por defecto solo activos; `incluirNoResponde=true` agrega los no respondidos para el panel de reintegración).
 - Validación de check-in (recomendada): rechazar si la `subespecialidad` de la cita no pertenece a `X-Estacion-Id`.
 - Se conserva `POST /turnos/asignacion/{id}/siguiente` (por sala).
 

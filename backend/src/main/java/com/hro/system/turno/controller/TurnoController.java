@@ -104,12 +104,15 @@ public class TurnoController {
 
     @GetMapping("/estacion/{estacionId}")
     @Operation(summary = "Listar la cola de turnos de una estación",
-            description = "Turnos activos (en espera/llamado/reintegrado) de todas las salas de la estación para la fecha (hoy por defecto).")
+            description = "Turnos de todas las salas de la estación para la fecha (hoy por defecto). "
+                    + "Por defecto solo activos; con incluirNoResponde=true agrega los no respondidos.")
     public ResponseEntity<ApiResponse<List<TurnoResponseDTO>>> listarTurnosEstacion(
             @PathVariable Long estacionId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false, defaultValue = "false") boolean incluirNoResponde) {
         return ResponseEntity.ok(ApiResponse.ok(
-                turnoService.listarTurnosEstacion(estacionId, fecha), "Cola de la estación obtenida con éxito"));
+                turnoService.listarTurnosEstacion(estacionId, fecha, incluirNoResponde),
+                "Cola de la estación obtenida con éxito"));
     }
 
     @GetMapping("/estacion/{estacionId}/tablero")
