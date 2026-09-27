@@ -220,3 +220,34 @@ export async function obtenerEstadoInicialTablero({
   )
   return filtrarAsignaciones(asignaciones, permitidas)
 }
+
+/**
+ * Carga inicial del tablero de una estación: `GET /turnos/estacion/{id}/tablero`.
+ * El backend ya devuelve solo las salas de las subespecialidades de la estación.
+ */
+export async function obtenerEstadoInicialEstacion({
+  estacionId,
+  cliente = client,
+  fecha = hoyIso(),
+  modoMock = estaEnModoMock(),
+} = {}) {
+  if (modoMock) {
+    const volumen = resolverVolumenMock()
+    const base =
+      volumen > 0 ? { asignaciones: generarAsignacionesVolumen(volumen) } : estadoInicialMock
+    return ordenarAsignaciones(normalizarListaAsignaciones(base))
+  }
+
+  const cuerpo = await cliente.get(`/turnos/estacion/${estacionId}/tablero`, { params: { fecha } })
+  const lista = extraerListaRespuesta(cuerpo)
+
+  if (lista === null) {
+    const error = new Error(
+      'Respuesta inesperada del servidor al cargar el tablero de la estación.',
+    )
+    error.code = 'RESPUESTA_INESPERADA'
+    throw error
+  }
+
+  return ordenarAsignaciones(normalizarListaAsignaciones(lista))
+}

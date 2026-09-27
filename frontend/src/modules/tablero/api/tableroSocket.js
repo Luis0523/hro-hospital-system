@@ -6,6 +6,11 @@ export const WS_URL = import.meta.env.VITE_WS_URL || '/api/v1/ws-turnos'
 
 export const TOPIC_TABLERO = '/topic/tablero'
 
+/** Topic por estación: cada tablero/TV recibe solo el área de su estación. */
+export function topicEstacion(estacionId) {
+  return `/topic/estacion/${estacionId}`
+}
+
 // Suscripción principal actual: /topic/tablero (recibe todas las asignaciones).
 // topicAsignacion se conserva para una futura optimización por pantalla,
 // suscribiéndose únicamente a sus asignaciones específicas.
@@ -20,6 +25,7 @@ export function crearClienteTablero({
   onConnected,
   onDisconnected,
   onError,
+  topic = TOPIC_TABLERO,
   reconnectDelay = RECONNECT_DELAY,
 } = {}) {
   const client = new Client({
@@ -49,7 +55,10 @@ export function crearClienteTablero({
         suscripcion = null
       }
     }
-    suscripcion = client.subscribe(TOPIC_TABLERO, (mensaje) => emitir(mensaje.body))
+    suscripcion = client.subscribe(
+      typeof topic === 'function' ? topic() : topic,
+      (mensaje) => emitir(mensaje.body),
+    )
     if (onConnected) onConnected()
   }
 
