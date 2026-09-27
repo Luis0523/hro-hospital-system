@@ -36,13 +36,13 @@ const SUBESPECIALIDADES_BASE = [
 export const espaciosMock = ESPACIOS_BASE.map((espacio) => ({ ...espacio }))
 export const subespecialidadesMock = SUBESPECIALIDADES_BASE.map((sub) => ({ ...sub }))
 
-/** fecha -> Map(espacioFisicoId -> { id, subespecialidadId }) */
+/** fecha -> Array<{ id, espacioFisicoId, subespecialidadId }> (una sala puede tener varias) */
 const asignacionesPorFecha = new Map()
 const diasCerrados = new Set()
 let contadorAsignacion = 1
 
-function mapaDe(fecha) {
-  if (!asignacionesPorFecha.has(fecha)) asignacionesPorFecha.set(fecha, new Map())
+function listaDe(fecha) {
+  if (!asignacionesPorFecha.has(fecha)) asignacionesPorFecha.set(fecha, [])
   return asignacionesPorFecha.get(fecha)
 }
 
@@ -52,22 +52,6 @@ function subDe(id) {
 
 function espacioDe(id) {
   return espaciosMock.find((espacio) => espacio.id === id) ?? null
-}
-
-function itemDesdeAsignacion(fecha, espacioId, asignacion) {
-  const espacio = espacioDe(espacioId)
-  const sub = asignacion ? subDe(asignacion.subespecialidadId) : null
-  return {
-    espacioFisicoId: espacioId,
-    numero: espacio?.numero ?? null,
-    nivel: espacio?.nivel ?? null,
-    capacidadCamillas: espacio?.capacidadCamillas ?? 1,
-    asignacionId: asignacion?.id ?? null,
-    subespecialidadId: sub?.id ?? null,
-    subespecialidadNombre: sub?.nombre ?? null,
-    especialidadId: sub?.especialidadId ?? null,
-    especialidadNombre: sub?.especialidadNombre ?? null,
-  }
 }
 
 export function listarEspaciosFisicosMock(nivel) {
@@ -81,10 +65,30 @@ export function listarSubespecialidadesMock() {
 }
 
 export function vistaAsignacionMock(fecha, nivel) {
-  const mapa = mapaDe(fecha)
+  const fila = listaDe(fecha)
   return espaciosMock
     .filter((espacio) => !nivel || Number(espacio.nivel) === Number(nivel))
-    .map((espacio) => itemDesdeAsignacion(fecha, espacio.id, mapa.get(espacio.id)))
+    .map((espacio) => {
+      const asignaciones = fila
+        .filter((a) => a.espacioFisicoId === espacio.id)
+        .map((a) => {
+          const sub = subDe(a.subespecialidadId)
+          return {
+            asignacionId: a.id,
+            subespecialidadId: sub?.id ?? null,
+            subespecialidadNombre: sub?.nombre ?? null,
+            especialidadId: sub?.especialidadId ?? null,
+            especialidadNombre: sub?.especialidadNombre ?? null,
+          }
+        })
+      return {
+        espacioFisicoId: espacio.id,
+        numero: espacio.numero,
+        nivel: espacio.nivel,
+        capacidadCamillas: espacio.capacidadCamillas,
+        asignaciones,
+      }
+    })
 }
 
 export function guardarAsignacionMock({ espacioFisicoId, subespecialidadId, fecha }) {
@@ -93,41 +97,37 @@ export function guardarAsignacionMock({ espacioFisicoId, subespecialidadId, fech
     error.status = 409
     throw error
   }
-  const mapa = mapaDe(fecha)
-  const existente = mapa.get(espacioFisicoId)
-  const asignacion = existente ?? { id: contadorAsignacion++, subespecialidadId: null }
-  asignacion.subespecialidadId = Number(subespecialidadId)
-  mapa.set(espacioFisicoId, asignacion)
-
-  return {
-    id: asignacion.id,
-    fecha,
-    espacioFisicoId,
-    subespecialidadId: asignacion.subespecialidadId,
-    subespecialidadNombre: subDe(asignacion.subespecialidadId)?.nombre ?? null,
+  const fila = listaDe(fecha)
+  const subId = Number(subespecialidadId)
+  const existente = fila.find(
+    (a) => a.espacioFisicoId === espacioFisicoId && a.subespecialidadId === subId,
+  )
+  if (existente) {
+    return { id: existente.id, fecha, espacioFisicoId, subespecialidadId: subId }
   }
+  const nueva = { id: contadorAsignacion++, espacioFisicoId, subespecialidadId: subId }
+  fila.push(nueva)
+  return { id: nueva.id, fecha, espacioFisicoId, subespecialidadId: subId }
 }
 
 export function eliminarAsignacionMock(id) {
-  for (const [fecha, mapa] of asignacionesPorFecha.entries()) {
-    for (const [espacioFisicoId, asignacion] of mapa.entries()) {
-      if (asignacion.id === Number(id)) {
-        if (diasCerrados.has(fecha)) {
-          const error = new Error('La asignación del día está cerrada; no se puede quitar.')
-          error.status = 409
-          throw error
-        }
-        mapa.delete(espacioFisicoId)
-        return { ok: true }
+  for (const [fecha, fila] of asignacionesPorFecha.entries()) {
+    const indice = fila.findIndex((a) => a.id === Number(id))
+    if (indice !== -1) {
+      if (diasCerrados.has(fecha)) {
+        const error = new Error('La asignación del día está cerrada; no se puede quitar.')
+        error.status = 409
+        throw error
       }
+      fila.splice(indice, 1)
+      return { ok: true }
     }
   }
   return { ok: true }
 }
 
 export function obtenerCoberturaMock(fecha) {
-  const mapa = asignacionesPorFecha.get(fecha) ?? new Map()
-  const asignadas = new Set([...mapa.values()].map((a) => a.subespecialidadId))
+  const asignadas = new Set(listaDe(fecha).map((a) => a.subespecialidadId))
   return subespecialidadesMock
     .filter((sub) => !asignadas.has(sub.id))
     .map((sub) => ({ subespecialidadId: sub.id, subespecialidadNombre: sub.nombre }))
@@ -143,36 +143,53 @@ export function estaCerradoMock(fecha) {
 }
 
 export function duplicarAsignacionMock(fechaOrigen, fechaDestino) {
-  const origen = asignacionesPorFecha.get(fechaOrigen)
-  if (!origen) return 0
   if (diasCerrados.has(fechaDestino)) {
     const error = new Error('La asignación del día destino está cerrada.')
     error.status = 409
     throw error
   }
-  const destino = mapaDe(fechaDestino)
+  const origen = asignacionesPorFecha.get(fechaOrigen) ?? []
+  const destino = listaDe(fechaDestino)
   let copiadas = 0
-  for (const [espacioId, asignacion] of origen.entries()) {
-    const existente = destino.get(espacioId)
-    if (existente) {
-      existente.subespecialidadId = asignacion.subespecialidadId
-    } else {
-      destino.set(espacioId, { id: contadorAsignacion++, subespecialidadId: asignacion.subespecialidadId })
-    }
+  for (const a of origen) {
+    const yaEsta = destino.some(
+      (d) => d.espacioFisicoId === a.espacioFisicoId && d.subespecialidadId === a.subespecialidadId,
+    )
+    if (yaEsta) continue
+    destino.push({ id: contadorAsignacion++, espacioFisicoId: a.espacioFisicoId, subespecialidadId: a.subespecialidadId })
     copiadas++
   }
   return copiadas
 }
 
 export function reasignarEnCalienteMock(id, nuevoEspacioFisicoId, motivo) {
-  for (const [fecha, mapa] of asignacionesPorFecha.entries()) {
-    for (const [espacioId, asignacion] of mapa.entries()) {
-      if (asignacion.id === Number(id)) {
-        mapa.delete(espacioId)
-        mapa.set(nuevoEspacioFisicoId, asignacion)
-        const item = itemDesdeAsignacion(fecha, nuevoEspacioFisicoId, asignacion)
-        return { ...item, fecha, motivo: motivo ?? null }
-      }
+  for (const [fecha, fila] of asignacionesPorFecha.entries()) {
+    const asignacion = fila.find((a) => a.id === Number(id))
+    if (!asignacion) continue
+
+    const duplicada = fila.some(
+      (a) =>
+        a.id !== asignacion.id &&
+        a.espacioFisicoId === nuevoEspacioFisicoId &&
+        a.subespecialidadId === asignacion.subespecialidadId,
+    )
+    if (duplicada) {
+      const error = new Error('Esa sala ya tiene la misma subespecialidad asignada.')
+      error.status = 409
+      throw error
+    }
+
+    asignacion.espacioFisicoId = nuevoEspacioFisicoId
+    const espacio = espacioDe(nuevoEspacioFisicoId)
+    const sub = subDe(asignacion.subespecialidadId)
+    return {
+      id: asignacion.id,
+      fecha,
+      espacioFisicoId: nuevoEspacioFisicoId,
+      espacioNumero: espacio?.numero ?? null,
+      subespecialidadId: sub?.id ?? null,
+      subespecialidadNombre: sub?.nombre ?? null,
+      motivo: motivo ?? null,
     }
   }
   return null

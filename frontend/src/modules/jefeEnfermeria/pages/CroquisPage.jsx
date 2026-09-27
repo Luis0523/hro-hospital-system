@@ -31,14 +31,13 @@ export default function CroquisPage() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
-  // Modal de la sala (asignar/cambiar/quitar + reasignar en caliente)
   const [seleccion, setSeleccion] = useState(null)
   const [subElegida, setSubElegida] = useState('')
+  const [moverAsignacionId, setMoverAsignacionId] = useState('')
   const [destinoReasignar, setDestinoReasignar] = useState('')
   const [motivoReasignar, setMotivoReasignar] = useState('')
   const [guardando, setGuardando] = useState(false)
 
-  // Cerrar día / duplicar
   const [confirmarCierre, setConfirmarCierre] = useState(false)
   const [duplicarAbierto, setDuplicarAbierto] = useState(false)
   const [fechaOrigen, setFechaOrigen] = useState('')
@@ -52,12 +51,15 @@ export default function CroquisPage() {
         listarVistaAsignacion({ fecha, nivel: nivel || undefined }),
         obtenerCobertura(fecha),
       ])
-      setItems(Array.isArray(data) ? data : [])
+      const lista = Array.isArray(data) ? data : []
+      setItems(lista)
       setCobertura(Array.isArray(faltantes) ? faltantes : [])
+      return lista
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo cargar la asignación del día.')
       setItems([])
       setCobertura([])
+      return []
     } finally {
       setCargando(false)
     }
@@ -75,25 +77,31 @@ export default function CroquisPage() {
 
   const resumen = useMemo(() => {
     const total = items.length
-    const asignadas = items.filter((item) => item.asignacionId).length
+    const asignadas = items.filter((item) => (item.asignaciones?.length ?? 0) > 0).length
     return { total, asignadas, sinAsignar: total - asignadas }
   }, [items])
 
+  async function recargarSeleccion(espacioFisicoId) {
+    const lista = await cargar()
+    setSeleccion((actual) => {
+      const id = espacioFisicoId ?? actual?.espacioFisicoId
+      return lista.find((item) => item.espacioFisicoId === id) ?? null
+    })
+  }
+
   function abrir(item) {
     setSeleccion(item)
-    setSubElegida(item.subespecialidadId ? String(item.subespecialidadId) : '')
+    setSubElegida('')
+    setMoverAsignacionId('')
     setDestinoReasignar('')
     setMotivoReasignar('')
   }
 
   function cerrar() {
     setSeleccion(null)
-    setSubElegida('')
-    setDestinoReasignar('')
-    setMotivoReasignar('')
   }
 
-  async function guardar() {
+  async function agregar() {
     if (!seleccion || !subElegida) return
     setGuardando(true)
     try {
@@ -102,23 +110,21 @@ export default function CroquisPage() {
         subespecialidadId: Number(subElegida),
         fecha,
       })
-      cerrar()
-      await cargar()
-      mostrarToast({ tone: 'success', title: 'Asignación guardada' })
+      setSubElegida('')
+      await recargarSeleccion(seleccion.espacioFisicoId)
+      mostrarToast({ tone: 'success', title: 'Subespecialidad agregada' })
     } catch (fallo) {
-      setError(fallo?.message || 'No se pudo guardar la asignación.')
+      setError(fallo?.message || 'No se pudo agregar la subespecialidad.')
     } finally {
       setGuardando(false)
     }
   }
 
-  async function quitar() {
-    if (!seleccion?.asignacionId) return
+  async function quitar(asignacionId) {
     setGuardando(true)
     try {
-      await eliminarAsignacion(seleccion.asignacionId)
-      cerrar()
-      await cargar()
+      await eliminarAsignacion(asignacionId)
+      await recargarSeleccion(seleccion?.espacioFisicoId)
       mostrarToast({ tone: 'info', title: 'Asignación eliminada' })
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo quitar la asignación.')
@@ -128,10 +134,10 @@ export default function CroquisPage() {
   }
 
   async function reasignar() {
-    if (!seleccion?.asignacionId || !destinoReasignar) return
+    if (!moverAsignacionId || !destinoReasignar) return
     setGuardando(true)
     try {
-      await reasignarEnCaliente(seleccion.asignacionId, destinoReasignar, motivoReasignar || undefined)
+      await reasignarEnCaliente(moverAsignacionId, destinoReasignar, motivoReasignar || undefined)
       cerrar()
       await cargar()
       mostrarToast({ tone: 'success', title: 'Reasignación en caliente aplicada' })
@@ -174,6 +180,7 @@ export default function CroquisPage() {
     }
   }
 
+  const asignaciones = seleccion?.asignaciones ?? []
   const otrasSalas = useMemo(
     () => items.filter((item) => item.espacioFisicoId !== seleccion?.espacioFisicoId),
     [items, seleccion],
@@ -202,9 +209,7 @@ export default function CroquisPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card">
         <label className="flex flex-col gap-1">
-          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-            Fecha
-          </span>
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">Fecha</span>
           <input
             type="date"
             value={fecha}
@@ -214,9 +219,7 @@ export default function CroquisPage() {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-            Nivel
-          </span>
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">Nivel</span>
           <select
             value={nivel}
             onChange={(evento) => setNivel(evento.target.value)}
@@ -238,7 +241,7 @@ export default function CroquisPage() {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Contador etiqueta="Salas" valor={resumen.total} />
-          <Contador etiqueta="Asignadas" valor={resumen.asignadas} tono="ok" />
+          <Contador etiqueta="Con asignación" valor={resumen.asignadas} tono="ok" />
           <Contador etiqueta="Sin asignar" valor={resumen.sinAsignar} tono="warn" />
         </div>
       </div>
@@ -248,7 +251,9 @@ export default function CroquisPage() {
           <p className="mb-1 text-body-sm">
             Estas subespecialidades tienen programación ese día pero aún no tienen sala asignada:
           </p>
-          <p className="text-body-sm text-on-surface">{cobertura.map((c) => c.subespecialidadNombre).join(' · ')}</p>
+          <p className="text-body-sm text-on-surface">
+            {cobertura.map((c) => c.subespecialidadNombre).join(' · ')}
+          </p>
         </Alert>
       )}
 
@@ -280,20 +285,9 @@ export default function CroquisPage() {
         onClose={cerrar}
         title={seleccion ? `Sala ${seleccion.numero}` : ''}
         footer={
-          <>
-            {seleccion?.asignacionId && (
-              <Button variant="danger" onClick={quitar} disabled={guardando}>
-                <Icon name="delete" className="text-[18px]" />
-                Quitar
-              </Button>
-            )}
-            <Button variant="secondary" onClick={cerrar} disabled={guardando}>
-              Cancelar
-            </Button>
-            <Button onClick={guardar} disabled={guardando || !subElegida}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </>
+          <Button variant="secondary" onClick={cerrar}>
+            Cerrar
+          </Button>
         }
       >
         {seleccion && (
@@ -301,35 +295,90 @@ export default function CroquisPage() {
             <p className="text-body-sm text-on-surface-variant">
               Nivel {seleccion.nivel} · {fecha}
             </p>
-            <label className="flex flex-col gap-1">
-              <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-                Subespecialidad
-              </span>
-              <select
-                value={subElegida}
-                onChange={(evento) => setSubElegida(evento.target.value)}
-                className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
-              >
-                <option value="">Seleccione una subespecialidad…</option>
-                {subespecialidades.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.nombre} — {sub.especialidadNombre}
-                  </option>
-                ))}
-              </select>
-            </label>
 
-            {seleccion.asignacionId && (
+            <div>
+              <p className="mb-1 text-label-sm uppercase tracking-wide text-on-surface-variant">
+                Subespecialidades asignadas
+              </p>
+              {asignaciones.length === 0 ? (
+                <p className="text-body-sm text-on-surface-variant">Ninguna todavía.</p>
+              ) : (
+                <ul className="divide-y divide-outline-variant overflow-hidden rounded-lg border border-outline-variant">
+                  {asignaciones.map((sub) => (
+                    <li
+                      key={sub.asignacionId}
+                      className="flex items-center justify-between gap-2 px-3 py-2"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-title-sm text-on-surface">
+                          {sub.subespecialidadNombre}
+                        </span>
+                        <span className="block truncate text-label-sm text-on-surface-variant">
+                          {sub.especialidadNombre}
+                        </span>
+                      </span>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => quitar(sub.asignacionId)}
+                        disabled={guardando}
+                      >
+                        <Icon name="close" className="text-[16px]" />
+                        Quitar
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <p className="mb-1 text-label-sm uppercase tracking-wide text-on-surface-variant">
+                Agregar subespecialidad
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={subElegida}
+                  onChange={(evento) => setSubElegida(evento.target.value)}
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                >
+                  <option value="">Seleccione una subespecialidad…</option>
+                  {subespecialidades.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.nombre} — {sub.especialidadNombre}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" onClick={agregar} disabled={guardando || !subElegida}>
+                  <Icon name="add" className="text-[16px]" />
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            {asignaciones.length > 0 && (
               <div className="rounded-lg border border-outline-variant bg-surface-container-low p-3">
                 <p className="mb-2 flex items-center gap-1 text-label-sm uppercase tracking-wide text-on-surface-variant">
                   <Icon name="swap_horiz" className="text-[16px] text-primary" />
-                  Reasignar en caliente (otra sala)
+                  Reasignar en caliente a otra sala
                 </p>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    value={moverAsignacionId}
+                    onChange={(evento) => setMoverAsignacionId(evento.target.value)}
+                    className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                  >
+                    <option value="">Subespecialidad a mover…</option>
+                    {asignaciones.map((sub) => (
+                      <option key={sub.asignacionId} value={sub.asignacionId}>
+                        {sub.subespecialidadNombre}
+                      </option>
+                    ))}
+                  </select>
                   <select
                     value={destinoReasignar}
                     onChange={(evento) => setDestinoReasignar(evento.target.value)}
-                    className="h-10 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                    className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
                   >
                     <option value="">Sala destino…</option>
                     {otrasSalas.map((sala) => (
@@ -342,9 +391,13 @@ export default function CroquisPage() {
                     value={motivoReasignar}
                     onChange={(evento) => setMotivoReasignar(evento.target.value)}
                     placeholder="Motivo (opcional)"
-                    className="h-10 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                    className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
                   />
-                  <Button onClick={reasignar} disabled={guardando || !destinoReasignar}>
+                  <Button
+                    size="sm"
+                    onClick={reasignar}
+                    disabled={guardando || !moverAsignacionId || !destinoReasignar}
+                  >
                     Reasignar
                   </Button>
                 </div>

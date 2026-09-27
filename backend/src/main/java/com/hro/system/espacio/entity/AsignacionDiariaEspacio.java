@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "asignacion_diaria_espacio", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"espacio_fisico_id", "fecha"})
+        @UniqueConstraint(columnNames = {"espacio_fisico_id", "fecha", "subespecialidad_id"})
 })
 @Getter
 @Setter

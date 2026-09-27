@@ -8,6 +8,7 @@ import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.espacio.dto.AsignacionDiariaResponseDTO;
 import com.hro.system.espacio.dto.AsignacionVistaItemDTO;
+import com.hro.system.espacio.dto.AsignacionVistaSubDTO;
 import com.hro.system.espacio.dto.CoberturaFaltanteDTO;
 import com.hro.system.espacio.dto.CrearAsignacionDiariaRequestDTO;
 import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
@@ -69,8 +70,10 @@ public class AsignacionDiariaEspacioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Subespecialidad", "id", dto.getSubespecialidadId()));
         validarSubespecialidadActiva(sub);
 
-        if (asignacionRepository.existsByEspacioFisicoIdAndFecha(espacio.getId(), dto.getFecha())) {
-            throw new BusinessException("El espacio " + espacio.getNumero() + " ya tiene una subespecialidad asignada el " + dto.getFecha() + ".");
+        if (asignacionRepository.existsByEspacioFisicoIdAndFechaAndSubespecialidadId(
+                espacio.getId(), dto.getFecha(), sub.getId())) {
+            throw new BusinessException("La subespecialidad " + sub.getNombre()
+                    + " ya está asignada a la sala " + espacio.getNumero() + " el " + dto.getFecha() + ".");
         }
 
         UsuarioReferencia usuario = usuarioActual();
@@ -114,27 +117,21 @@ public class AsignacionDiariaEspacioService {
 
         UsuarioReferencia usuario = usuarioActual();
         Optional<AsignacionDiariaEspacio> existente =
-                asignacionRepository.findByEspacioFisicoIdAndFecha(espacio.getId(), dto.getFecha());
+                asignacionRepository.findByEspacioFisicoIdAndFechaAndSubespecialidadId(
+                        espacio.getId(), dto.getFecha(), sub.getId());
 
-        AsignacionDiariaEspacio asignacion;
-        String accion;
         if (existente.isPresent()) {
-            asignacion = existente.get();
-            if (asignacion.getSubespecialidad().getId().equals(sub.getId())) {
-                return mapToDTO(asignacion);
-            }
-            asignacion.setSubespecialidad(sub);
-            accion = "actualizar";
-        } else {
-            asignacion = AsignacionDiariaEspacio.builder()
-                    .espacioFisico(espacio)
-                    .subespecialidad(sub)
-                    .fecha(dto.getFecha())
-                    .creadoPor(usuario)
-                    .creadoEn(OffsetDateTime.now())
-                    .build();
-            accion = "crear";
+            return mapToDTO(existente.get());
         }
+
+        AsignacionDiariaEspacio asignacion = AsignacionDiariaEspacio.builder()
+                .espacioFisico(espacio)
+                .subespecialidad(sub)
+                .fecha(dto.getFecha())
+                .creadoPor(usuario)
+                .creadoEn(OffsetDateTime.now())
+                .build();
+        String accion = "crear";
 
         AsignacionDiariaEspacio guardada = asignacionRepository.save(asignacion);
         publicarAuditoria(accion, guardada, usuario, Map.of(
@@ -156,21 +153,25 @@ public class AsignacionDiariaEspacioService {
                 ? espacioFisicoRepository.findByNivelAndActivoTrue(nivel)
                 : espacioFisicoRepository.findByActivoTrue();
 
-        Map<UUID, AsignacionDiariaEspacio> porEspacio = asignacionRepository.findByFecha(fecha).stream()
-                .collect(Collectors.toMap(a -> a.getEspacioFisico().getId(), a -> a, (a, b) -> a));
+        Map<UUID, List<AsignacionDiariaEspacio>> porEspacio = asignacionRepository.findByFecha(fecha).stream()
+                .collect(Collectors.groupingBy(a -> a.getEspacioFisico().getId()));
 
         return espacios.stream().map(espacio -> {
-            AsignacionDiariaEspacio a = porEspacio.get(espacio.getId());
+            List<AsignacionVistaSubDTO> subs = porEspacio.getOrDefault(espacio.getId(), List.of()).stream()
+                    .map(a -> AsignacionVistaSubDTO.builder()
+                            .asignacionId(a.getId())
+                            .subespecialidadId(a.getSubespecialidad().getId())
+                            .subespecialidadNombre(a.getSubespecialidad().getNombre())
+                            .especialidadId(a.getSubespecialidad().getEspecialidad().getId())
+                            .especialidadNombre(a.getSubespecialidad().getEspecialidad().getNombre())
+                            .build())
+                    .toList();
             return AsignacionVistaItemDTO.builder()
                     .espacioFisicoId(espacio.getId())
                     .numero(espacio.getNumero())
                     .nivel(espacio.getNivel())
                     .capacidadCamillas(espacio.getCapacidadCamillas())
-                    .asignacionId(a != null ? a.getId() : null)
-                    .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
-                    .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
-                    .especialidadId(a != null ? a.getSubespecialidad().getEspecialidad().getId() : null)
-                    .especialidadNombre(a != null ? a.getSubespecialidad().getEspecialidad().getNombre() : null)
+                    .asignaciones(subs)
                     .build();
         }).toList();
     }
@@ -194,8 +195,10 @@ public class AsignacionDiariaEspacioService {
         EspacioFisico nuevoEspacio = espacioFisicoRepository.findById(nuevoEspacioFisicoId)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", nuevoEspacioFisicoId));
 
-        if (asignacionRepository.existsByEspacioFisicoIdAndFecha(nuevoEspacio.getId(), asignacion.getFecha())) {
-            throw new BusinessException("El espacio " + nuevoEspacio.getNumero() + " ya está ocupado el " + asignacion.getFecha() + ".");
+        if (asignacionRepository.existsByEspacioFisicoIdAndFechaAndSubespecialidadId(
+                nuevoEspacio.getId(), asignacion.getFecha(), asignacion.getSubespecialidad().getId())) {
+            throw new BusinessException("La sala " + nuevoEspacio.getNumero()
+                    + " ya tiene esa subespecialidad asignada el " + asignacion.getFecha() + ".");
         }
 
         UUID anterior = asignacion.getEspacioFisico().getId();

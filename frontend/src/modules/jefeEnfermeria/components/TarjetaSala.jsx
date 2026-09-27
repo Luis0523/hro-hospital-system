@@ -1,7 +1,9 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 
 export default function TarjetaSala({ item, onClick }) {
-  const asignada = Boolean(item.asignacionId)
+  const subs = Array.isArray(item.asignaciones) ? item.asignaciones : []
+  const asignada = subs.length > 0
+  const etiqueta = !asignada ? 'Sin asignar' : subs.length > 1 ? `${subs.length} asignadas` : 'Asignada'
 
   return (
     <button
@@ -28,16 +30,18 @@ export default function TarjetaSala({ item, onClick }) {
               : 'bg-surface-container-high text-on-surface-variant'
           }`}
         >
-          {asignada ? 'Asignada' : 'Sin asignar'}
+          {etiqueta}
         </span>
       </div>
 
-      <div className="min-h-[2.5rem] text-body-sm">
+      <div className="min-h-[2.5rem] space-y-0.5 text-body-sm">
         {asignada ? (
-          <>
-            <p className="font-semibold text-on-surface">{item.subespecialidadNombre}</p>
-            <p className="text-on-surface-variant">{item.especialidadNombre}</p>
-          </>
+          subs.map((sub) => (
+            <p key={sub.asignacionId} className="truncate">
+              <span className="font-semibold text-on-surface">{sub.subespecialidadNombre}</span>
+              <span className="text-on-surface-variant"> — {sub.especialidadNombre}</span>
+            </p>
+          ))
         ) : (
           <p className="text-on-surface-variant">Clic para asignar una subespecialidad</p>
         )}
