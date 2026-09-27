@@ -151,7 +151,8 @@ estacion_enfermeria ─1:N─ estacion_acceso ─N:1─ usuario_referencia
 - Exponer `estacionActual()` para servicios que deban validar.
 
 ### 4.3 Turnos / tablero
-- `TableroTurnoDTO`: añadir `subespecialidadId` y `especialidadId` (hoy no vienen) para rutear/filtrar.
+- `TableroTurnoDTO`: añadir `subespecialidadId`, `especialidadId`, `pacienteNombre`,
+  `turnosEnEspera` (números en espera de la sala) y `porNombre`.
 - `TurnoService.notificarActualizacionTablero`: resolver la(s) estación(es) de `asignacion.subespecialidad`
   y publicar en **`/topic/estacion/{estacionId}`** (además de los actuales, por compatibilidad).
 - Nuevo `GET /turnos/estacion/{estacionId}/tablero?fecha=` → `List<TableroTurnoDTO>` de todas las
@@ -160,6 +161,10 @@ estacion_enfermeria ─1:N─ estacion_acceso ─N:1─ usuario_referencia
   (por defecto solo activos; `incluirNoResponde=true` agrega los no respondidos para el panel de reintegración).
 - Validación de check-in (recomendada): rechazar si la `subespecialidad` de la cita no pertenece a `X-Estacion-Id`.
 - Se conserva `POST /turnos/asignacion/{id}/siguiente` (por sala).
+- `POST /turnos/{id}/llamar?porNombre=true` sirve para **llamar y re-llamar**; con `porNombre=true` el
+  tablero anuncia por nombre.
+- Tablero (frontend): columnas **Clínica** (número del espacio físico) y **Turno siguiente**; **barra
+  inferior azul** con el/los últimos llamados (número · clínica · paciente).
 
 ### 4.4 Datos
 - Migración **V12** (`estacion_enfermeria`, `estacion_subespecialidad`, `estacion_acceso`).

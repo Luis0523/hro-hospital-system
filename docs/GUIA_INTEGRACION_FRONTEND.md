@@ -263,12 +263,13 @@ Content-Type: application/json
 Cuando el médico está listo para el siguiente paciente, presiona el botón **"Llamar Siguiente"** o **"Llamar Turno"**:
 
 ```http
-POST /api/v1/turnos/{turnoId}/llamar?usuarioId=2
+POST /api/v1/turnos/{turnoId}/llamar?usuarioId=2&porNombre=false
 ```
 * **Comportamiento en UI:**
   - El turno pasa a `llamado`.
   - En la pantalla de enfermería inicia un **temporizador regresivo de tiempo de gracia** (por defecto 3 minutos / 180 segundos).
-  - El tablero de la sala de espera empieza a parpadear y emite una alerta sonora.
+  - El tablero de la sala de espera parpadea, muestra el **nombre del paciente** y emite la locución (*"Turno N, paciente …, favor pasar a … consultorio …"*).
+  - Sirve también para **re-llamar** (incrementa `intentosLlamado`). Con `porNombre=true` el tablero anuncia por nombre (útil cuando el paciente no responde al número).
 
 #### 4. Paciente no se presenta tras el llamado (`no_responde`)
 Si el paciente no acude tras agotarse el tiempo de gracia o los reintentos de llamado, el personal presiona **"Marcar No Responde"**:
@@ -361,13 +362,18 @@ Cada vez que se hace check-in, se llama a un paciente o se cambia un estado, el 
   "turnoSiguiente": 8,
   "ultimaActualizacion": "2026-09-15T08:05:32-06:00",
   "intentosLlamado": 1,
-  "tipoEvento": "LLAMADO"
+  "tipoEvento": "LLAMADO",
+  "pacienteNombre": "Juan Pérez",
+  "turnosEnEspera": [9, 10],
+  "porNombre": false
 }
 ```
 
-> `tipoEvento` es `LLAMADO` cuando la acción es llamar a un turno (incluye `intentosLlamado`) y
-> `ACTUALIZACION` en el resto. En modo estación, la TV se suscribe a `/topic/estacion/{id}` y
-> carga su estado inicial con `GET /turnos/estacion/{id}/tablero`.
+> - `tipoEvento`: `LLAMADO` cuando la acción es llamar (incluye `intentosLlamado`); `ACTUALIZACION` en el resto.
+> - `pacienteNombre`: paciente del **turno actual** llamado (para llamar por nombre).
+> - `turnosEnEspera`: números de turno **en espera** de esa sala (cola visible en el tablero).
+> - `porNombre`: `true` si el llamado se pidió por nombre.
+> - En modo estación la TV se suscribe a `/topic/estacion/{id}` y carga su estado inicial con `GET /turnos/estacion/{id}/tablero`.
 
 #### 3. Recomendaciones de UX para la Pantalla de Turnos
 1. **Doble Indicador:** Mostrar claramente en números gigantes (ej. font-size 96px):

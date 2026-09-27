@@ -221,7 +221,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar",
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar?porNombre=false",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -230,9 +230,15 @@
                 "{{turnoId}}",
                 "llamar"
               ],
-              "query": []
+              "query": [
+                {
+                  "key": "porNombre",
+                  "value": "false",
+                  "description": "true = anunciar por nombre (llamar/re-llamar)"
+                }
+              ]
             },
-            "description": "Cambia el estado del turno a 'llamado', actualiza la pantalla del tablero e inicia el temporizador de tiempo de gracia (3 minutos por defecto)."
+            "description": "Llama al consultorio. Sirve también para re-llamar (incrementa intentosLlamado). Con porNombre=true el tablero anuncia por nombre."
           }
         },
         {
