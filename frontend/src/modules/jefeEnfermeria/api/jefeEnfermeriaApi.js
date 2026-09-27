@@ -1,12 +1,17 @@
 import client from '@/shared/api/client'
 import {
+  actualizarHorarioMock,
   cerrarDiaMock,
+  crearHorarioMock,
+  desactivarHorarioMock,
   duplicarAsignacionMock,
   eliminarAsignacionMock,
   guardarAsignacionMock,
   listarEspaciosFisicosMock,
+  listarHorariosMock,
   listarSubespecialidadesMock,
   obtenerCoberturaMock,
+  reactivarHorarioMock,
   reasignarEnCalienteMock,
   vistaAsignacionMock,
 } from './mockData.js'
@@ -92,4 +97,33 @@ export async function reasignarEnCaliente(id, nuevoEspacioFisicoId, motivo) {
       params: { nuevoEspacioFisicoId, motivo },
     }),
   )
+}
+
+// ---------------------------------------------------------------------------
+// Horario por subespecialidad (/subespecialidad-horarios)
+// ---------------------------------------------------------------------------
+
+export async function listarHorarios(subespecialidadId) {
+  if (USE_MOCK) return listarHorariosMock(subespecialidadId)
+  return desenvolver(await client.get(`/subespecialidades/${subespecialidadId}/horarios`))
+}
+
+export async function crearHorario(datos) {
+  if (USE_MOCK) return crearHorarioMock(datos)
+  return desenvolver(await client.post('/subespecialidad-horarios', datos))
+}
+
+export async function actualizarHorario(id, datos) {
+  if (USE_MOCK) return actualizarHorarioMock(id, datos)
+  return desenvolver(await client.put(`/subespecialidad-horarios/${id}`, datos))
+}
+
+export async function reactivarHorario(id) {
+  if (USE_MOCK) return reactivarHorarioMock(id)
+  return desenvolver(await client.patch(`/subespecialidad-horarios/${id}/reactivar`))
+}
+
+export async function desactivarHorario(id) {
+  if (USE_MOCK) return desactivarHorarioMock(id)
+  return desenvolver(await client.delete(`/subespecialidad-horarios/${id}`))
 }

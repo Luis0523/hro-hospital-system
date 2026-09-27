@@ -195,8 +195,115 @@ export function reasignarEnCalienteMock(id, nuevoEspacioFisicoId, motivo) {
   return null
 }
 
+// ---------------------------------------------------------------------------
+// Horario por subespecialidad (/subespecialidad-horarios)
+// ---------------------------------------------------------------------------
+
+const NOMBRES_DIA = [
+  '',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+]
+
+const horariosMockData = []
+let contadorHorario = 1
+
+function subNombre(id) {
+  return subDe(id)?.nombre ?? null
+}
+
+function subEsp(id) {
+  return subDe(id)?.especialidadId ?? null
+}
+
+function subEspNombre(id) {
+  return subDe(id)?.especialidadNombre ?? null
+}
+
+function toHorarioDTO(h) {
+  return {
+    id: h.id,
+    subespecialidadId: h.subespecialidadId,
+    subespecialidadNombre: subNombre(h.subespecialidadId),
+    especialidadId: subEsp(h.subespecialidadId),
+    especialidadNombre: subEspNombre(h.subespecialidadId),
+    diaSemana: h.diaSemana,
+    diaSemanaNombre: NOMBRES_DIA[h.diaSemana] ?? null,
+    horaInicio: h.horaInicio,
+    horaFin: h.horaFin,
+    capacidadMaxima: h.capacidadMaxima,
+    duracionConsultaMinutos: h.duracionConsultaMinutos,
+    activo: h.activo,
+  }
+}
+
+export function listarHorariosMock(subespecialidadId) {
+  return horariosMockData
+    .filter((h) => h.subespecialidadId === Number(subespecialidadId))
+    .sort((a, b) => a.diaSemana - b.diaSemana)
+    .map(toHorarioDTO)
+}
+
+export function crearHorarioMock(datos) {
+  const subespecialidadId = Number(datos.subespecialidadId)
+  const dia = Number(datos.diaSemana)
+  if (horariosMockData.some((h) => h.subespecialidadId === subespecialidadId && h.diaSemana === dia)) {
+    const error = new Error('Esa subespecialidad ya tiene un horario para ese día.')
+    error.status = 409
+    throw error
+  }
+  const horario = {
+    id: `h-${contadorHorario++}`,
+    subespecialidadId,
+    diaSemana: dia,
+    horaInicio: datos.horaInicio,
+    horaFin: datos.horaFin,
+    capacidadMaxima: Number(datos.capacidadMaxima),
+    duracionConsultaMinutos: Number(datos.duracionConsultaMinutos),
+    activo: true,
+  }
+  horariosMockData.push(horario)
+  return toHorarioDTO(horario)
+}
+
+function buscarHorario(id) {
+  return horariosMockData.find((h) => h.id === id) ?? null
+}
+
+export function actualizarHorarioMock(id, datos) {
+  const horario = buscarHorario(id)
+  if (!horario) return null
+  if (datos.diaSemana !== undefined) horario.diaSemana = Number(datos.diaSemana)
+  if (datos.horaInicio !== undefined) horario.horaInicio = datos.horaInicio
+  if (datos.horaFin !== undefined) horario.horaFin = datos.horaFin
+  if (datos.capacidadMaxima !== undefined) horario.capacidadMaxima = Number(datos.capacidadMaxima)
+  if (datos.duracionConsultaMinutos !== undefined) {
+    horario.duracionConsultaMinutos = Number(datos.duracionConsultaMinutos)
+  }
+  return toHorarioDTO(horario)
+}
+
+export function reactivarHorarioMock(id) {
+  const horario = buscarHorario(id)
+  if (horario) horario.activo = true
+  return horario ? toHorarioDTO(horario) : null
+}
+
+export function desactivarHorarioMock(id) {
+  const horario = buscarHorario(id)
+  if (horario) horario.activo = false
+  return horario ? toHorarioDTO(horario) : null
+}
+
 export function reiniciarJefeMock() {
   asignacionesPorFecha.clear()
   diasCerrados.clear()
+  horariosMockData.length = 0
   contadorAsignacion = 1
+  contadorHorario = 1
 }
