@@ -20,6 +20,7 @@ const ESPECIALIDADES_BASE = [
   { id: 4, nombre: 'Cirugía General', activo: true, creadoEn: creadoEnBase },
   { id: 5, nombre: 'Traumatología y Ortopedia', activo: true, creadoEn: creadoEnBase },
   { id: 6, nombre: 'Cardiología', activo: true, creadoEn: creadoEnBase },
+  { id: 7, nombre: 'Dermatología', activo: false, creadoEn: creadoEnBase },
 ]
 
 const SUBESPECIALIDADES_BASE = [
@@ -47,6 +48,20 @@ const SUBESPECIALIDADES_BASE = [
     especialidadId: 5,
     nombre: 'Traumatología General',
     activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 9,
+    especialidadId: 2,
+    nombre: 'Alergología Pediátrica',
+    activo: false,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 10,
+    especialidadId: 7,
+    nombre: 'Dermatología Pediátrica',
+    activo: false,
     creadoEn: creadoEnBase,
   },
 ]
@@ -94,6 +109,17 @@ const ESPACIOS_FISICOS_BASE = [
     nombre: 'Sala 203',
     ubicacion: 'Edificio Consulta Externa, Nivel 2',
     activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: '6f0d3a2c-1a11-4d21-9c01-000000000005',
+    numero: '204',
+    nivel: 2,
+    capacidadCamillas: 1,
+    coordenadasPlano: null,
+    nombre: 'Sala 204',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    activo: false,
     creadoEn: creadoEnBase,
   },
 ]
@@ -287,11 +313,22 @@ export function reiniciarCatalogosMock() {
 }
 
 // ---------------------------------------------------------------------------
+// Filtro de estado — réplica de EstadoFiltro del backend
+// Valores: activos (por defecto) | inactivos | todos
+// ---------------------------------------------------------------------------
+
+function filtrarPorEstado(lista, estado = 'activos') {
+  if (estado === 'todos') return lista
+  if (estado === 'inactivos') return lista.filter((item) => !item.activo)
+  return lista.filter((item) => item.activo)
+}
+
+// ---------------------------------------------------------------------------
 // Especialidades
 // ---------------------------------------------------------------------------
 
-export function listarEspecialidadesMock() {
-  return especialidadesMock.filter((item) => item.activo)
+export function listarEspecialidadesMock(estado) {
+  return filtrarPorEstado(especialidadesMock, estado)
 }
 
 export function crearEspecialidadMock({ nombre }) {
@@ -336,13 +373,21 @@ export function desactivarEspecialidadMock(id) {
   return especialidad
 }
 
+export function reactivarEspecialidadMock(id) {
+  const especialidad = especialidadesMock.find((item) => item.id === id)
+  if (!especialidad) {
+    throw errorBackend(`No se encontró la especialidad con ID ${id}`, 404)
+  }
+  especialidad.activo = true
+  return especialidad
+}
+
 // ---------------------------------------------------------------------------
 // Subespecialidades
 // ---------------------------------------------------------------------------
 
-export function listarSubespecialidadesMock(especialidadId) {
-  return subespecialidadesMock
-    .filter((item) => item.activo)
+export function listarSubespecialidadesMock(especialidadId, estado) {
+  return filtrarPorEstado(subespecialidadesMock, estado)
     .filter((item) => (especialidadId ? item.especialidadId === especialidadId : true))
     .map(conEspecialidad)
 }
@@ -405,14 +450,32 @@ export function desactivarSubespecialidadMock(id) {
   return conEspecialidad(subespecialidad)
 }
 
+export function reactivarSubespecialidadMock(id) {
+  const subespecialidad = subespecialidadesMock.find((item) => item.id === id)
+  if (!subespecialidad) {
+    throw errorBackend(`No se encontró la subespecialidad con ID ${id}`, 404)
+  }
+  const especialidadPadre = especialidadesMock.find(
+    (item) => item.id === subespecialidad.especialidadId,
+  )
+  if (!especialidadPadre || !especialidadPadre.activo) {
+    throw errorBackend(
+      'No se puede reactivar la subespecialidad porque su especialidad padre está inactiva',
+      400,
+    )
+  }
+  subespecialidad.activo = true
+  return conEspecialidad(subespecialidad)
+}
+
 // ---------------------------------------------------------------------------
 // Espacios físicos
 // ---------------------------------------------------------------------------
 
-export function listarEspaciosFisicosMock(nivel) {
-  return espaciosFisicosMock
-    .filter((item) => item.activo)
-    .filter((item) => (nivel ? item.nivel === Number(nivel) : true))
+export function listarEspaciosFisicosMock(nivel, estado) {
+  return filtrarPorEstado(espaciosFisicosMock, estado).filter((item) =>
+    nivel ? item.nivel === Number(nivel) : true,
+  )
 }
 
 export function crearEspacioFisicoMock({
@@ -463,6 +526,15 @@ export function desactivarEspacioFisicoMock(id) {
     throw errorBackend(`No se encontró el espacio físico con ID ${id}`, 404)
   }
   espacio.activo = false
+  return espacio
+}
+
+export function reactivarEspacioFisicoMock(id) {
+  const espacio = espaciosFisicosMock.find((item) => item.id === id)
+  if (!espacio) {
+    throw errorBackend(`No se encontró el espacio físico con ID ${id}`, 404)
+  }
+  espacio.activo = true
   return espacio
 }
 

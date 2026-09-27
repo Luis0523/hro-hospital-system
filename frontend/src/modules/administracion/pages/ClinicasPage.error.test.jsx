@@ -10,12 +10,15 @@ vi.mock('../api/administracionApi.js', () => ({
   crearEspecialidad: vi.fn(),
   actualizarEspecialidad: vi.fn(),
   desactivarEspecialidad: vi.fn(),
+  reactivarEspecialidad: vi.fn(),
   crearSubespecialidad: vi.fn(),
   actualizarSubespecialidad: vi.fn(),
   desactivarSubespecialidad: vi.fn(),
+  reactivarSubespecialidad: vi.fn(),
   crearEspacioFisico: vi.fn(),
   actualizarEspacioFisico: vi.fn(),
   desactivarEspacioFisico: vi.fn(),
+  reactivarEspacioFisico: vi.fn(),
 }))
 
 import ClinicasPage from './ClinicasPage.jsx'

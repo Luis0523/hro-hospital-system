@@ -8,8 +8,10 @@ import {
   desactivarSubespecialidad,
   listarEspecialidades,
   listarSubespecialidades,
+  reactivarSubespecialidad,
 } from '../api/administracionApi.js'
 import useGestionCatalogo from '../hooks/useGestionCatalogo.js'
+import FiltroEstado from './FiltroEstado.jsx'
 import ModalCatalogo from './ModalCatalogo.jsx'
 import ModalConfirmacion from './ModalConfirmacion.jsx'
 import SubespecialidadForm from './SubespecialidadForm.jsx'
@@ -25,11 +27,13 @@ const MENSAJES = {
   crear: 'Subespecialidad creada',
   editar: 'Subespecialidad actualizada',
   desactivar: 'Subespecialidad desactivada',
+  reactivar: 'Subespecialidad reactivada',
 }
 
 export default function SubespecialidadesTab() {
   const [especialidades, setEspecialidades] = useState([])
   const [filtroEspecialidad, setFiltroEspecialidad] = useState('')
+  const [estado, setEstado] = useState('activos')
 
   useEffect(() => {
     let vigente = true
@@ -46,8 +50,8 @@ export default function SubespecialidadesTab() {
   }, [])
 
   const cargar = useCallback(
-    () => listarSubespecialidades(filtroEspecialidad || undefined),
-    [filtroEspecialidad],
+    () => listarSubespecialidades(filtroEspecialidad || undefined, estado),
+    [filtroEspecialidad, estado],
   )
 
   const gestion = useGestionCatalogo({
@@ -55,6 +59,7 @@ export default function SubespecialidadesTab() {
     crear: crearSubespecialidad,
     actualizar: actualizarSubespecialidad,
     desactivar: desactivarSubespecialidad,
+    reactivar: reactivarSubespecialidad,
     mensajes: MENSAJES,
   })
 
@@ -76,13 +81,16 @@ export default function SubespecialidadesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="w-full max-w-xs">
-          <Select
-            label="Filtrar por especialidad"
-            value={filtroEspecialidad}
-            onChange={setFiltroEspecialidad}
-            options={opcionesFiltro}
-          />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
+          <div className="w-full sm:w-64">
+            <Select
+              label="Filtrar por especialidad"
+              value={filtroEspecialidad}
+              onChange={setFiltroEspecialidad}
+              options={opcionesFiltro}
+            />
+          </div>
+          <FiltroEstado valor={estado} onChange={setEstado} className="w-full sm:w-48" />
         </div>
         <Button onClick={gestion.abrirCrear}>
           <Icon name="add" className="text-[18px]" />
@@ -99,6 +107,7 @@ export default function SubespecialidadesTab() {
         onVer={gestion.abrirVer}
         onEditar={gestion.abrirEditar}
         onDesactivar={gestion.solicitarDesactivar}
+        onReactivar={gestion.solicitarReactivar}
         vacioTitulo="Sin subespecialidades registradas"
         vacioDescripcion="Agregue la primera subespecialidad y asígnela a una especialidad."
       />
@@ -130,6 +139,18 @@ export default function SubespecialidadesTab() {
         onConfirmar={gestion.confirmarDesactivar}
         onCancelar={gestion.cancelarDesactivar}
         procesando={gestion.desactivando}
+      />
+
+      <ModalConfirmacion
+        abierto={Boolean(gestion.porReactivar)}
+        titulo="Reactivar subespecialidad"
+        mensaje={`¿Deseas reactivar este registro? Subespecialidad: ${
+          gestion.porReactivar?.nombre ?? ''
+        }`}
+        textoConfirmar="Sí, reactivar"
+        onConfirmar={gestion.confirmarReactivar}
+        onCancelar={gestion.cancelarReactivar}
+        procesando={gestion.reactivando}
       />
     </div>
   )

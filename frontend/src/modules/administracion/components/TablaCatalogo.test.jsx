@@ -116,4 +116,45 @@ describe('TablaCatalogo', () => {
     expect(within(escritorio).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
     expect(within(escritorio).getAllByRole('button', { name: 'Ver' }).length).toBeGreaterThan(0)
   })
+
+  it('muestra Reactivar solo en registros inactivos y dispara onReactivar', async () => {
+    const onReactivar = vi.fn()
+    const onEditar = vi.fn()
+    const onDesactivar = vi.fn()
+    render(
+      <TablaCatalogo
+        columnas={COLUMNAS}
+        datos={DATOS}
+        onVer={vi.fn()}
+        onEditar={onEditar}
+        onDesactivar={onDesactivar}
+        onReactivar={onReactivar}
+      />,
+    )
+
+    const escritorio = screen.getByTestId('catalogo-escritorio')
+    expect(within(escritorio).getAllByRole('button', { name: 'Reactivar' })).toHaveLength(1)
+
+    await userEvent.click(within(escritorio).getByRole('button', { name: 'Reactivar' }))
+    expect(onReactivar).toHaveBeenCalledWith(DATOS[1])
+    expect(onEditar).not.toHaveBeenCalled()
+    expect(onDesactivar).not.toHaveBeenCalled()
+  })
+
+  it('no muestra Editar ni Desactivar en registros inactivos', () => {
+    render(
+      <TablaCatalogo
+        columnas={COLUMNAS}
+        datos={[DATOS[1]]}
+        onEditar={vi.fn()}
+        onDesactivar={vi.fn()}
+        onReactivar={vi.fn()}
+      />,
+    )
+
+    const escritorio = screen.getByTestId('catalogo-escritorio')
+    expect(within(escritorio).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    expect(within(escritorio).queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument()
+    expect(within(escritorio).getByRole('button', { name: 'Reactivar' })).toBeInTheDocument()
+  })
 })

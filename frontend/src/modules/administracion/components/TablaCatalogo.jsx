@@ -9,7 +9,9 @@ function EstadoActivo({ activo }) {
   return (
     <span
       className={`inline-block rounded px-2.5 py-0.5 text-xs font-semibold ${
-        activoBool ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+        activoBool
+          ? 'bg-secondary-container text-on-secondary-container'
+          : 'bg-surface-container-high text-on-surface-variant'
       }`}
     >
       {activoBool ? 'Activo' : 'Inactivo'}
@@ -37,6 +39,7 @@ export default function TablaCatalogo({
   onVer,
   onEditar,
   onDesactivar,
+  onReactivar,
   permitirEditar = true,
   vacioTitulo = 'Sin registros',
   vacioDescripcion,
@@ -69,9 +72,14 @@ export default function TablaCatalogo({
       <Button size="sm" variant="ghost" onClick={() => onVer?.(fila)}>
         Ver
       </Button>
-      {permitirEditar && (
+      {fila.activo && permitirEditar && (
         <Button size="sm" variant="secondary" onClick={() => onEditar?.(fila)}>
           Editar
+        </Button>
+      )}
+      {!fila.activo && onReactivar && (
+        <Button size="sm" variant="secondary" onClick={() => onReactivar(fila)}>
+          Reactivar
         </Button>
       )}
       {fila.activo && onDesactivar && (
@@ -104,18 +112,21 @@ export default function TablaCatalogo({
 
       <div data-testid="catalogo-movil" className="space-y-3 xl:hidden">
         {datos.map((fila) => (
-          <div key={fila.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div
+            key={fila.id}
+            className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
+          >
             <dl className="space-y-2">
               {columnas.map((columna) => (
                 <div key={columna.key} className="flex items-start justify-between gap-3">
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    {columna.label}
-                  </dt>
-                  <dd className="text-right text-sm text-slate-700">{valorCelda(fila, columna)}</dd>
+                  <dt className="text-xs uppercase tracking-wide text-outline">{columna.label}</dt>
+                  <dd className="text-right text-sm text-on-surface">
+                    {valorCelda(fila, columna)}
+                  </dd>
                 </div>
               ))}
             </dl>
-            <div className="mt-3 border-t border-slate-100 pt-3">{acciones(fila)}</div>
+            <div className="mt-3 border-t border-outline-variant/40 pt-3">{acciones(fila)}</div>
           </div>
         ))}
       </div>

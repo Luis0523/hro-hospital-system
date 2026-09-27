@@ -5,6 +5,7 @@ vi.mock('@/shared/api/client', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
     delete: vi.fn(),
   },
 }))
@@ -37,6 +38,9 @@ import {
   listarProgramacionesPorMedico,
   listarProgramacionesPorSubespecialidad,
   listarSubespecialidades,
+  reactivarEspecialidad,
+  reactivarEspacioFisico,
+  reactivarSubespecialidad,
 } from './administracionApi'
 import { reiniciarCatalogosMock } from './mockData'
 import { aISO, desdeISO, hoyISO, sumarMes } from '../utils/fechas'
@@ -124,6 +128,27 @@ describe('administracionApi (mock)', () => {
       const lista = await listarEspecialidades()
       expect(lista.some((item) => item.id === primera.id)).toBe(false)
     })
+
+    it('filtra especialidades por estado', async () => {
+      expect((await listarEspecialidades()).every((item) => item.activo)).toBe(true)
+
+      const inactivas = await listarEspecialidades('inactivos')
+      expect(inactivas.length).toBeGreaterThan(0)
+      expect(inactivas.every((item) => !item.activo)).toBe(true)
+
+      const todas = await listarEspecialidades('todos')
+      expect(todas.some((item) => !item.activo)).toBe(true)
+    })
+
+    it('reactiva una especialidad desactivada', async () => {
+      const [primera] = await listarEspecialidades()
+      await desactivarEspecialidad(primera.id)
+      expect((await listarEspecialidades()).some((item) => item.id === primera.id)).toBe(false)
+
+      const reactivada = await reactivarEspecialidad(primera.id)
+      expect(reactivada.activo).toBe(true)
+      expect((await listarEspecialidades()).some((item) => item.id === primera.id)).toBe(true)
+    })
   })
 
   describe('subespecialidades', () => {
@@ -162,6 +187,37 @@ describe('administracionApi (mock)', () => {
       await desactivarSubespecialidad(creada.id)
       const lista = await listarSubespecialidades(pediatria.id)
       expect(lista.some((item) => item.id === creada.id)).toBe(false)
+    })
+
+    it('filtra subespecialidades por estado y especialidad', async () => {
+      const pediatria = (await listarEspecialidades()).find((item) => item.nombre === 'Pediatría')
+
+      const activas = await listarSubespecialidades(pediatria.id, 'activos')
+      expect(activas.every((item) => item.activo)).toBe(true)
+
+      const inactivas = await listarSubespecialidades(pediatria.id, 'inactivos')
+      expect(inactivas).toHaveLength(1)
+      expect(inactivas[0].nombre).toBe('Alergología Pediátrica')
+
+      const todas = await listarSubespecialidades(pediatria.id, 'todos')
+      expect(todas.length).toBeGreaterThan(activas.length)
+    })
+
+    it('reactiva una subespecialidad cuya especialidad padre está activa', async () => {
+      const [inactiva] = await listarSubespecialidades(2, 'inactivos')
+      const reactivada = await reactivarSubespecialidad(inactiva.id)
+
+      expect(reactivada.activo).toBe(true)
+      expect(
+        (await listarSubespecialidades(2, 'activos')).some((item) => item.id === inactiva.id),
+      ).toBe(true)
+    })
+
+    it('rechaza reactivar una subespecialidad con especialidad padre inactiva (400)', async () => {
+      const [hijaInactiva] = await listarSubespecialidades(7, 'inactivos')
+
+      await expect(reactivarSubespecialidad(hijaInactiva.id)).rejects.toMatchObject({ status: 400 })
+      await expect(reactivarSubespecialidad(hijaInactiva.id)).rejects.toThrow(/especialidad padre/i)
     })
   })
 
@@ -206,6 +262,20 @@ describe('administracionApi (mock)', () => {
 
       expect(lista.length).toBeGreaterThan(0)
       expect(lista.every((item) => item.nivel === 2)).toBe(true)
+    })
+
+    it('filtra espacios físicos por estado y reactiva', async () => {
+      const inactivos = await listarEspaciosFisicos(undefined, 'inactivos')
+      expect(inactivos.length).toBeGreaterThan(0)
+      expect(inactivos.every((item) => !item.activo)).toBe(true)
+
+      const reactivado = await reactivarEspacioFisico(inactivos[0].id)
+      expect(reactivado.activo).toBe(true)
+      expect(
+        (await listarEspaciosFisicos(undefined, 'activos')).some(
+          (item) => item.id === inactivos[0].id,
+        ),
+      ).toBe(true)
     })
   })
 

@@ -33,8 +33,8 @@ export default function ClinicasPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Clínicas</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-headline-md text-primary">Clínicas</h2>
+        <p className="text-sm text-outline">
           Gestión de especialidades, subespecialidades y espacios físicos del hospital.
         </p>
       </header>
@@ -43,7 +43,7 @@ export default function ClinicasPage() {
         role="tablist"
         aria-label="Catálogos clínicos"
         onKeyDown={manejarTeclado}
-        className="flex gap-1 overflow-x-auto border-b border-slate-200"
+        className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-surface-container-low p-0.5"
       >
         {PESTANAS.map((item, indice) => {
           const activa = item.id === pestana
@@ -60,10 +60,10 @@ export default function ClinicasPage() {
               aria-controls="panel-catalogos"
               tabIndex={activa ? 0 : -1}
               onClick={() => setPestana(item.id)}
-              className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+              className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-title-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 activa
-                  ? 'border-hro-blue text-hro-blue'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
               }`}
             >
               <Icon name={item.icono} className="text-[18px]" />

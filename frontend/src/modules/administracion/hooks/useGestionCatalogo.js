@@ -11,6 +11,7 @@ export default function useGestionCatalogo({
   crear,
   actualizar,
   desactivar,
+  reactivar,
   mensajes = {},
 }) {
   const { mostrarToast } = useToast()
@@ -21,6 +22,8 @@ export default function useGestionCatalogo({
   const [guardando, setGuardando] = useState(false)
   const [porDesactivar, setPorDesactivar] = useState(null)
   const [desactivando, setDesactivando] = useState(false)
+  const [porReactivar, setPorReactivar] = useState(null)
+  const [reactivando, setReactivando] = useState(false)
 
   const recargar = useCallback(async () => {
     setCargando(true)
@@ -93,6 +96,28 @@ export default function useGestionCatalogo({
     }
   }, [porDesactivar, desactivar, mostrarToast, mensajes, recargar])
 
+  const solicitarReactivar = useCallback((registro) => setPorReactivar(registro), [])
+  const cancelarReactivar = useCallback(() => setPorReactivar(null), [])
+
+  const confirmarReactivar = useCallback(async () => {
+    if (!porReactivar || typeof reactivar !== 'function') return
+    setReactivando(true)
+    try {
+      await reactivar(porReactivar.id)
+      mostrarToast({ title: mensajes.reactivar ?? 'Registro reactivado', tone: 'success' })
+      setPorReactivar(null)
+      await recargar()
+    } catch (fallo) {
+      mostrarToast({
+        title: 'No se pudo reactivar',
+        message: fallo?.message || 'Intente nuevamente',
+        tone: 'error',
+      })
+    } finally {
+      setReactivando(false)
+    }
+  }, [porReactivar, reactivar, mostrarToast, mensajes, recargar])
+
   return {
     datos,
     cargando,
@@ -110,5 +135,10 @@ export default function useGestionCatalogo({
     cancelarDesactivar,
     confirmarDesactivar,
     desactivando,
+    porReactivar,
+    solicitarReactivar,
+    cancelarReactivar,
+    confirmarReactivar,
+    reactivando,
   }
 }

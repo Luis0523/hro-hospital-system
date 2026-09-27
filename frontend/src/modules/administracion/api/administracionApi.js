@@ -25,19 +25,26 @@ import {
   listarProgramacionesPorMedicoMock,
   listarProgramacionesPorSubespecialidadMock,
   listarSubespecialidadesMock,
+  reactivarEspecialidadMock,
+  reactivarEspacioFisicoMock,
+  reactivarSubespecialidadMock,
 } from './mockData.js'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
 const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 
+// Parámetros opcionales de listado. Si `estado` se omite, el backend aplica
+// el default `activos`; el mock replica ese mismo comportamiento.
+const paramsEstado = (estado) => (estado ? { estado } : undefined)
+
 // ---------------------------------------------------------------------------
 // Especialidades — /especialidades
 // ---------------------------------------------------------------------------
 
-export async function listarEspecialidades() {
-  if (USE_MOCK) return listarEspecialidadesMock()
-  return desenvolver(await client.get('/especialidades'))
+export async function listarEspecialidades(estado) {
+  if (USE_MOCK) return listarEspecialidadesMock(estado)
+  return desenvolver(await client.get('/especialidades', { params: paramsEstado(estado) }))
 }
 
 export async function crearEspecialidad({ nombre }) {
@@ -55,16 +62,25 @@ export async function desactivarEspecialidad(id) {
   return desenvolver(await client.delete(`/especialidades/${id}`))
 }
 
+export async function reactivarEspecialidad(id) {
+  if (USE_MOCK) return reactivarEspecialidadMock(id)
+  return desenvolver(await client.patch(`/especialidades/${id}/reactivar`))
+}
+
 // ---------------------------------------------------------------------------
 // Subespecialidades — /subespecialidades
 // ---------------------------------------------------------------------------
 
-export async function listarSubespecialidades(especialidadId) {
-  if (USE_MOCK) return listarSubespecialidadesMock(especialidadId)
+export async function listarSubespecialidades(especialidadId, estado) {
+  if (USE_MOCK) return listarSubespecialidadesMock(especialidadId, estado)
   if (especialidadId) {
-    return desenvolver(await client.get(`/subespecialidades/especialidad/${especialidadId}`))
+    return desenvolver(
+      await client.get(`/subespecialidades/especialidad/${especialidadId}`, {
+        params: paramsEstado(estado),
+      }),
+    )
   }
-  return desenvolver(await client.get('/subespecialidades'))
+  return desenvolver(await client.get('/subespecialidades', { params: paramsEstado(estado) }))
 }
 
 export async function crearSubespecialidad({ especialidadId, nombre }) {
@@ -82,16 +98,23 @@ export async function desactivarSubespecialidad(id) {
   return desenvolver(await client.delete(`/subespecialidades/${id}`))
 }
 
+export async function reactivarSubespecialidad(id) {
+  if (USE_MOCK) return reactivarSubespecialidadMock(id)
+  return desenvolver(await client.patch(`/subespecialidades/${id}/reactivar`))
+}
+
 // ---------------------------------------------------------------------------
 // Espacios físicos — /espacios-fisicos
 // ---------------------------------------------------------------------------
 
-export async function listarEspaciosFisicos(nivel) {
-  if (USE_MOCK) return listarEspaciosFisicosMock(nivel)
+export async function listarEspaciosFisicos(nivel, estado) {
+  if (USE_MOCK) return listarEspaciosFisicosMock(nivel, estado)
   if (nivel) {
-    return desenvolver(await client.get(`/espacios-fisicos/nivel/${nivel}`))
+    return desenvolver(
+      await client.get(`/espacios-fisicos/nivel/${nivel}`, { params: paramsEstado(estado) }),
+    )
   }
-  return desenvolver(await client.get('/espacios-fisicos'))
+  return desenvolver(await client.get('/espacios-fisicos', { params: paramsEstado(estado) }))
 }
 
 export async function crearEspacioFisico(datos) {
@@ -107,6 +130,11 @@ export async function actualizarEspacioFisico(id, datos) {
 export async function desactivarEspacioFisico(id) {
   if (USE_MOCK) return desactivarEspacioFisicoMock(id)
   return desenvolver(await client.delete(`/espacios-fisicos/${id}`))
+}
+
+export async function reactivarEspacioFisico(id) {
+  if (USE_MOCK) return reactivarEspacioFisicoMock(id)
+  return desenvolver(await client.patch(`/espacios-fisicos/${id}/reactivar`))
 }
 
 // ---------------------------------------------------------------------------

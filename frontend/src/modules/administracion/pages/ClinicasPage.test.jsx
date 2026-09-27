@@ -5,6 +5,16 @@ import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import { reiniciarCatalogosMock } from '../api/mockData.js'
 import ClinicasPage from './ClinicasPage.jsx'
 
+// Headless UI Listbox (shared/ui/Select) usa ResizeObserver, que jsdom no define.
+// Stub local solo para el test; no modifica shared/.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 function renderPagina() {
   return render(
     <ToastProvider>
@@ -15,6 +25,20 @@ function renderPagina() {
 
 async function esperarCatalogo() {
   return screen.findByTestId('catalogo-escritorio')
+}
+
+async function esperarTextoCatalogo(texto) {
+  return waitFor(() =>
+    expect(within(screen.getByTestId('catalogo-escritorio')).getByText(texto)).toBeInTheDocument(),
+  )
+}
+
+async function esperarAusenciaCatalogo(texto) {
+  return waitFor(() =>
+    expect(
+      within(screen.getByTestId('catalogo-escritorio')).queryByText(texto),
+    ).not.toBeInTheDocument(),
+  )
 }
 
 describe('ClinicasPage', () => {
@@ -210,5 +234,90 @@ describe('ClinicasPage', () => {
 
     await user.keyboard('{Home}')
     expect(especialidades).toHaveFocus()
+  })
+
+  it('filtra por estado: default Activos, luego Inactivos y Todos', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+
+    const filtro = screen.getByLabelText('Estado')
+    expect(filtro).toHaveValue('activos')
+    await esperarAusenciaCatalogo('Dermatología')
+
+    await user.selectOptions(filtro, 'inactivos')
+
+    await esperarTextoCatalogo('Dermatología')
+    await esperarAusenciaCatalogo('Medicina Interna')
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'todos')
+
+    await esperarTextoCatalogo('Medicina Interna')
+    await esperarTextoCatalogo('Dermatología')
+  })
+
+  it('reactiva una especialidad inactiva y refresca el listado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'inactivos')
+    await esperarTextoCatalogo('Dermatología')
+
+    const fila = within(screen.getByTestId('catalogo-escritorio'))
+      .getByText('Dermatología')
+      .closest('tr')
+    await user.click(within(fila).getByRole('button', { name: 'Reactivar' }))
+
+    expect(screen.getByText('Reactivar especialidad')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Sí, reactivar' }))
+
+    expect(await screen.findByText('Especialidad reactivada')).toBeInTheDocument()
+    expect(await screen.findByText('Sin especialidades registradas')).toBeInTheDocument()
+  })
+
+  it('combina filtro de especialidad y estado en subespecialidades', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('tab', { name: 'Subespecialidades' }))
+    await esperarCatalogo()
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'inactivos')
+    await esperarTextoCatalogo('Dermatología Pediátrica')
+
+    await user.click(screen.getByRole('button', { name: /Todas las especialidades/i }))
+    await user.click(screen.getByRole('option', { name: 'Pediatría' }))
+
+    await esperarTextoCatalogo('Alergología Pediátrica')
+    await esperarAusenciaCatalogo('Dermatología Pediátrica')
+  })
+
+  it('muestra el mensaje del backend al fallar reactivar una subespecialidad con padre inactivo', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('tab', { name: 'Subespecialidades' }))
+    await esperarCatalogo()
+    await user.selectOptions(screen.getByLabelText('Estado'), 'inactivos')
+    await esperarTextoCatalogo('Dermatología Pediátrica')
+
+    const fila = within(screen.getByTestId('catalogo-escritorio'))
+      .getByText('Dermatología Pediátrica')
+      .closest('tr')
+    await user.click(within(fila).getByRole('button', { name: 'Reactivar' }))
+    await user.click(screen.getByRole('button', { name: 'Sí, reactivar' }))
+
+    expect(await screen.findByText('No se pudo reactivar')).toBeInTheDocument()
+    expect(screen.getByText(/especialidad padre/i)).toBeInTheDocument()
+  })
+
+  it('no referencia el modelo histórico de clínica', async () => {
+    renderPagina()
+    await esperarCatalogo()
+
+    expect(document.body.textContent).not.toMatch(/clinicaId|medico_clinica/i)
   })
 })

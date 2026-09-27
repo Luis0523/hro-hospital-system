@@ -809,7 +809,7 @@ La lógica frontend debe usar `codigo` para errores estructurados y `message` ú
 
 **Dashboard** — [A] `GET /dashboard/resumen?fecha=` devuelve indicadores y `alertas[]`. El frontend solo muestra; no recalcula indicadores.
 
-**Catálogos (especialidades, subespecialidades, espacios físicos)** — [A] `?estado=` y `PATCH /{id}/reactivar`. [C] La vigencia de los `DELETE /{id}` usados hoy para baja lógica está pendiente de verificación, porque no aparecen documentados en Postman v2.2.0. No inventar un reemplazo.
+**Catálogos (especialidades, subespecialidades, espacios físicos)** — [A] `?estado=` (default `activos`), `DELETE /{id}` (baja lógica: `activo=false`, HTTP 200) y `PATCH /{id}/reactivar` (`activo=true`, HTTP 200, idempotente). Confirmado en el backend vigente (`origin/backend-admin` y `origin/main`).
 
 **Médicos** — [A] `?estado=`, `PATCH /{id}/reactivar` y `POST/PUT` con `numeroColegiado`. [C] Verificar contra el backend desplegado que `numeroColegiado` se persiste/devuelve correctamente (SCRUM-92).
 
@@ -829,7 +829,7 @@ La lógica frontend debe usar `codigo` para errores estructurados y `message` ú
 
 ### Reactivación y baja lógica
 
-La reactivación se realiza con `PATCH /{id}/reactivar` (documentada en especialidades, subespecialidades, espacios físicos, médicos y programación). La baja lógica usada hoy (`DELETE /{id}`) queda [C] pendiente de verificación si no está documentada en Postman v2.2.0. No implementar reactivación fuera del contrato vigente.
+La reactivación se realiza con `PATCH /{id}/reactivar` (documentada en especialidades, subespecialidades, espacios físicos, médicos y programación). La baja lógica se realiza con `DELETE /{id}` (`activo=false`, HTTP 200), confirmada en el backend vigente para los tres catálogos. No implementar reactivación fuera del contrato vigente.
 
 ### Clínicas
 
@@ -848,7 +848,7 @@ No existe una entidad "Clínica" vigente: el concepto se modela mediante especia
 
 - Limitaciones heredadas de `shared/ui` (`Input`, `Select`, `Modal`, `Table`) y del scrollbar global.
 - `format:check` global falla por archivos ajenos al módulo.
-- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): vigencia de los `DELETE` de catálogos; `numeroColegiado` (SCRUM-92); `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
+- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): `numeroColegiado` (SCRUM-92); `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
 
 ### Regla fundamental
 

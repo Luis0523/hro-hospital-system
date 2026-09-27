@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
@@ -7,9 +7,11 @@ import {
   crearEspacioFisico,
   desactivarEspacioFisico,
   listarEspaciosFisicos,
+  reactivarEspacioFisico,
 } from '../api/administracionApi.js'
 import useGestionCatalogo from '../hooks/useGestionCatalogo.js'
 import EspacioFisicoForm from './EspacioFisicoForm.jsx'
+import FiltroEstado from './FiltroEstado.jsx'
 import ModalCatalogo from './ModalCatalogo.jsx'
 import ModalConfirmacion from './ModalConfirmacion.jsx'
 import TablaCatalogo from './TablaCatalogo.jsx'
@@ -26,15 +28,18 @@ const MENSAJES = {
   crear: 'Espacio físico creado',
   editar: 'Espacio físico actualizado',
   desactivar: 'Espacio físico desactivado',
+  reactivar: 'Espacio físico reactivado',
 }
 
 export default function EspaciosFisicosTab() {
-  const cargar = useCallback(() => listarEspaciosFisicos(), [])
+  const [estado, setEstado] = useState('activos')
+  const cargar = useCallback(() => listarEspaciosFisicos(undefined, estado), [estado])
   const gestion = useGestionCatalogo({
     cargar,
     crear: crearEspacioFisico,
     actualizar: actualizarEspacioFisico,
     desactivar: desactivarEspacioFisico,
+    reactivar: reactivarEspacioFisico,
     mensajes: MENSAJES,
   })
 
@@ -47,15 +52,18 @@ export default function EspaciosFisicosTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="max-w-md text-sm text-outline">
           Salas y consultorios del hospital. La especialidad atendida en cada espacio se asigna
           según la programación diaria.
         </p>
-        <Button onClick={gestion.abrirCrear}>
-          <Icon name="add" className="text-[18px]" />
-          Agregar
-        </Button>
+        <div className="flex w-full flex-wrap items-end justify-end gap-3 sm:w-auto">
+          <FiltroEstado valor={estado} onChange={setEstado} className="w-full sm:w-48" />
+          <Button onClick={gestion.abrirCrear}>
+            <Icon name="add" className="text-[18px]" />
+            Agregar
+          </Button>
+        </div>
       </div>
 
       <Alert tone="info">
@@ -72,6 +80,7 @@ export default function EspaciosFisicosTab() {
         onVer={gestion.abrirVer}
         onEditar={gestion.abrirEditar}
         onDesactivar={gestion.solicitarDesactivar}
+        onReactivar={gestion.solicitarReactivar}
         vacioTitulo="Sin espacios físicos registrados"
         vacioDescripcion="Agregue la primera sala o consultorio del hospital."
       />
@@ -103,6 +112,18 @@ export default function EspaciosFisicosTab() {
         onConfirmar={gestion.confirmarDesactivar}
         onCancelar={gestion.cancelarDesactivar}
         procesando={gestion.desactivando}
+      />
+
+      <ModalConfirmacion
+        abierto={Boolean(gestion.porReactivar)}
+        titulo="Reactivar espacio físico"
+        mensaje={`¿Deseas reactivar este registro? Espacio físico: ${
+          gestion.porReactivar?.nombre ?? ''
+        }`}
+        textoConfirmar="Sí, reactivar"
+        onConfirmar={gestion.confirmarReactivar}
+        onCancelar={gestion.cancelarReactivar}
+        procesando={gestion.reactivando}
       />
     </div>
   )
