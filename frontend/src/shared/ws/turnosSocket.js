@@ -1,7 +1,12 @@
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
-export const WS_URL = import.meta.env.VITE_WS_URL || '/api/v1/ws-turnos'
+// SockJS exige esquema http/https (él hace el upgrade a ws/wss según la página).
+export function normalizarUrlSockjs(url) {
+  return String(url).replace(/^wss:/, 'https:').replace(/^ws:/, 'http:')
+}
+
+export const WS_URL = normalizarUrlSockjs(import.meta.env.VITE_WS_URL || '/api/v1/ws-turnos')
 
 export const TOPIC_TABLERO = '/topic/tablero'
 
