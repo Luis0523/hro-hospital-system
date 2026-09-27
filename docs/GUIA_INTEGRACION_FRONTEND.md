@@ -554,3 +554,40 @@ expone en contexto y lo usa, por ejemplo, para validar el check-in. Si falta, la
 > El tablero (`/tablero?estacion=CODE`) resuelve la estación vía `GET /estaciones`, se suscribe a
 > `/topic/estacion/{id}` y carga con `GET /turnos/estacion/{id}/tablero`. Sin `?estacion` conserva el
 > modo sala legado (`?sala=` + `tablero-config.json`). Diseño completo en `docs/MODULO_ESTACIONES_ENFERMERIA.md`.
+
+---
+
+## 7. Área Jefe de Enfermería (`/jefe-enfermeria`)
+
+Área frontend para la **operación diaria del Jefe de Enfermería**. Las escrituras exigen rol
+`jefe_enfermeria` o `administrador`. Módulo: `frontend/src/modules/jefeEnfermeria/`.
+
+### 7.1 Rutas
+| Ruta | Pantalla |
+| --- | --- |
+| `/jefe-enfermeria` | Asignación diaria (Croquis del Día) |
+| `/jefe-enfermeria/horarios` | Horario por subespecialidad |
+| `/jefe-enfermeria/estaciones` | Estaciones + bitácora (mini reportes) |
+| `/jefe-enfermeria/reportes` | Reportes |
+
+### 7.2 Endpoints usados
+- **Asignación diaria:** `GET /asignaciones-diarias/vista?fecha=&nivel=`,
+  `PUT /asignaciones-diarias` (`{espacioFisicoId, subespecialidadId, fecha}`), `DELETE /asignaciones-diarias/{id}`,
+  `GET /asignaciones-diarias/cobertura?fecha=`, `POST /asignaciones-diarias/cerrar?fecha=`,
+  `POST /asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=`,
+  `POST /asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=`.
+  > **Una sala puede tener varias subespecialidades** el mismo día (unicidad `(espacio, fecha, subespecialidad)`).
+- **Horario por subespecialidad:** `GET /subespecialidades/{id}/horarios`,
+  `POST /subespecialidad-horarios`, `PUT /subespecialidad-horarios/{id}`,
+  `PATCH /subespecialidad-horarios/{id}/reactivar`, `DELETE /subespecialidad-horarios/{id}`.
+- **Estaciones:** `GET /estaciones`, `POST/PUT/DELETE /estaciones...`,
+  `PUT /estaciones/{id}/subespecialidades`, `GET /estaciones/{id}/accesos?abiertos=`.
+- **Reportes:** `GET /reportes/citas-por-estado`, `/reportes/demanda-por-especialidad`, `/reportes/utilizacion-cupos`.
+
+### 7.3 Identidad simulada (sin auth real)
+El frontend envía `X-Usuario-Id/Rol/Nombre` desde `AuthContext`. Para probar el área contra el
+backend, fijar en `frontend/.env`: `VITE_USUARIO_ID=jefe-enfermeria-01` y
+`VITE_USUARIO_ROL=jefe_enfermeria` (si no, las escrituras responden 403).
+
+> El guard `RequiereRol` está cableado (allowlist `jefe_enfermeria`/`administrador`) pero **no bloquea**
+> mientras no exista el auth real.
