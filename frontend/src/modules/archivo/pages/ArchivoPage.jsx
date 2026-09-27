@@ -74,12 +74,9 @@ export default function ArchivoPage() {
   const {
     fecha,
     setFecha,
-    clinicaId,
-    setClinicaId,
-    medicoId,
-    setMedicoId,
-    clinicas,
-    medicos,
+    subespecialidadId,
+    setSubespecialidadId,
+    subespecialidades,
     expedientes,
     cargando,
     error,
@@ -103,7 +100,7 @@ export default function ArchivoPage() {
   useEffect(() => {
     setResultadoBusqueda(null)
     setLocalizados(new Set())
-  }, [fecha, clinicaId, medicoId])
+  }, [fecha, subespecialidadId])
 
   const { pendientes, localizadosLista } = useMemo(() => {
     const pend = []
@@ -204,12 +201,9 @@ export default function ArchivoPage() {
         <FiltrosArchivo
           fecha={fecha}
           onFecha={setFecha}
-          clinicaId={clinicaId}
-          onClinica={setClinicaId}
-          medicoId={medicoId}
-          onMedico={setMedicoId}
-          clinicas={clinicas}
-          medicos={medicos}
+          subespecialidadId={subespecialidadId}
+          onSubespecialidad={setSubespecialidadId}
+          subespecialidades={subespecialidades}
         />
 
         <ResumenEstados
@@ -228,7 +222,7 @@ export default function ArchivoPage() {
           ) : expedientes.length === 0 ? (
             <EmptyState
               title="Sin expedientes para esta fecha"
-              description="Pruebe con otra fecha, clínica o médico."
+              description="Pruebe con otra fecha o subespecialidad."
             />
           ) : (
             <>

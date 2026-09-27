@@ -3,9 +3,8 @@ import { aIso } from '@/shared/utils/fecha'
 import {
   avanzarEstado,
   crearExpediente,
-  listarClinicas,
   listarExpedientes,
-  listarMedicos,
+  listarSubespecialidades,
   marcarNoLocalizado,
 } from '../api/archivoApi'
 import { ORDEN_ESTADOS } from '../estadosExpediente'
@@ -18,28 +17,23 @@ function mananaIso() {
 
 export function useExpedientes() {
   const [fecha, setFecha] = useState(mananaIso)
-  const [clinicaId, setClinicaId] = useState('')
-  const [medicoId, setMedicoId] = useState('')
-  const [clinicas, setClinicas] = useState([])
-  const [medicos, setMedicos] = useState([])
+  const [subespecialidadId, setSubespecialidadId] = useState('')
+  const [subespecialidades, setSubespecialidades] = useState([])
   const [expedientes, setExpedientes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    listarClinicas()
-      .then(setClinicas)
-      .catch(() => setClinicas([]))
-    listarMedicos()
-      .then(setMedicos)
-      .catch(() => setMedicos([]))
+    listarSubespecialidades()
+      .then(setSubespecialidades)
+      .catch(() => setSubespecialidades([]))
   }, [])
 
   const cargar = useCallback(async () => {
     setCargando(true)
     setError(null)
     try {
-      const lista = await listarExpedientes({ fecha, clinicaId, medicoId })
+      const lista = await listarExpedientes({ fecha, subespecialidadId })
       setExpedientes(lista)
     } catch (fallo) {
       setError(fallo)
@@ -47,7 +41,7 @@ export function useExpedientes() {
     } finally {
       setCargando(false)
     }
-  }, [fecha, clinicaId, medicoId])
+  }, [fecha, subespecialidadId])
 
   useEffect(() => {
     cargar()
@@ -80,12 +74,9 @@ export function useExpedientes() {
   return {
     fecha,
     setFecha,
-    clinicaId,
-    setClinicaId,
-    medicoId,
-    setMedicoId,
-    clinicas,
-    medicos,
+    subespecialidadId,
+    setSubespecialidadId,
+    subespecialidades,
     expedientes,
     cargando,
     error,

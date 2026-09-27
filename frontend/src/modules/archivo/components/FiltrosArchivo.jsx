@@ -3,21 +3,16 @@ import { Input, Select } from '@/shared/components/ui'
 export default function FiltrosArchivo({
   fecha,
   onFecha,
-  clinicaId,
-  onClinica,
-  medicoId,
-  onMedico,
-  clinicas = [],
-  medicos = [],
+  subespecialidadId,
+  onSubespecialidad,
+  subespecialidades = [],
 }) {
-  const opcionesClinicas = [
-    { value: '', label: 'Todas las clínicas' },
-    ...clinicas.map((clinica) => ({ value: clinica.id, label: clinica.nombre })),
-  ]
-
-  const opcionesMedicos = [
-    { value: '', label: 'Todos los médicos' },
-    ...medicos.map((medico) => ({ value: medico.id, label: medico.nombre })),
+  const opcionesSubespecialidades = [
+    { value: '', label: 'Todas las subespecialidades' },
+    ...subespecialidades.map((subespecialidad) => ({
+      value: subespecialidad.id,
+      label: subespecialidad.nombre,
+    })),
   ]
 
   return (
@@ -25,7 +20,7 @@ export default function FiltrosArchivo({
       aria-label="Filtros de expedientes"
       className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input
           label="Fecha de consulta"
           name="fecha"
@@ -34,18 +29,11 @@ export default function FiltrosArchivo({
           onChange={(event) => onFecha(event.target.value)}
         />
         <Select
-          label="Clínica"
-          value={clinicaId}
-          onChange={onClinica}
-          options={opcionesClinicas}
-          placeholder="Todas las clínicas"
-        />
-        <Select
-          label="Médico"
-          value={medicoId}
-          onChange={onMedico}
-          options={opcionesMedicos}
-          placeholder="Todos los médicos"
+          label="Subespecialidad"
+          value={subespecialidadId}
+          onChange={onSubespecialidad}
+          options={opcionesSubespecialidades}
+          placeholder="Todas las subespecialidades"
         />
       </div>
     </section>

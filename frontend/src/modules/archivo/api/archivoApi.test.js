@@ -7,7 +7,6 @@ import {
   crearExpediente,
   listarClinicas,
   listarExpedientes,
-  listarMedicos,
   listarSubespecialidades,
   marcarNoLocalizado,
   obtenerExpediente,
@@ -30,17 +29,20 @@ describe('archivoApi (mock)', () => {
     expect(lista.every((expediente) => Boolean(expediente.numeroExpediente))).toBe(true)
   })
 
-  it('filtra por fecha, clínica y médico', async () => {
+  it('filtra por fecha y subespecialidad', async () => {
     const [primero] = await listarExpedientes()
 
     const porFecha = await listarExpedientes({ fecha: primero.fechaCita })
     expect(porFecha.every((expediente) => expediente.fechaCita === primero.fechaCita)).toBe(true)
 
-    const porClinica = await listarExpedientes({ clinicaId: primero.clinicaId })
-    expect(porClinica.every((expediente) => expediente.clinicaId === primero.clinicaId)).toBe(true)
-
-    const porMedico = await listarExpedientes({ medicoId: primero.medicoId })
-    expect(porMedico.every((expediente) => expediente.medicoId === primero.medicoId)).toBe(true)
+    const porSubespecialidad = await listarExpedientes({
+      subespecialidadId: primero.subespecialidadId,
+    })
+    expect(
+      porSubespecialidad.every(
+        (expediente) => expediente.subespecialidadId === primero.subespecialidadId,
+      ),
+    ).toBe(true)
   })
 
   it('devuelve el detalle con historial', async () => {
@@ -89,13 +91,6 @@ describe('archivoApi (catálogos y auxiliares en modo mock)', () => {
 
     expect(clinicas.length).toBeGreaterThan(0)
     expect(clinicas[0]).toHaveProperty('nombre')
-  })
-
-  it('lista médicos desde el mock', async () => {
-    const medicos = await listarMedicos()
-
-    expect(medicos.length).toBeGreaterThan(0)
-    expect(medicos[0]).toHaveProperty('nombre')
   })
 
   it('lista subespecialidades desde el mock de la función auxiliar', async () => {

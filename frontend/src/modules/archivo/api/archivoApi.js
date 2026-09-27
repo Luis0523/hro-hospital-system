@@ -52,16 +52,16 @@ const subespecialidadesArchivoMock = [
   },
   {
     id: 2,
-    nombre: 'Cardiología Clínica',
-    especialidadId: 6,
-    especialidadNombre: 'Cardiología',
-    activo: true,
-  },
-  {
-    id: 3,
     nombre: 'Pediatría General',
     especialidadId: 2,
     especialidadNombre: 'Pediatría',
+    activo: true,
+  },
+  {
+    id: 4,
+    nombre: 'Cardiología Clínica',
+    especialidadId: 6,
+    especialidadNombre: 'Cardiología',
     activo: true,
   },
 ]
@@ -73,14 +73,11 @@ export async function listarSubespecialidades() {
   return desenvolver(await client.get('/subespecialidades')).map(mapearSubespecialidad)
 }
 
-export async function listarExpedientes({ fecha, clinicaId, medicoId } = {}) {
-  if (USE_MOCK) return listarExpedientesMock({ fecha, clinicaId, medicoId })
+export async function listarExpedientes({ fecha, subespecialidadId } = {}) {
+  if (USE_MOCK) return listarExpedientesMock({ fecha, subespecialidadId })
 
-  // PENDIENTE BACKEND (contrato propuesto, sin confirmar):
-  // GET /expedientes?fecha=YYYY-MM-DD&clinicaId=&medicoId=
-  //   -> [{ id, citaId, pacienteId, pacienteNombre, numeroExpediente, ubicacion,
-  //         clinicaId, clinicaNombre, medicoId, medicoNombre, fechaCita,
-  //         horaEstimada, estado, expedienteNuevo, historial[] }]
+  // La lista operativa real se tomará de GET /expedientes/jornada
+  // (fecha + subespecialidadId). Su conexión queda fuera de esta fase.
   return pendienteBackend('listar expedientes')
 }
 

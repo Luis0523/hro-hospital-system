@@ -67,8 +67,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-004521',
     codigo: 'EXP-004521',
     ubicacion: 'Estante A · Fila 3 · Caja 12',
-    clinicaId: 1,
-    clinicaNombre: 'Clínica 01 - Medicina General',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
     fechaCita: fechaRelativa(1),
@@ -86,8 +86,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-003118',
     codigo: 'EXP-003118',
     ubicacion: 'Estante B · Fila 1 · Caja 04',
-    clinicaId: 1,
-    clinicaNombre: 'Clínica 01 - Medicina General',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
     medicoId: 11,
     medicoNombre: 'Dra. Elena Marroquín',
     fechaCita: fechaRelativa(1),
@@ -113,8 +113,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-005902',
     codigo: 'EXP-005902',
     ubicacion: 'Estante C · Fila 2 · Caja 08',
-    clinicaId: 2,
-    clinicaNombre: 'Clínica 02 - Pediatría',
+    subespecialidadId: 2,
+    subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
     fechaCita: fechaRelativa(1),
@@ -141,8 +141,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-006310',
     codigo: 'EXP-006310',
     ubicacion: 'Estante D · Fila 4 · Caja 21',
-    clinicaId: 4,
-    clinicaNombre: 'Clínica 04 - Cardiología',
+    subespecialidadId: 4,
+    subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
     fechaCita: fechaRelativa(1),
@@ -170,8 +170,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-001877',
     codigo: 'EXP-001877',
     ubicacion: 'Estante A · Fila 1 · Caja 02',
-    clinicaId: 1,
-    clinicaNombre: 'Clínica 01 - Medicina General',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
     fechaCita: fechaRelativa(1),
@@ -200,8 +200,8 @@ export const expedientesMock = [
     numeroExpediente: 'EXP-007042',
     codigo: 'EXP-007042',
     ubicacion: 'Estante E · Fila 2 · Caja 15',
-    clinicaId: 2,
-    clinicaNombre: 'Clínica 02 - Pediatría',
+    subespecialidadId: 2,
+    subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
     fechaCita: fechaRelativa(1),
@@ -228,8 +228,8 @@ export const expedientesMock = [
     numeroExpediente: null,
     codigo: null,
     ubicacion: null,
-    clinicaId: 4,
-    clinicaNombre: 'Clínica 04 - Cardiología',
+    subespecialidadId: 4,
+    subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
     fechaCita: fechaRelativa(1),
@@ -261,12 +261,14 @@ function registrarCambio(expediente, estado) {
 // existe físicamente, por lo que solo se devuelven registros con número de
 // expediente. El registro sin expediente permanece en `expedientesMock` como
 // infraestructura histórica para `crearExpedienteMock` y sus pruebas.
-export function listarExpedientesMock({ fecha, clinicaId, medicoId } = {}) {
+export function listarExpedientesMock({ fecha, subespecialidadId } = {}) {
   return expedientesMock
     .filter((expediente) => Boolean(expediente.numeroExpediente))
     .filter((expediente) => !fecha || expediente.fechaCita === fecha)
-    .filter((expediente) => !clinicaId || expediente.clinicaId === Number(clinicaId))
-    .filter((expediente) => !medicoId || expediente.medicoId === Number(medicoId))
+    .filter(
+      (expediente) =>
+        !subespecialidadId || expediente.subespecialidadId === Number(subespecialidadId),
+    )
     .map(clonar)
 }
 

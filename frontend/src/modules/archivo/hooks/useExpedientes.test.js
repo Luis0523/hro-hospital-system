@@ -3,16 +3,14 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import {
   avanzarEstado,
   crearExpediente,
-  listarClinicas,
   listarExpedientes,
-  listarMedicos,
+  listarSubespecialidades,
   marcarNoLocalizado,
 } from '../api/archivoApi'
 import { useExpedientes } from './useExpedientes'
 
 vi.mock('../api/archivoApi', () => ({
-  listarClinicas: vi.fn(),
-  listarMedicos: vi.fn(),
+  listarSubespecialidades: vi.fn(),
   listarExpedientes: vi.fn(),
   avanzarEstado: vi.fn(),
   marcarNoLocalizado: vi.fn(),
@@ -21,8 +19,7 @@ vi.mock('../api/archivoApi', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  listarClinicas.mockResolvedValue([])
-  listarMedicos.mockResolvedValue([])
+  listarSubespecialidades.mockResolvedValue([])
   listarExpedientes.mockResolvedValue([])
 })
 
@@ -60,14 +57,11 @@ describe('useExpedientes', () => {
     const { result } = renderHook(() => useExpedientes())
     await waitFor(() => expect(result.current.cargando).toBe(false))
 
-    act(() => result.current.setClinicaId(1))
+    act(() => result.current.setSubespecialidadId(1))
     await waitFor(() =>
-      expect(listarExpedientes).toHaveBeenLastCalledWith(expect.objectContaining({ clinicaId: 1 })),
-    )
-
-    act(() => result.current.setMedicoId(10))
-    await waitFor(() =>
-      expect(listarExpedientes).toHaveBeenLastCalledWith(expect.objectContaining({ medicoId: 10 })),
+      expect(listarExpedientes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ subespecialidadId: 1 }),
+      ),
     )
 
     act(() => result.current.setFecha('2026-09-21'))
@@ -76,6 +70,15 @@ describe('useExpedientes', () => {
         expect.objectContaining({ fecha: '2026-09-21' }),
       ),
     )
+  })
+
+  it('expone las subespecialidades cargadas', async () => {
+    listarSubespecialidades.mockResolvedValue([{ id: 1, nombre: 'Medicina General' }])
+
+    const { result } = renderHook(() => useExpedientes())
+
+    await waitFor(() => expect(result.current.subespecialidades).toHaveLength(1))
+    expect(result.current.subespecialidades[0]).toMatchObject({ id: 1 })
   })
 
   it('calcula el resumen por estado incluida la excepción', async () => {

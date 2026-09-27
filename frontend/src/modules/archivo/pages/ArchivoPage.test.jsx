@@ -10,9 +10,8 @@ import {
   avanzarEstado,
   buscarExpedientePorCodigo,
   crearExpediente,
-  listarClinicas,
   listarExpedientes,
-  listarMedicos,
+  listarSubespecialidades,
   marcarNoLocalizado,
 } from '../api/archivoApi'
 import ArchivoPage from './ArchivoPage.jsx'
@@ -32,8 +31,7 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
-    listarClinicas: vi.fn(actual.listarClinicas),
-    listarMedicos: vi.fn(actual.listarMedicos),
+    listarSubespecialidades: vi.fn(actual.listarSubespecialidades),
     listarExpedientes: vi.fn(actual.listarExpedientes),
     buscarExpedientePorCodigo: vi.fn(actual.buscarExpedientePorCodigo),
     avanzarEstado: vi.fn(actual.avanzarEstado),
@@ -234,8 +232,7 @@ describe('ArchivoPage — sin efectos en backend', () => {
     await user.click(within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
 
     expect(listarExpedientes).not.toHaveBeenCalled()
-    expect(listarClinicas).not.toHaveBeenCalled()
-    expect(listarMedicos).not.toHaveBeenCalled()
+    expect(listarSubespecialidades).not.toHaveBeenCalled()
     expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
     expect(avanzarEstado).not.toHaveBeenCalled()
     expect(marcarNoLocalizado).not.toHaveBeenCalled()
@@ -256,8 +253,9 @@ describe('ArchivoPage — estructura de la pantalla', () => {
     renderPagina()
 
     expect(screen.getByLabelText('Fecha de consulta')).toBeInTheDocument()
-    expect(screen.getByText('Clínica')).toBeInTheDocument()
-    expect(screen.getByText('Médico')).toBeInTheDocument()
+    expect(screen.getByText('Subespecialidad')).toBeInTheDocument()
+    expect(screen.queryByText('Médico')).not.toBeInTheDocument()
+    expect(screen.queryByText('Clínica')).not.toBeInTheDocument()
   })
 
   it('muestra los botones futuros deshabilitados', () => {
@@ -265,6 +263,39 @@ describe('ArchivoPage — estructura de la pantalla', () => {
 
     expect(screen.getByRole('button', { name: 'Guardar resumen del día' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Imprimir / generar PDF' })).toBeDisabled()
+  })
+})
+
+describe('ArchivoPage — filtros de subespecialidad', () => {
+  const botonSubespecialidad = () =>
+    screen.getByRole('button', { name: /todas las subespecialidades/i })
+
+  it('carga las opciones de subespecialidades al abrir el filtro', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(botonSubespecialidad())
+
+    expect(await screen.findByRole('option', { name: 'Medicina General' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Pediatría General' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Cardiología Clínica' })).toBeInTheDocument()
+  })
+
+  it('filtra el listado por subespecialidad y reinicia la selección local', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('1')
+
+    await user.click(botonSubespecialidad())
+    await user.click(await screen.findByRole('option', { name: 'Medicina General' }))
+
+    await waitFor(() => expect(screen.getByText('Pendientes').closest('li')).toHaveTextContent('3'))
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('0')
+    expect(screen.getByText('Total del día').closest('li')).toHaveTextContent('3')
   })
 })
 
