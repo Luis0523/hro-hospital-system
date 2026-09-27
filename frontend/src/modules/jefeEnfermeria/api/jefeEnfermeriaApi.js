@@ -1,13 +1,19 @@
 import client from '@/shared/api/client'
 import {
+  actualizarEstacionMock,
   actualizarHorarioMock,
+  asignarSubespecialidadesEstacionMock,
   cerrarDiaMock,
+  crearEstacionMock,
   crearHorarioMock,
+  desactivarEstacionMock,
   desactivarHorarioMock,
   duplicarAsignacionMock,
   eliminarAsignacionMock,
   guardarAsignacionMock,
+  listarAccesosMock,
   listarEspaciosFisicosMock,
+  listarEstacionesMock,
   listarHorariosMock,
   listarSubespecialidadesMock,
   obtenerCoberturaMock,
@@ -126,4 +132,43 @@ export async function reactivarHorario(id) {
 export async function desactivarHorario(id) {
   if (USE_MOCK) return desactivarHorarioMock(id)
   return desenvolver(await client.delete(`/subespecialidad-horarios/${id}`))
+}
+
+// ---------------------------------------------------------------------------
+// Estaciones y bitácora de accesos (/estaciones)
+// ---------------------------------------------------------------------------
+
+export async function listarEstaciones() {
+  if (USE_MOCK) return listarEstacionesMock()
+  return desenvolver(await client.get('/estaciones'))
+}
+
+export async function crearEstacion(datos) {
+  if (USE_MOCK) return crearEstacionMock(datos)
+  return desenvolver(await client.post('/estaciones', datos))
+}
+
+export async function actualizarEstacion(id, datos) {
+  if (USE_MOCK) return actualizarEstacionMock(id, datos)
+  return desenvolver(await client.put(`/estaciones/${id}`, datos))
+}
+
+export async function desactivarEstacion(id) {
+  if (USE_MOCK) return desactivarEstacionMock(id)
+  return desenvolver(await client.delete(`/estaciones/${id}`))
+}
+
+export async function asignarSubespecialidadesEstacion(id, subespecialidadIds) {
+  if (USE_MOCK) return asignarSubespecialidadesEstacionMock(id, subespecialidadIds)
+  return desenvolver(
+    await client.put(`/estaciones/${id}/subespecialidades`, { subespecialidadIds }),
+  )
+}
+
+/** Bitácora de rotación de una estación (todos o solo los accesos abiertos). */
+export async function listarAccesosEstacion(estacionId, { abiertos = false } = {}) {
+  if (USE_MOCK) return listarAccesosMock(estacionId, abiertos)
+  return desenvolver(
+    await client.get(`/estaciones/${estacionId}/accesos`, { params: { abiertos } }),
+  )
 }

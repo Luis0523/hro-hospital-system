@@ -300,10 +300,108 @@ export function desactivarHorarioMock(id) {
   return horario ? toHorarioDTO(horario) : null
 }
 
+// ---------------------------------------------------------------------------
+// Estaciones y bitácora de accesos (/estaciones, /estaciones/{id}/accesos)
+// ---------------------------------------------------------------------------
+
+const hoy = new Date()
+const isoDeHoy = (hora, minuto) =>
+  new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), hora, minuto).toISOString()
+
+const ESTACIONES_BASE = [
+  { id: 1, codigo: 'EST-01', nombre: 'Medicina y Cardiología', ubicacion: 'Nivel 1', activo: true, subespecialidadIds: [1, 2] },
+  { id: 2, codigo: 'EST-02', nombre: 'Pediatría', ubicacion: 'Nivel 2', activo: true, subespecialidadIds: [3, 4, 5] },
+  { id: 3, codigo: 'EST-03', nombre: 'Ginecología y Obstetricia', ubicacion: 'Nivel 3', activo: true, subespecialidadIds: [6] },
+  { id: 4, codigo: 'EST-04', nombre: 'Cirugía y Traumatología', ubicacion: 'Nivel 4', activo: true, subespecialidadIds: [7, 8] },
+]
+
+const ACCESOS_BASE = [
+  { id: 1, estacionId: 1, usuarioReferenciaId: 10, usuarioNombre: 'Licda. Sofía Carrillo', entradoEn: isoDeHoy(7, 0), salidoEn: null },
+  { id: 2, estacionId: 1, usuarioReferenciaId: 11, usuarioNombre: 'Téc. Raúl Barrios', entradoEn: isoDeHoy(7, 30), salidoEn: null },
+  { id: 3, estacionId: 2, usuarioReferenciaId: 12, usuarioNombre: 'Enf. María Xicay', entradoEn: isoDeHoy(7, 15), salidoEn: null },
+  { id: 4, estacionId: 3, usuarioReferenciaId: 13, usuarioNombre: 'Enf. Ana Puac', entradoEn: isoDeHoy(6, 45), salidoEn: isoDeHoy(11, 0) },
+  { id: 5, estacionId: 3, usuarioReferenciaId: 14, usuarioNombre: 'Enf. Luis Ixcot', entradoEn: isoDeHoy(8, 0), salidoEn: null },
+  { id: 6, estacionId: 4, usuarioReferenciaId: 15, usuarioNombre: 'Enf. Diego Saloj', entradoEn: isoDeHoy(9, 10), salidoEn: isoDeHoy(12, 30) },
+]
+
+const estacionesMockData = ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] }))
+const accesosMockData = ACCESOS_BASE.map((a) => ({ ...a }))
+let contadorEstacion = ESTACIONES_BASE.length + 1
+
+function toEstacionDTO(e) {
+  return {
+    id: e.id,
+    codigo: e.codigo,
+    nombre: e.nombre,
+    ubicacion: e.ubicacion,
+    activo: e.activo,
+    subespecialidades: e.subespecialidadIds
+      .map((id) => subDe(id))
+      .filter(Boolean)
+      .map((sub) => ({
+        id: sub.id,
+        nombre: sub.nombre,
+        especialidadId: sub.especialidadId,
+        especialidadNombre: sub.especialidadNombre,
+      })),
+  }
+}
+
+export function listarEstacionesMock() {
+  return estacionesMockData.filter((e) => e.activo).map(toEstacionDTO)
+}
+
+export function crearEstacionMock({ codigo, nombre, ubicacion }) {
+  const nueva = {
+    id: contadorEstacion++,
+    codigo: String(codigo).trim(),
+    nombre: String(nombre).trim(),
+    ubicacion: ubicacion ? String(ubicacion).trim() : null,
+    activo: true,
+    subespecialidadIds: [],
+  }
+  estacionesMockData.push(nueva)
+  return toEstacionDTO(nueva)
+}
+
+export function actualizarEstacionMock(id, { codigo, nombre, ubicacion, activo }) {
+  const estacion = estacionesMockData.find((e) => e.id === Number(id))
+  if (!estacion) return null
+  if (codigo !== undefined) estacion.codigo = String(codigo).trim()
+  if (nombre !== undefined) estacion.nombre = String(nombre).trim()
+  if (ubicacion !== undefined) estacion.ubicacion = ubicacion ? String(ubicacion).trim() : null
+  if (activo !== undefined) estacion.activo = activo
+  return toEstacionDTO(estacion)
+}
+
+export function desactivarEstacionMock(id) {
+  const estacion = estacionesMockData.find((e) => e.id === Number(id))
+  if (estacion) estacion.activo = false
+  return estacion ? toEstacionDTO(estacion) : null
+}
+
+export function asignarSubespecialidadesEstacionMock(id, subespecialidadIds) {
+  const estacion = estacionesMockData.find((e) => e.id === Number(id))
+  if (!estacion) return null
+  estacion.subespecialidadIds = Array.from(new Set(subespecialidadIds.map(Number)))
+  return toEstacionDTO(estacion)
+}
+
+export function listarAccesosMock(estacionId, abiertos = false) {
+  return accesosMockData
+    .filter((a) => a.estacionId === Number(estacionId))
+    .filter((a) => (abiertos ? a.salidoEn === null : true))
+    .sort((a, b) => new Date(b.entradoEn) - new Date(a.entradoEn))
+    .map((a) => ({ ...a }))
+}
+
 export function reiniciarJefeMock() {
   asignacionesPorFecha.clear()
   diasCerrados.clear()
   horariosMockData.length = 0
+  estacionesMockData.splice(0, estacionesMockData.length, ...ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] })))
+  accesosMockData.splice(0, accesosMockData.length, ...ACCESOS_BASE.map((a) => ({ ...a })))
   contadorAsignacion = 1
   contadorHorario = 1
+  contadorEstacion = ESTACIONES_BASE.length + 1
 }
