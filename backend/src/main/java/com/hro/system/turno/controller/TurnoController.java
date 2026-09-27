@@ -39,11 +39,13 @@ public class TurnoController {
     }
 
     @PostMapping("/{id}/llamar")
-    @Operation(summary = "Llamar paciente al consultorio")
+    @Operation(summary = "Llamar paciente al consultorio",
+            description = "También sirve para re-llamar (incrementa intentos). Con porNombre=true el tablero anuncia por nombre.")
     public ResponseEntity<ApiResponse<TurnoResponseDTO>> llamarTurno(
             @PathVariable Long id,
-            @Parameter(description = "ID del usuario. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId) {
-        return ResponseEntity.ok(ApiResponse.ok(turnoService.llamarTurno(id, usuarioId), "Turno llamado exitosamente"));
+            @Parameter(description = "ID del usuario. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false, defaultValue = "false") boolean porNombre) {
+        return ResponseEntity.ok(ApiResponse.ok(turnoService.llamarTurno(id, usuarioId, porNombre), "Turno llamado exitosamente"));
     }
 
     @PostMapping("/{id}/no-responde")

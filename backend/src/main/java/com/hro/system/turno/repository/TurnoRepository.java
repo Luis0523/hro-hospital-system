@@ -28,6 +28,10 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     Optional<Turno> findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoAsc(
             Long asignacionDiariaEspacioId, String estado);
 
+    /** Último turno llamado de una sala (para anunciar el nombre del paciente). */
+    Optional<Turno> findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoDesc(
+            Long asignacionDiariaEspacioId, String estado);
+
     @Query(value = "SELECT fn_siguiente_turno(:asignacionDiariaEspacioId)", nativeQuery = true)
     Integer obtenerSiguienteTurnoAtomico(@Param("asignacionDiariaEspacioId") Long asignacionDiariaEspacioId);
 

@@ -31,6 +31,12 @@ describe('LlamadoGrande', () => {
     expect(screen.getByTestId('llamado-consultorio')).toHaveTextContent('201')
   })
 
+  it('muestra el nombre del paciente cuando viene en la asignación', () => {
+    render(<LlamadoGrande asignacion={{ ...ASIGNACION, pacienteNombre: 'Juan Pérez' }} />)
+
+    expect(screen.getByTestId('llamado-paciente')).toHaveTextContent('Juan Pérez')
+  })
+
   it('no muestra el nivel aunque venga en el objeto', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 

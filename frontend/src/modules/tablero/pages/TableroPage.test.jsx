@@ -205,7 +205,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-9')
-    expect(within(fila).getByText('—')).toBeInTheDocument()
+    expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
@@ -388,7 +388,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-7')
-    expect(within(fila).getByText('—')).toBeInTheDocument()
+    expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })
@@ -680,7 +680,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(within(screen.getByTestId('fila-turno-2')).getByText('#015')).toBeInTheDocument()
   })
 
-  it('avanza correctamente al recibir onError sin bloquear el tablero', async () => {
+  it('si la voz falla (onError) usa el tiempo visual y no se queda bloqueado', async () => {
     const fallos = []
     anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
       fallos.push(opciones.onError)
@@ -691,26 +691,35 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     await screen.findByText('Pediatría General')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
-    act(() => {
-      handlers.onMensaje(
-        mensaje({
-          asignacionDiariaEspacioId: 1,
-          turnoActual: 8,
-          turnoSiguiente: 9,
-          tipoEvento: 'LLAMADO',
-          intentosLlamado: 1,
-        }),
-      )
-    })
-    expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 8,
+            turnoSiguiente: 9,
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
+        )
+      })
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
-    act(() => fallos[0]())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+      // La síntesis falla: no debe avanzar al instante; garantiza el tiempo visual.
+      act(() => fallos[0]())
+      expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
-    act(() => fallos[1]())
+      act(() => {
+        vi.advanceTimersByTime(7000)
+      })
 
-    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('usa el fallback por timeout si onEnd no ocurre', async () => {

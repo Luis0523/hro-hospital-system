@@ -43,16 +43,22 @@ describe('tableroApi · normalización y privacidad', () => {
     expect(Object.keys(normalizado).sort()).toEqual([...CAMPOS_PUBLICOS].sort())
   })
 
-  it('descarta cualquier dato personal aunque venga en el payload', () => {
+  it('conserva solo el nombre del paciente y descarta el resto de datos personales', () => {
     const normalizado = normalizarEstadoTablero(PAYLOAD_CON_PRIVADOS)
-    const serializado = JSON.stringify(normalizado)
 
-    expect(serializado).not.toContain('Juan')
-    expect(serializado).not.toContain('Perez')
-    expect(serializado).not.toContain('1234567890101')
-    expect(serializado).not.toContain('HRO-123')
-    expect(serializado).not.toContain('55555555')
-    expect(serializado).not.toContain('juan@example.com')
+    // Se conserva el nombre para poder llamar por nombre en el tablero.
+    expect(normalizado.pacienteNombre).toBe('Juan Perez')
+
+    // El resto de datos personales se descarta.
+    expect(normalizado).not.toHaveProperty('nombrePaciente')
+    expect(normalizado).not.toHaveProperty('pacienteNombreCompleto')
+    expect(normalizado).not.toHaveProperty('dpi')
+    expect(normalizado).not.toHaveProperty('expediente')
+    expect(normalizado).not.toHaveProperty('numeroExpediente')
+    expect(normalizado).not.toHaveProperty('telefono')
+    expect(normalizado).not.toHaveProperty('correo')
+    expect(normalizado).not.toHaveProperty('fechaNacimiento')
+
     expect(normalizado).toEqual({
       asignacionDiariaEspacioId: 1,
       espacioNumero: '201',
@@ -63,6 +69,9 @@ describe('tableroApi · normalización y privacidad', () => {
       ultimaActualizacion: '2026-09-20T14:05:32.000Z',
       intentosLlamado: null,
       tipoEvento: null,
+      pacienteNombre: 'Juan Perez',
+      turnosEnEspera: [],
+      porNombre: false,
     })
   })
 
@@ -333,6 +342,9 @@ describe('tableroApi · estado inicial real (REST)', () => {
       ultimaActualizacion: null,
       intentosLlamado: null,
       tipoEvento: null,
+      pacienteNombre: null,
+      turnosEnEspera: [],
+      porNombre: false,
     })
   })
 

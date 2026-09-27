@@ -5,8 +5,14 @@ function formatearTurno(valor) {
 }
 
 export default function FilaTurno({ asignacion }) {
-  const { asignacionDiariaEspacioId, espacioNumero, subespecialidadNombre, turnoActual } =
-    asignacion
+  const {
+    asignacionDiariaEspacioId,
+    espacioNumero,
+    subespecialidadNombre,
+    turnoActual,
+    turnosEnEspera,
+  } = asignacion
+  const enEspera = Array.isArray(turnosEnEspera) ? turnosEnEspera : []
 
   return (
     <tr data-testid={`fila-turno-${asignacionDiariaEspacioId}`} className="align-middle">
@@ -25,6 +31,15 @@ export default function FilaTurno({ asignacion }) {
       <td className="px-2 py-4 text-right md:px-4 md:py-5">
         <span className="text-[clamp(3rem,4.5vw,10rem)] font-bold leading-none tabular-nums text-primary dark:text-sky-400">
           {formatearTurno(turnoActual)}
+        </span>
+      </td>
+
+      <td
+        data-testid={`fila-espera-${asignacionDiariaEspacioId}`}
+        className="px-2 py-4 text-right md:px-4 md:py-5"
+      >
+        <span className="text-[clamp(1.5rem,2vw,4.5rem)] font-semibold leading-none tabular-nums text-on-surface-variant dark:text-slate-300">
+          {enEspera.length > 0 ? enEspera.map(formatearTurno).join(' · ') : '—'}
         </span>
       </td>
     </tr>

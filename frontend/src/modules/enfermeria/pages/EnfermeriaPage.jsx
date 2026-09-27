@@ -361,6 +361,36 @@ export default function EnfermeriaPage() {
     )
   }
 
+  function manejarRellamar(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      async () => {
+        const llamado = await llamarTurno(turno.id, { porNombre: false })
+        activarGracia(llamado)
+        reproducirBeep()
+        setTurnoActual(llamado.numeroTurno)
+        setPacienteActual(llamado.pacienteNombre ?? '')
+        return llamado
+      },
+      'Paciente llamado nuevamente.',
+    )
+  }
+
+  function manejarLlamarPorNombre(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      async () => {
+        const llamado = await llamarTurno(turno.id, { porNombre: true })
+        activarGracia(llamado)
+        reproducirBeep()
+        setTurnoActual(llamado.numeroTurno)
+        setPacienteActual(llamado.pacienteNombre ?? '')
+        return llamado
+      },
+      'Paciente llamado por nombre.',
+    )
+  }
+
   function manejarAtendido(turno) {
     return ejecutarAccionTurno(
       turno,
@@ -512,6 +542,8 @@ export default function EnfermeriaPage() {
             segundosRestantes={turnoEnGracia?.restante ?? 0}
             cargandoId={cargandoId}
             onLlamar={manejarLlamar}
+            onRellamar={manejarRellamar}
+            onLlamarPorNombre={manejarLlamarPorNombre}
             onAtendido={manejarAtendido}
             onNoResponde={manejarNoResponde}
             onReintegrar={manejarReintegrar}

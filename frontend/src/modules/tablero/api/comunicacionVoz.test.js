@@ -42,6 +42,18 @@ describe('construirMensajeTurno', () => {
     )
   })
 
+  it('incluye el nombre del paciente cuando viene en el evento', () => {
+    expect(construirMensajeTurno({ ...ASIGNACION, pacienteNombre: 'Juan Pérez' })).toBe(
+      'Turno número 7, paciente Juan Pérez, favor pasar a Pediatría General, consultorio 201.',
+    )
+  })
+
+  it('anuncia por nombre cuando porNombre es true', () => {
+    expect(
+      construirMensajeTurno({ ...ASIGNACION, pacienteNombre: 'Juan Pérez', porNombre: true }),
+    ).toBe('Paciente Juan Pérez, favor pasar a Pediatría General, consultorio 201.')
+  })
+
   it('no construye mensaje si no hay turno actual', () => {
     expect(construirMensajeTurno({ espacioNumero: '201', turnoActual: null })).toBeNull()
     expect(construirMensajeTurno({ espacioNumero: '201', turnoActual: 0 })).toBeNull()

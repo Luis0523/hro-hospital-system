@@ -143,6 +143,11 @@ public class TurnoService {
 
     @Transactional
     public TurnoResponseDTO llamarTurno(Long turnoId, Long usuarioId) {
+        return llamarTurno(turnoId, usuarioId, false);
+    }
+
+    @Transactional
+    public TurnoResponseDTO llamarTurno(Long turnoId, Long usuarioId, boolean porNombre) {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Turno", "id", turnoId));
 
@@ -159,7 +164,7 @@ public class TurnoService {
 
         Long asignacionId = turno.getAsignacionDiariaEspacio() != null ? turno.getAsignacionDiariaEspacio().getId() : null;
         actualizarTurnoActualContador(asignacionId, turno.getNumeroTurno());
-        notificarActualizacionTablero(asignacionId, "LLAMADO", actualizado.getIntentosLlamado());
+        notificarActualizacionTablero(asignacionId, "LLAMADO", actualizado.getIntentosLlamado(), porNombre);
 
         publicarAuditoria("turno", actualizado.getId(), "actualizar", usuario.getId(),
                 Map.of("estado", estadoAnterior),
@@ -482,6 +487,11 @@ public class TurnoService {
     }
 
     private void notificarActualizacionTablero(Long asignacionId, String tipoEvento, Integer intentosLlamado) {
+        notificarActualizacionTablero(asignacionId, tipoEvento, intentosLlamado, false);
+    }
+
+    private void notificarActualizacionTablero(Long asignacionId, String tipoEvento,
+                                               Integer intentosLlamado, boolean porNombre) {
         if (asignacionId == null) {
             return;
         }
@@ -489,7 +499,8 @@ public class TurnoService {
         if (a == null) {
             return;
         }
-        TableroTurnoDTO tablero = construirTablero(a, tipoEvento, intentosLlamado, obtenerOCrearContador(a));
+        TableroTurnoDTO tablero = construirTablero(a, tipoEvento, intentosLlamado,
+                obtenerOCrearContador(a), porNombre);
         messagingTemplate.convertAndSend("/topic/tablero", tablero);
         messagingTemplate.convertAndSend("/topic/clinica/" + a.getId(), tablero);
         estacionSubespecialidadRepository.findBySubespecialidadId(a.getSubespecialidad().getId())
@@ -500,6 +511,20 @@ public class TurnoService {
 
     private TableroTurnoDTO construirTablero(AsignacionDiariaEspacio a, String tipoEvento,
                                              Integer intentosLlamado, ContadorTurnoDiario contador) {
+        return construirTablero(a, tipoEvento, intentosLlamado, contador, false);
+    }
+
+    private TableroTurnoDTO construirTablero(AsignacionDiariaEspacio a, String tipoEvento,
+                                             Integer intentosLlamado, ContadorTurnoDiario contador,
+                                             boolean porNombre) {
+        String pacienteActual = turnoRepository
+                .findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoDesc(a.getId(), "llamado")
+                .map(this::nombrePaciente)
+                .orElse(null);
+        List<Integer> enEspera = turnoRepository.buscarTurnosEnEsperaPorAsignacion(a.getId()).stream()
+                .filter(t -> "en_espera".equals(t.getEstado()) || "reintegrado".equals(t.getEstado()))
+                .map(Turno::getNumeroTurno)
+                .toList();
         return TableroTurnoDTO.builder()
                 .asignacionDiariaEspacioId(a.getId())
                 .espacioNumero(a.getEspacioFisico().getNumero())
@@ -513,7 +538,20 @@ public class TurnoService {
                 .ultimaActualizacion(OffsetDateTime.now())
                 .intentosLlamado(intentosLlamado)
                 .tipoEvento(tipoEvento)
+                .pacienteNombre(pacienteActual)
+                .turnosEnEspera(enEspera)
+                .porNombre(porNombre)
                 .build();
+    }
+
+    private String nombrePaciente(Turno turno) {
+        if (turno == null || turno.getCita() == null || turno.getCita().getPaciente() == null) {
+            return null;
+        }
+        var paciente = turno.getCita().getPaciente();
+        String nombre = ((paciente.getNombres() != null ? paciente.getNombres() : "") + " "
+                + (paciente.getApellidos() != null ? paciente.getApellidos() : "")).trim();
+        return nombre.isEmpty() ? null : nombre;
     }
 
     private void publicarAuditoria(String tabla, Long id, String accion, Long usuarioId, Map<String, Object> ant, Map<String, Object> nue) {
@@ -540,6 +578,9 @@ public class TurnoService {
                 .nivel(a != null ? a.getEspacioFisico().getNivel() : null)
                 .subespecialidadId(a != null ? a.getSubespecialidad().getId() : null)
                 .subespecialidadNombre(a != null ? a.getSubespecialidad().getNombre() : null)
+                .pacienteNombre(nombrePaciente(turno))
+                .pacienteExpediente(turno.getCita() != null && turno.getCita().getPaciente() != null
+                        ? turno.getCita().getPaciente().getNumeroExpediente() : null)
                 .horaGenerado(turno.getHoraGenerado())
                 .horaLlamado(turno.getHoraLlamado())
                 .horaAtendido(turno.getHoraAtendido())

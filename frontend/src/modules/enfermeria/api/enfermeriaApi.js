@@ -326,7 +326,7 @@ export async function listarTurnosActivos() {
   return desenvolver(await client.get('/turnos/activos'))
 }
 
-export async function llamarTurno(turnoId) {
+export async function llamarTurno(turnoId, { porNombre = false } = {}) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (!turno) {
@@ -337,7 +337,9 @@ export async function llamarTurno(turnoId) {
     turno.horaLlamado = new Date().toISOString()
     return turno
   }
-  return desenvolver(await client.post(`/turnos/${turnoId}/llamar`))
+  return desenvolver(
+    await client.post(`/turnos/${turnoId}/llamar`, null, { params: { porNombre } }),
+  )
 }
 
 export async function marcarNoResponde(turnoId, motivo) {

@@ -30,14 +30,22 @@ export function buscarVozEspanol(voces = []) {
 
 export function construirMensajeTurno(asignacion = {}) {
   const turnoActual = comoTurno(asignacion.turnoActual)
-  if (!turnoActual) return null
+  const paciente = String(asignacion.pacienteNombre ?? '').trim()
+  if (!turnoActual && !paciente) return null
 
   const subespecialidad = String(asignacion.subespecialidadNombre ?? '').trim()
   const consultorio = String(asignacion.espacioNumero ?? '').trim() || '—'
+  const destino = subespecialidad
+    ? `favor pasar a ${subespecialidad}, consultorio ${consultorio}.`
+    : `favor pasar al consultorio ${consultorio}.`
 
-  return subespecialidad
-    ? `Turno número ${turnoActual}, favor pasar a ${subespecialidad}, consultorio ${consultorio}.`
-    : `Turno número ${turnoActual}, favor pasar al consultorio ${consultorio}.`
+  if (asignacion.porNombre && paciente) {
+    return `Paciente ${paciente}, ${destino}`
+  }
+  if (paciente) {
+    return `Turno número ${turnoActual}, paciente ${paciente}, ${destino}`
+  }
+  return `Turno número ${turnoActual}, ${destino}`
 }
 
 export function hablar(

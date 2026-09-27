@@ -188,9 +188,16 @@ export default function TableroPage() {
     const reproducir = () => {
       repeticionActual += 1
       atendido = false
+      let fallo = false
       const mensaje = anunciarTurno(siguiente, {
         onEnd: finalizarRepeticion,
-        onError: finalizarRepeticion,
+        onError: () => {
+          if (fallo) return
+          fallo = true
+          // La síntesis falló (p. ej. sin voces): garantiza el tiempo visual mínimo.
+          limpiarTimerLlamado()
+          programarVisual()
+        },
       })
 
       if (generacionLlamadoRef.current !== generacion) return

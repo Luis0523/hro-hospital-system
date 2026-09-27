@@ -12,6 +12,9 @@ export const CAMPOS_PUBLICOS = [
   'ultimaActualizacion',
   'intentosLlamado',
   'tipoEvento',
+  'pacienteNombre',
+  'turnosEnEspera',
+  'porNombre',
 ]
 
 export const TIPOS_EVENTO = ['LLAMADO', 'ACTUALIZACION']
@@ -109,6 +112,13 @@ function normalizarTipoEvento(valor) {
   return TIPOS_EVENTO.includes(texto) ? texto : null
 }
 
+export function normalizarTurnosEnEspera(valor) {
+  if (!Array.isArray(valor)) return []
+  return valor
+    .map((numero) => Number(numero))
+    .filter((numero) => Number.isInteger(numero) && numero > 0)
+}
+
 export function normalizarEstadoTablero(payload) {
   if (!payload || typeof payload !== 'object') return null
 
@@ -122,6 +132,9 @@ export function normalizarEstadoTablero(payload) {
     ultimaActualizacion: normalizarFecha(payload.ultimaActualizacion),
     intentosLlamado: normalizarIntentosLlamado(payload.intentosLlamado),
     tipoEvento: normalizarTipoEvento(payload.tipoEvento),
+    pacienteNombre: normalizarTexto(payload.pacienteNombre),
+    turnosEnEspera: normalizarTurnosEnEspera(payload.turnosEnEspera),
+    porNombre: payload.porNombre === true,
   }
 
   if (estado.asignacionDiariaEspacioId === null) return null
@@ -181,6 +194,9 @@ export function mapearAsignacionDiaria(dto = {}) {
     ultimaActualizacion: null,
     intentosLlamado: null,
     tipoEvento: null,
+    pacienteNombre: dto?.pacienteNombre ?? null,
+    turnosEnEspera: [],
+    porNombre: false,
   }
 }
 

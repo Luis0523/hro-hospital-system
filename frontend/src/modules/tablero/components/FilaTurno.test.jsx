@@ -74,7 +74,7 @@ describe('FilaTurno', () => {
     })
 
     expect(screen.getByText('Sin subespecialidad')).toBeInTheDocument()
-    expect(screen.getAllByText('—')).toHaveLength(2)
+    expect(screen.getAllByText('—')).toHaveLength(3)
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
   })
 })
