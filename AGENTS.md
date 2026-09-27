@@ -62,6 +62,12 @@ Backend (existe en `main`, no en esta rama; para levantarlo):
 - Código `409` = cupos agotados: mostrar alerta destacada sugiriendo otra fecha/médico.
 - WebSocket: STOMP sobre SockJS en `/api/v1/ws`; topics `/topic/tablero` y `/topic/clinica/{clinicaId}`. Ver `src/shared/ws/turnosSocket.js`.
 
+## Jira (MCP Atlassian)
+- MCP `atlassian` configurado globalmente (`~/.config/opencode/opencode.jsonc`, endpoint `https://mcp.atlassian.com/v2/mcp`). Tools expuestos como `atlassian_*`.
+- Proyecto Jira: **`SCRUM`** (HRO - FINAL), épica backend admin `SCRUM-109`. `cloudId` y datos en el skill.
+- Para registrar avance: cargar el skill **`jira-hro-workflow`** antes de crear/mover tareas. Buscar si la tarea ya existe, mover a **En curso** al empezar y a **En revisión** al terminar; crear tarea **solo** para trabajo relevante (no typos/refactors menores/config local).
+- Guía local extendida (no versionada): `context/jira-workflow.md`.
+
 ## Gotchas
 - No commitear `context/` (notas locales `avances/`, `instrucciones/`, `mock/`); está en `.git/info/exclude`.
 - `frontend/.env` (ignorado por Git) apunta al backend desplegado; `.env.example` documenta las variables.
