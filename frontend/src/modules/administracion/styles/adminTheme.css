@@ -1,0 +1,309 @@
+/*
+ * F9.7 — Modo oscuro LOCAL del Panel de Administración.
+ *
+ * Todos los overrides dependen de `body.admin-theme-dark`, clase que
+ * AdministracionLayout añade/retira temporalmente mientras el módulo está
+ * montado (necesario porque Modal y Toast usan portales hacia document.body).
+ *
+ * Sin esa clase, la aplicación se ve EXACTAMENTE igual que antes (light intacto).
+ * No se modifica shared/**, tailwind.config.js ni src/index.css.
+ */
+
+body.admin-theme-dark {
+  /* Superficies */
+  --admin-bg: #121417;
+  --admin-surface-lowest: #1b1f24;
+  --admin-surface-low: #22272e;
+  --admin-surface: #262c34;
+  --admin-surface-high: #2f3640;
+  --admin-surface-highest: #363e49;
+
+  /* Texto */
+  --admin-on-surface: #e6e8eb;
+  --admin-on-surface-variant: #aeb4bc;
+  --admin-outline: #9aa2ac;
+  --admin-outline-variant: #3a4048;
+
+  /* Marca */
+  --admin-primary-text: #7cc0ee;
+  --admin-primary-bg: #11507d;
+
+  background-color: var(--admin-bg);
+  color: var(--admin-on-surface);
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ */
+/* Superficies (tokens M3)                                             */
+/* ------------------------------------------------------------------ */
+body.admin-theme-dark .bg-surface {
+  background-color: var(--admin-bg);
+}
+body.admin-theme-dark .bg-surface-container-lowest {
+  background-color: var(--admin-surface-lowest);
+}
+body.admin-theme-dark .bg-surface-container-lowest\/95 {
+  background-color: rgba(27, 31, 36, 0.95);
+}
+body.admin-theme-dark .bg-surface-container-low {
+  background-color: var(--admin-surface-low);
+}
+body.admin-theme-dark .bg-surface-container-low\/60 {
+  background-color: rgba(34, 39, 46, 0.6);
+}
+body.admin-theme-dark .bg-surface-container {
+  background-color: var(--admin-surface);
+}
+body.admin-theme-dark .bg-surface-container-high {
+  background-color: var(--admin-surface-high);
+}
+body.admin-theme-dark .bg-surface-container-highest {
+  background-color: var(--admin-surface-highest);
+}
+
+body.admin-theme-dark .hover\:bg-surface-container-low:hover,
+body.admin-theme-dark .hover\:bg-surface-container-low\/60:hover {
+  background-color: var(--admin-surface-low);
+}
+body.admin-theme-dark .hover\:bg-surface-container-high:hover {
+  background-color: var(--admin-surface-high);
+}
+
+/* Texto (tokens M3) */
+body.admin-theme-dark .text-on-surface {
+  color: var(--admin-on-surface);
+}
+body.admin-theme-dark .text-on-surface-variant {
+  color: var(--admin-on-surface-variant);
+}
+body.admin-theme-dark .text-outline {
+  color: var(--admin-outline);
+}
+body.admin-theme-dark .text-primary {
+  color: var(--admin-primary-text);
+}
+body.admin-theme-dark .text-error {
+  color: #ffb4ab;
+}
+
+/* Bordes (tokens M3) */
+body.admin-theme-dark .border-outline {
+  border-color: var(--admin-outline);
+}
+body.admin-theme-dark .border-outline-variant {
+  border-color: var(--admin-outline-variant);
+}
+body.admin-theme-dark .border-outline-variant\/40 {
+  border-color: rgba(58, 64, 72, 0.4);
+}
+body.admin-theme-dark .divide-outline-variant\/40 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(58, 64, 72, 0.4);
+}
+body.admin-theme-dark .border-primary {
+  border-color: var(--admin-primary-text);
+}
+body.admin-theme-dark .outline-primary {
+  outline-color: var(--admin-primary-text);
+}
+body.admin-theme-dark .focus-visible\:outline-primary:focus-visible {
+  outline-color: var(--admin-primary-text);
+}
+body.admin-theme-dark .ring-primary {
+  --tw-ring-color: var(--admin-primary-text);
+}
+
+/* Marca como fondo (botones/avatar/activo) — conserva texto claro legible */
+body.admin-theme-dark .bg-primary {
+  background-color: var(--admin-primary-bg);
+}
+body.admin-theme-dark .text-on-primary {
+  color: #ffffff;
+}
+body.admin-theme-dark .bg-primary-container {
+  background-color: #0e4a6e;
+}
+body.admin-theme-dark .bg-secondary-container {
+  background-color: #14506b;
+}
+body.admin-theme-dark .text-on-secondary-container {
+  color: #cfe9f7;
+}
+
+/* Backdrop del menú móvil */
+body.admin-theme-dark .bg-on-surface\/40 {
+  background-color: rgba(0, 0, 0, 0.55);
+}
+
+/* ------------------------------------------------------------------ */
+/* shared/ui — clases hardcodeadas realmente usadas en Administración   */
+/* ------------------------------------------------------------------ */
+body.admin-theme-dark .bg-white {
+  background-color: var(--admin-surface-lowest);
+}
+body.admin-theme-dark .bg-slate-50 {
+  background-color: var(--admin-surface-low);
+}
+body.admin-theme-dark .bg-slate-100 {
+  background-color: #2a313a;
+}
+body.admin-theme-dark .bg-slate-200 {
+  background-color: #333b45;
+}
+
+body.admin-theme-dark .text-slate-800 {
+  color: var(--admin-on-surface);
+}
+body.admin-theme-dark .text-slate-700 {
+  color: #d7dbe0;
+}
+body.admin-theme-dark .text-slate-600 {
+  color: #b9c0c8;
+}
+body.admin-theme-dark .text-slate-500 {
+  color: #a2aab3;
+}
+body.admin-theme-dark .text-slate-400 {
+  color: #9098a2;
+}
+
+body.admin-theme-dark .border-slate-300 {
+  border-color: var(--admin-outline-variant);
+}
+body.admin-theme-dark .border-slate-200 {
+  border-color: #333a43;
+}
+body.admin-theme-dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2a313a;
+}
+
+body.admin-theme-dark .bg-cyan-50 {
+  background-color: #14313f;
+}
+body.admin-theme-dark .hover\:bg-cyan-50:hover {
+  background-color: #1a3a4a;
+}
+body.admin-theme-dark .hover\:bg-cyan-50\/40:hover {
+  background-color: rgba(26, 58, 74, 0.4);
+}
+body.admin-theme-dark .text-hro-blue {
+  color: var(--admin-primary-text);
+}
+body.admin-theme-dark .hover\:bg-blue-800:hover {
+  background-color: #0d4a72;
+}
+body.admin-theme-dark .hover\:bg-slate-100:hover {
+  background-color: #2a313a;
+}
+body.admin-theme-dark .ring-cyan-100 {
+  --tw-ring-color: #24506a;
+}
+body.admin-theme-dark .focus\:ring-cyan-100:focus {
+  --tw-ring-color: #24506a;
+}
+
+/* Overlay de modales (shared/Modal) */
+body.admin-theme-dark .bg-slate-900\/40 {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Botones danger */
+body.admin-theme-dark .bg-red-600 {
+  background-color: #b3261e;
+}
+body.admin-theme-dark .hover\:bg-red-700:hover {
+  background-color: #8f1d17;
+}
+body.admin-theme-dark .border-red-400 {
+  border-color: #c94a42;
+}
+body.admin-theme-dark .focus\:border-red-500:focus {
+  border-color: #e57373;
+}
+body.admin-theme-dark .text-red-600 {
+  color: #ff9a92;
+}
+body.admin-theme-dark .text-red-700 {
+  color: #ffb4ab;
+}
+
+/* ------------------------------------------------------------------ */
+/* Semántica de estados (badges, alerts, resultados)                   */
+/* ------------------------------------------------------------------ */
+/* info (cian) */
+body.admin-theme-dark .bg-cyan-100 {
+  background-color: #123642;
+}
+body.admin-theme-dark .text-cyan-800 {
+  color: #8fd0e6;
+}
+body.admin-theme-dark .border-cyan-200 {
+  border-color: #24506a;
+}
+
+/* success (esmeralda) */
+body.admin-theme-dark .bg-emerald-50 {
+  background-color: #16281f;
+}
+body.admin-theme-dark .bg-emerald-100 {
+  background-color: #1c3a2b;
+}
+body.admin-theme-dark .bg-emerald-600 {
+  background-color: #2e7d5b;
+}
+body.admin-theme-dark .text-emerald-700 {
+  color: #8fd9ae;
+}
+body.admin-theme-dark .text-emerald-800 {
+  color: #8fd9ae;
+}
+body.admin-theme-dark .border-emerald-200 {
+  border-color: #2f5a45;
+}
+
+/* warning (ámbar) */
+body.admin-theme-dark .bg-amber-50 {
+  background-color: #2a2110;
+}
+body.admin-theme-dark .bg-amber-100 {
+  background-color: #3d2f14;
+}
+body.admin-theme-dark .hover\:bg-amber-100:hover {
+  background-color: #4a3919;
+}
+body.admin-theme-dark .bg-amber-500 {
+  background-color: #b8862b;
+}
+body.admin-theme-dark .text-amber-800 {
+  color: #e6c27a;
+}
+body.admin-theme-dark .border-amber-200 {
+  border-color: #5a471f;
+}
+body.admin-theme-dark .border-amber-300 {
+  border-color: #6b5525;
+}
+
+/* error (rojo suave para fondos) */
+body.admin-theme-dark .bg-red-50 {
+  background-color: #2a1614;
+}
+body.admin-theme-dark .bg-red-100 {
+  background-color: #40201d;
+}
+body.admin-theme-dark .border-red-200 {
+  border-color: #5c2a26;
+}
+
+/* Otros badges usados */
+body.admin-theme-dark .bg-indigo-100 {
+  background-color: #242a4a;
+}
+body.admin-theme-dark .text-indigo-800 {
+  color: #b9c0ee;
+}
+body.admin-theme-dark .bg-blue-100 {
+  background-color: #14304a;
+}
+body.admin-theme-dark .text-blue-800 {
+  color: #9cc4e6;
+}

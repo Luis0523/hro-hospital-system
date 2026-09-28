@@ -3,12 +3,47 @@ import { Outlet } from 'react-router-dom'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import AdminHeader from './components/AdminHeader.jsx'
 import MenuLateral from './components/MenuLateral.jsx'
+import './styles/adminTheme.css'
+
+const CLAVE_TEMA = 'hro_admin_theme'
+
+function leerModoOscuro() {
+  try {
+    return localStorage.getItem(CLAVE_TEMA) === 'dark'
+  } catch {
+    return false
+  }
+}
 
 export default function AdministracionLayout() {
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [modoOscuro, setModoOscuro] = useState(leerModoOscuro)
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), [])
   const alternarMenu = () => setMenuAbierto((abierto) => !abierto)
+
+  const alternarTema = useCallback(() => {
+    setModoOscuro((previo) => {
+      const siguiente = !previo
+      try {
+        localStorage.setItem(CLAVE_TEMA, siguiente ? 'dark' : 'light')
+      } catch {
+        // Preferencia visual local: si localStorage no está disponible, se ignora.
+      }
+      return siguiente
+    })
+  }, [])
+
+  // La clase vive en document.body (Modal y Toast usan portales) y SIEMPRE se
+  // retira al desmontar el Panel de Administración.
+  useEffect(() => {
+    if (modoOscuro) {
+      document.body.classList.add('admin-theme-dark')
+    } else {
+      document.body.classList.remove('admin-theme-dark')
+    }
+    return () => document.body.classList.remove('admin-theme-dark')
+  }, [modoOscuro])
 
   useEffect(() => {
     if (!menuAbierto) return undefined
@@ -53,7 +88,12 @@ export default function AdministracionLayout() {
         aria-hidden={menuAbierto ? 'true' : undefined}
         inert={menuAbierto ? '' : undefined}
       >
-        <AdminHeader menuAbierto={menuAbierto} onAbrirMenu={alternarMenu} />
+        <AdminHeader
+          menuAbierto={menuAbierto}
+          onAbrirMenu={alternarMenu}
+          modoOscuro={modoOscuro}
+          onAlternarTema={alternarTema}
+        />
         <main id="contenido-principal" className="min-w-0 flex-1 px-4 py-6 md:px-8">
           <Outlet />
         </main>

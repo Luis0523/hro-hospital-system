@@ -1,8 +1,14 @@
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 
-export default function AdminHeader({ onAbrirMenu, menuAbierto = false }) {
+export default function AdminHeader({
+  onAbrirMenu,
+  menuAbierto = false,
+  modoOscuro = false,
+  onAlternarTema,
+}) {
   const { usuario } = useAuth()
+  const etiquetaTema = modoOscuro ? 'Activar modo claro' : 'Activar modo oscuro'
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant/40 bg-surface-container-lowest/95 px-4 py-3 backdrop-blur-md md:px-6">
@@ -35,6 +41,17 @@ export default function AdminHeader({ onAbrirMenu, menuAbierto = false }) {
       </div>
 
       <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onAlternarTema}
+          aria-label={etiquetaTema}
+          title={etiquetaTema}
+          aria-pressed={modoOscuro}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <Icon name={modoOscuro ? 'light_mode' : 'dark_mode'} className="text-[20px]" />
+        </button>
+
         <div className="min-w-0 text-right leading-tight">
           <p className="truncate text-sm font-semibold text-on-surface" title={usuario?.nombre}>
             {usuario?.nombre}
