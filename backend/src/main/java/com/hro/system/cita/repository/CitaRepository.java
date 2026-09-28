@@ -21,8 +21,8 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             SELECT c FROM Cita c
               JOIN FETCH c.paciente
               JOIN FETCH c.cupoDiario cd
-              JOIN FETCH cd.medicoSubespecialidad ms
-              JOIN FETCH ms.subespecialidad s
+              JOIN FETCH cd.subespecialidadHorario sh
+              JOIN FETCH sh.subespecialidad s
             WHERE cd.fecha = :fecha
               AND (:subespecialidadId IS NULL OR s.id = :subespecialidadId)
               AND c.estado NOT IN ('cancelada', 'reprogramada')
@@ -57,8 +57,8 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
                    SUM(CASE WHEN c.estado = 'no_asistio' THEN 1 ELSE 0 END)
             FROM Cita c
               JOIN c.cupoDiario cd
-              JOIN cd.medicoSubespecialidad ms
-              JOIN ms.subespecialidad s
+              JOIN cd.subespecialidadHorario sh
+              JOIN sh.subespecialidad s
               JOIN s.especialidad e
             WHERE cd.fecha BETWEEN :inicio AND :fin
             GROUP BY e.id, e.nombre
@@ -70,9 +70,8 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             SELECT c FROM Cita c
               JOIN FETCH c.paciente
               JOIN FETCH c.cupoDiario cd
-              JOIN FETCH cd.medicoSubespecialidad ms
-              JOIN FETCH ms.medico
-              JOIN FETCH ms.subespecialidad
+              JOIN FETCH cd.subespecialidadHorario sh
+              JOIN FETCH sh.subespecialidad
             WHERE cd.fecha = :fecha
               AND c.estado NOT IN :estadosNoBloqueantes
             ORDER BY c.horaEstimada ASC
@@ -90,7 +89,7 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             @Param("posicion") Integer posicion
     );
 
-    @Query("SELECT c FROM Cita c WHERE c.cupoDiario.fecha = :fecha AND (:subespecialidadId IS NULL OR c.cupoDiario.medicoSubespecialidad.subespecialidad.id = :subespecialidadId) AND c.estado IN ('pendiente', 'confirmada')")
+    @Query("SELECT c FROM Cita c WHERE c.cupoDiario.fecha = :fecha AND (:subespecialidadId IS NULL OR c.cupoDiario.subespecialidadHorario.subespecialidad.id = :subespecialidadId) AND c.estado IN ('pendiente', 'confirmada')")
     List<Cita> buscarCitasPendientesParaCierre(@Param("fecha") LocalDate fecha, @Param("subespecialidadId") Long subespecialidadId);
 
     @Query(value = "SELECT fn_cierre_diario_inasistencias(CAST(:fecha AS date), :subespecialidadId, :usuarioId)", nativeQuery = true)

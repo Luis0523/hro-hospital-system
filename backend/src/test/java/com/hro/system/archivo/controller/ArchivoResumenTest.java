@@ -15,9 +15,9 @@ import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -85,7 +85,7 @@ class ArchivoResumenTest {
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     private static final LocalDate FECHA = LocalDate.of(2026, 11, 9);
 
@@ -100,7 +100,7 @@ class ArchivoResumenTest {
         expedienteRepository.deleteAll();
         cupoDiarioRepository.deleteAll();
         citaRepository.deleteAll();
-        medicoSubespecialidadRepository.deleteAll();
+        subespecialidadHorarioRepository.deleteAll();
         subespecialidadRepository.deleteAll();
         especialidadRepository.deleteAll();
         medicoRepository.deleteAll();
@@ -146,8 +146,7 @@ class ArchivoResumenTest {
                 .numeroColegiado("COL-" + hora + "000")
                 .activo(true)
                 .build());
-        MedicoSubespecialidad ms = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario ms = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) FECHA.getDayOfWeek().getValue())
                 .horaInicio(LocalTime.of(7, 0))
@@ -157,7 +156,7 @@ class ArchivoResumenTest {
                 .activo(true)
                 .build());
         CupoDiario cupo = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(ms)
+                .subespecialidadHorario(ms)
                 .fecha(FECHA)
                 .capacidadMaxima(5)
                 .cuposOcupados(1)

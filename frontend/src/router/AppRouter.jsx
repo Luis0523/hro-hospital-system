@@ -1,7 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
+import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
+import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
+import RequiereEstacion from './RequiereEstacion.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
@@ -11,8 +16,6 @@ import CuposPage from '@/modules/administracion/pages/CuposPage.jsx'
 import CalendarioPage from '@/modules/administracion/pages/CalendarioPage.jsx'
 import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
 import AuditoriaPage from '@/modules/administracion/pages/AuditoriaPage.jsx'
-import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
-import ProtectedRoute from './ProtectedRoute.jsx'
 
 export default function AppRouter() {
   return (
@@ -23,14 +26,18 @@ export default function AppRouter() {
         path="/enfermeria"
         element={
           <ProtectedRoute>
-            <EnfermeriaPage />
+            <RequiereEstacion>
+              <EnfermeriaPage />
+            </RequiereEstacion>
           </ProtectedRoute>
         }
       />
       <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
       <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
 
-      <Route path="/archivo" element={<EstacionNoDisponible nombre="Estación de Archivo" />} />
+      <Route path="/archivo" element={<ArchivoPage />} />
+      <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
+      <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
 
       <Route path="/administracion" element={<AdministracionLayout />}>
         <Route index element={<DashboardPage />} />

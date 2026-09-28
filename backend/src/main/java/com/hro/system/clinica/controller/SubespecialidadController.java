@@ -3,7 +3,9 @@ package com.hro.system.clinica.controller;
 import com.hro.system.common.ApiResponse;
 import com.hro.system.common.EstadoFiltro;
 import com.hro.system.clinica.dto.CrearSubespecialidadRequestDTO;
+import com.hro.system.clinica.dto.SubespecialidadHorarioResponseDTO;
 import com.hro.system.clinica.dto.SubespecialidadResponseDTO;
+import com.hro.system.clinica.service.SubespecialidadHorarioService;
 import com.hro.system.clinica.service.SubespecialidadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +24,7 @@ import java.util.List;
 public class SubespecialidadController {
 
     private final SubespecialidadService subespecialidadService;
+    private final SubespecialidadHorarioService subespecialidadHorarioService;
 
     @PostMapping
     @Operation(summary = "Crear nueva subespecialidad", description = "Registra una subespecialidad asociada a una especialidad.")
@@ -77,5 +80,12 @@ public class SubespecialidadController {
     public ResponseEntity<ApiResponse<SubespecialidadResponseDTO>> desactivar(@PathVariable Long id) {
         SubespecialidadResponseDTO response = subespecialidadService.cambiarEstado(id, false);
         return ResponseEntity.ok(ApiResponse.ok(response, "Subespecialidad desactivada exitosamente"));
+    }
+
+    @GetMapping("/{id}/horarios")
+    @Operation(summary = "Listar horarios (días y horas) de una subespecialidad")
+    public ResponseEntity<ApiResponse<List<SubespecialidadHorarioResponseDTO>>> listarHorarios(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                subespecialidadHorarioService.listarPorSubespecialidad(id), "Horarios de la subespecialidad"));
     }
 }

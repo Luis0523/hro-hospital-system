@@ -242,7 +242,7 @@ public class ArchivoService {
             Paciente paciente = cita.getPaciente();
             Expediente expediente = expedientePorPaciente.get(paciente.getId());
             ExpedienteCiclo ciclo = cicloPorCita.get(cita.getId());
-            var subespecialidad = cita.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad();
+            var subespecialidad = cita.getCupoDiario().getSubespecialidadHorario().getSubespecialidad();
 
             jornada.add(ExpedienteJornadaDTO.builder()
                     .citaId(cita.getId())

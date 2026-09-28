@@ -21,7 +21,13 @@ vi.mock('@stomp/stompjs', () => {
 
 vi.mock('sockjs-client', () => ({ default: vi.fn(function SockJS() {}) }))
 
-import { crearClienteTablero, TOPIC_TABLERO, topicAsignacion, WS_URL } from './tableroSocket'
+import {
+  crearClienteTablero,
+  normalizarUrlSockjs,
+  TOPIC_TABLERO,
+  topicAsignacion,
+  WS_URL,
+} from './tableroSocket'
 
 describe('tableroSocket', () => {
   beforeEach(() => {
@@ -30,9 +36,15 @@ describe('tableroSocket', () => {
   })
 
   it('usa el endpoint real del backend y los topics acordados', () => {
-    expect(WS_URL).toBe('/api/v1/ws')
+    expect(WS_URL).toMatch(/\/api\/v1\/ws-turnos$/)
     expect(TOPIC_TABLERO).toBe('/topic/tablero')
     expect(topicAsignacion(5)).toBe('/topic/clinica/5')
+  })
+
+  it('normaliza ws(s):// a http(s):// para SockJS', () => {
+    expect(normalizarUrlSockjs('wss://host/api/v1/ws-turnos')).toBe('https://host/api/v1/ws-turnos')
+    expect(normalizarUrlSockjs('ws://host/api/v1/ws-turnos')).toBe('http://host/api/v1/ws-turnos')
+    expect(normalizarUrlSockjs('/api/v1/ws-turnos')).toBe('/api/v1/ws-turnos')
   })
 
   it('se suscribe a /topic/tablero al conectar y saneo el payload recibido', () => {
