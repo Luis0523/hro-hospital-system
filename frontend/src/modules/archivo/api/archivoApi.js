@@ -1,6 +1,7 @@
 import client from '@/shared/api/client'
 import {
   mapearExpedienteBusqueda,
+  mapearJornadaArchivo,
   mapearMedico,
   mapearPaciente,
   mapearSubespecialidad,
@@ -12,6 +13,7 @@ import {
   crearActaRecepcionMock,
   crearExpedienteMock,
   expedientesMock,
+  jornadaArchivoMock,
   listarExpedientesMock,
   marcarNoLocalizadoMock,
   medicosArchivoMock,
@@ -84,9 +86,24 @@ export async function listarSubespecialidades() {
 export async function listarExpedientes({ fecha, subespecialidadId } = {}) {
   if (USE_MOCK) return listarExpedientesMock({ fecha, subespecialidadId })
 
-  // La lista operativa real se tomará de GET /expedientes/jornada
-  // (fecha + subespecialidadId). Su conexión queda fuera de esta fase.
+  // La lista operativa real se toma de GET /expedientes/jornada
+  // (ver listarJornadaArchivo). Se conserva por compatibilidad histórica.
   return pendienteBackend('listar expedientes')
+}
+
+// Jornada diaria real: GET /expedientes/jornada?fecha=&subespecialidadId=
+// -> ApiResponse<List<ExpedienteJornadaDTO>>. En mock se usa una jornada fiel
+// al DTO. No hace fallback silencioso: si el backend falla en modo real, el
+// error se propaga.
+export async function listarJornadaArchivo({ fecha, subespecialidadId } = {}) {
+  if (USE_MOCK) {
+    return jornadaArchivoMock({ fecha, subespecialidadId }).map(mapearJornadaArchivo)
+  }
+
+  const datos = desenvolver(
+    await client.get('/expedientes/jornada', { params: { fecha, subespecialidadId } }),
+  )
+  return (datos ?? []).map(mapearJornadaArchivo)
 }
 
 export async function obtenerExpediente(id) {

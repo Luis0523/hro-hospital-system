@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatearUbicacion,
   mapearCita,
   mapearExpedienteBusqueda,
+  mapearJornadaArchivo,
   mapearMedico,
   mapearPaciente,
   mapearSubespecialidad,
@@ -126,6 +128,56 @@ describe('archivoMappers', () => {
       ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
       activo: true,
     })
+  })
+
+  it('formatea la ubicación base omitiendo campos ausentes', () => {
+    expect(
+      formatearUbicacion({ id: 1, pasillo: 'A', estante: '3', balda: '2', descripcion: null }),
+    ).toBe('Pasillo A · Estante 3 · Balda 2')
+    expect(formatearUbicacion({ descripcion: 'Bodega' })).toBe('Bodega')
+    expect(formatearUbicacion(null)).toBeNull()
+  })
+
+  it('mapea una fila de jornada conservando expedienteId, cicloId y estadoActual', () => {
+    const fila = mapearJornadaArchivo({
+      citaId: 4821,
+      horaEstimada: '08:30:00',
+      pacienteId: '9b2a-uuid',
+      pacienteNombre: 'Juan López',
+      dpi: '2984123450901',
+      numeroExpediente: 'EXP-001234',
+      expedienteId: '3f1c-uuid',
+      subespecialidadId: 2,
+      subespecialidadNombre: 'Medicina General',
+      cicloId: 'a1b2-uuid',
+      estadoActual: 'en_busqueda',
+      ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3', descripcion: null },
+    })
+
+    expect(fila).toMatchObject({
+      id: '3f1c-uuid',
+      expedienteId: '3f1c-uuid',
+      cicloId: 'a1b2-uuid',
+      estadoActual: 'en_busqueda',
+      numeroExpediente: 'EXP-001234',
+      subespecialidadId: 2,
+      ubicacion: 'Pasillo B · Estante 14 · Balda 3',
+    })
+  })
+
+  it('mapea una fila sin expediente físico con sin_ciclo', () => {
+    const fila = mapearJornadaArchivo({
+      citaId: 99,
+      expedienteId: null,
+      cicloId: null,
+      estadoActual: 'sin_ciclo',
+      numeroExpediente: null,
+    })
+
+    expect(fila.expedienteId).toBeNull()
+    expect(fila.cicloId).toBeNull()
+    expect(fila.estadoActual).toBe('sin_ciclo')
+    expect(fila.id).toBe('cita-99')
   })
 
   it('devuelve null ante entradas vacías', () => {

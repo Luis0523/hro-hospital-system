@@ -10,7 +10,7 @@ import {
   avanzarEstado,
   buscarExpedientePorCodigo,
   crearExpediente,
-  listarExpedientes,
+  listarJornadaArchivo,
   listarSubespecialidades,
   marcarNoLocalizado,
   obtenerResumenArchivo,
@@ -34,7 +34,7 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   return {
     ...actual,
     listarSubespecialidades: vi.fn(actual.listarSubespecialidades),
-    listarExpedientes: vi.fn(actual.listarExpedientes),
+    listarJornadaArchivo: vi.fn(actual.listarJornadaArchivo),
     buscarExpedientePorCodigo: vi.fn(actual.buscarExpedientePorCodigo),
     avanzarEstado: vi.fn(actual.avanzarEstado),
     marcarNoLocalizado: vi.fn(actual.marcarNoLocalizado),
@@ -170,6 +170,14 @@ describe('ArchivoPage — checklist oficial', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('informa las citas sin expediente físico y no las incluye en el checklist', async () => {
+    renderPagina()
+    await esperarChecklist()
+
+    expect(screen.getByText('Citas sin expediente físico')).toBeInTheDocument()
+    expect(within(regionPendientes()).getAllByRole('checkbox')).toHaveLength(6)
+  })
+
   it('un expediente nunca aparece en las dos secciones a la vez', async () => {
     const user = userEvent.setup()
     renderPagina()
@@ -240,7 +248,7 @@ describe('ArchivoPage — sin efectos en backend', () => {
     await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
     await user.click(within(regionLocalizados()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
 
-    expect(listarExpedientes).not.toHaveBeenCalled()
+    expect(listarJornadaArchivo).not.toHaveBeenCalled()
     expect(listarSubespecialidades).not.toHaveBeenCalled()
     expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
     expect(avanzarEstado).not.toHaveBeenCalled()
@@ -408,8 +416,8 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
 
     const etiqueta = await screen.findByText('Resultado de búsqueda')
     const fila = etiqueta.closest('li')
-    expect(fila).toHaveAttribute('data-expediente-id', '1')
     expect(fila).toHaveAttribute('data-resaltado', 'true')
+    expect(within(fila).getByText('EXP-004521')).toBeInTheDocument()
   })
 
   it('no abre el detalle del diseño anterior', async () => {

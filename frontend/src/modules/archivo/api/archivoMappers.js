@@ -59,6 +59,44 @@ export function mapearExpedienteBusqueda(dto) {
   }
 }
 
+// Representación legible de ubicacionBase { pasillo, estante, balda, descripcion }.
+// No asume que todos los campos existan.
+export function formatearUbicacion(ubicacion) {
+  if (!ubicacion) return null
+  const partes = []
+  if (ubicacion.pasillo) partes.push(`Pasillo ${ubicacion.pasillo}`)
+  if (ubicacion.estante) partes.push(`Estante ${ubicacion.estante}`)
+  if (ubicacion.balda) partes.push(`Balda ${ubicacion.balda}`)
+  if (partes.length) return partes.join(' · ')
+  return ubicacion.descripcion ?? null
+}
+
+// Fila de la jornada de archivo (ExpedienteJornadaDTO). Conserva los campos
+// backend originales (expedienteId, cicloId, estadoActual, ubicacionBase) que
+// se necesitarán para integrar transiciones y actas. No inventa médico,
+// clínica ni estados.
+export function mapearJornadaArchivo(dto) {
+  if (!dto) return null
+  return {
+    id: dto.expedienteId ?? `cita-${dto.citaId}`,
+    citaId: dto.citaId ?? null,
+    horaEstimada: dto.horaEstimada ?? null,
+    pacienteId: dto.pacienteId ?? null,
+    pacienteNombre: dto.pacienteNombre ?? '',
+    dpi: dto.dpi ?? null,
+    numeroExpediente: dto.numeroExpediente ?? null,
+    expedienteId: dto.expedienteId ?? null,
+    subespecialidadId: dto.subespecialidadId ?? null,
+    subespecialidadNombre: dto.subespecialidadNombre ?? null,
+    cicloId: dto.cicloId ?? null,
+    estadoActual: dto.estadoActual ?? null,
+    ubicacionBase: dto.ubicacionBase ?? null,
+    ubicacion: formatearUbicacion(dto.ubicacionBase),
+    // Compatibilidad con la vista operativa actual.
+    estado: dto.estadoActual ?? null,
+  }
+}
+
 export function mapearCita(dto) {
   if (!dto) return null
   return {

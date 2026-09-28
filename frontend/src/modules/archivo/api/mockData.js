@@ -430,3 +430,58 @@ export function obtenerActaRecepcionMock(id) {
   }
   return acta
 }
+
+// ---------------------------------------------------------------------------
+// Jornada de archivo (contrato ExpedienteJornadaDTO). Refleja progresivamente
+// el DTO real: una fila por cita con expedienteId/cicloId/estadoActual
+// (o null/sin_ciclo cuando corresponde) y ubicacionBase.
+// ---------------------------------------------------------------------------
+const ESTADO_JORNADA_MOCK = {
+  1: 'pendiente_localizar',
+  2: 'en_busqueda',
+  3: 'localizado',
+  4: 'en_transito_entrega',
+  5: 'entregado',
+  6: 'no_localizado',
+}
+
+const UBICACIONES_MOCK = {
+  1: { id: 1, pasillo: 'A', estante: '3', balda: '12', descripcion: null },
+  2: { id: 2, pasillo: 'B', estante: '1', balda: '4', descripcion: null },
+  3: { id: 3, pasillo: 'C', estante: '2', balda: '8', descripcion: null },
+  4: { id: 4, pasillo: 'D', estante: '4', balda: '21', descripcion: null },
+  5: { id: 5, pasillo: 'A', estante: '1', balda: '2', descripcion: null },
+  6: { id: 6, pasillo: 'E', estante: '2', balda: '15', descripcion: null },
+}
+
+function uuidMock(bloque, id) {
+  return `${bloque}-0000-4000-8000-${String(id).padStart(12, '0')}`
+}
+
+export function jornadaArchivoMock({ fecha, subespecialidadId } = {}) {
+  return expedientesMock
+    .filter((expediente) => !fecha || expediente.fechaCita === fecha)
+    .filter(
+      (expediente) =>
+        !subespecialidadId || expediente.subespecialidadId === Number(subespecialidadId),
+    )
+    .map((expediente) => {
+      const tieneExpediente = Boolean(expediente.numeroExpediente)
+      return {
+        citaId: expediente.citaId,
+        horaEstimada: expediente.horaEstimada,
+        pacienteId: expediente.pacienteId,
+        pacienteNombre: expediente.pacienteNombre,
+        dpi: expediente.pacienteDpi,
+        numeroExpediente: expediente.numeroExpediente,
+        expedienteId: tieneExpediente ? uuidMock('10000000', expediente.id) : null,
+        subespecialidadId: expediente.subespecialidadId,
+        subespecialidadNombre: expediente.subespecialidadNombre,
+        cicloId: tieneExpediente ? uuidMock('20000000', expediente.id) : null,
+        estadoActual: tieneExpediente
+          ? (ESTADO_JORNADA_MOCK[expediente.id] ?? 'pendiente_localizar')
+          : 'sin_ciclo',
+        ubicacionBase: UBICACIONES_MOCK[expediente.id] ?? null,
+      }
+    })
+}

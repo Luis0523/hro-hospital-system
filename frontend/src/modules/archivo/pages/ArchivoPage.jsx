@@ -18,6 +18,18 @@ function ordenarPorHora(expedientes) {
   )
 }
 
+// Relaciona un resultado de búsqueda con una fila de la jornada usando el
+// contrato real: expedienteId (UUID) si ambos lo tienen; si no, el número de
+// expediente. No compara por índices ni por código artificial.
+function coincideConFila(fila, encontrado) {
+  if (!fila || !encontrado) return false
+  if (fila.expedienteId && encontrado.expedienteId) {
+    return fila.expedienteId === encontrado.expedienteId
+  }
+  const referencia = encontrado.numeroExpediente ?? encontrado.codigo
+  return Boolean(referencia) && fila.numeroExpediente === referencia
+}
+
 // Sección de checklist reutilizada para "Pendientes de localizar" y
 // "Expedientes localizados". El marcado es puramente visual: el estado real del
 // expediente no cambia. `resultadoBusqueda` solo resalta la fila encontrada por
@@ -76,7 +88,6 @@ export default function ArchivoPage() {
     expedientes,
     cargando,
     error,
-    total,
   } = useExpedientes()
   const {
     resumen: resumenServidor,
@@ -105,10 +116,19 @@ export default function ArchivoPage() {
     setLocalizados(new Set())
   }, [fecha, subespecialidadId])
 
+  // Filas con expediente físico real (expedienteId). Las citas sin expedienteId
+  // no entran al checklist operativo, pero no se descartan en silencio: se
+  // informan más abajo (no se inventa número ni UUID).
+  const filasOperativas = useMemo(
+    () => expedientes.filter((expediente) => Boolean(expediente.expedienteId)),
+    [expedientes],
+  )
+  const sinExpediente = expedientes.length - filasOperativas.length
+
   const { pendientes, localizadosLista } = useMemo(() => {
     const pend = []
     const loc = []
-    for (const expediente of expedientes) {
+    for (const expediente of filasOperativas) {
       if (localizados.has(expediente.id)) {
         loc.push(expediente)
       } else {
@@ -116,7 +136,7 @@ export default function ArchivoPage() {
       }
     }
     return { pendientes: ordenarPorHora(pend), localizadosLista: ordenarPorHora(loc) }
-  }, [expedientes, localizados])
+  }, [filasOperativas, localizados])
 
   // Lleva el foco/scroll a la fila encontrada por el buscador. `scrollIntoView`
   // no existe en jsdom, por eso se invoca de forma opcional.
@@ -155,8 +175,8 @@ export default function ArchivoPage() {
         return
       }
 
-      const visible = expedientes.some((expediente) => expediente.id === encontrado.id)
-      if (!visible) {
+      const fila = filasOperativas.find((expediente) => coincideConFila(expediente, encontrado))
+      if (!fila) {
         setResultadoBusqueda(null)
         mostrarToast({
           tone: 'warning',
@@ -168,7 +188,7 @@ export default function ArchivoPage() {
 
       // Solo se resalta la fila. El checkbox permanece intacto y el usuario
       // decide manualmente si la marca como localizada.
-      setResultadoBusqueda(encontrado.id)
+      setResultadoBusqueda(fila.id)
       setCodigo('')
     } catch (fallo) {
       mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: fallo.message })
@@ -245,7 +265,7 @@ export default function ArchivoPage() {
         />
 
         <ResumenEstados
-          total={total}
+          total={filasOperativas.length}
           pendientes={pendientes.length}
           localizados={localizadosLista.length}
         />
@@ -257,13 +277,19 @@ export default function ArchivoPage() {
             <Alert tone="error" title="No se pudieron cargar los expedientes">
               {error.message}
             </Alert>
-          ) : expedientes.length === 0 ? (
+          ) : filasOperativas.length === 0 ? (
             <EmptyState
               title="Sin expedientes para esta fecha"
               description="Pruebe con otra fecha o subespecialidad."
             />
           ) : (
             <>
+              {sinExpediente > 0 && (
+                <Alert tone="warning" title="Citas sin expediente físico">
+                  {sinExpediente} cita(s) de la jornada no tienen expediente físico registrado y no
+                  se incluyen en el checklist.
+                </Alert>
+              )}
               <SeccionChecklist
                 titulo="Pendientes de localizar"
                 icono="pending_actions"

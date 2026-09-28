@@ -3,7 +3,7 @@ import { aIso } from '@/shared/utils/fecha'
 import {
   avanzarEstado,
   crearExpediente,
-  listarExpedientes,
+  listarJornadaArchivo,
   listarSubespecialidades,
   marcarNoLocalizado,
 } from '../api/archivoApi'
@@ -33,7 +33,7 @@ export function useExpedientes() {
     setCargando(true)
     setError(null)
     try {
-      const lista = await listarExpedientes({ fecha, subespecialidadId })
+      const lista = await listarJornadaArchivo({ fecha, subespecialidadId })
       setExpedientes(lista)
     } catch (fallo) {
       setError(fallo)

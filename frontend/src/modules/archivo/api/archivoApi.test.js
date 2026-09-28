@@ -8,6 +8,7 @@ import {
   crearExpediente,
   listarClinicas,
   listarExpedientes,
+  listarJornadaArchivo,
   listarSubespecialidades,
   marcarNoLocalizado,
   obtenerActaRecepcion,
@@ -76,6 +77,27 @@ describe('archivoApi (mock)', () => {
 
     expect(encontrado?.id).toBe(1)
     expect(await buscarExpedientePorCodigo('NO-EXISTE')).toBeNull()
+  })
+
+  it('lista la jornada con expedienteId, cicloId y estadoActual', async () => {
+    const jornada = await listarJornadaArchivo()
+
+    expect(jornada.length).toBeGreaterThan(0)
+
+    const conExpediente = jornada.find((fila) => fila.expedienteId)
+    expect(conExpediente.expedienteId).toEqual(expect.any(String))
+    expect(conExpediente.cicloId).toEqual(expect.any(String))
+    expect(conExpediente.estadoActual).toEqual(expect.any(String))
+
+    const sinExpediente = jornada.find((fila) => !fila.expedienteId)
+    expect(sinExpediente.estadoActual).toBe('sin_ciclo')
+  })
+
+  it('filtra la jornada por subespecialidad', async () => {
+    const jornada = await listarJornadaArchivo({ subespecialidadId: 1 })
+
+    expect(jornada.length).toBeGreaterThan(0)
+    expect(jornada.every((fila) => fila.subespecialidadId === 1)).toBe(true)
   })
 
   it('crea el expediente físico de un paciente nuevo', async () => {

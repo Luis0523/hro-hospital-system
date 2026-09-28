@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import {
   avanzarEstado,
   crearExpediente,
-  listarExpedientes,
+  listarJornadaArchivo,
   listarSubespecialidades,
   marcarNoLocalizado,
 } from '../api/archivoApi'
@@ -11,7 +11,7 @@ import { useExpedientes } from './useExpedientes'
 
 vi.mock('../api/archivoApi', () => ({
   listarSubespecialidades: vi.fn(),
-  listarExpedientes: vi.fn(),
+  listarJornadaArchivo: vi.fn(),
   avanzarEstado: vi.fn(),
   marcarNoLocalizado: vi.fn(),
   crearExpediente: vi.fn(),
@@ -20,13 +20,13 @@ vi.mock('../api/archivoApi', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   listarSubespecialidades.mockResolvedValue([])
-  listarExpedientes.mockResolvedValue([])
+  listarJornadaArchivo.mockResolvedValue([])
 })
 
 describe('useExpedientes', () => {
   it('inicia en carga y la desactiva al resolver', async () => {
     let resolver
-    listarExpedientes.mockReturnValueOnce(
+    listarJornadaArchivo.mockReturnValueOnce(
       new Promise((res) => {
         resolver = res
       }),
@@ -43,7 +43,7 @@ describe('useExpedientes', () => {
   })
 
   it('expone el error y deja la lista vacía si falla la carga', async () => {
-    listarExpedientes.mockRejectedValue(new Error('fallo de red'))
+    listarJornadaArchivo.mockRejectedValue(new Error('fallo de red'))
 
     const { result } = renderHook(() => useExpedientes())
 
@@ -59,14 +59,14 @@ describe('useExpedientes', () => {
 
     act(() => result.current.setSubespecialidadId(1))
     await waitFor(() =>
-      expect(listarExpedientes).toHaveBeenLastCalledWith(
+      expect(listarJornadaArchivo).toHaveBeenLastCalledWith(
         expect.objectContaining({ subespecialidadId: 1 }),
       ),
     )
 
     act(() => result.current.setFecha('2026-09-21'))
     await waitFor(() =>
-      expect(listarExpedientes).toHaveBeenLastCalledWith(
+      expect(listarJornadaArchivo).toHaveBeenLastCalledWith(
         expect.objectContaining({ fecha: '2026-09-21' }),
       ),
     )
@@ -82,7 +82,7 @@ describe('useExpedientes', () => {
   })
 
   it('calcula el resumen por estado incluida la excepción', async () => {
-    listarExpedientes.mockResolvedValue([
+    listarJornadaArchivo.mockResolvedValue([
       { id: 1, estado: 'pendiente_localizar' },
       { id: 2, estado: 'entregado' },
       { id: 3, estado: 'no_localizado' },
@@ -97,7 +97,7 @@ describe('useExpedientes', () => {
   })
 
   it('actualiza el expediente en la lista tras avanzar', async () => {
-    listarExpedientes.mockResolvedValue([{ id: 1, estado: 'pendiente_localizar' }])
+    listarJornadaArchivo.mockResolvedValue([{ id: 1, estado: 'pendiente_localizar' }])
     avanzarEstado.mockResolvedValue({ id: 1, estado: 'en_busqueda' })
 
     const { result } = renderHook(() => useExpedientes())
@@ -111,7 +111,7 @@ describe('useExpedientes', () => {
   })
 
   it('reemplaza el expediente nuevo tras crearlo', async () => {
-    listarExpedientes.mockResolvedValue([
+    listarJornadaArchivo.mockResolvedValue([
       { id: 7, pacienteId: 7, estado: 'pendiente_localizar', expedienteNuevo: true },
     ])
     crearExpediente.mockResolvedValue({
@@ -134,7 +134,7 @@ describe('useExpedientes', () => {
   })
 
   it('marca no localizado y reemplaza el expediente', async () => {
-    listarExpedientes.mockResolvedValue([{ id: 3, estado: 'pendiente_localizar' }])
+    listarJornadaArchivo.mockResolvedValue([{ id: 3, estado: 'pendiente_localizar' }])
     marcarNoLocalizado.mockResolvedValue({ id: 3, estado: 'no_localizado' })
 
     const { result } = renderHook(() => useExpedientes())
