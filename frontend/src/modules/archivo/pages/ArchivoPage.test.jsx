@@ -78,7 +78,7 @@ function renderRuta(ruta) {
 const regionPendientes = () => screen.getByRole('region', { name: 'Pendientes de localizar' })
 const regionLocalizados = () => screen.getByRole('region', { name: 'Expedientes localizados' })
 
-const NOMBRE_CHECKBOX = /seleccionar expediente EXP-004521 de María Fernanda López García/i
+const NOMBRE_CHECKBOX = /seleccionar expediente EXP-2024-035 de María Fernanda López García/i
 
 async function esperarChecklist() {
   await screen.findByRole('region', { name: 'Pendientes de localizar' })
@@ -412,12 +412,12 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
     renderPagina()
     await esperarChecklist()
 
-    await buscar(user, 'EXP-004521')
+    await buscar(user, 'EXP-2024-035')
 
     const etiqueta = await screen.findByText('Resultado de búsqueda')
     const fila = etiqueta.closest('li')
     expect(fila).toHaveAttribute('data-resaltado', 'true')
-    expect(within(fila).getByText('EXP-004521')).toBeInTheDocument()
+    expect(within(fila).getByText('EXP-2024-035')).toBeInTheDocument()
   })
 
   it('no abre el detalle del diseño anterior', async () => {
@@ -425,7 +425,7 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
     renderPagina()
     await esperarChecklist()
 
-    await buscar(user, 'EXP-004521')
+    await buscar(user, 'EXP-2024-035')
     await screen.findByText('Resultado de búsqueda')
 
     expect(screen.queryByText('Detalle del expediente')).not.toBeInTheDocument()
@@ -440,7 +440,7 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
     renderPagina()
     await esperarChecklist()
 
-    await buscar(user, 'EXP-004521')
+    await buscar(user, 'EXP-2024-035')
     await screen.findByText('Resultado de búsqueda')
 
     expect(
@@ -456,7 +456,7 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
     renderPagina()
     await esperarChecklist()
 
-    await buscar(user, 'EXP-004521')
+    await buscar(user, 'EXP-2024-035')
     await screen.findByText('Resultado de búsqueda')
 
     await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))
@@ -471,7 +471,7 @@ describe('ArchivoPage — el buscador localiza sin cambiar el checklist', () => 
     renderPagina()
     await esperarChecklist()
 
-    await buscar(user, 'EXP-004521')
+    await buscar(user, 'EXP-2024-035')
     await screen.findByText('Resultado de búsqueda')
 
     await user.click(within(regionPendientes()).getByRole('checkbox', { name: NOMBRE_CHECKBOX }))

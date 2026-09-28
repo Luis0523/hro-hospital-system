@@ -119,7 +119,7 @@ describe('useExpedientes', () => {
       pacienteId: 7,
       estado: 'pendiente_localizar',
       expedienteNuevo: false,
-      numeroExpediente: 'EXP-000707',
+      numeroExpediente: 'EXP-2024-035',
     })
 
     const { result } = renderHook(() => useExpedientes())
@@ -129,7 +129,7 @@ describe('useExpedientes', () => {
       await result.current.crear(7)
     })
 
-    expect(result.current.expedientes[0].numeroExpediente).toBe('EXP-000707')
+    expect(result.current.expedientes[0].numeroExpediente).toBe('EXP-2024-035')
     expect(result.current.expedientes[0].expedienteNuevo).toBe(false)
   })
 

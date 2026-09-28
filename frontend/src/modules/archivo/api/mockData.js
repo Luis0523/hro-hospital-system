@@ -57,6 +57,10 @@ function historialBase(estado, horasAtras = 3) {
   ]
 }
 
+// Fixtures de prueba. Los valores `EXP-*` son DATOS DE EJEMPLO y NO representan
+// un formato obligatorio ni un contrato: `numeroExpediente` es un identificador
+// externo opaco que el backend no genera ni valida. Por eso se mezclan
+// longitudes (EXP-2024-035 y EXP-2023-8941) para no asumir ningún patrón.
 export const expedientesMock = [
   {
     id: 1,
@@ -64,8 +68,8 @@ export const expedientesMock = [
     pacienteId: 1,
     pacienteNombre: 'María Fernanda López García',
     pacienteDpi: '2456789010101',
-    numeroExpediente: 'EXP-004521',
-    codigo: 'EXP-004521',
+    numeroExpediente: 'EXP-2024-035',
+    codigo: 'EXP-2024-035',
     ubicacion: 'Estante A · Fila 3 · Caja 12',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -83,8 +87,8 @@ export const expedientesMock = [
     pacienteId: 2,
     pacienteNombre: 'Carlos Eduardo Ramírez Soto',
     pacienteDpi: '1899234560101',
-    numeroExpediente: 'EXP-003118',
-    codigo: 'EXP-003118',
+    numeroExpediente: 'EXP-2024-002',
+    codigo: 'EXP-2024-002',
     ubicacion: 'Estante B · Fila 1 · Caja 04',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -110,8 +114,8 @@ export const expedientesMock = [
     pacienteId: 3,
     pacienteNombre: 'Ana Lucía Pérez Morales',
     pacienteDpi: '3012456780101',
-    numeroExpediente: 'EXP-005902',
-    codigo: 'EXP-005902',
+    numeroExpediente: 'EXP-2024-016',
+    codigo: 'EXP-2024-016',
     ubicacion: 'Estante C · Fila 2 · Caja 08',
     subespecialidadId: 2,
     subespecialidadNombre: 'Pediatría General',
@@ -138,8 +142,8 @@ export const expedientesMock = [
     pacienteId: 4,
     pacienteNombre: 'José Manuel Ordóñez Figueroa',
     pacienteDpi: '2233445560101',
-    numeroExpediente: 'EXP-006310',
-    codigo: 'EXP-006310',
+    numeroExpediente: 'EXP-2023-8941',
+    codigo: 'EXP-2023-8941',
     ubicacion: 'Estante D · Fila 4 · Caja 21',
     subespecialidadId: 4,
     subespecialidadNombre: 'Cardiología Clínica',
@@ -167,8 +171,8 @@ export const expedientesMock = [
     pacienteId: 5,
     pacienteNombre: 'Rosa Amelia Chávez de León',
     pacienteDpi: '1998877660101',
-    numeroExpediente: 'EXP-001877',
-    codigo: 'EXP-001877',
+    numeroExpediente: 'EXP-2024-041',
+    codigo: 'EXP-2024-041',
     ubicacion: 'Estante A · Fila 1 · Caja 02',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -197,8 +201,8 @@ export const expedientesMock = [
     pacienteId: 6,
     pacienteNombre: 'Luis Fernando Barrios Méndez',
     pacienteDpi: '2112233440101',
-    numeroExpediente: 'EXP-007042',
-    codigo: 'EXP-007042',
+    numeroExpediente: 'EXP-2022-5412',
+    codigo: 'EXP-2022-5412',
     ubicacion: 'Estante E · Fila 2 · Caja 15',
     subespecialidadId: 2,
     subespecialidadNombre: 'Pediatría General',
@@ -319,27 +323,23 @@ export function marcarNoLocalizadoMock(id) {
   return clonar(expediente)
 }
 
-function normalizar(valor) {
-  return String(valor ?? '')
-    .replace(/[\s-]/g, '')
-    .toLowerCase()
-}
-
+// El backend resuelve el código con un simple trim y compara exacto (UUID o
+// número impreso). No se normaliza el valor: no se eliminan guiones ni espacios
+// para fabricar coincidencias que el endpoint real no aceptaría.
 export function buscarExpedientePorCodigoMock(codigo) {
-  const buscado = normalizar(codigo)
+  const buscado = String(codigo ?? '').trim()
   if (!buscado) return null
 
-  const expediente = expedientesMock.find((registro) =>
-    [registro.codigo, registro.numeroExpediente, registro.pacienteDpi].some(
-      (valor) => valor && normalizar(valor) === buscado,
-    ),
+  const expediente = expedientesMock.find(
+    (registro) => registro.codigo === buscado || registro.numeroExpediente === buscado,
   )
   return expediente ? clonar(expediente) : null
 }
 
-// Simula la creación del expediente físico de un paciente nuevo. Una vez
-// creado, el expediente entra al flujo normal de trazabilidad en
-// "pendiente_localizar".
+// Simula la creación del expediente físico de un paciente nuevo. El número de
+// expediente es un identificador externo opaco: el frontend NO lo genera ni lo
+// reformatea. Se reproduce el comportamiento del backend: se hereda el número
+// que ya tenga el paciente y, si no existe, se falla (BusinessException).
 export function crearExpedienteMock(pacienteId) {
   const expediente = expedientesMock.find((registro) => registro.pacienteId === Number(pacienteId))
   if (!expediente) {
@@ -353,8 +353,13 @@ export function crearExpedienteMock(pacienteId) {
     throw error
   }
 
-  const numeroExpediente = `EXP-${String(7000 + expediente.id).padStart(6, '0')}`
-  expediente.numeroExpediente = numeroExpediente
+  const numeroExpediente = expediente.numeroExpediente
+  if (!numeroExpediente) {
+    const error = new Error('El paciente no tiene un número de expediente asignado')
+    error.status = 400
+    throw error
+  }
+
   expediente.codigo = numeroExpediente
   expediente.expedienteNuevo = false
   expediente.estado = 'pendiente_localizar'

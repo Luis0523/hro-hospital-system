@@ -6,7 +6,7 @@ import ListadoCompactoExpediente from './ListadoCompactoExpediente.jsx'
 const EXPEDIENTE = {
   id: 1,
   pacienteNombre: 'María Fernanda López García',
-  numeroExpediente: 'EXP-004521',
+  numeroExpediente: 'EXP-2024-035',
   clinicaNombre: 'Clínica 01 - Medicina General',
   medicoNombre: 'Dr. Jorge Castillo',
   horaEstimada: '10:20:00',
@@ -26,7 +26,7 @@ describe('ListadoCompactoExpediente', () => {
   it('prioriza el número de expediente', () => {
     renderFila()
 
-    expect(screen.getByText('EXP-004521')).toBeInTheDocument()
+    expect(screen.getByText('EXP-2024-035')).toBeInTheDocument()
   })
 
   it('muestra información secundaria discreta: paciente, ubicación y hora', () => {
@@ -48,7 +48,7 @@ describe('ListadoCompactoExpediente', () => {
     renderFila()
 
     const checkbox = screen.getByRole('checkbox', {
-      name: /seleccionar expediente EXP-004521 de María Fernanda López García/i,
+      name: /seleccionar expediente EXP-2024-035 de María Fernanda López García/i,
     })
     expect(checkbox).not.toBeChecked()
   })

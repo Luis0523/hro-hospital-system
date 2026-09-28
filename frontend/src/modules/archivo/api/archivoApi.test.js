@@ -73,7 +73,7 @@ describe('archivoApi (mock)', () => {
   })
 
   it('busca por código escaneado', async () => {
-    const encontrado = await buscarExpedientePorCodigo('EXP-004521')
+    const encontrado = await buscarExpedientePorCodigo('EXP-2024-035')
 
     expect(encontrado?.id).toBe(1)
     expect(await buscarExpedientePorCodigo('NO-EXISTE')).toBeNull()
@@ -100,15 +100,14 @@ describe('archivoApi (mock)', () => {
     expect(jornada.every((fila) => fila.subespecialidadId === 1)).toBe(true)
   })
 
-  it('crea el expediente físico de un paciente nuevo', async () => {
-    const creado = await crearExpediente(7)
-
-    expect(creado.expedienteNuevo).toBe(false)
-    expect(creado.numeroExpediente).toBeTruthy()
-    expect(creado.estado).toBe('pendiente_localizar')
+  it('no inventa un número al crear el expediente de un paciente sin número asignado', async () => {
+    // El paciente 7 no tiene numeroExpediente: el mock debe reproducir el
+    // comportamiento del backend (fallar) en vez de fabricar uno.
+    await expect(crearExpediente(7)).rejects.toMatchObject({ status: 400 })
 
     const detalle = await obtenerExpediente(7)
-    expect(detalle.numeroExpediente).toBe(creado.numeroExpediente)
+    expect(detalle.numeroExpediente).toBeNull()
+    expect(detalle.expedienteNuevo).toBe(true)
   })
 })
 
@@ -128,9 +127,9 @@ describe('archivoApi (catálogos y auxiliares en modo mock)', () => {
   })
 
   it('busca paciente por número de expediente', async () => {
-    const paciente = await buscarPacientePorExpediente('EXP-004521')
+    const paciente = await buscarPacientePorExpediente('EXP-2024-035')
 
-    expect(paciente?.numeroExpediente).toBe('EXP-004521')
+    expect(paciente?.numeroExpediente).toBe('EXP-2024-035')
     expect(await buscarPacientePorExpediente('NO-EXISTE')).toBeNull()
   })
 
@@ -183,5 +182,46 @@ describe('archivoApi (resumen y actas - SCRUM-96)', () => {
 
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('application/pdf')
+  })
+})
+
+// `numeroExpediente` es un identificador externo opaco: el frontend no lo
+// genera, no lo reformatea y no valida un patrón. Los valores `EXP-*` son solo
+// fixtures; estas pruebas no dependen de un formato como /^EXP-\d{6}$/.
+describe('archivoApi — numeroExpediente como identificador opaco', () => {
+  it('conserva EXP-2024-035 exactamente', async () => {
+    const encontrado = await buscarExpedientePorCodigo('EXP-2024-035')
+
+    expect(encontrado?.numeroExpediente).toBe('EXP-2024-035')
+  })
+
+  it('conserva otro formato distinto (EXP-2023-8941) sin reinterpretarlo', async () => {
+    const encontrado = await buscarExpedientePorCodigo('EXP-2023-8941')
+
+    expect(encontrado?.numeroExpediente).toBe('EXP-2023-8941')
+  })
+
+  it('no transforma el valor recibido', async () => {
+    const recibido = 'EXP-2023-8941'
+    const encontrado = await buscarExpedientePorCodigo(recibido)
+
+    expect(encontrado?.numeroExpediente).toBe(recibido)
+    expect(encontrado?.numeroExpediente).toHaveLength(recibido.length)
+  })
+
+  it('una búsqueda con código alterado no produce falso positivo', async () => {
+    // Sin guiones, con espacios o en minúsculas: el endpoint real no normaliza.
+    expect(await buscarExpedientePorCodigo('EXP2024035')).toBeNull()
+    expect(await buscarExpedientePorCodigo('EXP 2024 035')).toBeNull()
+    expect(await buscarExpedientePorCodigo('exp-2024-035')).toBeNull()
+    // El trim del input sí se conserva.
+    expect(await buscarExpedientePorCodigo('  EXP-2024-035  ')).not.toBeNull()
+  })
+
+  it('crearExpedienteMock no genera un numeroExpediente artificial', async () => {
+    await expect(crearExpediente(7)).rejects.toMatchObject({ status: 400 })
+
+    const detalle = await obtenerExpediente(7)
+    expect(detalle.numeroExpediente).toBeNull()
   })
 })

@@ -115,7 +115,7 @@ describe('archivoMappers', () => {
     const expediente = mapearExpedienteBusqueda({
       id: '3f1c-uuid',
       pacienteId: '9b2a-uuid',
-      numeroExpediente: 'EXP-001234',
+      numeroExpediente: 'EXP-2024-035',
       ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
       activo: true,
       creadoEn: '2026-09-20T10:00:00',
@@ -123,8 +123,8 @@ describe('archivoMappers', () => {
 
     expect(expediente).toEqual({
       id: '3f1c-uuid',
-      numeroExpediente: 'EXP-001234',
-      codigo: 'EXP-001234',
+      numeroExpediente: 'EXP-2024-035',
+      codigo: 'EXP-2024-035',
       ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
       activo: true,
     })
@@ -145,7 +145,7 @@ describe('archivoMappers', () => {
       pacienteId: '9b2a-uuid',
       pacienteNombre: 'Juan López',
       dpi: '2984123450901',
-      numeroExpediente: 'EXP-001234',
+      numeroExpediente: 'EXP-2024-035',
       expedienteId: '3f1c-uuid',
       subespecialidadId: 2,
       subespecialidadNombre: 'Medicina General',
@@ -159,7 +159,7 @@ describe('archivoMappers', () => {
       expedienteId: '3f1c-uuid',
       cicloId: 'a1b2-uuid',
       estadoActual: 'en_busqueda',
-      numeroExpediente: 'EXP-001234',
+      numeroExpediente: 'EXP-2024-035',
       subespecialidadId: 2,
       ubicacion: 'Pasillo B · Estante 14 · Balda 3',
     })
@@ -178,6 +178,21 @@ describe('archivoMappers', () => {
     expect(fila.cicloId).toBeNull()
     expect(fila.estadoActual).toBe('sin_ciclo')
     expect(fila.id).toBe('cita-99')
+  })
+
+  it('conserva el numeroExpediente tal cual, sin reformatear ni validar patrón', () => {
+    // Formatos deliberadamente distintos: un mapper no debe asumir /^EXP-\d{6}$/.
+    const formatos = ['EXP-2024-035', 'EXP-2023-8941', 'EXP-2024-1', 'A-1/B']
+
+    for (const numeroExpediente of formatos) {
+      expect(mapearExpedienteBusqueda({ id: 'x', numeroExpediente }).numeroExpediente).toBe(
+        numeroExpediente,
+      )
+      expect(mapearJornadaArchivo({ citaId: 1, numeroExpediente }).numeroExpediente).toBe(
+        numeroExpediente,
+      )
+      expect(mapearPaciente({ id: 'x', numeroExpediente }).numeroExpediente).toBe(numeroExpediente)
+    }
   })
 
   it('devuelve null ante entradas vacías', () => {

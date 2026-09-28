@@ -20,7 +20,7 @@ const PACIENTE_NUEVO = {
 const EXPEDIENTE_EXISTENTE = {
   id: 1,
   pacienteNombre: 'María Fernanda López García',
-  numeroExpediente: 'EXP-004521',
+  numeroExpediente: 'EXP-2024-035',
   expedienteNuevo: false,
   estado: 'pendiente_localizar',
   clinicaNombre: 'Clínica 01 - Medicina General',

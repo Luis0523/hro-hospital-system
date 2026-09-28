@@ -85,7 +85,7 @@ describe('ScannerExpediente', () => {
     configurarHook()
     const onSubmit = vi.fn((event) => event.preventDefault())
     const user = userEvent.setup()
-    renderScanner({ value: 'EXP-004521', onSubmit })
+    renderScanner({ value: 'EXP-2024-035', onSubmit })
 
     await user.click(screen.getByRole('button', { name: 'Buscar' }))
 

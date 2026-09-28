@@ -6,7 +6,7 @@ import ExpedienteCard from './ExpedienteCard.jsx'
 const EXPEDIENTE = {
   id: 1,
   pacienteNombre: 'María Fernanda López García',
-  numeroExpediente: 'EXP-004521',
+  numeroExpediente: 'EXP-2024-035',
   expedienteNuevo: false,
   estado: 'pendiente_localizar',
   clinicaNombre: 'Clínica 01 - Medicina General',
@@ -19,7 +19,7 @@ describe('ExpedienteCard', () => {
   it('muestra el número y la acción de trazabilidad de un expediente existente', () => {
     render(<ExpedienteCard expediente={EXPEDIENTE} />)
 
-    expect(screen.getByText('EXP-004521')).toBeInTheDocument()
+    expect(screen.getByText('EXP-2024-035')).toBeInTheDocument()
     expect(screen.getByText('Ver trazabilidad')).toBeInTheDocument()
     expect(screen.queryByText('Expediente nuevo')).not.toBeInTheDocument()
   })
