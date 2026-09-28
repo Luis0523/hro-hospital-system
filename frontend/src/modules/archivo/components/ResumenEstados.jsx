@@ -18,13 +18,13 @@ const INDICADORES = [
     clave: 'pendientes',
     etiqueta: 'Pendientes',
     icono: 'pending_actions',
-    color: 'bg-amber-100 text-amber-800',
+    color: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200',
   },
   {
     clave: 'localizados',
     etiqueta: 'Localizados',
     icono: 'check_circle',
-    color: 'bg-emerald-100 text-emerald-800',
+    color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
   },
 ]
 
@@ -34,7 +34,7 @@ export default function ResumenEstados({ total = 0, pendientes = 0, localizados 
   return (
     <section
       aria-label="Resumen del día"
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
       <h2 className="mb-3 flex items-center gap-2 text-title-md text-on-surface">
         <Icon name="monitoring" className="text-[20px] text-primary" />

@@ -34,7 +34,7 @@ function SeccionChecklist({
   return (
     <section
       aria-label={titulo}
-      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between gap-2 px-2 pt-1">
         <h2 className="flex items-center gap-2 text-title-md text-on-surface">
@@ -244,7 +244,7 @@ export default function ArchivoPage() {
 
         <section
           aria-label="Acciones del día"
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
         >
           <h2 className="text-title-md text-on-surface">Acciones del día</h2>
           <p className="mt-1 text-body-sm text-on-surface-variant">

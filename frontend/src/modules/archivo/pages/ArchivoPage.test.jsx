@@ -453,6 +453,9 @@ describe('ArchivoPage — navegación de la estación', () => {
     renderRuta('/archivo/salidas-externas')
 
     expect(await screen.findByText(/sección provisional/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('navigation', { name: 'Navegación de la Estación de Archivo' }),
+    ).toBeInTheDocument()
   })
 
   it('cerrar sesión usa el mecanismo existente y navega a /sesion-cerrada', async () => {

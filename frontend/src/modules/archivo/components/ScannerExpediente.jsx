@@ -4,9 +4,9 @@ export default function ScannerExpediente({ value, onChange, onSubmit, onSimular
   return (
     <section
       aria-label="Búsqueda de expediente"
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
-      <label htmlFor="codigo-expediente" className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor="codigo-expediente" className="mb-1 block text-sm font-medium text-on-surface">
         Buscar expediente por código
       </label>
       <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row">
@@ -22,10 +22,10 @@ export default function ScannerExpediente({ value, onChange, onSubmit, onSimular
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder="Escanee o escriba el código del expediente..."
-            className="h-12 w-full rounded-xl border border-slate-300 bg-surface-container-low pl-14 pr-4 text-title-md text-on-surface outline-none transition focus:border-hro-blue focus:bg-white focus:ring-2 focus:ring-cyan-100"
+            className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low pl-14 pr-4 text-title-md text-on-surface outline-none transition focus:border-hro-blue focus:bg-surface-container-lowest focus:ring-2 focus:ring-secondary-fixed-dim"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="submit"
             className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-hro-blue px-4 text-title-sm text-white transition hover:bg-blue-800 active:scale-95 sm:flex-none"
@@ -45,7 +45,7 @@ export default function ScannerExpediente({ value, onChange, onSubmit, onSimular
           )}
         </div>
       </form>
-      <p className="mt-1 text-body-sm text-slate-500">
+      <p className="mt-1 text-body-sm text-on-surface-variant">
         Campo simulado: no usa cámara ni lector real. Pendiente de identificador en el backend.
       </p>
     </section>

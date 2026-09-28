@@ -18,7 +18,7 @@ export default function FiltrosArchivo({
   return (
     <section
       aria-label="Filtros de expedientes"
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input

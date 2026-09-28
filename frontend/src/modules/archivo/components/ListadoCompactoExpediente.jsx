@@ -27,10 +27,10 @@ export default function ListadoCompactoExpediente({
   }`
 
   const clasesEstado = resaltado
-    ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-300'
+    ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-300 dark:border-amber-500 dark:bg-amber-500/15 dark:ring-amber-500/60'
     : seleccionado
-      ? 'border-hro-blue bg-cyan-50 ring-1 ring-hro-blue'
-      : 'border-slate-200 bg-white'
+      ? 'border-primary bg-surface-container ring-1 ring-primary'
+      : 'border-outline-variant bg-surface-container-lowest'
 
   return (
     <li
@@ -52,9 +52,11 @@ export default function ListadoCompactoExpediente({
 
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate text-title-md font-semibold text-on-surface">{numero}</span>
+            <span className="min-w-0 break-words text-title-md font-semibold text-on-surface">
+              {numero}
+            </span>
             {resaltado && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-label-sm font-semibold text-amber-800">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-label-sm font-semibold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
                 <Icon name="my_location" className="text-[14px]" />
                 Resultado de búsqueda
               </span>
@@ -63,12 +65,12 @@ export default function ListadoCompactoExpediente({
 
           <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-body-sm text-on-surface-variant">
             {expediente.pacienteNombre && (
-              <span className="min-w-0 truncate">{expediente.pacienteNombre}</span>
+              <span className="min-w-0 break-words">{expediente.pacienteNombre}</span>
             )}
             {expediente.ubicacion && (
               <span className="flex min-w-0 items-center gap-1">
                 <Icon name="shelves" className="text-[16px] text-primary" />
-                <span className="min-w-0 truncate">{expediente.ubicacion}</span>
+                <span className="min-w-0 break-words">{expediente.ubicacion}</span>
               </span>
             )}
             {hora && (
