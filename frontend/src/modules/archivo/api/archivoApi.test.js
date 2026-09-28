@@ -4,12 +4,17 @@ import {
   buscarExpedientePorCodigo,
   buscarPacientePorDpi,
   buscarPacientePorExpediente,
+  crearActaRecepcion,
   crearExpediente,
   listarClinicas,
   listarExpedientes,
   listarSubespecialidades,
   marcarNoLocalizado,
+  obtenerActaRecepcion,
+  obtenerActaRecepcionPdf,
   obtenerExpediente,
+  obtenerResumenArchivo,
+  obtenerResumenArchivoPdf,
 } from './archivoApi'
 
 describe('archivoApi (mock)', () => {
@@ -112,5 +117,49 @@ describe('archivoApi (catálogos y auxiliares en modo mock)', () => {
 
     expect(paciente?.dpi).toBe('2456789010101')
     expect(await buscarPacientePorDpi('0000000000000')).toBeNull()
+  })
+})
+
+describe('archivoApi (resumen y actas - SCRUM-96)', () => {
+  it('consulta el resumen del día para la fecha indicada', async () => {
+    const resumen = await obtenerResumenArchivo({ fecha: '2026-11-09' })
+
+    expect(resumen.fecha).toBe('2026-11-09')
+    expect(resumen).toHaveProperty('totalCiclos')
+    expect(resumen).toHaveProperty('pendienteLocalizar')
+    expect(resumen).toHaveProperty('expedientesNuevos')
+  })
+
+  it('devuelve el PDF del resumen como blob', async () => {
+    const blob = await obtenerResumenArchivoPdf({ fecha: '2026-11-09' })
+
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob.type).toBe('application/pdf')
+  })
+
+  it('crea un acta de recepción con su detalle', async () => {
+    const acta = await crearActaRecepcion({
+      fecha: '2026-11-09',
+      expedienteIds: ['3f1c-uuid-1'],
+      observaciones: 'Entrega del día',
+    })
+
+    expect(acta.id).toBeGreaterThan(0)
+    expect(acta.numeroActa).toMatch(/^ACT-\d{4}-\d{4}$/)
+    expect(acta.totalExpedientes).toBe(1)
+
+    const detalle = await obtenerActaRecepcion(acta.id)
+    expect(detalle.id).toBe(acta.id)
+  })
+
+  it('devuelve 404 al consultar un acta inexistente', async () => {
+    await expect(obtenerActaRecepcion(99999)).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('devuelve el PDF del acta como blob', async () => {
+    const blob = await obtenerActaRecepcionPdf(1)
+
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob.type).toBe('application/pdf')
   })
 })

@@ -369,3 +369,64 @@ export function crearExpedienteMock(pacienteId) {
 
   return clonar(expediente)
 }
+
+// ---------------------------------------------------------------------------
+// Resumen operativo diario (contrato ResumenArchivoDTO). Valores en cero para
+// no inventar métricas; el backend real calcula los conteos.
+// ---------------------------------------------------------------------------
+export function resumenArchivoMock(fecha) {
+  return {
+    fecha: fecha ?? null,
+    totalCiclos: 0,
+    pendienteLocalizar: 0,
+    enBusqueda: 0,
+    localizado: 0,
+    enTransitoEntrega: 0,
+    enTransitoRetorno: 0,
+    entregado: 0,
+    archivado: 0,
+    noLocalizado: 0,
+    enTransito: 0,
+    expedientesNuevos: 0,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Actas de recepción (contrato ActaRecepcionResponseDTO). El backend real es la
+// fuente de verdad; este mock solo permite ejercitar el flujo de frontend.
+// ---------------------------------------------------------------------------
+const actasRecepcionMock = []
+let contadorActasMock = 0
+
+export function crearActaRecepcionMock(datos = {}) {
+  const id = ++contadorActasMock
+  const expedienteIds = datos.expedienteIds ?? []
+  const acta = {
+    id,
+    numeroActa: `ACT-2026-${String(id).padStart(4, '0')}`,
+    fecha: datos.fecha ?? null,
+    subespecialidadId: datos.subespecialidadId ?? null,
+    subespecialidadNombre: null,
+    usuarioEntregaId: datos.usuarioEntregaId ?? null,
+    usuarioEntregaNombre: USUARIO_ARCHIVO_MOCK,
+    usuarioRecibeId: datos.usuarioRecibeId ?? null,
+    usuarioRecibeNombre: null,
+    observaciones: datos.observaciones ?? null,
+    creadoPorNombre: USUARIO_ARCHIVO_MOCK,
+    creadoEn: new Date().toISOString(),
+    totalExpedientes: expedienteIds.length,
+    detalles: [],
+  }
+  actasRecepcionMock.push(acta)
+  return acta
+}
+
+export function obtenerActaRecepcionMock(id) {
+  const acta = actasRecepcionMock.find((registro) => registro.id === Number(id))
+  if (!acta) {
+    const error = new Error('Acta de recepción no encontrada')
+    error.status = 404
+    throw error
+  }
+  return acta
+}

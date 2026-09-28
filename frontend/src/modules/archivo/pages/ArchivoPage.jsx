@@ -4,6 +4,7 @@ import { useToast } from '@/shared/context/ToastContext.jsx'
 import { buscarExpedientePorCodigo } from '../api/archivoApi'
 import { expedientesMock } from '../api/mockData'
 import { useExpedientes } from '../hooks/useExpedientes'
+import { useAccionesArchivo } from '../hooks/useAccionesArchivo'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import FiltrosArchivo from '../components/FiltrosArchivo.jsx'
 import ResumenEstados from '../components/ResumenEstados.jsx'
@@ -78,6 +79,13 @@ export default function ArchivoPage() {
     error,
     total,
   } = useExpedientes()
+  const {
+    resumen: resumenServidor,
+    cargandoResumen,
+    cargandoResumenPdf,
+    consultarResumen,
+    descargarResumenPdf,
+  } = useAccionesArchivo()
 
   // Estado LOCAL del checklist: conjunto de ids marcados como localizados
   // durante la sesión. No se persiste, no toca mockData y no llama a la API.
@@ -182,6 +190,42 @@ export default function ArchivoPage() {
     ejecutarBusqueda(conCodigo.codigo)
   }
 
+  async function manejarConsultarResumen() {
+    try {
+      const datos = await consultarResumen(fecha)
+      if (datos) {
+        mostrarToast({
+          tone: 'success',
+          title: 'Resumen del servidor',
+          message: `Total de ciclos: ${datos.totalCiclos}`,
+        })
+      }
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo obtener el resumen',
+        message: fallo.message,
+      })
+    }
+  }
+
+  async function manejarDescargarResumenPdf() {
+    try {
+      await descargarResumenPdf(fecha)
+      mostrarToast({
+        tone: 'success',
+        title: 'Descarga iniciada',
+        message: 'Resumen del día (PDF).',
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo descargar el resumen',
+        message: fallo.message,
+      })
+    }
+  }
+
   return (
     <ArchivoLayout>
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
@@ -248,22 +292,59 @@ export default function ArchivoPage() {
         >
           <h2 className="text-title-md text-on-surface">Acciones del día</h2>
           <p className="mt-1 text-body-sm text-on-surface-variant">
-            Guardado e impresión disponibles en una fase posterior (SCRUM-96).
+            Resumen y documentos generados por el backend de Archivo.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="primary" disabled title="Disponible en una fase posterior (SCRUM-96)">
-              <Icon name="save" className="text-[18px]" />
-              Guardar resumen del día
+            <Button variant="primary" onClick={manejarConsultarResumen} disabled={cargandoResumen}>
+              <Icon name="summarize" className="text-[18px]" />
+              {cargandoResumen ? 'Consultando…' : 'Consultar resumen del día'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={manejarDescargarResumenPdf}
+              disabled={cargandoResumenPdf}
+            >
+              <Icon name="picture_as_pdf" className="text-[18px]" />
+              {cargandoResumenPdf ? 'Generando PDF…' : 'Descargar resumen (PDF)'}
             </Button>
             <Button
               variant="secondary"
               disabled
-              title="Disponible en una fase posterior (SCRUM-96)"
+              title="Bloqueado: se requieren expedienteId reales (UUID) desde /expedientes/jornada y una regla documentada de selección de expedientes."
             >
-              <Icon name="print" className="text-[18px]" />
-              Imprimir / generar PDF
+              <Icon name="assignment_add" className="text-[18px]" />
+              Generar acta de recepción
+            </Button>
+            <Button
+              variant="secondary"
+              disabled
+              title="Disponible cuando exista un acta creada (actaId real)."
+            >
+              <Icon name="download" className="text-[18px]" />
+              Descargar PDF del acta
             </Button>
           </div>
+
+          {resumenServidor && (
+            <dl
+              aria-label="Resumen del servidor"
+              className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl bg-surface-container-low p-3 text-body-sm sm:grid-cols-3"
+            >
+              {[
+                ['Total de ciclos', resumenServidor.totalCiclos],
+                ['Pendientes', resumenServidor.pendienteLocalizar],
+                ['Localizados', resumenServidor.localizado],
+                ['Entregados', resumenServidor.entregado],
+                ['No localizados', resumenServidor.noLocalizado],
+                ['Expedientes nuevos', resumenServidor.expedientesNuevos],
+              ].map(([etiqueta, valor]) => (
+                <div key={etiqueta} className="flex items-center justify-between gap-2">
+                  <dt className="text-on-surface-variant">{etiqueta}</dt>
+                  <dd className="font-semibold text-on-surface">{valor}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
       </main>
     </ArchivoLayout>

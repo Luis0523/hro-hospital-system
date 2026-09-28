@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
@@ -13,6 +13,8 @@ import {
   listarExpedientes,
   listarSubespecialidades,
   marcarNoLocalizado,
+  obtenerResumenArchivo,
+  obtenerResumenArchivoPdf,
 } from '../api/archivoApi'
 import ArchivoPage from './ArchivoPage.jsx'
 
@@ -37,6 +39,11 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
     avanzarEstado: vi.fn(actual.avanzarEstado),
     marcarNoLocalizado: vi.fn(actual.marcarNoLocalizado),
     crearExpediente: vi.fn(actual.crearExpediente),
+    obtenerResumenArchivo: vi.fn(actual.obtenerResumenArchivo),
+    obtenerResumenArchivoPdf: vi.fn(actual.obtenerResumenArchivoPdf),
+    crearActaRecepcion: vi.fn(actual.crearActaRecepcion),
+    obtenerActaRecepcion: vi.fn(actual.obtenerActaRecepcion),
+    obtenerActaRecepcionPdf: vi.fn(actual.obtenerActaRecepcionPdf),
   }
 })
 
@@ -260,11 +267,86 @@ describe('ArchivoPage — estructura de la pantalla', () => {
     expect(screen.queryByText('Clínica')).not.toBeInTheDocument()
   })
 
-  it('muestra los botones futuros deshabilitados', () => {
+  it('presenta las acciones del día con el estado correcto de sus botones', () => {
     renderPagina()
 
-    expect(screen.getByRole('button', { name: 'Guardar resumen del día' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Imprimir / generar PDF' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /consultar resumen del día/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /descargar resumen \(pdf\)/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /generar acta de recepción/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /descargar pdf del acta/i })).toBeDisabled()
+  })
+})
+
+describe('ArchivoPage — acciones del día (SCRUM-96)', () => {
+  it('consulta el resumen del backend con la fecha seleccionada y muestra el panel', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(screen.getByRole('button', { name: /consultar resumen del día/i }))
+
+    await waitFor(() =>
+      expect(obtenerResumenArchivo).toHaveBeenCalledWith({ fecha: expect.any(String) }),
+    )
+    expect(await screen.findByText('Total de ciclos')).toBeInTheDocument()
+  })
+
+  it('deshabilita el botón mientras consulta el resumen', async () => {
+    let resolver
+    obtenerResumenArchivo.mockReturnValueOnce(
+      new Promise((res) => {
+        resolver = res
+      }),
+    )
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    const boton = screen.getByRole('button', { name: /consultar resumen del día/i })
+    await user.click(boton)
+
+    await waitFor(() => expect(boton).toBeDisabled())
+
+    await act(async () => {
+      resolver({ totalCiclos: 0 })
+    })
+
+    await waitFor(() => expect(boton).toBeEnabled())
+  })
+
+  it('muestra un error si falla la consulta del resumen', async () => {
+    obtenerResumenArchivo.mockRejectedValueOnce(new Error('backend caído'))
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarChecklist()
+
+    await user.click(screen.getByRole('button', { name: /consultar resumen del día/i }))
+
+    expect(await screen.findByText('No se pudo obtener el resumen')).toBeInTheDocument()
+  })
+
+  it('descarga el PDF del resumen con la fecha seleccionada', async () => {
+    const createObjectURL = vi.fn(() => 'blob:mock')
+    const originalCreate = URL.createObjectURL
+    const originalRevoke = URL.revokeObjectURL
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = vi.fn()
+
+    try {
+      const user = userEvent.setup()
+      renderPagina()
+      await esperarChecklist()
+
+      await user.click(screen.getByRole('button', { name: /descargar resumen \(pdf\)/i }))
+
+      await waitFor(() =>
+        expect(obtenerResumenArchivoPdf).toHaveBeenCalledWith({ fecha: expect.any(String) }),
+      )
+      await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    } finally {
+      URL.createObjectURL = originalCreate
+      URL.revokeObjectURL = originalRevoke
+    }
   })
 })
 

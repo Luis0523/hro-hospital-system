@@ -4,12 +4,15 @@ import {
   avanzarEstadoMock,
   buscarExpedientePorCodigoMock,
   clinicasArchivoMock,
+  crearActaRecepcionMock,
   crearExpedienteMock,
   expedientesMock,
   listarExpedientesMock,
   marcarNoLocalizadoMock,
   medicosArchivoMock,
+  obtenerActaRecepcionMock,
   obtenerExpedienteMock,
+  resumenArchivoMock,
 } from './mockData'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -159,4 +162,39 @@ export async function buscarPacientePorDpi(dpi) {
     )
   }
   return mapearPaciente(desenvolver(await client.get(`/pacientes/dpi/${dpi}`)))
+}
+
+// ---------------------------------------------------------------------------
+// Resumen operativo diario y actas de recepción (SCRUM-96).
+// El backend es la fuente de verdad; estos métodos solo consumen su contrato.
+// Los endpoints PDF devuelven binario (application/pdf) sin envoltura
+// ApiResponse, por eso se solicitan con responseType: 'blob'.
+// ---------------------------------------------------------------------------
+function pdfMock(contenido) {
+  return new Blob([contenido], { type: 'application/pdf' })
+}
+
+export async function obtenerResumenArchivo({ fecha } = {}) {
+  if (USE_MOCK) return resumenArchivoMock(fecha)
+  return desenvolver(await client.get('/archivo/resumen', { params: { fecha } }))
+}
+
+export async function obtenerResumenArchivoPdf({ fecha } = {}) {
+  if (USE_MOCK) return pdfMock('%PDF-1.4 resumen mock')
+  return client.get('/archivo/resumen/pdf', { params: { fecha }, responseType: 'blob' })
+}
+
+export async function crearActaRecepcion(datos) {
+  if (USE_MOCK) return crearActaRecepcionMock(datos)
+  return desenvolver(await client.post('/actas-recepcion', datos))
+}
+
+export async function obtenerActaRecepcion(id) {
+  if (USE_MOCK) return obtenerActaRecepcionMock(id)
+  return desenvolver(await client.get(`/actas-recepcion/${id}`))
+}
+
+export async function obtenerActaRecepcionPdf(id) {
+  if (USE_MOCK) return pdfMock(`%PDF-1.4 acta ${id} mock`)
+  return client.get(`/actas-recepcion/${id}/pdf`, { responseType: 'blob' })
 }
