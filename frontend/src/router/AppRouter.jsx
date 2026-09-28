@@ -1,11 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
+import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
+import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
-import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
-import EstacionNoDisponible from '@/shared/components/EstacionNoDisponible.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
 import UsuariosPage from '@/modules/administracion/pages/UsuariosPage.jsx'
@@ -31,7 +32,9 @@ export default function AppRouter() {
       <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
       <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
 
-      <Route path="/archivo" element={<EstacionNoDisponible nombre="Estación de Archivo" />} />
+      <Route path="/archivo" element={<ArchivoPage />} />
+      <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
+      <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
 
       <Route path="/administracion" element={<AdministracionLayout />}>
         <Route index element={<DashboardPage />} />
