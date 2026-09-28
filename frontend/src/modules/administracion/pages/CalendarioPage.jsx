@@ -13,6 +13,7 @@ import {
 import { mesActual, rangoAnioISO, rangoMesISO, sumarMes } from '../utils/fechas.js'
 import CalendarioNoLaborables from '../components/CalendarioNoLaborables.jsx'
 import DiaNoLaborableForm from '../components/DiaNoLaborableForm.jsx'
+import DisponibilidadCitaModal from '../components/DisponibilidadCitaModal.jsx'
 import ListaDiasNoLaborables from '../components/ListaDiasNoLaborables.jsx'
 import ModalCatalogo from '../components/ModalCatalogo.jsx'
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx'
@@ -50,6 +51,7 @@ export default function CalendarioPage() {
   const [conflicto, setConflicto] = useState(null)
   const [payloadConflicto, setPayloadConflicto] = useState(null)
   const [confirmandoConflicto, setConfirmandoConflicto] = useState(false)
+  const [disponiblePara, setDisponiblePara] = useState(null)
 
   const [porHabilitar, setPorHabilitar] = useState(null)
   const [habilitando, setHabilitando] = useState(false)
@@ -228,9 +230,18 @@ export default function CalendarioPage() {
     }
   }
 
+  const manejarCitaReprogramada = (citaId) => {
+    mostrarToast({ title: 'Cita reprogramada', tone: 'success' })
+    setDisponiblePara(null)
+    setConflicto((previo) => {
+      if (!previo) return previo
+      const citas = (previo.citas ?? []).filter((cita) => cita.id !== citaId)
+      return { ...previo, citas, totalCitas: citas.length }
+    })
+  }
+
   const solicitarHabilitar = (registro) => setPorHabilitar(registro)
   const cancelarHabilitar = () => setPorHabilitar(null)
-
   const confirmarHabilitar = async () => {
     if (!porHabilitar) return
     setHabilitando(true)
@@ -397,7 +408,15 @@ export default function CalendarioPage() {
         conflicto={conflicto}
         onCancelar={cancelarConflicto}
         onConfirmar={confirmarConflicto}
+        onReprogramar={setDisponiblePara}
         procesando={confirmandoConflicto}
+      />
+
+      <DisponibilidadCitaModal
+        abierto={Boolean(disponiblePara)}
+        cita={disponiblePara}
+        onCerrar={() => setDisponiblePara(null)}
+        onReprogramada={manejarCitaReprogramada}
       />
 
       <ModalConfirmacion

@@ -52,6 +52,9 @@ import {
   obtenerReporteUtilizacionMock,
   // Auditoría
   obtenerAuditoriaMock,
+  // Disponibilidad y reprogramación de citas
+  obtenerDisponibilidadCitaMock,
+  reprogramarCitaMock,
 } from './mockData.js'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -445,4 +448,24 @@ export async function obtenerAuditoria({
   if (size !== undefined && size !== null) params.size = size
 
   return desenvolver(await client.get('/auditoria', { params }))
+}
+
+// ---------------------------------------------------------------------------
+// Disponibilidad y reprogramación de citas — /citas/{id}
+// Flujo administrativo de 2 pasos, integrado al conflicto de Calendario.
+// NO usa /cupos: la disponibilidad de la cita conserva médico/subespecialidad.
+// ---------------------------------------------------------------------------
+
+export async function obtenerDisponibilidadCita(citaId, { fechaInicio, fechaFin } = {}) {
+  if (USE_MOCK) return obtenerDisponibilidadCitaMock(citaId, { fechaInicio, fechaFin })
+
+  const params = {}
+  if (fechaInicio) params.fechaInicio = fechaInicio
+  if (fechaFin) params.fechaFin = fechaFin
+  return desenvolver(await client.get(`/citas/${citaId}/disponibilidad`, { params }))
+}
+
+export async function reprogramarCita(citaId, { nuevoCupoDiarioId, motivo }) {
+  if (USE_MOCK) return reprogramarCitaMock(citaId, { nuevoCupoDiarioId, motivo })
+  return desenvolver(await client.post(`/citas/${citaId}/reprogramar`, { nuevoCupoDiarioId, motivo }))
 }

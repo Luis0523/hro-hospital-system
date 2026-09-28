@@ -14,6 +14,19 @@ vi.mock('../utils/fechas.js', async (importOriginal) => {
   }
 })
 
+vi.mock('../api/administracionApi.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    obtenerDisponibilidadCita: vi.fn(actual.obtenerDisponibilidadCita),
+    reprogramarCita: vi.fn(actual.reprogramarCita),
+  }
+})
+
+import {
+  obtenerDisponibilidadCita,
+  reprogramarCita,
+} from '../api/administracionApi.js'
 import CalendarioPage from './CalendarioPage.jsx'
 
 function renderPagina() {
@@ -44,6 +57,8 @@ async function abrirFormularioConflicto(user) {
 describe('CalendarioPage', () => {
   beforeEach(() => {
     reiniciarCatalogosMock()
+    obtenerDisponibilidadCita.mockClear()
+    reprogramarCita.mockClear()
   })
 
   it('muestra el heading, las pestañas y la cuadrícula mensual con selectores', async () => {
@@ -281,5 +296,137 @@ describe('CalendarioPage', () => {
 
     await user.keyboard('{ArrowLeft}')
     expect(mensual).toHaveFocus()
+  })
+
+  it('ofrece una acción Reprogramar por cada cita afectada del conflicto', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+
+    await abrirFormularioConflicto(user)
+
+    expect(
+      screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('reprograma una cita afectada en 2 pasos y la retira del conflicto', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Reprogramar cita' })
+    await waitFor(() => expect(obtenerDisponibilidadCita).toHaveBeenCalledWith(9001, expect.any(Object)))
+
+    const radios = within(dialogo).getAllByRole('radio')
+    const disponible = radios.find((radio) => !radio.disabled)
+    expect(disponible).toBeTruthy()
+    await user.click(disponible)
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Continuar' }))
+    await user.type(within(dialogo).getByLabelText('Motivo'), 'Reprogramación por bloqueo')
+    await user.click(within(dialogo).getByRole('button', { name: 'Confirmar reprogramación' }))
+
+    expect(await screen.findByText('Cita reprogramada')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Juan López')).not.toBeInTheDocument())
+    expect(screen.getByText(/Ya no quedan citas pendientes/i)).toBeInTheDocument()
+  })
+
+  it('exige el motivo antes de reprogramar', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Reprogramar cita' })
+    const disponible = within(dialogo)
+      .getAllByRole('radio')
+      .find((radio) => !radio.disabled)
+    await user.click(disponible)
+    await user.click(within(dialogo).getByRole('button', { name: 'Continuar' }))
+    await user.click(within(dialogo).getByRole('button', { name: 'Confirmar reprogramación' }))
+
+    expect(await screen.findByText('El motivo es obligatorio.')).toBeInTheDocument()
+    expect(reprogramarCita).not.toHaveBeenCalled()
+  })
+
+  it('muestra estado vacío cuando no hay cupos disponibles', async () => {
+    obtenerDisponibilidadCita.mockResolvedValueOnce([])
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+
+    expect(await screen.findByText('Sin cupos disponibles')).toBeInTheDocument()
+  })
+
+  it('ante 409 CUPOS_AGOTADOS refresca la disponibilidad y exige nueva selección', async () => {
+    reprogramarCita.mockRejectedValueOnce({
+      status: 409,
+      codigo: 'CUPOS_AGOTADOS',
+      message: 'No hay cupos disponibles para la fecha seleccionada.',
+    })
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Reprogramar cita' })
+    const disponible = within(dialogo)
+      .getAllByRole('radio')
+      .find((radio) => !radio.disabled)
+    await user.click(disponible)
+    await user.click(within(dialogo).getByRole('button', { name: 'Continuar' }))
+    await user.type(within(dialogo).getByLabelText('Motivo'), 'Motivo válido')
+    await user.click(within(dialogo).getByRole('button', { name: 'Confirmar reprogramación' }))
+
+    expect(await screen.findByText(/se ocupó mientras confirmabas/i)).toBeInTheDocument()
+    await waitFor(() => expect(obtenerDisponibilidadCita).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+  })
+
+  it('bloquea el doble envío mientras reprograma', async () => {
+    reprogramarCita.mockImplementation(() => new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Reprogramar cita' })
+    const disponible = within(dialogo)
+      .getAllByRole('radio')
+      .find((radio) => !radio.disabled)
+    await user.click(disponible)
+    await user.click(within(dialogo).getByRole('button', { name: 'Continuar' }))
+    await user.type(within(dialogo).getByLabelText('Motivo'), 'Motivo válido')
+    await user.click(within(dialogo).getByRole('button', { name: 'Confirmar reprogramación' }))
+
+    const enviando = await within(dialogo).findByRole('button', { name: 'Reprogramando...' })
+    expect(enviando).toBeDisabled()
+  })
+
+  it('cancelar el modal de disponibilidad no reprograma ni bloquea el día', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarListado()
+    await abrirFormularioConflicto(user)
+
+    await user.click(screen.getByRole('button', { name: /Reprogramar la cita de Juan López/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Reprogramar cita' })
+    await user.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Reprogramar cita' })).not.toBeInTheDocument(),
+    )
+    expect(reprogramarCita).not.toHaveBeenCalled()
+    expect(screen.getByText('Citas afectadas por el bloqueo')).toBeInTheDocument()
   })
 })

@@ -9,7 +9,7 @@
 // Los endpoints de listado del backend devuelven únicamente registros activos.
 
 import { aMinutos, nombreDia, normalizarHora } from '../utils/dias.js'
-import { hoyISO, restarDiasISO } from '../utils/fechas.js'
+import { desdeISO, hoyISO, restarDiasISO } from '../utils/fechas.js'
 
 const creadoEnBase = '2026-01-05T08:00:00-06:00'
 
@@ -370,6 +370,11 @@ export function reiniciarCatalogosMock() {
     ...clonar(MEDICO_SUBESPECIALIDADES_BASE),
   )
   diasNoLaborablesMock.splice(0, diasNoLaborablesMock.length, ...clonar(DIAS_NO_LABORABLES_BASE))
+  citasReprogramacionMock.splice(
+    0,
+    citasReprogramacionMock.length,
+    ...clonar(CITAS_REPROGRAMACION_BASE),
+  )
   usuariosMock.splice(0, usuariosMock.length, ...clonar(USUARIOS_BASE))
   permisosSubespecialidadMock.splice(
     0,
@@ -1533,4 +1538,142 @@ export function obtenerAuditoriaMock({
     .sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0))
 
   return paginarAuditoria(filtrados, page, size)
+}
+
+// ---------------------------------------------------------------------------
+// Disponibilidad y reprogramación de citas — /citas/{id}/disponibilidad y
+// /citas/{id}/reprogramar (backend simulado).
+// Datos 100% ficticios. Réplica de CupoDiarioResponseDTO y del flujo de 2 pasos.
+// NO se modela /cupos: el frontend usa únicamente la disponibilidad de la cita.
+// ---------------------------------------------------------------------------
+
+const UUID_PROG_MEDICINA_GENERAL = '6f0d3a2c-1a11-4d21-9c01-000000000901'
+const UUID_MEDICO_MENDEZ = '6f0d3a2c-1a11-4d21-9c01-000000000101'
+
+const CITAS_REPROGRAMACION_BASE = [
+  {
+    id: 9001,
+    estado: 'confirmada',
+    pacienteNombre: 'Juan López',
+    horaEstimada: '08:30:00',
+    medicoSubespecialidadId: UUID_PROG_MEDICINA_GENERAL,
+    medicoId: UUID_MEDICO_MENDEZ,
+    medicoNombre: 'Dr. Carlos Méndez',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
+    capacidadMaxima: 2,
+  },
+  {
+    id: 9002,
+    estado: 'pendiente',
+    pacienteNombre: 'María Xicay',
+    horaEstimada: '09:00:00',
+    medicoSubespecialidadId: UUID_PROG_MEDICINA_GENERAL,
+    medicoId: UUID_MEDICO_MENDEZ,
+    medicoNombre: 'Dr. Carlos Méndez',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
+    capacidadMaxima: 2,
+  },
+  {
+    id: 9003,
+    estado: 'atendida',
+    pacienteNombre: 'Pedro Ajpacajá',
+    horaEstimada: '09:30:00',
+    medicoSubespecialidadId: UUID_PROG_MEDICINA_GENERAL,
+    medicoId: UUID_MEDICO_MENDEZ,
+    medicoNombre: 'Dr. Carlos Méndez',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
+    capacidadMaxima: 2,
+  },
+]
+
+export const citasReprogramacionMock = clonar(CITAS_REPROGRAMACION_BASE)
+
+const ESTADOS_TERMINALES_CITA = ['atendida', 'cancelada', 'reprogramada', 'no_asistio']
+
+function cuposDeCitaMock(cita, fechaInicio, fechaFin) {
+  const inicio = fechaInicio || hoyISO()
+  const fin = fechaFin || restarDiasISO(inicio, -14)
+  if (fin < inicio) {
+    throw errorBackend('La fecha final no puede ser anterior a la fecha inicial.')
+  }
+
+  const cupos = []
+  let cursor = inicio
+  let guarda = 0
+  while (cursor <= fin && guarda < 60) {
+    const { anio, mes, dia } = desdeISO(cursor)
+    const diaJS = new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay()
+    if (diaJS >= 1 && diaJS <= 5) {
+      const capacidad = cita.capacidadMaxima ?? 2
+      const ocupados = dia % 2 === 0 ? capacidad : 0
+      cupos.push({
+        id: `cupo-${cursor}`,
+        medicoSubespecialidadId: cita.medicoSubespecialidadId,
+        medicoId: cita.medicoId,
+        medicoNombre: cita.medicoNombre,
+        subespecialidadId: cita.subespecialidadId,
+        subespecialidadNombre: cita.subespecialidadNombre,
+        fecha: cursor,
+        diaSemana: diaJS === 0 ? 7 : diaJS,
+        horaInicio: '07:00:00',
+        horaFin: '13:00:00',
+        capacidadMaxima: capacidad,
+        cuposOcupados: ocupados,
+        cuposDisponibles: capacidad - ocupados,
+        disponible: capacidad - ocupados > 0,
+      })
+    }
+    cursor = restarDiasISO(cursor, -1)
+    guarda += 1
+  }
+  return cupos
+}
+
+export function obtenerDisponibilidadCitaMock(citaId, { fechaInicio, fechaFin } = {}) {
+  const cita = citasReprogramacionMock.find((item) => item.id === Number(citaId))
+  if (!cita) {
+    throw errorCodigo(`Cita no encontrado(a) con id: '${citaId}'`, { status: 404 })
+  }
+  return cuposDeCitaMock(cita, fechaInicio, fechaFin)
+}
+
+export function reprogramarCitaMock(citaId, { nuevoCupoDiarioId, motivo } = {}) {
+  const cita = citasReprogramacionMock.find((item) => item.id === Number(citaId))
+  if (!cita) {
+    throw errorCodigo(`Cita no encontrado(a) con id: '${citaId}'`, { status: 404 })
+  }
+  if (ESTADOS_TERMINALES_CITA.includes(cita.estado)) {
+    throw errorBackend(
+      `No se puede reprogramar una cita con estado terminal: '${cita.estado}'`,
+    )
+  }
+  if (!nuevoCupoDiarioId) {
+    throw errorBackend('El ID del nuevo cupo diario es obligatorio')
+  }
+  if (!motivo || !String(motivo).trim()) {
+    throw errorBackend('El motivo de la reprogramación es obligatorio para auditoría médica')
+  }
+  // Simulación de concurrencia: un id reservado para este caso fuerza 409.
+  if (String(nuevoCupoDiarioId).startsWith('agotado')) {
+    throw errorCodigo('No hay cupos disponibles para la fecha seleccionada.', {
+      status: 409,
+      codigo: 'CUPOS_AGOTADOS',
+    })
+  }
+
+  const fechaNueva = String(nuevoCupoDiarioId).replace(/^cupo-/, '')
+  cita.estado = 'reprogramada'
+  return {
+    id: cita.id + 100000,
+    pacienteNombreCompleto: cita.pacienteNombre,
+    cupoDiarioId: nuevoCupoDiarioId,
+    fechaCita: fechaNueva,
+    subespecialidadNombre: cita.subespecialidadNombre,
+    medicoNombre: cita.medicoNombre,
+    estado: 'pendiente',
+    citaOrigenId: cita.id,
+  }
 }

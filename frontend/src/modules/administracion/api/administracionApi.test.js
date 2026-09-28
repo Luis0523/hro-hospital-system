@@ -57,6 +57,8 @@ import {
   obtenerReporteDemandaPorEspecialidad,
   obtenerReporteUtilizacionCupos,
   obtenerAuditoria,
+  obtenerDisponibilidadCita,
+  reprogramarCita,
   reactivarEspecialidad,
   reactivarEspacioFisico,
   reactivarMedico,
@@ -1012,6 +1014,93 @@ describe('administracionApi (mock)', () => {
       vi.clearAllMocks()
       await obtenerAuditoria()
       expect(client.get).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('disponibilidad y reprogramación', () => {
+    const RANGO = { fechaInicio: '2026-09-28', fechaFin: '2026-10-02' }
+
+    it('devuelve cupos de la misma programación con el DTO confirmado', async () => {
+      const cupos = await obtenerDisponibilidadCita(9001, RANGO)
+
+      expect(Array.isArray(cupos)).toBe(true)
+      expect(cupos.length).toBeGreaterThan(0)
+      const cupo = cupos[0]
+      expect(Object.keys(cupo).sort()).toEqual(
+        [
+          'id',
+          'medicoSubespecialidadId',
+          'medicoId',
+          'medicoNombre',
+          'subespecialidadId',
+          'subespecialidadNombre',
+          'fecha',
+          'diaSemana',
+          'horaInicio',
+          'horaFin',
+          'capacidadMaxima',
+          'cuposOcupados',
+          'cuposDisponibles',
+          'disponible',
+        ].sort(),
+      )
+      expect(typeof cupo.disponible).toBe('boolean')
+      expect(cupos.every((c) => c.medicoSubespecialidadId === cupos[0].medicoSubespecialidadId)).toBe(
+        true,
+      )
+      expect(cupos.some((c) => c.disponible === true)).toBe(true)
+      expect(cupos.some((c) => c.disponible === false)).toBe(true)
+    })
+
+    it('rechaza una cita inexistente con 404', async () => {
+      await expect(obtenerDisponibilidadCita(999999, RANGO)).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('rechaza un rango inválido con 400', async () => {
+      await expect(
+        obtenerDisponibilidadCita(9001, { fechaInicio: '2026-10-05', fechaFin: '2026-10-01' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('reprograma y marca la original como reprogramada', async () => {
+      const nueva = await reprogramarCita(9001, {
+        nuevoCupoDiarioId: 'cupo-2026-10-01',
+        motivo: 'Solicitud del paciente',
+      })
+
+      expect(nueva.estado).toBe('pendiente')
+      expect(nueva.citaOrigenId).toBe(9001)
+      expect(nueva.fechaCita).toBe('2026-10-01')
+
+      await expect(
+        reprogramarCita(9001, { nuevoCupoDiarioId: 'cupo-2026-10-02', motivo: 'Otra' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('rechaza una cita en estado terminal', async () => {
+      await expect(
+        reprogramarCita(9003, { nuevoCupoDiarioId: 'cupo-2026-10-01', motivo: 'Motivo' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('exige el motivo', async () => {
+      await expect(
+        reprogramarCita(9001, { nuevoCupoDiarioId: 'cupo-2026-10-01', motivo: '   ' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('responde CUPOS_AGOTADOS (409) ante concurrencia', async () => {
+      await expect(
+        reprogramarCita(9001, { nuevoCupoDiarioId: 'agotado-1', motivo: 'Motivo' }),
+      ).rejects.toMatchObject({ status: 409, codigo: 'CUPOS_AGOTADOS' })
+    })
+
+    it('no usa /cupos ni HTTP real en modo test', async () => {
+      vi.clearAllMocks()
+      await obtenerDisponibilidadCita(9001, RANGO)
+      await reprogramarCita(9001, { nuevoCupoDiarioId: 'cupo-2026-10-01', motivo: 'Motivo' })
+      expect(client.get).not.toHaveBeenCalled()
+      expect(client.post).not.toHaveBeenCalled()
     })
   })
 })
