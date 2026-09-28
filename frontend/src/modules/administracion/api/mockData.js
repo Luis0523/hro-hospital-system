@@ -9,7 +9,7 @@
 // Los endpoints de listado del backend devuelven únicamente registros activos.
 
 import { aMinutos, nombreDia, normalizarHora } from '../utils/dias.js'
-import { hoyISO } from '../utils/fechas.js'
+import { hoyISO, restarDiasISO } from '../utils/fechas.js'
 
 const creadoEnBase = '2026-01-05T08:00:00-06:00'
 
@@ -1277,4 +1277,93 @@ function cambiarEstadoPermisoMock(id, activo) {
   }
   permiso.activo = activo
   return enriquecerPermiso(permiso)
+}
+
+// ---------------------------------------------------------------------------
+// Reportes administrativos — /reportes (backend simulado)
+// Datos ficticios; replican los DTO reales.
+// ---------------------------------------------------------------------------
+
+const REPORTE_CITAS_POR_ESTADO_MOCK = {
+  total: 40,
+  porEstado: {
+    atendida: 12,
+    pendiente: 8,
+    confirmada: 10,
+    cancelada: 4,
+    reprogramada: 3,
+    no_asistio: 3,
+  },
+}
+
+const REPORTE_DEMANDA_ITEMS_MOCK = [
+  {
+    especialidadId: 1,
+    especialidadNombre: 'Medicina Interna',
+    totalCitas: 20,
+    atendidas: 9,
+    inasistencias: 2,
+  },
+  {
+    especialidadId: 2,
+    especialidadNombre: 'Pediatría',
+    totalCitas: 12,
+    atendidas: 7,
+    inasistencias: 1,
+  },
+  {
+    especialidadId: 6,
+    especialidadNombre: 'Cardiología',
+    totalCitas: 8,
+    atendidas: 3,
+    inasistencias: 0,
+  },
+]
+
+function rangoReporteMock(fechaInicio, fechaFin) {
+  const fin = fechaFin || hoyISO()
+  const inicio = fechaInicio || restarDiasISO(fin, 30)
+  if (fin < inicio) {
+    throw errorBackend('La fecha final no puede ser anterior a la fecha inicial.')
+  }
+  return { inicio, fin }
+}
+
+export function obtenerReporteCitasPorEstadoMock({ fechaInicio, fechaFin } = {}) {
+  const { inicio, fin } = rangoReporteMock(fechaInicio, fechaFin)
+  return {
+    fechaInicio: inicio,
+    fechaFin: fin,
+    total: REPORTE_CITAS_POR_ESTADO_MOCK.total,
+    porEstado: { ...REPORTE_CITAS_POR_ESTADO_MOCK.porEstado },
+  }
+}
+
+export function obtenerReporteDemandaMock({ fechaInicio, fechaFin } = {}) {
+  const { inicio, fin } = rangoReporteMock(fechaInicio, fechaFin)
+  return { fechaInicio: inicio, fechaFin: fin, items: clonar(REPORTE_DEMANDA_ITEMS_MOCK) }
+}
+
+export function obtenerReporteUtilizacionMock({ fechaInicio, fechaFin, subespecialidadId } = {}) {
+  const { inicio, fin } = rangoReporteMock(fechaInicio, fechaFin)
+  if (subespecialidadId) {
+    return {
+      fechaInicio: inicio,
+      fechaFin: fin,
+      subespecialidadId: Number(subespecialidadId),
+      capacidadTotal: 600,
+      cuposOcupados: 36,
+      cuposDisponibles: 564,
+      utilizacionPorcentaje: 6,
+    }
+  }
+  return {
+    fechaInicio: inicio,
+    fechaFin: fin,
+    subespecialidadId: null,
+    capacidadTotal: 2400,
+    cuposOcupados: 48,
+    cuposDisponibles: 2352,
+    utilizacionPorcentaje: 2,
+  }
 }

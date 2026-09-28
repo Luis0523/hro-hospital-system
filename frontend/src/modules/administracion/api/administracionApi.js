@@ -46,6 +46,10 @@ import {
   listarUsuariosMock,
   obtenerUsuarioMock,
   reactivarPermisoSubespecialidadMock,
+  // Reportes
+  obtenerReporteCitasPorEstadoMock,
+  obtenerReporteDemandaMock,
+  obtenerReporteUtilizacionMock,
 } from './mockData.js'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -367,4 +371,44 @@ export async function desactivarPermisoSubespecialidad(id) {
 export async function reactivarPermisoSubespecialidad(id) {
   if (USE_MOCK) return reactivarPermisoSubespecialidadMock(id)
   return desenvolver(await client.patch(`/permisos-subespecialidad/${id}/reactivar`))
+}
+
+// ---------------------------------------------------------------------------
+// Reportes administrativos — /reportes
+// Las agregaciones las calcula el backend; el frontend solo las muestra.
+// Se envían fechas locales explícitas (ISO YYYY-MM-DD).
+// ---------------------------------------------------------------------------
+
+function paramsRango(fechaInicio, fechaFin) {
+  const params = {}
+  if (fechaInicio) params.fechaInicio = fechaInicio
+  if (fechaFin) params.fechaFin = fechaFin
+  return params
+}
+
+export async function obtenerReporteCitasPorEstado({ fechaInicio, fechaFin } = {}) {
+  if (USE_MOCK) return obtenerReporteCitasPorEstadoMock({ fechaInicio, fechaFin })
+  return desenvolver(
+    await client.get('/reportes/citas-por-estado', { params: paramsRango(fechaInicio, fechaFin) }),
+  )
+}
+
+export async function obtenerReporteDemandaPorEspecialidad({ fechaInicio, fechaFin } = {}) {
+  if (USE_MOCK) return obtenerReporteDemandaMock({ fechaInicio, fechaFin })
+  return desenvolver(
+    await client.get('/reportes/demanda-por-especialidad', {
+      params: paramsRango(fechaInicio, fechaFin),
+    }),
+  )
+}
+
+export async function obtenerReporteUtilizacionCupos({
+  fechaInicio,
+  fechaFin,
+  subespecialidadId,
+} = {}) {
+  if (USE_MOCK) return obtenerReporteUtilizacionMock({ fechaInicio, fechaFin, subespecialidadId })
+  const params = paramsRango(fechaInicio, fechaFin)
+  if (subespecialidadId) params.subespecialidadId = subespecialidadId
+  return desenvolver(await client.get('/reportes/utilizacion-cupos', { params }))
 }

@@ -78,6 +78,15 @@ export function rangoAnioISO(anio) {
   return { inicio: aISO(anio, 1, 1), fin: aISO(anio, 12, 31) }
 }
 
+// Resta días a una fecha ISO sin usar `new Date('YYYY-MM-DD')` (evita desfase UTC).
+export function restarDiasISO(fechaISO, dias) {
+  const { anio, mes, dia } = desdeISO(fechaISO)
+  if (!anio || !mes || !dia) return ''
+  const base = new Date(Date.UTC(anio, mes - 1, dia))
+  base.setUTCDate(base.getUTCDate() - Number(dias))
+  return aISO(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate())
+}
+
 export function sumarMes(anio, mes, delta) {
   const base = new Date(Date.UTC(anio, mes - 1 + delta, 1))
   return { anio: base.getUTCFullYear(), mes: base.getUTCMonth() + 1 }

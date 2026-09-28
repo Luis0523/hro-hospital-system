@@ -53,6 +53,9 @@ import {
   listarUsuarios,
   obtenerUsuario,
   reactivarPermisoSubespecialidad,
+  obtenerReporteCitasPorEstado,
+  obtenerReporteDemandaPorEspecialidad,
+  obtenerReporteUtilizacionCupos,
   reactivarEspecialidad,
   reactivarEspacioFisico,
   reactivarMedico,
@@ -60,7 +63,7 @@ import {
   reactivarSubespecialidad,
 } from './administracionApi'
 import { reiniciarCatalogosMock } from './mockData'
-import { aISO, desdeISO, hoyISO, sumarMes } from '../utils/fechas'
+import { aISO, desdeISO, hoyISO, restarDiasISO, sumarMes } from '../utils/fechas'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -871,6 +874,66 @@ describe('administracionApi (mock)', () => {
 
       await desactivarPermisoSubespecialidad(3)
       await expect(reactivarPermisoSubespecialidad(3)).rejects.toThrow(/usuario está inactivo/i)
+    })
+  })
+
+  describe('reportes', () => {
+    it('citas por estado con rango explícito y con default', async () => {
+      const explicito = await obtenerReporteCitasPorEstado({
+        fechaInicio: '2026-09-01',
+        fechaFin: '2026-09-30',
+      })
+      expect(Object.keys(explicito).sort()).toEqual(
+        ['fechaFin', 'fechaInicio', 'porEstado', 'total'].sort(),
+      )
+      expect(explicito.total).toBe(40)
+      expect(explicito.porEstado).toHaveProperty('no_asistio')
+
+      const porDefecto = await obtenerReporteCitasPorEstado()
+      const fin = hoyISO()
+      expect(porDefecto.fechaFin).toBe(fin)
+      expect(porDefecto.fechaInicio).toBe(restarDiasISO(fin, 30))
+    })
+
+    it('rechaza un rango inválido (400)', async () => {
+      await expect(
+        obtenerReporteCitasPorEstado({ fechaInicio: '2026-09-30', fechaFin: '2026-09-01' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('demanda por especialidad devuelve los items del DTO', async () => {
+      const reporte = await obtenerReporteDemandaPorEspecialidad({
+        fechaInicio: '2026-01-01',
+        fechaFin: '2026-12-31',
+      })
+
+      expect(Array.isArray(reporte.items)).toBe(true)
+      expect(reporte.items[0]).toMatchObject({
+        especialidadId: expect.any(Number),
+        especialidadNombre: expect.any(String),
+        totalCitas: expect.any(Number),
+        atendidas: expect.any(Number),
+        inasistencias: expect.any(Number),
+      })
+    })
+
+    it('utilización global y filtrada por subespecialidad', async () => {
+      const global = await obtenerReporteUtilizacionCupos({
+        fechaInicio: '2026-09-01',
+        fechaFin: '2026-09-30',
+      })
+      expect(global.subespecialidadId).toBeNull()
+      expect(global.capacidadTotal).toBe(2400)
+      expect(global.utilizacionPorcentaje).toBe(2)
+
+      const filtrada = await obtenerReporteUtilizacionCupos({
+        fechaInicio: '2026-09-01',
+        fechaFin: '2026-09-30',
+        subespecialidadId: 1,
+      })
+      expect(filtrada.subespecialidadId).toBe(1)
+      expect(filtrada.capacidadTotal).toBe(600)
+      expect(filtrada.utilizacionPorcentaje).toBe(6)
     })
   })
 })
