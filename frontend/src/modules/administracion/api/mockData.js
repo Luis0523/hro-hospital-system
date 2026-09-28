@@ -299,7 +299,17 @@ const DIAS_NO_LABORABLES_BASE = [
 // detectaría vía CitaRepository.contarCitasActivasEnFecha (estado distinto de
 // cancelada/reprogramada). No es una regla del frontend.
 const CITAS_ACTIVAS_POR_FECHA_MOCK = {
-  '2026-09-20': 1,
+  '2026-09-20': [
+    {
+      id: 9001,
+      horaEstimada: '08:30:00',
+      estado: 'confirmada',
+      pacienteId: 'a1b2c3d4-0000-4000-8000-000000009001',
+      pacienteNombre: 'Juan López',
+      medicoNombre: 'Dr. Carlos Méndez',
+      subespecialidadNombre: 'Medicina General',
+    },
+  ],
 }
 
 const clonar = (valor) => JSON.parse(JSON.stringify(valor))
@@ -319,6 +329,16 @@ let contadorIdDiaNoLaborable = DIAS_NO_LABORABLES_BASE.length
 function errorBackend(mensaje, status = 400) {
   const error = new Error(mensaje)
   error.status = status
+  return error
+}
+
+// Error enriquecido con `codigo`/`data`, replicando ApiResponse del backend
+// (BusinessException/ConflictException) para consumidores en modo mock.
+function errorCodigo(mensaje, { status = 400, codigo = null, data = null } = {}) {
+  const error = new Error(mensaje)
+  error.status = status
+  error.codigo = codigo
+  error.data = data
   return error
 }
 
@@ -887,17 +907,29 @@ export function listarDiasNoLaborablesPorRangoMock(inicio, fin) {
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
 }
 
-export function crearDiaNoLaborableMock({ fecha, motivo }) {
+export function crearDiaNoLaborableMock({ fecha, motivo, forzar = false }) {
   if (diasNoLaborablesMock.some((item) => item.fecha === fecha)) {
-    throw errorBackend(`La fecha ${fecha} ya está registrada como día no laborable.`)
+    throw errorCodigo(`La fecha ${fecha} ya está registrada como día no laborable.`, {
+      status: 400,
+      codigo: 'DIA_NO_LABORABLE_YA_EXISTE',
+    })
   }
 
-  const citasAfectadas = CITAS_ACTIVAS_POR_FECHA_MOCK[fecha] ?? 0
-  if (citasAfectadas > 0) {
-    throw errorBackend(
-      `No se puede registrar como día no laborable: Existen ${citasAfectadas} ` +
-        `cita(s) programada(s) para el ${fecha}. Deben ser reprogramadas o canceladas ` +
-        `antes de bloquear el día.`,
+  const citas = CITAS_ACTIVAS_POR_FECHA_MOCK[fecha] ?? []
+  if (citas.length > 0 && !forzar) {
+    throw errorCodigo(
+      `Existen ${citas.length} cita(s) activa(s) para el ${fecha}. ` +
+        `Confirme el bloqueo para continuar: las citas deberán reprogramarse.`,
+      {
+        status: 409,
+        codigo: 'DIA_NO_LABORABLE_CON_CITAS',
+        data: {
+          codigo: 'DIA_NO_LABORABLE_CON_CITAS',
+          fecha,
+          totalCitas: citas.length,
+          citas,
+        },
+      },
     )
   }
 
@@ -912,6 +944,15 @@ export function crearDiaNoLaborableMock({ fecha, motivo }) {
   }
   diasNoLaborablesMock.push(nuevo)
   return nuevo
+}
+
+export function actualizarDiaNoLaborableMock(id, { motivo }) {
+  const dia = diasNoLaborablesMock.find((item) => item.id === id)
+  if (!dia) {
+    throw errorBackend(`No se encontró el día no laborable con ID ${id}`, 404)
+  }
+  dia.motivo = String(motivo).trim()
+  return dia
 }
 
 export function eliminarDiaNoLaborableMock(id) {

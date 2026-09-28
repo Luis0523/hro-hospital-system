@@ -1,18 +1,14 @@
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
-import {
-  NOMBRES_DIA_CORTO,
-  construirMatrizMes,
-  formatearFechaLarga,
-  nombreMes,
-} from '../utils/fechas.js'
+import { NOMBRES_DIA_CORTO, construirMatrizMes, formatearFechaLarga, hoyISO } from '../utils/fechas.js'
+import SelectorMesAnio from './SelectorMesAnio.jsx'
 
 const CELDA_BASE =
-  'flex min-h-[44px] w-full flex-col items-center justify-center rounded-lg border px-1 py-1 text-xs transition'
+  'flex min-h-[44px] w-full flex-col items-center justify-center rounded-lg border px-1 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 /**
- * Cuadrícula mensual propia (lunes a domingo). Solo presenta datos y delega las
- * acciones: seleccionar un día libre para registrar o consultar uno marcado.
+ * Cuadrícula mensual propia (lunes a domingo). Presenta datos y delega las
+ * acciones: navegar mes/año, seleccionar un día libre o consultar uno marcado.
  */
 export default function CalendarioNoLaborables({
   anio,
@@ -20,31 +16,40 @@ export default function CalendarioNoLaborables({
   diasNoLaborables = [],
   onMesAnterior,
   onMesSiguiente,
+  onCambiarMes,
+  onCambiarAnio,
   onSeleccionarDia,
   onVerDia,
 }) {
   const semanas = construirMatrizMes(anio, mes)
   const porFecha = new Map(diasNoLaborables.map((dia) => [dia.fecha, dia]))
+  const hoy = hoyISO()
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <header className="mb-4 flex items-center justify-between gap-2">
+    <div className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-4 shadow-sm">
+      <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <Button
           variant="ghost"
           size="sm"
-          className="h-11 w-11"
+          className="h-11 w-11 self-center sm:self-auto"
           onClick={onMesAnterior}
           aria-label="Mes anterior"
         >
           <Icon name="chevron_left" className="text-[20px]" />
         </Button>
-        <p className="text-sm font-semibold text-slate-700">
-          {nombreMes(mes)} {anio}
-        </p>
+
+        <SelectorMesAnio
+          anio={anio}
+          mes={mes}
+          onCambiarMes={onCambiarMes}
+          onCambiarAnio={onCambiarAnio}
+          className="order-first sm:order-none"
+        />
+
         <Button
           variant="ghost"
           size="sm"
-          className="h-11 w-11"
+          className="h-11 w-11 self-center sm:self-auto"
           onClick={onMesSiguiente}
           aria-label="Mes siguiente"
         >
@@ -56,7 +61,7 @@ export default function CalendarioNoLaborables({
         {NOMBRES_DIA_CORTO.map((dia) => (
           <div
             key={dia}
-            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
+            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-outline"
           >
             {dia}
           </div>
@@ -67,18 +72,29 @@ export default function CalendarioNoLaborables({
             return <div key={`relleno-${indice}`} aria-hidden="true" />
           }
 
+          const esHoy = celda.iso === hoy
           const registro = porFecha.get(celda.iso)
+
           if (registro) {
             return (
               <button
                 key={celda.iso}
                 type="button"
                 onClick={() => onVerDia?.(registro)}
-                aria-label={`Consultar ${formatearFechaLarga(celda.iso)}: ${registro.motivo}`}
+                aria-label={`Consultar ${formatearFechaLarga(celda.iso)}: ${registro.motivo}${
+                  esHoy ? ' (hoy)' : ''
+                }`}
                 className={`${CELDA_BASE} border-amber-300 bg-amber-50 font-semibold text-amber-800 hover:bg-amber-100`}
               >
                 <span>{celda.dia}</span>
-                <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                {esHoy ? (
+                  <span className="text-[9px] font-bold leading-none">HOY</span>
+                ) : (
+                  <span
+                    className="mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-500"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             )
           }
@@ -88,10 +104,17 @@ export default function CalendarioNoLaborables({
               key={celda.iso}
               type="button"
               onClick={() => onSeleccionarDia?.(celda.iso)}
-              aria-label={`Registrar día no laborable el ${formatearFechaLarga(celda.iso)}`}
-              className={`${CELDA_BASE} border-slate-200 bg-white text-slate-600 hover:border-hro-blue hover:bg-cyan-50`}
+              aria-label={`Registrar día no laborable el ${formatearFechaLarga(celda.iso)}${
+                esHoy ? ' (hoy)' : ''
+              }`}
+              className={`${CELDA_BASE} ${
+                esHoy
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary hover:bg-surface-container-low'
+              }`}
             >
-              {celda.dia}
+              <span>{celda.dia}</span>
+              {esHoy && <span className="text-[9px] font-bold leading-none">HOY</span>}
             </button>
           )
         })}

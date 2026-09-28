@@ -74,6 +74,10 @@ export function rangoMesISO(anio, mes) {
   return { inicio: aISO(anio, mes, 1), fin: aISO(anio, mes, diasEnMes(anio, mes)) }
 }
 
+export function rangoAnioISO(anio) {
+  return { inicio: aISO(anio, 1, 1), fin: aISO(anio, 12, 31) }
+}
+
 export function sumarMes(anio, mes, delta) {
   const base = new Date(Date.UTC(anio, mes - 1 + delta, 1))
   return { anio: base.getUTCFullYear(), mes: base.getUTCMonth() + 1 }

@@ -5,6 +5,7 @@ import {
   actualizarMedicoMock,
   actualizarProgramacionMock,
   actualizarSubespecialidadMock,
+  actualizarDiaNoLaborableMock,
   crearDiaNoLaborableMock,
   crearEspecialidadMock,
   crearEspacioFisicoMock,
@@ -258,9 +259,14 @@ export async function listarDiasNoLaborablesPorRango(inicio, fin) {
   return desenvolver(await client.get('/dias-no-laborables/rango', { params: { inicio, fin } }))
 }
 
-export async function crearDiaNoLaborable({ fecha, motivo }) {
-  if (USE_MOCK) return crearDiaNoLaborableMock({ fecha, motivo })
-  return desenvolver(await client.post('/dias-no-laborables', { fecha, motivo }))
+export async function crearDiaNoLaborable({ fecha, motivo, forzar = false }) {
+  if (USE_MOCK) return crearDiaNoLaborableMock({ fecha, motivo, forzar })
+  return desenvolver(await client.post('/dias-no-laborables', { fecha, motivo, forzar }))
+}
+
+export async function actualizarDiaNoLaborable(id, { motivo }) {
+  if (USE_MOCK) return actualizarDiaNoLaborableMock(id, { motivo })
+  return desenvolver(await client.put(`/dias-no-laborables/${id}`, { motivo }))
 }
 
 export async function eliminarDiaNoLaborable(id) {

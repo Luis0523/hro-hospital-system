@@ -28,6 +28,7 @@ import {
   desactivarMedico,
   desactivarProgramacion,
   desactivarSubespecialidad,
+  actualizarDiaNoLaborable,
   eliminarDiaNoLaborable,
   listarDiasNoLaborables,
   listarDiasNoLaborablesFuturos,
@@ -612,10 +613,52 @@ describe('administracionApi (mock)', () => {
       ).rejects.toThrow(/ya está registrada como día no laborable/i)
     })
 
-    it('rechaza una fecha con citas activas', async () => {
-      await expect(
-        crearDiaNoLaborable({ fecha: '2026-09-20', motivo: 'Mantenimiento' }),
-      ).rejects.toThrow(/cita\(s\) programada\(s\)/i)
+    it('rechaza un duplicado con codigo DIA_NO_LABORABLE_YA_EXISTE (400)', async () => {
+      const error = await crearDiaNoLaborable({
+        fecha: '2026-09-15',
+        motivo: 'Repetido',
+      }).catch((fallo) => fallo)
+
+      expect(error.status).toBe(400)
+      expect(error.codigo).toBe('DIA_NO_LABORABLE_YA_EXISTE')
+    })
+
+    it('devuelve 409 con codigo y data.citas cuando hay citas activas sin forzar', async () => {
+      const error = await crearDiaNoLaborable({
+        fecha: '2026-09-20',
+        motivo: 'Mantenimiento',
+      }).catch((fallo) => fallo)
+
+      expect(error.status).toBe(409)
+      expect(error.codigo).toBe('DIA_NO_LABORABLE_CON_CITAS')
+      expect(error.data.codigo).toBe('DIA_NO_LABORABLE_CON_CITAS')
+      expect(error.data.fecha).toBe('2026-09-20')
+      expect(error.data.totalCitas).toBe(1)
+      expect(error.data.citas[0]).toMatchObject({
+        horaEstimada: '08:30:00',
+        pacienteNombre: 'Juan López',
+        medicoNombre: 'Dr. Carlos Méndez',
+        subespecialidadNombre: 'Medicina General',
+      })
+    })
+
+    it('forzar=true crea el día sin reprogramar citas', async () => {
+      const creado = await crearDiaNoLaborable({
+        fecha: '2026-09-20',
+        motivo: 'Mantenimiento',
+        forzar: true,
+      })
+
+      expect(creado.fecha).toBe('2026-09-20')
+      expect(creado.motivo).toBe('Mantenimiento')
+    })
+
+    it('actualiza únicamente el motivo de un día no laborable', async () => {
+      const actualizado = await actualizarDiaNoLaborable(1, { motivo: 'Motivo corregido' })
+
+      expect(actualizado.id).toBe(1)
+      expect(actualizado.motivo).toBe('Motivo corregido')
+      expect(actualizado.fecha).toBe('2025-12-25')
     })
 
     it('elimina un día no laborable y deja de listarse', async () => {
@@ -631,7 +674,7 @@ describe('administracionApi (mock)', () => {
     })
 
     it('no expone operaciones que el backend no ofrece', () => {
-      expect(administracionApi.actualizarDiaNoLaborable).toBeUndefined()
+      expect(typeof actualizarDiaNoLaborable).toBe('function')
       expect(administracionApi.reactivarDiaNoLaborable).toBeUndefined()
       expect(administracionApi.forzarDiaNoLaborable).toBeUndefined()
     })

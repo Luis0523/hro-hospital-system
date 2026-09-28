@@ -6,6 +6,7 @@ import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 vi.mock('../api/administracionApi.js', () => ({
   listarDiasNoLaborablesPorRango: vi.fn().mockRejectedValue(new Error('Servidor no disponible')),
   crearDiaNoLaborable: vi.fn(),
+  actualizarDiaNoLaborable: vi.fn(),
   eliminarDiaNoLaborable: vi.fn(),
 }))
 

@@ -815,9 +815,11 @@ La lógica frontend debe usar `codigo` para errores estructurados y `message` ú
 
 **Programación** — [A] listado general `GET /medico-subespecialidades?medicoId=&subespecialidadId=&diaSemana=&estado=`, `PUT /{id}` para editar horario/capacidad/duración (no cambia médico/subespecialidad/día) y `PATCH /{id}/reactivar`. [C] SCRUM-90: comportamiento ante creación parcial (varios días) sin definir (éxito parcial vs. atomicidad vs. batch).
 
-**Calendario institucional** — [A] `POST /dias-no-laborables` `{ fecha, motivo, forzar }` con `409` `codigo=DIA_NO_LABORABLE_CON_CITAS` y `data.citas[]`, `PUT /{id}` `{ motivo }` y `DELETE /{id}`. Sin reprogramación automática.
-[B] Navegación directa `[ < ] [ Mes ▼ ] [ Año ▼ ] [ > ]` y **vista anual** agrupada por mes con selector de año.
-[C] La vista anual debe resolverse con una **única** consulta de rango `GET /dias-no-laborables/rango?inicio=YYYY-01-01&fin=YYYY-12-31`; este endpoint está pendiente de smoke test porque no aparece en Postman v2.2.0. No usar 12 requests ni inventar otro endpoint.
+**Calendario institucional** — [A] `GET /dias-no-laborables`, `/futuros` y `/rango?inicio=&fin=` (inclusivo, ascendente; smoke test desplegado OK); `POST /dias-no-laborables` `{ fecha, motivo, forzar }` → `201`; duplicado → `400` `codigo=DIA_NO_LABORABLE_YA_EXISTE`; conflicto → `409` `codigo=DIA_NO_LABORABLE_CON_CITAS` con `data:{ codigo, fecha, totalCitas, citas[] }`; `PUT /{id}` `{ motivo }` (la fecha no cambia); `DELETE /{id}` habilita la fecha.
+[B] Navegación directa `[ < ] [ Mes ▼ ] [ Año ▼ ] [ > ]` y **vista anual** agrupada por mes con selector de año (una sola consulta por rango anual).
+[A] `forzar=true` **solo registra el día**: NO cancela, modifica ni reprograma citas (quedan pendientes de gestión manual). La decisión funcional se toma por `codigo`/`data`, no por el texto de `message`.
+
+> **Validación manual del flujo `DIA_NO_LABORABLE_CON_CITAS` → `forzar=true`:** debe realizarse normalmente con `VITE_USE_MOCK=true` (fecha mock `2026-09-20`). No deben crearse citas ni días no laborables en el backend desplegado únicamente con el propósito de provocar este error; las operaciones mutantes contra el backend real quedan reservadas para una prueba de integración controlada posterior. La prueba puntual realizada en F4 contra el backend real fue únicamente `GET /dias-no-laborables/rango` y no modificó datos.
 
 **Usuarios, roles y permisos** — [A] usuarios (`GET /usuarios?estado=&rol=`, `GET /{id}`, `PATCH /{id}/activar|desactivar`, `PUT /{id}/rol`), `GET /roles` y permisos por subespecialidad (`GET`, `POST`, `PATCH /desactivar|reactivar`). El panel no crea usuarios ni administra contraseñas.
 
@@ -848,7 +850,7 @@ No existe una entidad "Clínica" vigente: el concepto se modela mediante especia
 
 - Limitaciones heredadas de `shared/ui` (`Input`, `Select`, `Modal`, `Table`) y del scrollbar global.
 - `format:check` global falla por archivos ajenos al módulo.
-- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): `/dias-no-laborables/rango`; auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
+- Contratos pendientes de verificación contra backend desplegado (marcados [C] en esta sección): auditoría desplegada; creación parcial de programación (SCRUM-90); significado original de SCRUM-91 (no se usa para justificar el selector mes/año del Calendario, que es un requerimiento frontend confirmado); alcance de reprogramación (SCRUM-119/SCRUM-127).
 
 ### Regla fundamental
 
