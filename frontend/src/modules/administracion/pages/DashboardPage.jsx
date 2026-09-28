@@ -4,93 +4,209 @@ import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
-import { listarDiasNoLaborablesFuturos } from '../api/administracionApi.js'
-import { formatearFechaLarga } from '../utils/fechas.js'
+import {
+  listarDiasNoLaborablesFuturos,
+  obtenerResumenDashboard,
+} from '../api/administracionApi.js'
+import { formatearFechaLarga, hoyISO } from '../utils/fechas.js'
 import TarjetaIndicador from '../components/TarjetaIndicador.jsx'
 
 const MAX_PROXIMOS_DIAS = 3
 
-// Indicadores operativos sin contrato agregado confirmado en el backend vigente.
-// Se muestran como pendientes y no realizan HTTP ni presentan cifras.
-const INDICADORES_PENDIENTES = [
-  {
-    titulo: 'Citas del día',
-    icono: 'event',
-    descripcion: 'Resumen de las citas programadas para la jornada.',
-  },
-  {
-    titulo: 'Cupos disponibles',
-    icono: 'event_available',
-    descripcion: 'Disponibilidad de cupos por clínica.',
-  },
-  {
-    titulo: 'Inasistencias',
-    icono: 'person_off',
-    descripcion: 'Pacientes que no asistieron a su cita.',
-  },
-  {
-    titulo: 'Alertas administrativas',
-    icono: 'notifications',
-    descripcion: 'Avisos pendientes de revisión por administración.',
-  },
-]
+// Mapeo visual de la severidad real del backend (no se muestra `codigo`).
+const TONO_SEVERIDAD = { CRITICA: 'error', ADVERTENCIA: 'warning', INFO: 'info' }
+const ETIQUETA_SEVERIDAD = { CRITICA: 'Crítica', ADVERTENCIA: 'Advertencia', INFO: 'Información' }
+
+function formatearPorcentaje(valor) {
+  return `${valor}%`
+}
 
 export default function DashboardPage() {
-  const [dias, setDias] = useState([])
+  // Resumen administrativo (endpoint agregado).
+  const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
-  const cargar = useCallback(async () => {
+  // Tarjeta independiente de próximos días no laborables.
+  const [dias, setDias] = useState([])
+  const [cargandoDias, setCargandoDias] = useState(true)
+  const [errorDias, setErrorDias] = useState(null)
+
+  const cargarResumen = useCallback(async () => {
     setCargando(true)
     setError(null)
     try {
-      const lista = await listarDiasNoLaborablesFuturos()
-      setDias(Array.isArray(lista) ? lista : [])
+      const datos = await obtenerResumenDashboard(hoyISO())
+      setResumen(datos)
     } catch (fallo) {
-      setDias([])
-      setError(fallo?.message || 'No se pudieron cargar los días no laborables')
+      setResumen(null)
+      setError(fallo?.message || 'No se pudo cargar el resumen administrativo')
     } finally {
       setCargando(false)
     }
   }, [])
 
-  useEffect(() => {
-    cargar()
-  }, [cargar])
+  const cargarDias = useCallback(async () => {
+    setCargandoDias(true)
+    setErrorDias(null)
+    try {
+      const lista = await listarDiasNoLaborablesFuturos()
+      setDias(Array.isArray(lista) ? lista : [])
+    } catch (fallo) {
+      setDias([])
+      setErrorDias(fallo?.message || 'No se pudieron cargar los días no laborables')
+    } finally {
+      setCargandoDias(false)
+    }
+  }, [])
 
-  // Orden de presentación por fecha ISO (comparación lexicográfica, sin `new Date`).
+  useEffect(() => {
+    cargarResumen()
+    cargarDias()
+  }, [cargarResumen, cargarDias])
+
   const proximosDias = [...dias]
     .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
     .slice(0, MAX_PROXIMOS_DIAS)
 
+  const estados = resumen
+    ? [
+        { etiqueta: 'Pendientes', valor: resumen.citasPendientes },
+        { etiqueta: 'Confirmadas', valor: resumen.citasConfirmadas },
+        { etiqueta: 'Atendidas', valor: resumen.citasAtendidas },
+        { etiqueta: 'Canceladas', valor: resumen.citasCanceladas },
+        { etiqueta: 'Reprogramadas', valor: resumen.citasReprogramadas },
+      ]
+    : []
+
+  const ocupacionPorcentaje =
+    resumen && resumen.capacidadTotal > 0
+      ? Math.round((resumen.cuposOcupados / resumen.capacidadTotal) * 100)
+      : 0
+
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Dashboard</h2>
-        <p className="text-sm text-slate-500">Resumen general del Panel de Administración.</p>
+        <h2 className="text-headline-md text-primary">Dashboard</h2>
+        <p className="text-sm text-outline">Resumen general del Panel de Administración.</p>
+        {resumen?.fecha && (
+          <p className="text-sm font-medium text-on-surface-variant">
+            Resumen del {formatearFechaLarga(resumen.fecha)}
+          </p>
+        )}
       </header>
 
-      <Alert tone="info" title="Indicadores operativos en espera de contrato backend">
-        Los indicadores de citas, cupos e inasistencias aún no cuentan con un endpoint agregado en
-        el backend. Se muestran sin cifras para no presentar datos que el servidor no expone. La
-        información institucional sí se consulta en tiempo real.
-      </Alert>
+      {cargando && <Spinner label="Cargando resumen administrativo..." />}
+
+      {!cargando && error && (
+        <Alert tone="error" title="No se pudo cargar el resumen administrativo">
+          <p className="mt-1">{error}</p>
+          <div className="mt-3">
+            <Button size="sm" variant="secondary" onClick={cargarResumen}>
+              Reintentar
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {INDICADORES_PENDIENTES.map((indicador) => (
-          <TarjetaIndicador
-            key={indicador.titulo}
-            testId="tarjeta-pendiente"
-            titulo={indicador.titulo}
-            icono={indicador.icono}
-            descripcion={indicador.descripcion}
-          >
-            <p className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-              <Icon name="hourglass_empty" className="text-[16px]" />
-              Pendiente de contrato backend
-            </p>
-          </TarjetaIndicador>
-        ))}
+        {!cargando && !error && resumen && (
+          <>
+            <TarjetaIndicador
+              testId="tarjeta-citas"
+              titulo="Citas del día"
+              icono="event"
+              descripcion="Total de citas registradas para la jornada."
+            >
+              <p className="text-metric-display font-bold text-primary">{resumen.totalCitas}</p>
+            </TarjetaIndicador>
+
+            <TarjetaIndicador
+              testId="tarjeta-capacidad"
+              titulo="Capacidad y cupos"
+              icono="event_available"
+              descripcion="Cupos del día según la programación."
+            >
+              <dl className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-on-surface-variant">Capacidad total</dt>
+                  <dd className="font-semibold text-on-surface">{resumen.capacidadTotal}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-on-surface-variant">Ocupados</dt>
+                  <dd className="font-semibold text-on-surface">{resumen.cuposOcupados}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-on-surface-variant">Disponibles</dt>
+                  <dd className="font-semibold text-primary">{resumen.cuposDisponibles}</dd>
+                </div>
+              </dl>
+              {resumen.capacidadTotal > 0 && (
+                <div className="mt-3">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${ocupacionPorcentaje}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-outline">Ocupación: {ocupacionPorcentaje}%</p>
+                </div>
+              )}
+            </TarjetaIndicador>
+
+            <TarjetaIndicador
+              testId="tarjeta-inasistencias"
+              titulo="Inasistencias"
+              icono="person_off"
+              descripcion="Pacientes que no asistieron a su cita."
+            >
+              <p className="text-metric-sub font-bold text-on-surface">{resumen.inasistencias}</p>
+              <p className="mt-1 text-sm text-on-surface-variant">
+                Tasa de inasistencia: {formatearPorcentaje(resumen.tasaInasistencia)}
+              </p>
+            </TarjetaIndicador>
+
+            <TarjetaIndicador
+              testId="tarjeta-estados"
+              titulo="Estados de cita"
+              icono="fact_check"
+              descripcion="Distribución de las citas del día."
+            >
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {estados.map((estado) => (
+                  <div key={estado.etiqueta} className="flex items-center justify-between gap-2">
+                    <dt className="text-on-surface-variant">{estado.etiqueta}</dt>
+                    <dd className="font-semibold text-on-surface">{estado.valor}</dd>
+                  </div>
+                ))}
+              </dl>
+            </TarjetaIndicador>
+
+            <TarjetaIndicador
+              testId="tarjeta-alertas"
+              titulo="Alertas administrativas"
+              icono="notifications"
+              descripcion="Avisos generados por el sistema para la jornada."
+            >
+              {resumen.alertas.length === 0 ? (
+                <p className="text-sm text-on-surface-variant">Sin alertas administrativas</p>
+              ) : (
+                <ul className="space-y-2">
+                  {resumen.alertas.map((alerta, indice) => (
+                    <li key={alerta.codigo ?? indice}>
+                      <Alert
+                        tone={TONO_SEVERIDAD[alerta.severidad] ?? 'info'}
+                        title={ETIQUETA_SEVERIDAD[alerta.severidad] ?? alerta.severidad}
+                      >
+                        <p>{alerta.mensaje}</p>
+                      </Alert>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TarjetaIndicador>
+          </>
+        )}
 
         <TarjetaIndicador
           testId="tarjeta-dias-no-laborables"
@@ -100,40 +216,40 @@ export default function DashboardPage() {
           accion={
             <Link
               to="/administracion/calendario"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-hro-blue transition hover:bg-cyan-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+              className="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <Icon name="calendar_month" className="text-[16px]" />
               Ver calendario
             </Link>
           }
         >
-          {cargando && <Spinner label="Cargando próximos días no laborables..." />}
+          {cargandoDias && <Spinner label="Cargando próximos días no laborables..." />}
 
-          {!cargando && error && (
+          {!cargandoDias && errorDias && (
             <Alert tone="error" title="No se pudieron cargar los días no laborables">
-              <p className="mt-1">{error}</p>
+              <p className="mt-1">{errorDias}</p>
               <div className="mt-3">
-                <Button size="sm" variant="secondary" onClick={cargar}>
+                <Button size="sm" variant="secondary" onClick={cargarDias}>
                   Reintentar
                 </Button>
               </div>
             </Alert>
           )}
 
-          {!cargando && !error && proximosDias.length === 0 && (
-            <p className="text-sm text-slate-500">
+          {!cargandoDias && !errorDias && proximosDias.length === 0 && (
+            <p className="text-sm text-on-surface-variant">
               No hay próximos días no laborables registrados.
             </p>
           )}
 
-          {!cargando && !error && proximosDias.length > 0 && (
+          {!cargandoDias && !errorDias && proximosDias.length > 0 && (
             <ul className="space-y-2">
               {proximosDias.map((dia) => (
-                <li key={dia.id} className="rounded-lg bg-slate-50 px-3 py-2">
-                  <p className="text-sm font-semibold text-slate-700">
+                <li key={dia.id} className="rounded-lg bg-surface-container-low px-3 py-2">
+                  <p className="text-sm font-semibold text-on-surface">
                     {formatearFechaLarga(dia.fecha)}
                   </p>
-                  <p className="break-words text-xs text-slate-500">{dia.motivo}</p>
+                  <p className="break-words text-xs text-on-surface-variant">{dia.motivo}</p>
                 </li>
               ))}
             </ul>

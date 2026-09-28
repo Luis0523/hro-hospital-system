@@ -807,7 +807,7 @@ La lógica frontend debe usar `codigo` para errores estructurados y `message` ú
 
 ### Estado por sección
 
-**Dashboard** — [A] `GET /dashboard/resumen?fecha=` devuelve indicadores y `alertas[]`. El frontend solo muestra; no recalcula indicadores.
+**Dashboard** — [A] `GET /dashboard/resumen?fecha=` (opcional; default "hoy" del servidor) devuelve indicadores y `alertas[]` (`codigo`/`severidad`/`mensaje`). El frontend usa un único endpoint agregado, envía `fecha=hoyISO()` para el resumen actual y **no recalcula métricas ni inventa alertas**: solo presenta los valores (incluida `tasaInasistencia`, que ya es un porcentaje calculado).
 
 **Catálogos (especialidades, subespecialidades, espacios físicos)** — [A] `?estado=` (default `activos`), `DELETE /{id}` (baja lógica: `activo=false`, HTTP 200) y `PATCH /{id}/reactivar` (`activo=true`, HTTP 200, idempotente). Confirmado en el backend vigente (`origin/backend-admin` y `origin/main`).
 

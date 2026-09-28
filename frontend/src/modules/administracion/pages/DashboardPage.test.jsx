@@ -5,22 +5,23 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import client from '@/shared/api/client'
 import { reiniciarCatalogosMock } from '../api/mockData.js'
 
-// Fija "hoy" para que los próximos días del mock sean deterministas.
+// Fija "hoy" para que la fecha del resumen y los próximos días sean deterministas.
 vi.mock('../utils/fechas.js', async (importOriginal) => {
   const actual = await importOriginal()
   return { ...actual, hoyISO: () => '2026-09-01' }
 })
 
-// Envuelve la función API real en un espía para poder simular error/vacío/reintento.
+// Envuelve funciones API reales en espías para simular error/vacío/cero/reintento.
 vi.mock('../api/administracionApi.js', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
+    obtenerResumenDashboard: vi.fn(actual.obtenerResumenDashboard),
     listarDiasNoLaborablesFuturos: vi.fn(actual.listarDiasNoLaborablesFuturos),
   }
 })
 
-import { listarDiasNoLaborablesFuturos } from '../api/administracionApi.js'
+import { listarDiasNoLaborablesFuturos, obtenerResumenDashboard } from '../api/administracionApi.js'
 import DashboardPage from './DashboardPage.jsx'
 
 function renderDashboard() {
@@ -34,98 +35,142 @@ function renderDashboard() {
   )
 }
 
+const RESUMEN_CERO = {
+  fecha: '2026-09-01',
+  totalCitas: 0,
+  citasPendientes: 0,
+  citasConfirmadas: 0,
+  citasAtendidas: 0,
+  citasCanceladas: 0,
+  citasReprogramadas: 0,
+  inasistencias: 0,
+  capacidadTotal: 0,
+  cuposOcupados: 0,
+  cuposDisponibles: 0,
+  tasaInasistencia: 0,
+  alertas: [],
+}
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     reiniciarCatalogosMock()
+    obtenerResumenDashboard.mockClear()
     listarDiasNoLaborablesFuturos.mockClear()
   })
 
-  it('renderiza el dashboard con las tarjetas pendientes y la institucional', async () => {
+  it('consulta el resumen con la fecha local (hoyISO) y muestra la fecha', async () => {
     renderDashboard()
 
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Citas del día' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Cupos disponibles' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Inasistencias' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Alertas administrativas' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Próximos días no laborables' })).toBeInTheDocument()
-
-    await screen.findByText('Día de la Independencia Patria')
+    expect(await screen.findByText('Resumen del 1 de septiembre de 2026')).toBeInTheDocument()
+    expect(obtenerResumenDashboard).toHaveBeenCalledWith('2026-09-01')
   })
 
-  it('las cuatro tarjetas pendientes lo indican y no contienen cifras ficticias', async () => {
+  it('muestra las métricas reales del DTO', async () => {
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+
+    const citas = screen.getByTestId('tarjeta-citas')
+    expect(within(citas).getByText('42')).toBeInTheDocument()
+
+    const capacidad = screen.getByTestId('tarjeta-capacidad')
+    expect(within(capacidad).getByText('60')).toBeInTheDocument()
+    expect(within(capacidad).getByText('45')).toBeInTheDocument()
+    expect(within(capacidad).getByText('15')).toBeInTheDocument()
+    expect(within(capacidad).getByText('Ocupación: 75%')).toBeInTheDocument()
+
+    const inasistencias = screen.getByTestId('tarjeta-inasistencias')
+    expect(within(inasistencias).getByText('3')).toBeInTheDocument()
+    expect(within(inasistencias).getByText('Tasa de inasistencia: 17.65%')).toBeInTheDocument()
+  })
+
+  it('muestra el desglose de estados de cita', async () => {
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+
+    const estados = screen.getByTestId('tarjeta-estados')
+    expect(within(estados).getByText('Pendientes')).toBeInTheDocument()
+    expect(within(estados).getByText('Confirmadas')).toBeInTheDocument()
+    expect(within(estados).getByText('Atendidas')).toBeInTheDocument()
+    expect(within(estados).getByText('Canceladas')).toBeInTheDocument()
+    expect(within(estados).getByText('Reprogramadas')).toBeInTheDocument()
+  })
+
+  it('muestra las alertas con severidad y mensaje, sin exponer el código', async () => {
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+
+    const alertas = screen.getByTestId('tarjeta-alertas')
+    expect(within(alertas).getByText('Advertencia')).toBeInTheDocument()
+    expect(within(alertas).getByText('Información')).toBeInTheDocument()
+    expect(within(alertas).getByText(/capacidad máxima/i)).toBeInTheDocument()
+    expect(within(alertas).getByText(/próximos 7 días/i)).toBeInTheDocument()
+
+    expect(screen.queryByText('CUPOS_AGOTADOS')).not.toBeInTheDocument()
+    expect(screen.queryByText('DIAS_NO_LABORABLES_PROXIMOS')).not.toBeInTheDocument()
+  })
+
+  it('muestra un estado de "sin alertas" cuando alertas es vacío', async () => {
+    obtenerResumenDashboard.mockResolvedValueOnce({ ...RESUMEN_CERO, alertas: [] })
     renderDashboard()
 
-    const pendientes = screen.getAllByTestId('tarjeta-pendiente')
-    expect(pendientes).toHaveLength(4)
+    expect(await screen.findByText('Sin alertas administrativas')).toBeInTheDocument()
+  })
 
-    pendientes.forEach((tarjeta) => {
-      expect(within(tarjeta).getByText('Pendiente de contrato backend')).toBeInTheDocument()
-      expect(tarjeta.textContent).not.toMatch(/\d/)
-    })
+  it('maneja valores cero sin división inválida', async () => {
+    obtenerResumenDashboard.mockResolvedValueOnce(RESUMEN_CERO)
+    renderDashboard()
 
-    await screen.findByText('Día de la Independencia Patria')
+    const inasistencias = await screen.findByTestId('tarjeta-inasistencias')
+    expect(within(inasistencias).getByText('Tasa de inasistencia: 0%')).toBeInTheDocument()
+    expect(screen.queryByText(/Ocupación:/)).not.toBeInTheDocument()
   })
 
   it('muestra un estado de carga accesible mientras consulta', () => {
-    listarDiasNoLaborablesFuturos.mockImplementationOnce(() => new Promise(() => {}))
+    obtenerResumenDashboard.mockImplementationOnce(() => new Promise(() => {}))
     renderDashboard()
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0)
   })
 
-  it('muestra fecha y motivo de los próximos días devueltos por el mock', async () => {
+  it('ante un error muestra el mensaje y Reintentar, conservando la tarjeta de calendario', async () => {
+    obtenerResumenDashboard.mockRejectedValueOnce(new Error('Fallo de red'))
     renderDashboard()
 
-    expect(await screen.findByText('15 de septiembre de 2026')).toBeInTheDocument()
-    expect(screen.getByText('Día de la Independencia Patria')).toBeInTheDocument()
-    expect(screen.getByText('Día de la Revolución de Octubre')).toBeInTheDocument()
+    expect(
+      await screen.findByText('No se pudo cargar el resumen administrativo'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Fallo de red')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    expect(screen.getByTestId('tarjeta-dias-no-laborables')).toBeInTheDocument()
   })
 
-  it('muestra como máximo tres próximos días', async () => {
+  it('Reintentar vuelve a ejecutar la consulta del resumen', async () => {
+    obtenerResumenDashboard.mockRejectedValueOnce(new Error('Fallo de red'))
+    const user = userEvent.setup()
     renderDashboard()
 
-    await screen.findByText('15 de septiembre de 2026')
-    const lista = screen.getByRole('list')
+    await screen.findByText('No se pudo cargar el resumen administrativo')
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByText('Resumen del 1 de septiembre de 2026')).toBeInTheDocument()
+    expect(obtenerResumenDashboard).toHaveBeenCalledTimes(2)
+  })
+
+  it('conserva la tarjeta real de próximos días no laborables', async () => {
+    renderDashboard()
+
+    expect(await screen.findByText('Día de la Independencia Patria')).toBeInTheDocument()
+    const lista = within(screen.getByTestId('tarjeta-dias-no-laborables')).getByRole('list')
     expect(within(lista).getAllByRole('listitem')).toHaveLength(3)
     expect(screen.queryByText('Fiesta de Navidad')).not.toBeInTheDocument()
   })
 
-  it('muestra el mensaje de vacío cuando no hay próximos días', async () => {
-    listarDiasNoLaborablesFuturos.mockResolvedValueOnce([])
+  it('ya no muestra tarjetas de "Pendiente de contrato backend"', async () => {
     renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
 
-    expect(
-      await screen.findByText('No hay próximos días no laborables registrados.'),
-    ).toBeInTheDocument()
-  })
-
-  it('ante un error muestra el mensaje y Reintentar sin ocultar las demás tarjetas', async () => {
-    listarDiasNoLaborablesFuturos.mockRejectedValueOnce(new Error('Fallo de red'))
-    renderDashboard()
-
-    expect(
-      await screen.findByText('No se pudieron cargar los días no laborables'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
-    expect(screen.getAllByTestId('tarjeta-pendiente')).toHaveLength(4)
-    expect(screen.getByRole('heading', { name: 'Citas del día' })).toBeInTheDocument()
-  })
-
-  it('Reintentar vuelve a ejecutar la consulta', async () => {
-    listarDiasNoLaborablesFuturos
-      .mockRejectedValueOnce(new Error('Fallo de red'))
-      .mockResolvedValueOnce([
-        { id: 99, fecha: '2026-10-20', motivo: 'Día de la Revolución de Octubre' },
-      ])
-    const user = userEvent.setup()
-    renderDashboard()
-
-    await screen.findByText('No se pudieron cargar los días no laborables')
-    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
-
-    expect(await screen.findByText('Día de la Revolución de Octubre')).toBeInTheDocument()
-    expect(listarDiasNoLaborablesFuturos).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText(/Pendiente de contrato backend/i)).not.toBeInTheDocument()
   })
 
   it('Ver calendario navega a /administracion/calendario', async () => {
@@ -142,7 +187,7 @@ describe('DashboardPage', () => {
     const getSpy = vi.spyOn(client, 'get')
     renderDashboard()
 
-    await screen.findByText('Día de la Independencia Patria')
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
     expect(getSpy).not.toHaveBeenCalled()
     getSpy.mockRestore()
   })

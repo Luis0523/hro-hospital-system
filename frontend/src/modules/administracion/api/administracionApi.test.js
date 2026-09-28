@@ -40,6 +40,7 @@ import {
   listarProgramacionesPorSubespecialidad,
   listarProgramaciones,
   listarSubespecialidades,
+  obtenerResumenDashboard,
   actualizarProgramacion,
   reactivarEspecialidad,
   reactivarEspacioFisico,
@@ -87,6 +88,7 @@ describe('administracionApi (mock)', () => {
     await listarDiasNoLaborables()
     await listarDiasNoLaborablesFuturos()
     await listarDiasNoLaborablesPorRango('2026-09-01', '2026-09-30')
+    await obtenerResumenDashboard()
     await eliminarDiaNoLaborable(diaCreado.id)
 
     expect(client.get).not.toHaveBeenCalled()
@@ -677,6 +679,43 @@ describe('administracionApi (mock)', () => {
       expect(typeof actualizarDiaNoLaborable).toBe('function')
       expect(administracionApi.reactivarDiaNoLaborable).toBeUndefined()
       expect(administracionApi.forzarDiaNoLaborable).toBeUndefined()
+    })
+  })
+
+  describe('dashboard', () => {
+    it('obtiene el resumen con las claves exactas del DTO', async () => {
+      const resumen = await obtenerResumenDashboard()
+
+      expect(Object.keys(resumen).sort()).toEqual(
+        [
+          'alertas',
+          'capacidadTotal',
+          'citasAtendidas',
+          'citasCanceladas',
+          'citasConfirmadas',
+          'citasPendientes',
+          'citasReprogramadas',
+          'cuposDisponibles',
+          'cuposOcupados',
+          'fecha',
+          'inasistencias',
+          'tasaInasistencia',
+          'totalCitas',
+        ].sort(),
+      )
+      expect(resumen.cuposDisponibles).toBe(15)
+      expect(resumen.capacidadTotal).toBe(60)
+      expect(resumen.alertas[0]).toHaveProperty('codigo')
+      expect(resumen.alertas[0]).toHaveProperty('severidad')
+      expect(resumen.alertas[0]).toHaveProperty('mensaje')
+    })
+
+    it('resuelve la fecha solicitada y, sin fecha, usa hoy', async () => {
+      const conFecha = await obtenerResumenDashboard('2026-09-15')
+      expect(conFecha.fecha).toBe('2026-09-15')
+
+      const sinFecha = await obtenerResumenDashboard()
+      expect(sinFecha.fecha).toBe(hoyISO())
     })
   })
 })

@@ -962,3 +962,41 @@ export function eliminarDiaNoLaborableMock(id) {
   }
   diasNoLaborablesMock.splice(indice, 1)
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard administrativo — /dashboard/resumen (backend simulado)
+// Datos de prueba; replican exactamente las claves de ResumenAdminDTO.
+// ---------------------------------------------------------------------------
+
+const DASHBOARD_RESUMEN_MOCK = {
+  totalCitas: 42,
+  citasPendientes: 5,
+  citasConfirmadas: 20,
+  citasAtendidas: 14,
+  citasCanceladas: 2,
+  citasReprogramadas: 1,
+  inasistencias: 3,
+  capacidadTotal: 60,
+  cuposOcupados: 45,
+  cuposDisponibles: 15,
+  tasaInasistencia: 17.65,
+  alertas: [
+    {
+      codigo: 'CUPOS_AGOTADOS',
+      severidad: 'ADVERTENCIA',
+      mensaje: '2 cupo(s) del día alcanzaron su capacidad máxima.',
+    },
+    {
+      codigo: 'DIAS_NO_LABORABLES_PROXIMOS',
+      severidad: 'INFO',
+      mensaje: '1 día no laborable en los próximos 7 días.',
+    },
+  ],
+}
+
+export function obtenerResumenDashboardMock(fecha) {
+  return {
+    ...clonar(DASHBOARD_RESUMEN_MOCK),
+    fecha: fecha || hoyISO(),
+  }
+}

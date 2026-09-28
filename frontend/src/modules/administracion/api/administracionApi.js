@@ -28,6 +28,7 @@ import {
   listarProgramacionesPorMedicoMock,
   listarProgramacionesPorSubespecialidadMock,
   listarSubespecialidadesMock,
+  obtenerResumenDashboardMock,
   reactivarEspecialidadMock,
   reactivarEspacioFisicoMock,
   reactivarMedicoMock,
@@ -272,4 +273,17 @@ export async function actualizarDiaNoLaborable(id, { motivo }) {
 export async function eliminarDiaNoLaborable(id) {
   if (USE_MOCK) return eliminarDiaNoLaborableMock(id)
   return desenvolver(await client.delete(`/dias-no-laborables/${id}`))
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard administrativo — /dashboard/resumen
+// El backend calcula los indicadores; el frontend solo los muestra.
+// `fecha` es opcional (ISO YYYY-MM-DD); si se omite, el backend usa su "hoy".
+// ---------------------------------------------------------------------------
+
+export async function obtenerResumenDashboard(fecha) {
+  if (USE_MOCK) return obtenerResumenDashboardMock(fecha)
+  return desenvolver(
+    await client.get('/dashboard/resumen', { params: fecha ? { fecha } : undefined }),
+  )
 }
