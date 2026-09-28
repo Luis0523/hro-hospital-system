@@ -5,11 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Fila de la vista operativa del jefe de enfermería: una sala del nivel con la
- * subespecialidad seleccionada para la fecha (o nula si aún no se seleccionó).
+ * Fila de la vista operativa del jefe de enfermería: una sala del nivel con las
+ * subespecialidades asignadas para la fecha (lista vacía si aún no se seleccionó).
  */
 @Data
 @Builder
@@ -21,11 +22,6 @@ public class AsignacionVistaItemDTO {
     private Short nivel;
     private Integer capacidadCamillas;
 
-    /** ID de la asignación de esa sala/fecha; {@code null} si no hay selección. */
-    private Long asignacionId;
-
-    private Long subespecialidadId;
-    private String subespecialidadNombre;
-    private Long especialidadId;
-    private String especialidadNombre;
+    /** Subespecialidades asignadas a la sala ese día (puede haber varias). */
+    private List<AsignacionVistaSubDTO> asignaciones;
 }

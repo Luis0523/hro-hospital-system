@@ -24,6 +24,13 @@ public interface AsignacionDiariaEspacioRepository extends JpaRepository<Asignac
 
     Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
+    /** Una misma subespecialidad no puede repetirse en la misma sala/fecha (sí puede haber varias). */
+    Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFechaAndSubespecialidadId(
+            UUID espacioFisicoId, LocalDate fecha, Long subespecialidadId);
+
+    boolean existsByEspacioFisicoIdAndFechaAndSubespecialidadId(
+            UUID espacioFisicoId, LocalDate fecha, Long subespecialidadId);
+
     List<AsignacionDiariaEspacio> findBySubespecialidadIdAndFecha(Long subespecialidadId, LocalDate fecha);
 
     boolean existsByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);

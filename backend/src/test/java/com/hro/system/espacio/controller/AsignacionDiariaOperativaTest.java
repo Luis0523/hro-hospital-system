@@ -110,15 +110,15 @@ class AsignacionDiariaOperativaTest {
                         .param("nivel", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[?(@.espacioFisicoId=='" + sala1.getId() + "')].subespecialidadNombre",
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId=='" + sala1.getId() + "')].asignaciones[0].subespecialidadNombre",
                         hasItem("Medicina General")))
-                .andExpect(jsonPath("$.data[?(@.espacioFisicoId=='" + sala2.getId() + "')].asignacionId",
-                        hasItem(nullValue())));
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId=='" + sala2.getId() + "')].asignaciones",
+                        hasItem(hasSize(0))));
     }
 
     @Test
-    @DisplayName("PUT /asignaciones-diarias - Actualiza la subespecialidad si ya existe (idempotente por sala+fecha)")
-    void upsert_actualiza() throws Exception {
+    @DisplayName("PUT /asignaciones-diarias - Agrega una segunda subespecialidad a la misma sala")
+    void upsert_agregaSegundaSubespecialidad() throws Exception {
         mockMvc.perform(put("/asignaciones-diarias")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(sala1, subespecialidad.getId())));
@@ -134,7 +134,7 @@ class AsignacionDiariaOperativaTest {
 
         mockMvc.perform(get("/asignaciones-diarias").param("fecha", FECHA.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)));
+                .andExpect(jsonPath("$.data", hasSize(2)));
     }
 
     @Test
