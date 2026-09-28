@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import FilaTurno from './FilaTurno.jsx'
 
 const ASIGNACION = {
@@ -22,13 +22,27 @@ function renderFila(asignacion) {
   )
 }
 
+function celdas() {
+  return within(screen.getByTestId(`fila-turno-${ASIGNACION.asignacionDiariaEspacioId}`)).getAllByRole(
+    'cell',
+  )
+}
+
 describe('FilaTurno', () => {
-  it('muestra subespecialidad, consultorio y turno actual', () => {
+  it('muestra turno actual y consultorio en ese orden', () => {
     renderFila(ASIGNACION)
 
-    expect(screen.getByText('Pediatría General')).toBeInTheDocument()
-    expect(screen.getByText('201')).toBeInTheDocument()
-    expect(screen.getByText('#007')).toBeInTheDocument()
+    const [turno, consultorio] = celdas()
+
+    expect(turno).toHaveTextContent('#007')
+    expect(consultorio).toHaveTextContent('201')
+  })
+
+  it('no muestra la subespecialidad aunque venga en el objeto', () => {
+    renderFila(ASIGNACION)
+
+    expect(screen.queryByText('Pediatría General')).not.toBeInTheDocument()
+    expect(celdas()).toHaveLength(2)
   })
 
   it('no muestra el nivel aunque venga en el objeto', () => {
@@ -73,8 +87,10 @@ describe('FilaTurno', () => {
       turnoActual: null,
     })
 
-    expect(screen.getByText('Sin subespecialidad')).toBeInTheDocument()
-    expect(screen.getAllByText('—')).toHaveLength(2)
+    const [turno, consultorio] = within(screen.getByTestId('fila-turno-9')).getAllByRole('cell')
+
+    expect(turno).toHaveTextContent('—')
+    expect(consultorio).toHaveTextContent('—')
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
   })
 })

@@ -2,12 +2,14 @@ import { useRef, useState } from 'react'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import EspecialidadesTab from '../components/EspecialidadesTab.jsx'
 import EspaciosFisicosTab from '../components/EspaciosFisicosTab.jsx'
+import EstacionesTab from '../components/EstacionesTab.jsx'
 import SubespecialidadesTab from '../components/SubespecialidadesTab.jsx'
 
 const PESTANAS = [
   { id: 'especialidades', etiqueta: 'Especialidades', icono: 'medical_services' },
   { id: 'subespecialidades', etiqueta: 'Subespecialidades', icono: 'account_tree' },
   { id: 'espacios', etiqueta: 'Espacios físicos', icono: 'meeting_room' },
+  { id: 'estaciones', etiqueta: 'Estaciones', icono: 'point_of_sale' },
 ]
 
 export default function ClinicasPage() {
@@ -77,6 +79,7 @@ export default function ClinicasPage() {
         {pestana === 'especialidades' && <EspecialidadesTab />}
         {pestana === 'subespecialidades' && <SubespecialidadesTab />}
         {pestana === 'espacios' && <EspaciosFisicosTab />}
+        {pestana === 'estaciones' && <EstacionesTab />}
       </div>
     </section>
   )

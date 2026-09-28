@@ -91,11 +91,6 @@ public class ReporteAdminService {
             if (especialidadId != null) {
                 predicados.add(cb.equal(
                         root.get("subespecialidadHorario").get("subespecialidad").get("especialidad").get("id"),
-                predicados.add(cb.equal(root.get("medicoSubespecialidad").get("subespecialidad").get("id"), subespecialidadId));
-            }
-            if (especialidadId != null) {
-                predicados.add(cb.equal(
-                        root.get("medicoSubespecialidad").get("subespecialidad").get("especialidad").get("id"),
                         especialidadId));
             }
             return cb.and(predicados.toArray(new Predicate[0]));

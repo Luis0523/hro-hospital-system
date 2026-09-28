@@ -98,6 +98,10 @@
       "key": "ubicacionArchivoId",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "estacionId",
+      "value": "1"
     }
   ],
   "item": [
@@ -217,7 +221,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar",
+              "raw": "{{baseUrl}}/turnos/{{turnoId}}/llamar?porNombre=false",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -226,9 +230,15 @@
                 "{{turnoId}}",
                 "llamar"
               ],
-              "query": []
+              "query": [
+                {
+                  "key": "porNombre",
+                  "value": "false",
+                  "description": "true = anunciar por nombre (llamar/re-llamar)"
+                }
+              ]
             },
-            "description": "Cambia el estado del turno a 'llamado', actualiza la pantalla del tablero e inicia el temporizador de tiempo de gracia (3 minutos por defecto)."
+            "description": "Llama al consultorio. Sirve también para re-llamar (incrementa intentosLlamado). Con porNombre=true el tablero anuncia por nombre."
           }
         },
         {
@@ -2641,8 +2651,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/subespecialidades/{{subespecialidadId}}/horarios",
-              "host": ["{{baseUrl}}"],
-              "path": ["subespecialidades", "{{subespecialidadId}}", "horarios"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidades",
+                "{{subespecialidadId}}",
+                "horarios"
+              ]
             }
           }
         },
@@ -2650,12 +2666,25 @@
           "name": "2. Crear horario (día)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"subespecialidadId\": {{subespecialidadId}},\n  \"diaSemana\": 1,\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"12:00:00\",\n  \"capacidadMaxima\": 20,\n  \"duracionConsultaMinutos\": 30\n}"
             },
-            "url": { "raw": "{{baseUrl}}/subespecialidad-horarios", "host": ["{{baseUrl}}"], "path": ["subespecialidad-horarios"] },
+            "url": {
+              "raw": "{{baseUrl}}/subespecialidad-horarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidad-horarios"
+              ]
+            },
             "description": "Requiere rol jefe_enfermeria o administrador. Unico por subespecialidad+dia."
           }
         },
@@ -2663,16 +2692,31 @@
           "name": "3. Actualizar horario (día)",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"subespecialidadId\": {{subespecialidadId}},\n  \"diaSemana\": 1,\n  \"horaInicio\": \"08:00:00\",\n  \"horaFin\": \"13:00:00\",\n  \"capacidadMaxima\": 18,\n  \"duracionConsultaMinutos\": 30\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/subespecialidad-horarios/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["subespecialidad-horarios", ":id"],
-              "variable": [{ "key": "id", "value": "00000000-0000-0000-0000-000000000000" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subespecialidad-horarios",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "00000000-0000-0000-0000-000000000000"
+                }
+              ]
             }
           }
         },
@@ -2683,13 +2727,29 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/cupos?subespecialidadId={{subespecialidadId}}&fechaInicio=2026-11-09&fechaFin=2026-11-15&soloDisponibles=true",
-              "host": ["{{baseUrl}}"],
-              "path": ["cupos"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cupos"
+              ],
               "query": [
-                { "key": "subespecialidadId", "value": "{{subespecialidadId}}" },
-                { "key": "fechaInicio", "value": "2026-11-09" },
-                { "key": "fechaFin", "value": "2026-11-15" },
-                { "key": "soloDisponibles", "value": "true" }
+                {
+                  "key": "subespecialidadId",
+                  "value": "{{subespecialidadId}}"
+                },
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-11-09"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-11-15"
+                },
+                {
+                  "key": "soloDisponibles",
+                  "value": "true"
+                }
               ]
             }
           }
@@ -2701,15 +2761,208 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/turnos/:id/sala?nuevoEspacioFisicoId={{espacioFisicoId}}&motivo=Sala%20desocupada",
-              "host": ["{{baseUrl}}"],
-              "path": ["turnos", ":id", "sala"],
-              "query": [
-                { "key": "nuevoEspacioFisicoId", "value": "{{espacioFisicoId}}" },
-                { "key": "motivo", "value": "Sala desocupada" }
+              "host": [
+                "{{baseUrl}}"
               ],
-              "variable": [{ "key": "id", "value": "1" }]
+              "path": [
+                "turnos",
+                ":id",
+                "sala"
+              ],
+              "query": [
+                {
+                  "key": "nuevoEspacioFisicoId",
+                  "value": "{{espacioFisicoId}}"
+                },
+                {
+                  "key": "motivo",
+                  "value": "Sala desocupada"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
             },
             "description": "Mueve el turno a otra sala de la misma subespecialidad (auditado)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Estaciones de Enfermería",
+      "description": "Estaciones de enfermería (puestos que agrupan subespecialidades) y tableros por área. Pertenencia única de subespecialidad a estación.",
+      "item": [
+        {
+          "name": "1. Listar estaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estaciones"
+              ]
+            },
+            "description": "Lista las estaciones con sus subespecialidades. Query opcional: ?estado=activos|inactivos|todos"
+          }
+        },
+        {
+          "name": "2. Crear estación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"EST-05\",\n  \"nombre\": \"Consulta Externa — Nutrición\",\n  \"ubicacion\": \"Edificio Consulta Externa, Nivel 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/estaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estaciones"
+              ]
+            },
+            "description": "Roles: jefe_enfermeria / administrador."
+          }
+        },
+        {
+          "name": "3. Asignar subespecialidades",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subespecialidadIds\": [1, 2]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/estaciones/{{estacionId}}/subespecialidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estaciones",
+                "{{estacionId}}",
+                "subespecialidades"
+              ]
+            },
+            "description": "Pertenencia única: si la subespecialidad ya está en otra estación responde 409 SUBSESPECIALIDAD_YA_ASIGNADA."
+          }
+        },
+        {
+          "name": "4. Subespecialidades activas por día",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estaciones/{{estacionId}}/subespecialidades-activas?fecha=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estaciones",
+                "{{estacionId}}",
+                "subespecialidades-activas"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-28"
+                }
+              ]
+            },
+            "description": "Filtra por horario activo del día (subespecialidad_horario)."
+          }
+        },
+        {
+          "name": "5. Registrar acceso a la estación",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estaciones/{{estacionId}}/acceso",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estaciones",
+                "{{estacionId}}",
+                "acceso"
+              ]
+            },
+            "description": "Bitácora de rotación: registra al usuario autenticado y cierra su acceso previo."
+          }
+        },
+        {
+          "name": "6. Cola de turnos por estación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/turnos/estacion/{{estacionId}}?fecha=2026-09-28&incluirNoResponde=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "estacion",
+                "{{estacionId}}"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-28"
+                },
+                {
+                  "key": "incluirNoResponde",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Turnos de la estación (hoy si se omite fecha). Por defecto solo activos; con incluirNoResponde=true agrega los no respondidos."
+          }
+        },
+        {
+          "name": "7. Tablero por estación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/turnos/estacion/{{estacionId}}/tablero?fecha=2026-09-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "turnos",
+                "estacion",
+                "{{estacionId}}",
+                "tablero"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-09-28"
+                }
+              ]
+            },
+            "description": "Estado inicial del tablero de la estación (carga sin esperar WebSocket)."
           }
         }
       ]

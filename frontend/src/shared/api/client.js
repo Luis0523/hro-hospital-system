@@ -15,6 +15,15 @@ function leerIdentidad() {
   }
 }
 
+function leerEstacionId() {
+  try {
+    const estacion = JSON.parse(localStorage.getItem('hro_estacion') || 'null')
+    return estacion?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api/v1',
   headers: { 'Content-Type': 'application/json' },
@@ -31,6 +40,11 @@ client.interceptors.request.use((config) => {
   const token = localStorage.getItem('hro_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  const estacionId = leerEstacionId()
+  if (estacionId != null) {
+    config.headers['X-Estacion-Id'] = String(estacionId)
   }
   return config
 })

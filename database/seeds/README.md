@@ -20,6 +20,12 @@ Para la documentación detallada sobre estructura, esquemas y relaciones, consul
    - Citas médicas en los 6 estados del ciclo de vida (`pendiente`, `confirmada`, `atendida`, `cancelada`, `reprogramada`, `no_asistio`).
    - Turnos en sala de espera (`atendido`, `en_espera`, `llamado`, `no_responde`) asociados a la asignación diaria.
    - Registros de auditoría en `cita_estado_historial`.
+4. **`04_estaciones_enfermeria.sql`**: estaciones de enfermería (requiere migración V12):
+   - 4 estaciones (`EST-01`..`EST-04`) por área.
+   - Asignación de cada subespecialidad a una sola estación (**pertenencia única**).
+   - Idempotente (`ON CONFLICT DO NOTHING`).
 
 > **Modelo V4:** la subespecialidad que atiende en cada sala cambia a diario y la decide el jefe de enfermería (`asignacion_diaria_espacio`). Por eso los seeds crean las asignaciones por fecha antes de generar citas y turnos.
+
+> **Modelo V12 (estaciones):** cada estación agrupa subespecialidades y su tablero muestra solo esas áreas. Una subespecialidad no puede pertenecer a dos estaciones.
 

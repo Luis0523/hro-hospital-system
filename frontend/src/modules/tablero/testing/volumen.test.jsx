@@ -400,10 +400,16 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       jornada.forEach((evento) => handlersRef.onMensaje(evento))
     })
 
+    const cuerpos = screen.getAllByTestId('tablero-tabla-cuerpo')
     const filas = screen.getAllByTestId(/^fila-turno-/)
     const ids = filas.map((fila) => fila.getAttribute('data-testid'))
-    expect(filas).toHaveLength(20)
-    expect(new Set(ids).size).toBe(20)
+    // Si hay últimos llamados recientes, la mitad derecha se reemplaza por esa
+    // columna; la izquierda conserva la primera mitad normal.
+    const hayRecientes = Boolean(screen.queryByTestId('tablero-ultimos-llamados'))
+    const esperadas = hayRecientes ? 10 : 20
+    expect(cuerpos).toHaveLength(hayRecientes ? 1 : 2)
+    expect(filas).toHaveLength(esperadas)
+    expect(new Set(ids).size).toBe(filas.length)
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 

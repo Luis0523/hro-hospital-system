@@ -190,10 +190,12 @@ describe('ClinicasPage', () => {
     const especialidades = screen.getByRole('tab', { name: 'Especialidades' })
     const subespecialidades = screen.getByRole('tab', { name: 'Subespecialidades' })
     const espacios = screen.getByRole('tab', { name: 'Espacios físicos' })
+    const estaciones = screen.getByRole('tab', { name: 'Estaciones' })
 
     expect(especialidades).toHaveAttribute('tabindex', '0')
     expect(subespecialidades).toHaveAttribute('tabindex', '-1')
     expect(espacios).toHaveAttribute('tabindex', '-1')
+    expect(estaciones).toHaveAttribute('tabindex', '-1')
 
     especialidades.focus()
     await user.keyboard('{ArrowRight}')
@@ -206,7 +208,7 @@ describe('ClinicasPage', () => {
     expect(especialidades).toHaveFocus()
 
     await user.keyboard('{End}')
-    expect(espacios).toHaveFocus()
+    expect(estaciones).toHaveFocus()
 
     await user.keyboard('{Home}')
     expect(especialidades).toHaveFocus()
