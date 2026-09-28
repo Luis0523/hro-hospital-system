@@ -198,18 +198,18 @@ export default function ProgramacionTab() {
       <div className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-3 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 xl:items-end">
           <Select
-            label="Médico"
-            value={medicoId}
-            onChange={(valor) => actualizarFiltro('medicoId', valor)}
-            options={opcionesMedicos}
-            placeholder="Todos los médicos"
-          />
-          <Select
             label="Subespecialidad"
             value={subespecialidadId}
             onChange={(valor) => actualizarFiltro('subespecialidadId', valor)}
             options={opcionesSubespecialidades}
             placeholder="Todas las subespecialidades"
+          />
+          <Select
+            label="Médico"
+            value={medicoId}
+            onChange={(valor) => actualizarFiltro('medicoId', valor)}
+            options={opcionesMedicos}
+            placeholder="Todos los médicos"
           />
           <Select
             label="Día"

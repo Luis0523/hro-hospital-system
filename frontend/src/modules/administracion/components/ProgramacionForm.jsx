@@ -145,19 +145,6 @@ export default function ProgramacionForm({
         <>
           <div>
             <Select
-              label="Médico"
-              value={medicoId}
-              onChange={setMedicoId}
-              options={opcionesMedicos}
-              placeholder="Seleccione un médico"
-            />
-            {errores.medicoId && (
-              <span className="mt-1 block text-xs text-red-600">{errores.medicoId}</span>
-            )}
-          </div>
-
-          <div>
-            <Select
               label="Subespecialidad"
               value={subespecialidadId}
               onChange={setSubespecialidadId}
@@ -169,15 +156,28 @@ export default function ProgramacionForm({
             )}
           </div>
 
+          <div>
+            <Select
+              label="Médico"
+              value={medicoId}
+              onChange={setMedicoId}
+              options={opcionesMedicos}
+              placeholder="Seleccione un médico"
+            />
+            {errores.medicoId && (
+              <span className="mt-1 block text-xs text-red-600">{errores.medicoId}</span>
+            )}
+          </div>
+
           <fieldset>
             <legend className="mb-1 block text-label-sm uppercase tracking-wider text-on-surface-variant">
               Días de atención
             </legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {DIAS_SEMANA.map((dia) => (
                 <label
                   key={dia.value}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface hover:bg-surface-container-low"
+                  className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-2 text-sm text-on-surface hover:bg-surface-container-low"
                 >
                   <input
                     type="checkbox"
@@ -185,7 +185,7 @@ export default function ProgramacionForm({
                     checked={diasSemana.includes(dia.value)}
                     onChange={() => alternarDia(dia.value)}
                   />
-                  {dia.label}
+                  <span className="min-w-0 break-words">{dia.label}</span>
                 </label>
               ))}
             </div>

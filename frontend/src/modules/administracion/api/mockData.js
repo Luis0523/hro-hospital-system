@@ -1349,6 +1349,35 @@ export function obtenerReporteDemandaMock({ fechaInicio, fechaFin } = {}) {
   return { fechaInicio: inicio, fechaFin: fin, items: clonar(REPORTE_DEMANDA_ITEMS_MOCK) }
 }
 
+const UTILIZACION_POR_SUBESPECIALIDAD_MOCK = {
+  1: { capacidadTotal: 600, cuposOcupados: 36 },
+  2: { capacidadTotal: 320, cuposOcupados: 208 },
+  3: { capacidadTotal: 240, cuposOcupados: 60 },
+  4: { capacidadTotal: 180, cuposOcupados: 54 },
+  5: { capacidadTotal: 150, cuposOcupados: 30 },
+  6: { capacidadTotal: 120, cuposOcupados: 90 },
+  7: { capacidadTotal: 90, cuposOcupados: 18 },
+  8: { capacidadTotal: 60, cuposOcupados: 45 },
+}
+
+function utilizacionDeSubespecialidadMock(id) {
+  const base = UTILIZACION_POR_SUBESPECIALIDAD_MOCK[id] ?? {
+    capacidadTotal: 100 + id * 10,
+    cuposOcupados: (id * 7) % (100 + id * 10),
+  }
+  const capacidadTotal = base.capacidadTotal
+  const cuposOcupados = base.cuposOcupados
+  return {
+    capacidadTotal,
+    cuposOcupados,
+    cuposDisponibles: Math.max(0, capacidadTotal - cuposOcupados),
+    utilizacionPorcentaje:
+      capacidadTotal > 0
+        ? Math.round((cuposOcupados * 10000.0) / capacidadTotal) / 100.0
+        : 0.0,
+  }
+}
+
 export function obtenerReporteUtilizacionMock({ fechaInicio, fechaFin, subespecialidadId } = {}) {
   const { inicio, fin } = rangoReporteMock(fechaInicio, fechaFin)
   if (subespecialidadId) {
@@ -1356,10 +1385,7 @@ export function obtenerReporteUtilizacionMock({ fechaInicio, fechaFin, subespeci
       fechaInicio: inicio,
       fechaFin: fin,
       subespecialidadId: Number(subespecialidadId),
-      capacidadTotal: 600,
-      cuposOcupados: 36,
-      cuposDisponibles: 564,
-      utilizacionPorcentaje: 6,
+      ...utilizacionDeSubespecialidadMock(Number(subespecialidadId)),
     }
   }
   return {

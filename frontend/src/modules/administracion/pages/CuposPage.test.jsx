@@ -515,6 +515,68 @@ describe('CuposPage', () => {
     expect(screen.getByText(/el médico .* está inactivo/i)).toBeInTheDocument()
   })
 
+  it('ordena los filtros con Subespecialidad antes de Médico', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    const subespecialidad = screen.getByRole('button', { name: 'Todas las subespecialidades' })
+    const medico = screen.getByRole('button', { name: 'Todos los médicos' })
+    expect(
+      subespecialidad.compareDocumentPosition(medico) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('ordena el alta con Subespecialidad antes de Médico y muestra los 7 días', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    const dialogo = screen.getByRole('dialog')
+
+    const subLabel = within(dialogo).getByText('Subespecialidad')
+    const medLabel = within(dialogo).getByText('Médico')
+    expect(
+      subLabel.compareDocumentPosition(medLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    expect(within(dialogo).getAllByRole('checkbox')).toHaveLength(7)
+    expect(within(dialogo).getByRole('checkbox', { name: 'Miércoles' })).toBeInTheDocument()
+  })
+
+  it('permite la misma subespecialidad y día para médicos distintos', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    await completarAlta(user, {
+      medico: 'Dr. Carlos Méndez',
+      subespecialidad: 'Medicina General',
+      dias: ['Miércoles'],
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+    expect(await screen.findByText('Programación creada')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    await completarAlta(user, {
+      medico: 'Dra. Sofía Reyes',
+      subespecialidad: 'Medicina General',
+      dias: ['Miércoles'],
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    await waitFor(() => expect(crearProgramacion).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByText('Nueva programación')).not.toBeInTheDocument())
+  })
+
   it('aplica roving tabindex y navega entre pestañas con el teclado', async () => {
     const user = userEvent.setup()
     renderPagina()

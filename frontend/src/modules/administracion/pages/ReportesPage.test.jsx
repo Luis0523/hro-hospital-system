@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { reiniciarCatalogosMock } from '../api/mockData.js'
 
@@ -13,6 +13,7 @@ vi.mock('../api/administracionApi.js', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
+    listarSubespecialidades: vi.fn(actual.listarSubespecialidades),
     obtenerReporteCitasPorEstado: vi.fn(actual.obtenerReporteCitasPorEstado),
     obtenerReporteDemandaPorEspecialidad: vi.fn(actual.obtenerReporteDemandaPorEspecialidad),
     obtenerReporteUtilizacionCupos: vi.fn(actual.obtenerReporteUtilizacionCupos),
@@ -20,6 +21,7 @@ vi.mock('../api/administracionApi.js', async (importOriginal) => {
 })
 
 import {
+  listarSubespecialidades,
   obtenerReporteCitasPorEstado,
   obtenerReporteDemandaPorEspecialidad,
   obtenerReporteUtilizacionCupos,
@@ -47,6 +49,7 @@ describe('restarDiasISO', () => {
 describe('ReportesPage', () => {
   beforeEach(() => {
     reiniciarCatalogosMock()
+    listarSubespecialidades.mockClear()
     obtenerReporteCitasPorEstado.mockClear()
     obtenerReporteDemandaPorEspecialidad.mockClear()
     obtenerReporteUtilizacionCupos.mockClear()
@@ -103,26 +106,66 @@ describe('ReportesPage', () => {
     expect(obtenerReporteDemandaPorEspecialidad).toHaveBeenCalledTimes(1)
   })
 
-  it('muestra utilización global y permite filtrar por subespecialidad', async () => {
+  it('muestra la utilización de todas las subespecialidades y el total general', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarCitas()
 
     await user.click(screen.getByRole('tab', { name: 'Utilización' }))
 
-    const global = await screen.findByTestId('reporte-utilizacion')
-    expect(within(global).getByText('2400')).toBeInTheDocument()
-    expect(within(global).getByText('2%')).toBeInTheDocument()
+    const tabla = await screen.findByTestId('utilizacion-escritorio')
+    expect(listarSubespecialidades).toHaveBeenCalledWith(undefined, 'activos')
 
-    await user.selectOptions(screen.getByLabelText('Subespecialidad'), '1')
+    // 1 GET global + 1 por cada subespecialidad activa (8 en el mock).
+    expect(obtenerReporteUtilizacionCupos).toHaveBeenCalledWith({
+      fechaInicio: '2026-08-31',
+      fechaFin: '2026-09-30',
+    })
+    expect(obtenerReporteUtilizacionCupos).toHaveBeenCalledTimes(9)
 
-    await waitFor(() =>
-      expect(obtenerReporteUtilizacionCupos).toHaveBeenLastCalledWith({
-        fechaInicio: '2026-08-31',
-        fechaFin: '2026-09-30',
-        subespecialidadId: 1,
-      }),
+    // Fila por subespecialidad con valores directos del DTO (sin recalcular).
+    expect(within(tabla).getByText('Medicina General')).toBeInTheDocument()
+    expect(within(tabla).getByText('600')).toBeInTheDocument()
+    expect(within(tabla).getByText('6%')).toBeInTheDocument()
+
+    // TOTAL GENERAL proviene del GET global (2400 / 2%).
+    const total = screen.getByTestId('utilizacion-total')
+    expect(within(total).getByText('2400')).toBeInTheDocument()
+    expect(within(total).getByText('2%')).toBeInTheDocument()
+
+    // Ya no existe el selector individual.
+    expect(screen.queryByLabelText('Subespecialidad')).not.toBeInTheDocument()
+  })
+
+  it('utilización: error parcial conserva filas y marca la fallida sin ceros', async () => {
+    const real = obtenerReporteUtilizacionCupos.getMockImplementation()
+    obtenerReporteUtilizacionCupos.mockImplementation((args = {}) =>
+      args.subespecialidadId === 2 ? Promise.reject(new Error('fallo puntual')) : real(args),
     )
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCitas()
+
+    await user.click(screen.getByRole('tab', { name: 'Utilización' }))
+
+    const tabla = await screen.findByTestId('utilizacion-escritorio')
+    expect(within(tabla).getByText('Medicina General')).toBeInTheDocument()
+    expect(within(tabla).getByText('Cardiología Clínica')).toBeInTheDocument()
+    expect(within(tabla).getByText('No se pudo cargar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+
+    obtenerReporteUtilizacionCupos.mockImplementation(real)
+  })
+
+  it('utilización: sin subespecialidades activas muestra estado vacío', async () => {
+    listarSubespecialidades.mockResolvedValueOnce([])
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCitas()
+
+    await user.click(screen.getByRole('tab', { name: 'Utilización' }))
+
+    expect(await screen.findByText('Sin datos')).toBeInTheDocument()
   })
 
   it('no consulta si el rango es inválido y muestra el mensaje', async () => {
@@ -159,27 +202,6 @@ describe('ReportesPage', () => {
     renderPagina()
 
     expect(await screen.findByText('Sin datos')).toBeInTheDocument()
-  })
-
-  it('utilización con capacidad 0 no muestra barra y presenta 0%', async () => {
-    obtenerReporteUtilizacionCupos.mockResolvedValueOnce({
-      fechaInicio: '2026-08-31',
-      fechaFin: '2026-09-30',
-      subespecialidadId: null,
-      capacidadTotal: 0,
-      cuposOcupados: 0,
-      cuposDisponibles: 0,
-      utilizacionPorcentaje: 0,
-    })
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarCitas()
-
-    await user.click(screen.getByRole('tab', { name: 'Utilización' }))
-
-    const reporte = await screen.findByTestId('reporte-utilizacion')
-    expect(within(reporte).getByText('0%')).toBeInTheDocument()
-    expect(screen.queryByText(/Utilización:/)).not.toBeInTheDocument()
   })
 
   it('no ofrece exportación ni métricas ficticias', async () => {

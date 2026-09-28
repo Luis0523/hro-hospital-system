@@ -22,7 +22,8 @@ function formatearPorcentaje(valor) {
 }
 
 export default function DashboardPage() {
-  // Resumen administrativo (endpoint agregado).
+  // Resumen administrativo (endpoint agregado) para una fecha seleccionable.
+  const [fecha, setFecha] = useState(() => hoyISO())
   const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -32,11 +33,20 @@ export default function DashboardPage() {
   const [cargandoDias, setCargandoDias] = useState(true)
   const [errorDias, setErrorDias] = useState(null)
 
+  const hoy = hoyISO()
+  const fechaFutura = Boolean(fecha && fecha > hoy)
+
   const cargarResumen = useCallback(async () => {
+    if (!fecha || fecha > hoyISO()) {
+      setResumen(null)
+      setCargando(false)
+      setError(null)
+      return
+    }
     setCargando(true)
     setError(null)
     try {
-      const datos = await obtenerResumenDashboard(hoyISO())
+      const datos = await obtenerResumenDashboard(fecha)
       setResumen(datos)
     } catch (fallo) {
       setResumen(null)
@@ -44,7 +54,7 @@ export default function DashboardPage() {
     } finally {
       setCargando(false)
     }
-  }, [])
+  }, [fecha])
 
   const cargarDias = useCallback(async () => {
     setCargandoDias(true)
@@ -62,8 +72,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     cargarResumen()
+  }, [cargarResumen])
+
+  useEffect(() => {
     cargarDias()
-  }, [cargarResumen, cargarDias])
+  }, [cargarDias])
 
   const proximosDias = [...dias]
     .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
@@ -95,6 +108,33 @@ export default function DashboardPage() {
           </p>
         )}
       </header>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <label
+            htmlFor="dashboard-fecha"
+            className="block text-label-sm uppercase tracking-wider text-on-surface-variant"
+          >
+            Fecha
+          </label>
+          <input
+            id="dashboard-fecha"
+            type="date"
+            value={fecha}
+            max={hoy}
+            onChange={(evento) => setFecha(evento.target.value)}
+            className="rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <Button variant="secondary" onClick={() => setFecha(hoy)} disabled={fecha === hoy}>
+          Hoy
+        </Button>
+        {fechaFutura && (
+          <p role="alert" className="text-sm font-medium text-error">
+            No se pueden consultar fechas futuras.
+          </p>
+        )}
+      </div>
 
       {cargando && <Spinner label="Cargando resumen administrativo..." />}
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import client from '@/shared/api/client'
@@ -190,5 +190,46 @@ describe('DashboardPage', () => {
     await screen.findByText('Resumen del 1 de septiembre de 2026')
     expect(getSpy).not.toHaveBeenCalled()
     getSpy.mockRestore()
+  })
+
+  it('permite consultar una fecha anterior y recarga el resumen sin tocar días no laborables', async () => {
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+
+    const input = screen.getByLabelText('Fecha')
+    expect(input).toHaveValue('2026-09-01')
+    expect(input).toHaveAttribute('max', '2026-09-01')
+
+    fireEvent.change(input, { target: { value: '2026-08-15' } })
+
+    expect(await screen.findByText('Resumen del 15 de agosto de 2026')).toBeInTheDocument()
+    expect(obtenerResumenDashboard).toHaveBeenLastCalledWith('2026-08-15')
+    // La tarjeta de próximos días no laborables es independiente de la fecha histórica.
+    expect(listarDiasNoLaborablesFuturos).toHaveBeenCalledTimes(1)
+  })
+
+  it('no consulta fechas futuras y muestra una validación simple', async () => {
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+    expect(obtenerResumenDashboard).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-10-01' } })
+
+    expect(await screen.findByText('No se pueden consultar fechas futuras.')).toBeInTheDocument()
+    expect(obtenerResumenDashboard).toHaveBeenCalledTimes(1)
+  })
+
+  it('el botón Hoy restaura la fecha actual y recarga', async () => {
+    const user = userEvent.setup()
+    renderDashboard()
+    await screen.findByText('Resumen del 1 de septiembre de 2026')
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-08-15' } })
+    await screen.findByText('Resumen del 15 de agosto de 2026')
+
+    await user.click(screen.getByRole('button', { name: 'Hoy' }))
+
+    expect(await screen.findByText('Resumen del 1 de septiembre de 2026')).toBeInTheDocument()
+    expect(obtenerResumenDashboard).toHaveBeenLastCalledWith('2026-09-01')
   })
 })

@@ -29,10 +29,9 @@ export default function ReportesPage() {
 
   const [fechaInicio, setFechaInicio] = useState(() => restarDiasISO(hoyISO(), 30))
   const [fechaFin, setFechaFin] = useState(() => hoyISO())
-  const [subespecialidadId, setSubespecialidadId] = useState('')
-  const [subespecialidades, setSubespecialidades] = useState([])
 
   const [datos, setDatos] = useState(null)
+  const [utilizacion, setUtilizacion] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [recarga, setRecarga] = useState(0)
@@ -40,22 +39,9 @@ export default function ReportesPage() {
   const rangoInvalido = Boolean(fechaInicio && fechaFin && fechaFin < fechaInicio)
 
   useEffect(() => {
-    let vigente = true
-    listarSubespecialidades(undefined, 'activos')
-      .then((lista) => {
-        if (vigente) setSubespecialidades(Array.isArray(lista) ? lista : [])
-      })
-      .catch(() => {
-        if (vigente) setSubespecialidades([])
-      })
-    return () => {
-      vigente = false
-    }
-  }, [])
-
-  useEffect(() => {
     if (rangoInvalido) {
       setDatos(null)
+      setUtilizacion(null)
       setCargando(false)
       setError(MENSAJE_RANGO)
       return undefined
@@ -67,22 +53,49 @@ export default function ReportesPage() {
 
     const cargar = async () => {
       try {
-        let resultado
-        if (pestana === 'citas') {
-          resultado = await obtenerReporteCitasPorEstado({ fechaInicio, fechaFin })
-        } else if (pestana === 'demanda') {
-          resultado = await obtenerReporteDemandaPorEspecialidad({ fechaInicio, fechaFin })
-        } else {
-          resultado = await obtenerReporteUtilizacionCupos({
-            fechaInicio,
-            fechaFin,
-            subespecialidadId: subespecialidadId ? Number(subespecialidadId) : undefined,
+        if (pestana === 'utilizacion') {
+          setDatos(null)
+          setUtilizacion(null)
+
+          // Una fila por subespecialidad activa; el backend calcula cada métrica.
+          const lista = await listarSubespecialidades(undefined, 'activos')
+          const subespecialidades = Array.isArray(lista) ? lista : []
+
+          // TOTAL GENERAL: GET global del backend (no suma de filas).
+          const total = await obtenerReporteUtilizacionCupos({ fechaInicio, fechaFin })
+
+          // allSettled: un fallo puntual no oculta las demás filas.
+          const resultados = await Promise.allSettled(
+            subespecialidades.map((sub) =>
+              obtenerReporteUtilizacionCupos({
+                fechaInicio,
+                fechaFin,
+                subespecialidadId: sub.id,
+              }),
+            ),
+          )
+
+          const filas = subespecialidades.map((sub, indice) => {
+            const resultado = resultados[indice]
+            if (resultado.status === 'fulfilled') {
+              return { subespecialidadId: sub.id, nombre: sub.nombre, dato: resultado.value }
+            }
+            return { subespecialidadId: sub.id, nombre: sub.nombre, error: true }
           })
+
+          if (vigente) setUtilizacion({ filas, total })
+        } else {
+          setUtilizacion(null)
+          const resultado =
+            pestana === 'citas'
+              ? await obtenerReporteCitasPorEstado({ fechaInicio, fechaFin })
+              : await obtenerReporteDemandaPorEspecialidad({ fechaInicio, fechaFin })
+          if (vigente) setDatos(resultado)
         }
-        if (vigente) setDatos(resultado)
       } catch (fallo) {
         if (vigente) {
           setDatos(null)
+          setUtilizacion(null)
           setError(fallo?.message || 'No se pudo cargar el reporte')
         }
       } finally {
@@ -94,7 +107,7 @@ export default function ReportesPage() {
     return () => {
       vigente = false
     }
-  }, [pestana, fechaInicio, fechaFin, subespecialidadId, rangoInvalido, recarga])
+  }, [pestana, fechaInicio, fechaFin, rangoInvalido, recarga])
 
   const manejarTeclado = (evento) => {
     const indiceActual = PESTANAS.findIndex((item) => item.id === pestana)
@@ -166,30 +179,6 @@ export default function ReportesPage() {
       </div>
 
       <div role="tabpanel" id="panel-reportes" aria-labelledby={`tab-${pestana}`} className="space-y-4">
-        {pestana === 'utilizacion' && (
-          <div className="w-full space-y-1 sm:w-64">
-            <label
-              htmlFor="reporte-subespecialidad"
-              className="block text-label-sm uppercase tracking-wider text-on-surface-variant"
-            >
-              Subespecialidad
-            </label>
-            <select
-              id="reporte-subespecialidad"
-              value={subespecialidadId}
-              onChange={(evento) => setSubespecialidadId(evento.target.value)}
-              className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-2 text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">Todas</option>
-              {subespecialidades.map((sub) => (
-                <option key={sub.id} value={sub.id}>
-                  {sub.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {cargando && <Spinner label="Cargando reporte..." />}
 
         {!cargando && error && !rangoInvalido && (
@@ -209,8 +198,23 @@ export default function ReportesPage() {
         {!cargando && !rangoInvalido && !error && pestana === 'demanda' && (
           <ReporteDemandaEspecialidad items={datos?.items ?? []} />
         )}
-        {!cargando && !rangoInvalido && !error && pestana === 'utilizacion' && (
-          <ReporteUtilizacionCupos datos={datos} />
+        {!cargando && !rangoInvalido && !error && pestana === 'utilizacion' && utilizacion && (
+          <>
+            <ReporteUtilizacionCupos filas={utilizacion.filas} total={utilizacion.total} />
+            {utilizacion.filas.some((fila) => fila.error) && (
+              <Alert tone="warning" title="Algunas subespecialidades no se pudieron cargar">
+                <p>
+                  Se muestran las subespecialidades disponibles. Puedes reintentar la carga de la
+                  tabla completa.
+                </p>
+                <div className="mt-3">
+                  <Button size="sm" variant="secondary" onClick={reintentar}>
+                    Reintentar
+                  </Button>
+                </div>
+              </Alert>
+            )}
+          </>
         )}
       </div>
     </section>
