@@ -3,6 +3,7 @@ import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Select from '@/shared/components/ui/Select.jsx'
+import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
   actualizarProgramacion,
   crearProgramacion,
@@ -12,7 +13,7 @@ import {
   listarSubespecialidades,
   reactivarProgramacion,
 } from '../api/administracionApi.js'
-import { DIAS_SEMANA, horaCorta } from '../utils/dias.js'
+import { DIAS_SEMANA, horaCorta, nombreDia } from '../utils/dias.js'
 import useGestionCatalogo from '../hooks/useGestionCatalogo.js'
 import FiltroEstado from './FiltroEstado.jsx'
 import ModalCatalogo from './ModalCatalogo.jsx'
@@ -55,10 +56,17 @@ const MENSAJES = {
 const ESTADO_INICIAL_FILTROS = { medicoId: '', subespecialidadId: '', diaSemana: '' }
 
 export default function ProgramacionTab() {
+  const { mostrarToast } = useToast()
   const [medicos, setMedicos] = useState([])
   const [subespecialidades, setSubespecialidades] = useState([])
   const [filtros, setFiltros] = useState(ESTADO_INICIAL_FILTROS)
   const [estado, setEstado] = useState('activos')
+
+  // Alta multidía: orquestación secuencial en el frontend (sin endpoint batch).
+  const [procesandoAlta, setProcesandoAlta] = useState(false)
+  const [resultados, setResultados] = useState(null)
+  const [valoresReintento, setValoresReintento] = useState(null)
+  const [claveForm, setClaveForm] = useState(0)
 
   useEffect(() => {
     let vigente = true
@@ -105,6 +113,64 @@ export default function ProgramacionTab() {
   const limpiarFiltros = () => {
     setFiltros(ESTADO_INICIAL_FILTROS)
     setEstado('activos')
+  }
+
+  const restablecerResultados = () => {
+    setResultados(null)
+    setValoresReintento(null)
+  }
+
+  const abrirCrear = () => {
+    restablecerResultados()
+    setClaveForm((valor) => valor + 1)
+    gestion.abrirCrear()
+  }
+
+  const cerrarModal = () => {
+    restablecerResultados()
+    gestion.cerrarModal()
+  }
+
+  // Alta multidía: N POST secuenciales, uno por día. Sin Promise.all ni rollback.
+  const crearPorDias = async (valores) => {
+    const { diasSemana = [], ...compartidos } = valores
+    setProcesandoAlta(true)
+    setResultados(null)
+
+    const nuevos = []
+    for (const diaSemana of diasSemana) {
+      try {
+        const data = await crearProgramacion({ ...compartidos, diaSemana })
+        nuevos.push({ diaSemana, nombreDia: nombreDia(diaSemana), success: true, data })
+      } catch (fallo) {
+        nuevos.push({
+          diaSemana,
+          nombreDia: nombreDia(diaSemana),
+          success: false,
+          error: fallo?.message || 'No se pudo crear la programación',
+        })
+      }
+    }
+
+    setResultados(nuevos)
+    await gestion.recargar()
+
+    const fallidos = nuevos.filter((item) => !item.success)
+    if (fallidos.length === 0) {
+      mostrarToast({ title: MENSAJES.crear, tone: 'success' })
+      restablecerResultados()
+      gestion.cerrarModal()
+    } else {
+      // Solo se conservan seleccionados los días fallidos para el reintento.
+      setValoresReintento({ ...compartidos, diasSemana: fallidos.map((item) => item.diaSemana) })
+      setClaveForm((valor) => valor + 1)
+    }
+    setProcesandoAlta(false)
+  }
+
+  const manejarSubmit = (valores) => {
+    if (gestion.modal?.modo === 'editar') return gestion.guardar(valores)
+    return crearPorDias(valores)
   }
 
   const tituloModal =
@@ -164,7 +230,7 @@ export default function ProgramacionTab() {
         <p className="max-w-md text-sm text-outline">
           Programación semanal del médico por subespecialidad. Los filtros son opcionales.
         </p>
-        <Button onClick={gestion.abrirCrear}>
+        <Button onClick={abrirCrear}>
           <Icon name="add" className="text-[18px]" />
           Agregar
         </Button>
@@ -194,19 +260,49 @@ export default function ProgramacionTab() {
         abierto={Boolean(gestion.modal)}
         modo={gestion.modal?.modo}
         titulo={tituloModal}
-        onCerrar={gestion.cerrarModal}
-        guardando={gestion.guardando}
-        textoGuardar={gestion.modal?.modo === 'editar' ? 'Guardar cambios' : 'Crear'}
+        onCerrar={cerrarModal}
+        guardando={gestion.guardando || procesandoAlta}
+        textoGuardar={
+          gestion.modal?.modo === 'editar'
+            ? 'Guardar cambios'
+            : valoresReintento
+              ? 'Reintentar días fallidos'
+              : 'Crear'
+        }
       >
         {gestion.modal && (
-          <ProgramacionForm
-            medicos={medicos}
-            subespecialidades={subespecialidades}
-            valoresIniciales={gestion.modal.registro}
-            modo={gestion.modal.modo}
-            soloLectura={gestion.modal.modo === 'consultar'}
-            onSubmit={gestion.guardar}
-          />
+          <>
+            <ProgramacionForm
+              key={claveForm}
+              medicos={medicos}
+              subespecialidades={subespecialidades}
+              valoresIniciales={valoresReintento ?? gestion.modal.registro}
+              modo={gestion.modal.modo}
+              soloLectura={gestion.modal.modo === 'consultar'}
+              onSubmit={manejarSubmit}
+            />
+
+            {resultados && resultados.length > 0 && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-4 space-y-1 rounded-lg border border-outline-variant bg-surface-container-low p-3"
+              >
+                <p className="text-sm font-semibold text-on-surface">Programación procesada</p>
+                <ul className="space-y-1 text-sm">
+                  {resultados.map((resultado) => (
+                    <li
+                      key={resultado.diaSemana}
+                      className={resultado.success ? 'text-emerald-700' : 'text-red-700'}
+                    >
+                      {resultado.success ? '✓' : '✕'} {resultado.nombreDia} —{' '}
+                      {resultado.success ? 'creada' : resultado.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </ModalCatalogo>
 

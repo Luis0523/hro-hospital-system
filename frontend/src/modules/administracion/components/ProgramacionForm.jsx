@@ -18,7 +18,13 @@ export default function ProgramacionForm({
   const [subespecialidadId, setSubespecialidadId] = useState(
     valoresIniciales?.subespecialidadId ?? subespecialidadFijaId ?? '',
   )
-  const [diaSemana, setDiaSemana] = useState(valoresIniciales?.diaSemana ?? '')
+  const [diasSemana, setDiasSemana] = useState(() => {
+    if (Array.isArray(valoresIniciales?.diasSemana)) {
+      return valoresIniciales.diasSemana.map(Number)
+    }
+    if (valoresIniciales?.diaSemana) return [Number(valoresIniciales.diaSemana)]
+    return []
+  })
   const [horaInicio, setHoraInicio] = useState(horaCorta(valoresIniciales?.horaInicio))
   const [horaFin, setHoraFin] = useState(horaCorta(valoresIniciales?.horaFin))
   const [capacidadMaxima, setCapacidadMaxima] = useState(valoresIniciales?.capacidadMaxima ?? '')
@@ -35,7 +41,12 @@ export default function ProgramacionForm({
     value: subespecialidad.id,
     label: subespecialidad.nombre,
   }))
-  const opcionesDias = DIAS_SEMANA.map((dia) => ({ value: dia.value, label: dia.label }))
+
+  const alternarDia = (dia) => {
+    setDiasSemana((actual) =>
+      actual.includes(dia) ? actual.filter((valor) => valor !== dia) : [...actual, dia],
+    )
+  }
 
   const manejarEnvio = (evento) => {
     evento.preventDefault()
@@ -44,7 +55,7 @@ export default function ProgramacionForm({
     if (!esEdicion) {
       if (!medicoId) nuevos.medicoId = 'Seleccione un médico'
       if (!subespecialidadId) nuevos.subespecialidadId = 'Seleccione una subespecialidad'
-      if (!diaSemana) nuevos.diaSemana = 'Seleccione un día'
+      if (diasSemana.length === 0) nuevos.diasSemana = 'Seleccione al menos un día.'
     }
     if (!horaInicio) nuevos.horaInicio = 'Indique la hora de inicio'
     if (!horaFin) nuevos.horaFin = 'Indique la hora de fin'
@@ -76,10 +87,12 @@ export default function ProgramacionForm({
       return
     }
 
+    // `diasSemana` es una estructura interna del frontend; ProgramacionTab la
+    // transforma en un POST independiente por día (el backend usa `diaSemana` escalar).
     onSubmit({
       medicoId,
       subespecialidadId,
-      diaSemana: Number(diaSemana),
+      diasSemana: [...diasSemana].sort((a, b) => a - b),
       ...horario,
     })
   }
@@ -156,18 +169,30 @@ export default function ProgramacionForm({
             )}
           </div>
 
-          <div>
-            <Select
-              label="Día"
-              value={diaSemana}
-              onChange={setDiaSemana}
-              options={opcionesDias}
-              placeholder="Seleccione un día"
-            />
-            {errores.diaSemana && (
-              <span className="mt-1 block text-xs text-red-600">{errores.diaSemana}</span>
+          <fieldset>
+            <legend className="mb-1 block text-label-sm uppercase tracking-wider text-on-surface-variant">
+              Días de atención
+            </legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {DIAS_SEMANA.map((dia) => (
+                <label
+                  key={dia.value}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface hover:bg-surface-container-low"
+                >
+                  <input
+                    type="checkbox"
+                    value={dia.value}
+                    checked={diasSemana.includes(dia.value)}
+                    onChange={() => alternarDia(dia.value)}
+                  />
+                  {dia.label}
+                </label>
+              ))}
+            </div>
+            {errores.diasSemana && (
+              <span className="mt-1 block text-xs text-red-600">{errores.diasSemana}</span>
             )}
-          </div>
+          </fieldset>
         </>
       )}
 

@@ -1,8 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import { reiniciarCatalogosMock } from '../api/mockData.js'
+
+vi.mock('../api/administracionApi.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, crearProgramacion: vi.fn(actual.crearProgramacion) }
+})
+
+import { crearProgramacion } from '../api/administracionApi.js'
 import CuposPage from './CuposPage.jsx'
 
 // jsdom no implementa ResizeObserver y Headless UI (Listbox) lo requiere.
@@ -41,9 +48,26 @@ async function seleccionarOpcion(user, nombreBoton, nombreOpcion) {
   await user.click(await screen.findByRole('option', { name: nombreOpcion }))
 }
 
+async function completarAlta(
+  user,
+  { medico, subespecialidad, dias, inicio = '09:00', fin = '12:00', capacidad = '5', duracion = '30' },
+) {
+  await seleccionarOpcion(user, 'Seleccione un médico', medico)
+  await seleccionarOpcion(user, 'Seleccione una subespecialidad', subespecialidad)
+  for (const dia of dias) {
+    await user.click(screen.getByRole('checkbox', { name: dia }))
+  }
+  fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: inicio } })
+  fireEvent.change(screen.getByLabelText('Hora de fin'), { target: { value: fin } })
+  await user.type(screen.getByLabelText(/Capacidad máxima/), capacidad)
+  await user.clear(screen.getByLabelText(/Duración estimada/))
+  await user.type(screen.getByLabelText(/Duración estimada/), duracion)
+}
+
 describe('CuposPage', () => {
   beforeEach(() => {
     reiniciarCatalogosMock()
+    crearProgramacion.mockClear()
   })
 
   it('renderiza el heading y las dos pestañas con médicos cargados', async () => {
@@ -239,27 +263,178 @@ describe('CuposPage', () => {
     await esperarTextoCatalogo('Medicina General')
   })
 
-  it('crea una programación y muestra día, horario, capacidad y duración', async () => {
+  it('muestra 7 días seleccionables y permite marcar varios', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
 
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+
+    const dias = screen.getAllByRole('checkbox')
+    expect(dias).toHaveLength(7)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Lunes' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Miércoles' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Lunes' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Miércoles' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Viernes' })).not.toBeChecked()
+  })
+
+  it('exige al menos un día seleccionado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
     await abrirProgramacion(user)
     await esperarCatalogo()
 
     await user.click(screen.getByRole('button', { name: /agregar/i }))
     await seleccionarOpcion(user, 'Seleccione un médico', 'Dra. Sofía Reyes')
     await seleccionarOpcion(user, 'Seleccione una subespecialidad', 'Medicina General')
-    await seleccionarOpcion(user, 'Seleccione un día', 'Viernes')
-
     fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: '09:00' } })
     fireEvent.change(screen.getByLabelText('Hora de fin'), { target: { value: '12:00' } })
     await user.type(screen.getByLabelText(/Capacidad máxima/), '5')
-    await user.clear(screen.getByLabelText(/Duración estimada/))
-    await user.type(screen.getByLabelText(/Duración estimada/), '30')
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    expect(await screen.findByText('Seleccione al menos un día.')).toBeInTheDocument()
+    expect(crearProgramacion).not.toHaveBeenCalled()
+  })
+
+  it('crea la programación en varios días con un POST secuencial por día', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    await completarAlta(user, {
+      medico: 'Dra. Sofía Reyes',
+      subespecialidad: 'Medicina General',
+      dias: ['Lunes', 'Miércoles', 'Viernes'],
+    })
     await user.click(screen.getByRole('button', { name: 'Crear' }))
 
     expect(await screen.findByText('Programación creada')).toBeInTheDocument()
+
+    expect(crearProgramacion).toHaveBeenCalledTimes(3)
+    expect(crearProgramacion.mock.calls.map(([datos]) => datos.diaSemana)).toEqual([1, 3, 5])
+    crearProgramacion.mock.calls.forEach(([datos]) => {
+      expect(datos).not.toHaveProperty('diasSemana')
+      expect(typeof datos.diaSemana).toBe('number')
+    })
+
+    // Modal cerrado y listado refrescado con los tres horarios.
+    await waitFor(() => expect(screen.queryByText('Nueva programación')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('catalogo-escritorio')).getAllByText('09:00 - 12:00').length,
+      ).toBe(3),
+    )
+  })
+
+  it('éxito parcial: conserva éxitos, deja solo el día fallido y reintenta únicamente ese', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    // Lunes ya existe para Dr. Carlos Méndez + Medicina General; Martes 13:00-16:00 no solapa.
+    await completarAlta(user, {
+      medico: 'Dr. Carlos Méndez',
+      subespecialidad: 'Medicina General',
+      dias: ['Lunes', 'Martes'],
+      inicio: '13:00',
+      fin: '16:00',
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    await waitFor(() => expect(crearProgramacion).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText(/Martes — creada/)).toBeInTheDocument()
+    expect(screen.getByText(/Lunes —/)).toBeInTheDocument()
+
+    // Modal abierto; solo Lunes permanece seleccionado.
+    expect(screen.getByText('Nueva programación')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Lunes' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Martes' })).not.toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar días fallidos' }))
+
+    await waitFor(() => expect(crearProgramacion).toHaveBeenCalledTimes(3))
+    const ultima = crearProgramacion.mock.calls.at(-1)[0]
+    expect(ultima.diaSemana).toBe(1)
+    // Martes nunca se reenvía.
+    expect(
+      crearProgramacion.mock.calls.slice(2).some(([datos]) => datos.diaSemana === 2),
+    ).toBe(false)
+  })
+
+  it('todos fallan: mantiene el formulario y los días seleccionados', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    await completarAlta(user, {
+      medico: 'Dr. Carlos Méndez',
+      subespecialidad: 'Medicina General',
+      dias: ['Lunes'],
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    await waitFor(() => expect(crearProgramacion).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('Nueva programación')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Lunes' })).toBeChecked()
+    expect(screen.getByText(/Lunes —/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar días fallidos' })).toBeInTheDocument()
+  })
+
+  it('muestra el solapamiento devuelto por el backend asociado al día', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    // Dr. Carlos Méndez atiende Lunes 07:00-13:00 en Medicina General: el horario 08:00-10:00 se superpone.
+    await completarAlta(user, {
+      medico: 'Dr. Carlos Méndez',
+      subespecialidad: 'Cardiología Clínica',
+      dias: ['Lunes'],
+      inicio: '08:00',
+      fin: '10:00',
+      capacidad: '2',
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    expect(await screen.findByText(/se superpone/i)).toBeInTheDocument()
+  })
+
+  it('crea una programación de un solo día y la muestra en el listado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarCatalogo()
+    await abrirProgramacion(user)
+    await esperarCatalogo()
+
+    await user.click(screen.getByRole('button', { name: /agregar/i }))
+    await completarAlta(user, {
+      medico: 'Dra. Sofía Reyes',
+      subespecialidad: 'Medicina General',
+      dias: ['Viernes'],
+    })
+    await user.click(screen.getByRole('button', { name: 'Crear' }))
+
+    expect(await screen.findByText('Programación creada')).toBeInTheDocument()
+    expect(crearProgramacion).toHaveBeenCalledTimes(1)
+    expect(crearProgramacion.mock.calls[0][0].diaSemana).toBe(5)
 
     await esperarTextoCatalogo('Viernes')
     await esperarTextoCatalogo('09:00 - 12:00')
