@@ -1367,3 +1367,170 @@ export function obtenerReporteUtilizacionMock({ fechaInicio, fechaFin, subespeci
     utilizacionPorcentaje: 2,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Auditoría administrativa — /auditoria (backend simulado)
+// Datos 100% ficticios. Replican AuditoriaResponseDTO y la página Spring.
+// `valoresAnteriores`/`valoresNuevos` son JSON en TEXTO (String) o null.
+// ---------------------------------------------------------------------------
+
+const AUDITORIA_BASE = [
+  {
+    id: 9,
+    tablaAfectada: 'cita',
+    entidadId: '10231',
+    accion: 'actualizar',
+    usuarioId: 1,
+    usuarioNombre: 'Ana Pérez',
+    valoresAnteriores: '{"estado":"pendiente"}',
+    valoresNuevos: '{"estado":"confirmada","nota":"Reconfirmada por teléfono"}',
+    fecha: '2026-09-26T14:20:00Z',
+  },
+  {
+    id: 8,
+    tablaAfectada: 'paciente',
+    entidadId: 'a1b2c3d4-0000-4000-8000-000000000777',
+    accion: 'crear',
+    usuarioId: 4,
+    usuarioNombre: 'Jorge Salas',
+    valoresAnteriores: null,
+    valoresNuevos:
+      '{"nombres":"Paciente Ejemplo","documento":"0000000000000","contacto":{"telefono":"0000-0000"}}',
+    fecha: '2026-09-26T11:05:00Z',
+  },
+  {
+    id: 7,
+    tablaAfectada: 'medico_subespecialidad',
+    entidadId: '6f0d3a2c-1a11-4d21-9c01-000000000201',
+    accion: 'actualizar',
+    usuarioId: 1,
+    usuarioNombre: 'Ana Pérez',
+    valoresAnteriores: '{"capacidadMaxima":12,"horaInicio":"07:00:00"}',
+    valoresNuevos: '{"capacidadMaxima":10,"horaInicio":"08:00:00"}',
+    fecha: '2026-09-25T16:40:00Z',
+  },
+  {
+    id: 6,
+    tablaAfectada: 'usuario_referencia',
+    entidadId: '3',
+    accion: 'desactivar',
+    usuarioId: 1,
+    usuarioNombre: 'Ana Pérez',
+    valoresAnteriores: '{"activo":true}',
+    valoresNuevos: '{"activo":false}',
+    fecha: '2026-09-25T09:15:00Z',
+  },
+  {
+    id: 5,
+    tablaAfectada: 'dia_no_laborable',
+    entidadId: '12',
+    accion: 'crear',
+    usuarioId: 4,
+    usuarioNombre: 'Jorge Salas',
+    valoresAnteriores: null,
+    valoresNuevos: '{"fecha":"2026-12-25","motivo":"Fiesta de Navidad"}',
+    fecha: '2026-09-24T08:00:00Z',
+  },
+  {
+    id: 4,
+    tablaAfectada: 'especialidad',
+    entidadId: '7',
+    accion: 'crear',
+    usuarioId: 1,
+    usuarioNombre: 'Ana Pérez',
+    valoresAnteriores: null,
+    valoresNuevos: '{"nombre":"Dermatología","activo":true}',
+    fecha: '2026-09-23T13:30:00Z',
+  },
+  {
+    id: 3,
+    tablaAfectada: 'espacio_fisico',
+    entidadId: '6f0d3a2c-1a11-4d21-9c01-000000000005',
+    accion: 'reactivar',
+    usuarioId: 4,
+    usuarioNombre: 'Jorge Salas',
+    valoresAnteriores: '{"activo":false}',
+    valoresNuevos: '{"activo":true}',
+    fecha: '2026-09-22T10:10:00Z',
+  },
+  {
+    id: 2,
+    tablaAfectada: 'turno',
+    entidadId: '5501',
+    accion: 'actualizar',
+    usuarioId: null,
+    usuarioNombre: null,
+    valoresAnteriores: '{"estado":"en_espera"}',
+    valoresNuevos: '{"estado":"llamado"}',
+    fecha: '2026-09-21T07:45:00Z',
+  },
+  {
+    id: 1,
+    tablaAfectada: 'mensaje_hl7_log',
+    entidadId: 'hl7-0001',
+    accion: 'crear',
+    usuarioId: null,
+    usuarioNombre: null,
+    valoresAnteriores: null,
+    valoresNuevos: '{"segmentos":["MSH","PID","OBX"],"resultado":{"glucosa":92,"unidad":"mg/dL"}}',
+    fecha: '2026-09-20T06:20:00Z',
+  },
+  {
+    id: 0,
+    tablaAfectada: 'subespecialidad',
+    entidadId: '4',
+    accion: 'actualizar',
+    usuarioId: 1,
+    usuarioNombre: 'Ana Pérez',
+    valoresAnteriores: '{"nombre":"Control Niño Sano"}',
+    valoresNuevos: 'texto plano no JSON (registro heredado)',
+    fecha: '2026-09-19T15:00:00Z',
+  },
+]
+
+function paginarAuditoria(lista, page, size) {
+  const tamano = Number(size) > 0 ? Number(size) : 20
+  const numero = Number(page) > 0 ? Number(page) : 0
+  const totalElements = lista.length
+  const totalPages = Math.ceil(totalElements / tamano)
+  const inicio = numero * tamano
+  const content = lista.slice(inicio, inicio + tamano)
+
+  return {
+    content,
+    number: numero,
+    size: tamano,
+    totalElements,
+    totalPages,
+    numberOfElements: content.length,
+    first: numero === 0,
+    last: numero >= totalPages - 1,
+    empty: content.length === 0,
+  }
+}
+
+export function obtenerAuditoriaMock({
+  tabla,
+  usuarioId,
+  accion,
+  fechaInicio,
+  fechaFin,
+  page = 0,
+  size = 20,
+} = {}) {
+  const tablaNorm = tabla ? String(tabla).trim().toLowerCase() : ''
+  const accionNorm = accion ? String(accion).trim().toLowerCase() : ''
+  const usuarioNum =
+    usuarioId !== null && usuarioId !== undefined && usuarioId !== '' ? Number(usuarioId) : null
+
+  const filtrados = AUDITORIA_BASE.filter((registro) =>
+    tablaNorm ? registro.tablaAfectada.toLowerCase() === tablaNorm : true,
+  )
+    .filter((registro) => (accionNorm ? registro.accion.toLowerCase() === accionNorm : true))
+    .filter((registro) => (usuarioNum !== null ? registro.usuarioId === usuarioNum : true))
+    .filter((registro) => (fechaInicio ? registro.fecha.slice(0, 10) >= fechaInicio : true))
+    .filter((registro) => (fechaFin ? registro.fecha.slice(0, 10) <= fechaFin : true))
+    .sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0))
+
+  return paginarAuditoria(filtrados, page, size)
+}

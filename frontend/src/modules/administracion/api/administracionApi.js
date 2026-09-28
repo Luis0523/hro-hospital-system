@@ -50,6 +50,8 @@ import {
   obtenerReporteCitasPorEstadoMock,
   obtenerReporteDemandaMock,
   obtenerReporteUtilizacionMock,
+  // Auditoría
+  obtenerAuditoriaMock,
 } from './mockData.js'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -411,4 +413,36 @@ export async function obtenerReporteUtilizacionCupos({
   const params = paramsRango(fechaInicio, fechaFin)
   if (subespecialidadId) params.subespecialidadId = subespecialidadId
   return desenvolver(await client.get('/reportes/utilizacion-cupos', { params }))
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría administrativa — /auditoria
+// Endpoint restringido al rol `administrador` (@PreAuthorize). Otros roles → 403
+// con codigo `ACCESO_DENEGADO`. Solo lectura; el backend calcula la paginación
+// (page base 0, size por defecto 20, orden fecha DESC).
+// ---------------------------------------------------------------------------
+
+export async function obtenerAuditoria({
+  tabla,
+  usuarioId,
+  accion,
+  fechaInicio,
+  fechaFin,
+  page,
+  size,
+} = {}) {
+  if (USE_MOCK) {
+    return obtenerAuditoriaMock({ tabla, usuarioId, accion, fechaInicio, fechaFin, page, size })
+  }
+
+  const params = {}
+  if (tabla) params.tabla = tabla
+  if (usuarioId) params.usuarioId = usuarioId
+  if (accion) params.accion = accion
+  if (fechaInicio) params.fechaInicio = fechaInicio
+  if (fechaFin) params.fechaFin = fechaFin
+  if (page !== undefined && page !== null) params.page = page
+  if (size !== undefined && size !== null) params.size = size
+
+  return desenvolver(await client.get('/auditoria', { params }))
 }

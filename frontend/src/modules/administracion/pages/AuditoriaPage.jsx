@@ -1,93 +1,169 @@
-/**
- * Vista informativa de "Auditoría".
- *
- * --- NOTA TÉCNICA (solo para desarrollo; NO se muestra en la interfaz) ---
- * Backend vigente:
- *   - Existe el endpoint GET /api/v1/auditoria, con filtros `tabla` y `usuarioId`
- *     y paginación vía Pageable (page base 0, size por defecto 20, orden `fecha` descendente).
- *   - Devuelve registros de bitácora general (tabla, entidad, acción, usuario y fecha),
- *     además de los valores anteriores y nuevos del cambio.
- *
- * Motivos por los que NO se integra todavía:
- *   - Los listados con resultados fallan con error 500 al serializar una relación
- *     JPA lazy (`usuarioReferencia`) fuera de sesión (`open-in-view: false`).
- *   - El endpoint aún no cuenta con autorización efectiva en el backend.
- *   - Los campos de valores anteriores/nuevos pueden contener información personal
- *     y clínica; no existe todavía una política confirmada de exposición.
- *
- * Por lo anterior esta pantalla es únicamente descriptiva: no consulta APIs, no usa
- * mocks y no presenta registros. La consulta real queda pendiente de backend.
- */
-
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@/shared/components/ui/Alert.jsx'
-import Card from '@/shared/components/ui/Card.jsx'
-import Icon from '@/shared/components/ui/Icon.jsx'
+import Button from '@/shared/components/ui/Button.jsx'
+import Spinner from '@/shared/components/ui/Spinner.jsx'
+import { listarUsuarios, obtenerAuditoria } from '../api/administracionApi.js'
+import AuditoriaDetalleModal from '../components/AuditoriaDetalleModal.jsx'
+import AuditoriaFiltros from '../components/AuditoriaFiltros.jsx'
+import AuditoriaTabla from '../components/AuditoriaTabla.jsx'
+import PaginacionResultados from '../components/PaginacionResultados.jsx'
 
-const ESTADO_PENDIENTE = 'Pendiente de integración'
+const TAMANO_PAGINA = 20
 
-const FUNCIONALIDADES_PREVISTAS = [
-  {
-    titulo: 'Consulta de registros',
-    descripcion: 'Consulta cronológica de las operaciones registradas en el sistema.',
-    icono: 'history',
-  },
-  {
-    titulo: 'Filtro por recurso',
-    descripcion: 'Consulta de actividad asociada a los distintos recursos del sistema.',
-    icono: 'category',
-  },
-  {
-    titulo: 'Filtro por usuario',
-    descripcion: 'Consulta de actividad asociada al usuario responsable de una operación.',
-    icono: 'person_search',
-  },
-  {
-    titulo: 'Trazabilidad de cambios',
-    descripcion: 'Seguimiento de las modificaciones registradas por el sistema.',
-    icono: 'track_changes',
-  },
-]
+const PAGINA_VACIA = {
+  content: [],
+  number: 0,
+  size: TAMANO_PAGINA,
+  totalElements: 0,
+  totalPages: 0,
+  numberOfElements: 0,
+  first: true,
+  last: true,
+  empty: true,
+}
 
 export default function AuditoriaPage() {
+  const [usuarios, setUsuarios] = useState([])
+
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
+  const [usuarioId, setUsuarioId] = useState('')
+  const [tabla, setTabla] = useState('')
+  const [accion, setAccion] = useState('')
+  const [pagina, setPagina] = useState(0)
+
+  const [resultado, setResultado] = useState(PAGINA_VACIA)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [sinPermiso, setSinPermiso] = useState(false)
+  const [detalle, setDetalle] = useState(null)
+
+  // Carga de usuarios para el filtro. Un fallo no debe impedir usar la auditoría.
+  useEffect(() => {
+    let vigente = true
+    listarUsuarios({ estado: 'todos' })
+      .then((lista) => {
+        if (vigente) setUsuarios(Array.isArray(lista) ? lista : [])
+      })
+      .catch(() => {
+        if (vigente) setUsuarios([])
+      })
+    return () => {
+      vigente = false
+    }
+  }, [])
+
+  const cargar = useCallback(async () => {
+    setCargando(true)
+    setError(null)
+    try {
+      const datos = await obtenerAuditoria({
+        tabla: tabla.trim() || undefined,
+        usuarioId: usuarioId ? Number(usuarioId) : undefined,
+        accion: accion.trim() || undefined,
+        fechaInicio: fechaInicio || undefined,
+        fechaFin: fechaFin || undefined,
+        page: pagina,
+        size: TAMANO_PAGINA,
+      })
+      setResultado({ ...PAGINA_VACIA, ...datos })
+      setSinPermiso(false)
+    } catch (fallo) {
+      setResultado(PAGINA_VACIA)
+      if (fallo?.status === 403 || fallo?.codigo === 'ACCESO_DENEGADO') {
+        setSinPermiso(true)
+      } else {
+        setSinPermiso(false)
+        setError(fallo?.message || 'No se pudo cargar la auditoría')
+      }
+    } finally {
+      setCargando(false)
+    }
+  }, [tabla, accion, fechaInicio, fechaFin, usuarioId, pagina])
+
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  const cambiarFiltro = (actualizar) => (valor) => {
+    actualizar(valor)
+    setPagina(0)
+  }
+
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Auditoría</h2>
-        <p className="text-sm text-slate-500">
-          Consulta de trazabilidad de las operaciones realizadas en el sistema (solo lectura).
+        <h2 className="text-headline-md text-primary">Auditoría</h2>
+        <p className="text-sm text-outline">
+          Consulta de trazabilidad de las operaciones del sistema (solo lectura).
         </p>
       </header>
 
-      <Alert tone="info" title="Consulta no disponible todavía">
-        La consulta de auditoría requiere integración segura con los servicios correspondientes del
-        sistema y todavía no se encuentra disponible.
-      </Alert>
+      {sinPermiso ? (
+        <div className="space-y-3">
+          <Alert tone="error">
+            <h3 className="text-base font-semibold">
+              No tienes permisos para consultar la auditoría.
+            </h3>
+            <p className="mt-1">
+              Esta sección está restringida al rol administrador. Solicita acceso al área
+              correspondiente.
+            </p>
+          </Alert>
+          <Button size="sm" variant="secondary" onClick={cargar} disabled={cargando}>
+            Reintentar
+          </Button>
+        </div>
+      ) : (
+        <>
+          <AuditoriaFiltros
+            fechaInicio={fechaInicio}
+            fechaFin={fechaFin}
+            onCambiarInicio={cambiarFiltro(setFechaInicio)}
+            onCambiarFin={cambiarFiltro(setFechaFin)}
+            usuarioId={usuarioId}
+            onCambiarUsuario={cambiarFiltro(setUsuarioId)}
+            usuarios={usuarios}
+            tabla={tabla}
+            onCambiarTabla={cambiarFiltro(setTabla)}
+            accion={accion}
+            onCambiarAccion={cambiarFiltro(setAccion)}
+          />
 
-      <Card className="space-y-4">
-        <h3 className="text-headline-sm text-slate-700">Funcionalidades previstas</h3>
-        <p className="text-sm text-slate-500">
-          Estas capacidades forman parte del Panel de Administración y se habilitarán cuando la
-          integración esté lista.
-        </p>
+          {cargando && <Spinner label="Cargando auditoría..." />}
 
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FUNCIONALIDADES_PREVISTAS.map((funcionalidad) => (
-            <li
-              key={funcionalidad.titulo}
-              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4"
-            >
-              <div className="flex items-center gap-2">
-                <Icon name={funcionalidad.icono} className="text-[22px] text-hro-celeste" />
-                <h4 className="text-sm font-semibold text-slate-700">{funcionalidad.titulo}</h4>
+          {!cargando && error && (
+            <Alert tone="error" title="No se pudo cargar la auditoría">
+              <p>{error}</p>
+              <div className="mt-3">
+                <Button size="sm" variant="secondary" onClick={cargar}>
+                  Reintentar
+                </Button>
               </div>
-              <p className="text-sm text-slate-500">{funcionalidad.descripcion}</p>
-              <span className="mt-auto inline-flex w-fit rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {ESTADO_PENDIENTE}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
+            </Alert>
+          )}
+
+          {!cargando && !error && (
+            <>
+              <AuditoriaTabla registros={resultado.content} onVerDetalle={setDetalle} />
+              <PaginacionResultados
+                pagina={resultado.number}
+                totalPaginas={resultado.totalPages}
+                esPrimera={resultado.first}
+                esUltima={resultado.last}
+                onAnterior={() => setPagina((anterior) => Math.max(0, anterior - 1))}
+                onSiguiente={() => setPagina((anterior) => anterior + 1)}
+              />
+            </>
+          )}
+        </>
+      )}
+
+      <AuditoriaDetalleModal
+        abierto={Boolean(detalle)}
+        registro={detalle}
+        onCerrar={() => setDetalle(null)}
+      />
     </section>
   )
 }

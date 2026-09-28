@@ -56,6 +56,7 @@ import {
   obtenerReporteCitasPorEstado,
   obtenerReporteDemandaPorEspecialidad,
   obtenerReporteUtilizacionCupos,
+  obtenerAuditoria,
   reactivarEspecialidad,
   reactivarEspacioFisico,
   reactivarMedico,
@@ -934,6 +935,83 @@ describe('administracionApi (mock)', () => {
       expect(filtrada.subespecialidadId).toBe(1)
       expect(filtrada.capacidadTotal).toBe(600)
       expect(filtrada.utilizacionPorcentaje).toBe(6)
+    })
+  })
+
+  describe('auditoría', () => {
+    it('devuelve una página con la forma de Spring Page (base 0, size 20)', async () => {
+      const pagina = await obtenerAuditoria()
+
+      expect(Object.keys(pagina).sort()).toEqual(
+        [
+          'content',
+          'empty',
+          'first',
+          'last',
+          'number',
+          'numberOfElements',
+          'size',
+          'totalElements',
+          'totalPages',
+        ].sort(),
+      )
+      expect(pagina.number).toBe(0)
+      expect(pagina.size).toBe(20)
+      expect(pagina.first).toBe(true)
+      expect(Array.isArray(pagina.content)).toBe(true)
+      expect(pagina.content.length).toBeGreaterThan(0)
+      expect(pagina.content[0]).toHaveProperty('tablaAfectada')
+      expect(pagina.content[0]).toHaveProperty('valoresNuevos')
+      expect(pagina.content[0]).not.toHaveProperty('usuarioReferencia')
+    })
+
+    it('filtra por tabla y acción sin distinguir mayúsculas', async () => {
+      const porTabla = await obtenerAuditoria({ tabla: 'CITA' })
+      expect(porTabla.content.length).toBeGreaterThan(0)
+      expect(porTabla.content.every((r) => r.tablaAfectada === 'cita')).toBe(true)
+
+      const porAccion = await obtenerAuditoria({ accion: 'Crear' })
+      expect(porAccion.content.length).toBeGreaterThan(0)
+      expect(porAccion.content.every((r) => r.accion === 'crear')).toBe(true)
+    })
+
+    it('filtra por usuarioId', async () => {
+      const pagina = await obtenerAuditoria({ usuarioId: 1 })
+      expect(pagina.content.every((r) => r.usuarioId === 1)).toBe(true)
+    })
+
+    it('aplica rango de fechas inclusivo por día', async () => {
+      const pagina = await obtenerAuditoria({
+        fechaInicio: '2026-09-25',
+        fechaFin: '2026-09-26',
+      })
+      expect(pagina.content.length).toBeGreaterThan(0)
+      expect(pagina.content.every((r) => r.fecha.slice(0, 10) >= '2026-09-25')).toBe(true)
+      expect(pagina.content.every((r) => r.fecha.slice(0, 10) <= '2026-09-26')).toBe(true)
+    })
+
+    it('pagina y marca first/last', async () => {
+      const primera = await obtenerAuditoria({ page: 0, size: 3 })
+      expect(primera.content.length).toBe(3)
+      expect(primera.first).toBe(true)
+      expect(primera.last).toBe(false)
+
+      const ultima = await obtenerAuditoria({ page: primera.totalPages - 1, size: 3 })
+      expect(ultima.last).toBe(true)
+      expect(ultima.number).toBe(primera.totalPages - 1)
+    })
+
+    it('devuelve página vacía cuando no hay coincidencias', async () => {
+      const pagina = await obtenerAuditoria({ tabla: 'no_existe' })
+      expect(pagina.content).toEqual([])
+      expect(pagina.totalElements).toBe(0)
+      expect(pagina.empty).toBe(true)
+    })
+
+    it('no usa HTTP real en modo test', async () => {
+      vi.clearAllMocks()
+      await obtenerAuditoria()
+      expect(client.get).not.toHaveBeenCalled()
     })
   })
 })
