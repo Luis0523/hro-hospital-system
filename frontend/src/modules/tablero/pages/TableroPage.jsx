@@ -12,18 +12,23 @@ import { resolverConfiguracionEstacion } from '../api/configuracionEstacion'
 import { crearClienteTablero, TOPIC_TABLERO, topicEstacion } from '../api/tableroSocket'
 import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
+import ControlLimpiarUltimos from '../components/ControlLimpiarUltimos.jsx'
 import ControlTema from '../components/ControlTema.jsx'
 import ControlVoz from '../components/ControlVoz.jsx'
 import { useTemaTablero } from '../hooks/useTemaTablero'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
 import LlamadoGrande from '../components/LlamadoGrande.jsx'
+import SimuladorLlamado, { simuladorHabilitado } from '../components/SimuladorLlamado.jsx'
 import TablaTurnos from '../components/TablaTurnos.jsx'
-import BarraLlamados from '../components/BarraLlamados.jsx'
 import TableroError from '../components/TableroError.jsx'
 import TableroVacio from '../components/TableroVacio.jsx'
 
 export const DURACION_LLAMADO_SIN_VOZ_MS = 6000
+
+export const VENTANA_ULTIMOS_LLAMADOS_MS = 120000
+
+export const MAX_ULTIMOS_LLAMADOS = 5
 
 export function resolverDuracionLlamadoMs(env = import.meta.env) {
   const valor = Number(env.VITE_TABLERO_LLAMADO_MS)
@@ -33,6 +38,35 @@ export function resolverDuracionLlamadoMs(env = import.meta.env) {
 function estimarDuracionVozMs(mensaje, baseMs) {
   if (!mensaje) return baseMs
   return Math.max(baseMs, Math.min(30000, 2000 + mensaje.length * 80))
+}
+
+/**
+ * Solo se limpian los recientes cuando cambia realmente la sala activa dentro
+ * de la misma instancia. `salaAnterior === undefined` significa "aún no
+ * resuelta" (primera carga) y no debe limpiar nada.
+ */
+export function debeLimpiarRecientes({ salaAnterior, salaNueva }) {
+  return salaAnterior !== undefined && salaAnterior !== salaNueva
+}
+
+/**
+ * Inserta un llamado completado al frente de la lista, sin duplicar la misma
+ * identidad lógica (asignacionDiariaEspacioId + turnoActual) y recortando a
+ * MAX_ULTIMOS_LLAMADOS.
+ */
+export function agregarUltimoLlamado(actuales = [], nuevo, max = MAX_ULTIMOS_LLAMADOS) {
+  const sinDuplicado = actuales.filter(
+    (llamado) =>
+      !(
+        llamado.asignacionDiariaEspacioId === nuevo.asignacionDiariaEspacioId &&
+        llamado.turnoActual === nuevo.turnoActual
+      ),
+  )
+  return [nuevo, ...sinDuplicado].slice(0, max)
+}
+
+export function filtrarRecientesVigentes(actuales = [], ahora = Date.now()) {
+  return actuales.filter((llamado) => llamado.completadoEn + VENTANA_ULTIMOS_LLAMADOS_MS > ahora)
 }
 
 export default function TableroPage() {
@@ -46,12 +80,17 @@ export default function TableroPage() {
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
+  const [ultimosLlamados, setUltimosLlamados] = useState([])
+  const [puedeRellamar, setPuedeRellamar] = useState(false)
   const { tema, alternarTema } = useTemaTablero()
 
   const montadoRef = useRef(true)
+  const simuladorTurnoRef = useRef(0)
+  const simuladorIntentoRef = useRef(0)
   const configPermitidasRef = useRef(null)
   const configEstacionRef = useRef(null)
   const configResueltaRef = useRef(false)
+  const salaActivaRef = useRef(undefined)
   const vozActivaRef = useRef(false)
   const ultimoLlamadoProcesadoRef = useRef(new Map())
   const colaLlamadosRef = useRef([])
@@ -73,8 +112,15 @@ export default function TableroPage() {
 
       let permitidas = null
       if (!estacion) {
+        // Primero se resuelve la sala/TV; el snapshot y el WebSocket usan la
+        // misma lista de asignaciones permitidas.
         const config = await resolverConfiguracionSala()
         if (!montadoRef.current) return
+        const sala = config?.sala ?? null
+        if (debeLimpiarRecientes({ salaAnterior: salaActivaRef.current, salaNueva: sala })) {
+          setUltimosLlamados([])
+        }
+        salaActivaRef.current = sala
         permitidas = config?.permitidas ?? null
       }
       configPermitidasRef.current = permitidas
@@ -118,10 +164,31 @@ export default function TableroPage() {
     }
   }, [cargar])
 
+  // Un único timeout al vencimiento más próximo; al cambiar la lista se
+  // reprograma solo. Evita setInterval/polling.
+  useEffect(() => {
+    if (ultimosLlamados.length === 0) return undefined
+
+    const proximoVencimiento = Math.min(
+      ...ultimosLlamados.map((llamado) => llamado.completadoEn + VENTANA_ULTIMOS_LLAMADOS_MS),
+    )
+    const espera = Math.max(0, proximoVencimiento - Date.now())
+
+    const timer = setTimeout(() => {
+      setUltimosLlamados((actuales) => filtrarRecientesVigentes(actuales, Date.now()))
+    }, espera)
+
+    return () => clearTimeout(timer)
+  }, [ultimosLlamados])
+
   const activarVoz = useCallback(() => {
     vozActivaRef.current = true
     setVozActiva(true)
     hablar(FRASE_ACTIVACION)
+  }, [])
+
+  const limpiarUltimosLlamados = useCallback(() => {
+    setUltimosLlamados([])
   }, [])
 
   const avanzar = useCallback(() => {
@@ -159,6 +226,16 @@ export default function TableroPage() {
     const avanzarDeVerdad = () => {
       if (!montadoRef.current) return
       if (generacionLlamadoRef.current !== generacion) return
+      // El llamado terminó de procesarse: entra a "Últimos llamados".
+      const completadoEn = Date.now()
+      setUltimosLlamados((actuales) =>
+        agregarUltimoLlamado(actuales, {
+          asignacionDiariaEspacioId: siguiente.asignacionDiariaEspacioId,
+          turnoActual: siguiente.turnoActual,
+          espacioNumero: siguiente.espacioNumero ?? null,
+          completadoEn,
+        }),
+      )
       avanzar()
     }
 
@@ -189,16 +266,9 @@ export default function TableroPage() {
     const reproducir = () => {
       repeticionActual += 1
       atendido = false
-      let fallo = false
       const mensaje = anunciarTurno(siguiente, {
         onEnd: finalizarRepeticion,
-        onError: () => {
-          if (fallo) return
-          fallo = true
-          // La síntesis falló (p. ej. sin voces): garantiza el tiempo visual mínimo.
-          limpiarTimerLlamado()
-          programarVisual()
-        },
+        onError: finalizarRepeticion,
       })
 
       if (generacionLlamadoRef.current !== generacion) return
@@ -230,6 +300,67 @@ export default function TableroPage() {
     }
   }, [])
 
+  // Pipeline único compartido por el WebSocket real y por el simulador DEV.
+  const procesarEventoTablero = useCallback(
+    (estado) => {
+      if (!montadoRef.current) return
+      // No procesar eventos hasta conocer la configuración de la sala.
+      if (!configResueltaRef.current) return
+      const idAsignacion = estado.asignacionDiariaEspacioId
+      if (!estaPermitida(idAsignacion, configPermitidasRef.current)) return
+
+      setError(null)
+      setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
+
+      // Solo un evento explícito de llamado dispara LlamadoGrande + voz + cola.
+      if (
+        estado.tipoEvento === 'LLAMADO' &&
+        estado.turnoActual !== null &&
+        estado.intentosLlamado !== null
+      ) {
+        const firma = `${estado.turnoActual}:${estado.intentosLlamado}`
+        const procesados = ultimoLlamadoProcesadoRef.current
+        if (procesados.get(idAsignacion) !== firma) {
+          procesados.set(idAsignacion, firma)
+          encolarLlamado(estado)
+        }
+      }
+    },
+    [encolarLlamado],
+  )
+
+  const simuladorActivo = simuladorHabilitado()
+
+  const simularLlamado = useCallback(() => {
+    const asignacion = asignaciones[0]
+    if (!asignacion) return
+
+    simuladorTurnoRef.current += 1
+    simuladorIntentoRef.current = 1
+    setPuedeRellamar(true)
+
+    procesarEventoTablero({
+      ...asignacion,
+      turnoActual: simuladorTurnoRef.current,
+      intentosLlamado: 1,
+      tipoEvento: 'LLAMADO',
+    })
+  }, [asignaciones, procesarEventoTablero])
+
+  const rellamar = useCallback(() => {
+    const asignacion = asignaciones[0]
+    if (!asignacion || simuladorTurnoRef.current < 1) return
+
+    simuladorIntentoRef.current += 1
+
+    procesarEventoTablero({
+      ...asignacion,
+      turnoActual: simuladorTurnoRef.current,
+      intentosLlamado: simuladorIntentoRef.current,
+      tipoEvento: 'LLAMADO',
+    })
+  }, [asignaciones, procesarEventoTablero])
+
   useEffect(() => {
     if (estaEnModoMock()) return undefined
 
@@ -238,30 +369,7 @@ export default function TableroPage() {
         configEstacionRef.current
           ? topicEstacion(configEstacionRef.current.estacionId)
           : TOPIC_TABLERO,
-      onMensaje: (estado) => {
-        if (!montadoRef.current) return
-        // No procesar eventos hasta conocer la configuración de la sala.
-        if (!configResueltaRef.current) return
-        const idAsignacion = estado.asignacionDiariaEspacioId
-        if (!estaPermitida(idAsignacion, configPermitidasRef.current)) return
-
-        setError(null)
-        setAsignaciones((actuales) => fusionarAsignacion(actuales, estado))
-
-        // Solo un evento explícito de llamado dispara LlamadoGrande + voz + cola.
-        if (
-          estado.tipoEvento === 'LLAMADO' &&
-          estado.turnoActual !== null &&
-          estado.intentosLlamado !== null
-        ) {
-          const firma = `${estado.turnoActual}:${estado.intentosLlamado}`
-          const procesados = ultimoLlamadoProcesadoRef.current
-          if (procesados.get(idAsignacion) !== firma) {
-            procesados.set(idAsignacion, firma)
-            encolarLlamado(estado)
-          }
-        }
-      },
+      onMensaje: procesarEventoTablero,
       onConnected: () => {
         if (montadoRef.current) setEstadoConexion('conectado')
       },
@@ -284,7 +392,7 @@ export default function TableroPage() {
     return () => {
       cliente.desactivar()
     }
-  }, [encolarLlamado])
+  }, [procesarEventoTablero])
 
   return (
     // `dark` es ancestro (no en <html>/<body>) para aislar el tema al tablero.
@@ -294,10 +402,21 @@ export default function TableroPage() {
           <ControlTema tema={tema} onAlternar={alternarTema} />
           <ControlPantallaCompleta />
           <ControlVoz disponible={vozDisponible} activa={vozActiva} onActivar={activarVoz} />
+          <ControlLimpiarUltimos
+            visible={vista === 'tabla' && ultimosLlamados.length > 0}
+            onLimpiar={limpiarUltimosLlamados}
+          />
           <EstadoConexion estado={estadoConexion} />
+          <SimuladorLlamado
+            habilitado={simuladorActivo}
+            hayAsignacion={asignaciones.length > 0}
+            puedeRellamar={puedeRellamar}
+            onSimular={simularLlamado}
+            onRellamar={rellamar}
+          />
         </EncabezadoTablero>
 
-        <main className="flex flex-1 flex-col gap-6 px-6 py-4 2xl:py-6">
+        <main className="flex flex-1 flex-col gap-4 px-4 py-2 md:px-6 2xl:gap-6 2xl:py-6">
           {cargando && (
             <div className="flex flex-1 items-center justify-center">
               <Spinner label="Cargando turnos…" />
@@ -315,11 +434,9 @@ export default function TableroPage() {
           )}
 
           {!cargando && !error && vista === 'tabla' && asignaciones.length > 0 && (
-            <TablaTurnos asignaciones={asignaciones} />
+            <TablaTurnos asignaciones={asignaciones} ultimosLlamados={ultimosLlamados} />
           )}
         </main>
-
-        {!cargando && !error && <BarraLlamados asignaciones={asignaciones} />}
       </div>
     </div>
   )

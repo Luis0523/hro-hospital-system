@@ -4,51 +4,63 @@ import LlamadoGrande from './LlamadoGrande.jsx'
 
 const ASIGNACION = {
   asignacionDiariaEspacioId: 1,
-  espacioNumero: '201',
+  espacioNumero: '103',
   nivel: 2,
   subespecialidadNombre: 'Pediatría General',
-  turnoActual: 8,
-  turnoSiguiente: 9,
+  turnoActual: 14,
+  turnoSiguiente: 15,
   ultimaActualizacion: '2026-09-20T08:05:32-06:00',
 }
 
 describe('LlamadoGrande', () => {
-  it('muestra la subespecialidad', () => {
+  it('expone aria-label de llamado de turno', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
-    expect(screen.getByText('Pediatría General')).toBeInTheDocument()
+    expect(screen.getByLabelText('Llamado de turno')).toBeInTheDocument()
   })
 
-  it('muestra el turno actual en grande y formateado', () => {
+  it('muestra el turno actual en grande y formateado como #NNN', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
-    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#014')
   })
 
   it('muestra el consultorio', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
-    expect(screen.getByTestId('llamado-consultorio')).toHaveTextContent('201')
+    expect(screen.getByTestId('llamado-consultorio')).toHaveTextContent('103')
   })
 
-  it('muestra el nombre del paciente cuando viene en la asignación', () => {
-    render(<LlamadoGrande asignacion={{ ...ASIGNACION, pacienteNombre: 'Juan Pérez' }} />)
-
-    expect(screen.getByTestId('llamado-paciente')).toHaveTextContent('Juan Pérez')
-  })
-
-  it('no muestra el nivel aunque venga en el objeto', () => {
+  it('no muestra la subespecialidad', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
+    expect(screen.queryByText('Pediatría General')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Pediatría/)).not.toBeInTheDocument()
+  })
+
+  it('no muestra "Sin subespecialidad" con valores faltantes', () => {
+    render(<LlamadoGrande asignacion={{ asignacionDiariaEspacioId: 9, nivel: 2 }} />)
+
+    expect(screen.queryByText('Sin subespecialidad')).not.toBeInTheDocument()
+    expect(screen.queryByText(/subespecialidad/i)).not.toBeInTheDocument()
+  })
+
+  it('no muestra clínica ni nivel aunque vengan en el objeto', () => {
+    render(
+      <LlamadoGrande
+        asignacion={{ ...ASIGNACION, clinicaNombre: 'Consulta Externa', nivel: 2 }}
+      />,
+    )
+
+    expect(screen.queryByText('Consulta Externa')).not.toBeInTheDocument()
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
-    expect(screen.queryByText('Nivel 2')).not.toBeInTheDocument()
   })
 
   it('no muestra el siguiente turno', () => {
     render(<LlamadoGrande asignacion={ASIGNACION} />)
 
     expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
-    expect(screen.queryByText('#009')).not.toBeInTheDocument()
+    expect(screen.queryByText('#015')).not.toBeInTheDocument()
   })
 
   it('no renderiza datos personales aunque el objeto los incluya', () => {
@@ -77,10 +89,8 @@ describe('LlamadoGrande', () => {
   it('maneja valores faltantes de forma segura', () => {
     render(<LlamadoGrande asignacion={{ asignacionDiariaEspacioId: 9, nivel: 2 }} />)
 
-    expect(screen.getByText('Sin subespecialidad')).toBeInTheDocument()
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('—')
     expect(screen.getByTestId('llamado-consultorio')).toHaveTextContent('—')
-    expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
   })
 
   it('no falla si la asignación no existe', () => {
