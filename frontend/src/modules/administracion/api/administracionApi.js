@@ -34,6 +34,18 @@ import {
   reactivarMedicoMock,
   reactivarProgramacionMock,
   reactivarSubespecialidadMock,
+  // Usuarios, roles y permisos
+  actualizarRolUsuarioMock,
+  activarUsuarioMock,
+  asignarPermisoSubespecialidadMock,
+  desactivarPermisoSubespecialidadMock,
+  desactivarUsuarioMock,
+  listarPermisosSubespecialidadMock,
+  listarPermisosUsuarioMock,
+  listarRolesMock,
+  listarUsuariosMock,
+  obtenerUsuarioMock,
+  reactivarPermisoSubespecialidadMock,
 } from './mockData.js'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -286,4 +298,73 @@ export async function obtenerResumenDashboard(fecha) {
   return desenvolver(
     await client.get('/dashboard/resumen', { params: fecha ? { fecha } : undefined }),
   )
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios, roles y permisos — /usuarios, /roles, /permisos-subespecialidad
+// El alta de usuarios proviene del proveedor de identidad (JIT): no hay POST.
+// ---------------------------------------------------------------------------
+
+export async function listarUsuarios({ estado, rol } = {}) {
+  if (USE_MOCK) return listarUsuariosMock({ estado, rol })
+  const params = {}
+  if (estado) params.estado = estado
+  if (rol) params.rol = rol
+  return desenvolver(await client.get('/usuarios', { params }))
+}
+
+export async function obtenerUsuario(id) {
+  if (USE_MOCK) return obtenerUsuarioMock(id)
+  return desenvolver(await client.get(`/usuarios/${id}`))
+}
+
+export async function activarUsuario(id) {
+  if (USE_MOCK) return activarUsuarioMock(id)
+  return desenvolver(await client.patch(`/usuarios/${id}/activar`))
+}
+
+export async function desactivarUsuario(id) {
+  if (USE_MOCK) return desactivarUsuarioMock(id)
+  return desenvolver(await client.patch(`/usuarios/${id}/desactivar`))
+}
+
+export async function actualizarRolUsuario(id, { rolPrincipal }) {
+  if (USE_MOCK) return actualizarRolUsuarioMock(id, { rolPrincipal })
+  return desenvolver(await client.put(`/usuarios/${id}/rol`, { rolPrincipal }))
+}
+
+export async function listarRoles() {
+  if (USE_MOCK) return listarRolesMock()
+  return desenvolver(await client.get('/roles'))
+}
+
+export async function listarPermisosUsuario(id, estado) {
+  if (USE_MOCK) return listarPermisosUsuarioMock(id, estado)
+  return desenvolver(
+    await client.get(`/usuarios/${id}/permisos`, { params: estado ? { estado } : undefined }),
+  )
+}
+
+export async function listarPermisosSubespecialidad({ subespecialidadId, estado } = {}) {
+  if (USE_MOCK) return listarPermisosSubespecialidadMock({ subespecialidadId, estado })
+  const params = {}
+  if (subespecialidadId) params.subespecialidadId = subespecialidadId
+  if (estado) params.estado = estado
+  return desenvolver(await client.get('/permisos-subespecialidad', { params }))
+}
+
+export async function asignarPermisoSubespecialidad({ usuarioId, subespecialidadId, tipoPermiso }) {
+  const datos = { usuarioId, subespecialidadId, tipoPermiso }
+  if (USE_MOCK) return asignarPermisoSubespecialidadMock(datos)
+  return desenvolver(await client.post('/permisos-subespecialidad', datos))
+}
+
+export async function desactivarPermisoSubespecialidad(id) {
+  if (USE_MOCK) return desactivarPermisoSubespecialidadMock(id)
+  return desenvolver(await client.patch(`/permisos-subespecialidad/${id}/desactivar`))
+}
+
+export async function reactivarPermisoSubespecialidad(id) {
+  if (USE_MOCK) return reactivarPermisoSubespecialidadMock(id)
+  return desenvolver(await client.patch(`/permisos-subespecialidad/${id}/reactivar`))
 }

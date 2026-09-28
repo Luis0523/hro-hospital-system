@@ -41,7 +41,18 @@ import {
   listarProgramaciones,
   listarSubespecialidades,
   obtenerResumenDashboard,
+  activarUsuario,
   actualizarProgramacion,
+  actualizarRolUsuario,
+  asignarPermisoSubespecialidad,
+  desactivarPermisoSubespecialidad,
+  desactivarUsuario,
+  listarPermisosSubespecialidad,
+  listarPermisosUsuario,
+  listarRoles,
+  listarUsuarios,
+  obtenerUsuario,
+  reactivarPermisoSubespecialidad,
   reactivarEspecialidad,
   reactivarEspacioFisico,
   reactivarMedico,
@@ -716,6 +727,150 @@ describe('administracionApi (mock)', () => {
 
       const sinFecha = await obtenerResumenDashboard()
       expect(sinFecha.fecha).toBe(hoyISO())
+    })
+  })
+
+  describe('usuarios, roles y permisos', () => {
+    it('lista los roles confirmados del backend', async () => {
+      const roles = await listarRoles()
+
+      expect(roles).toEqual([
+        'personal_citas',
+        'enfermeria',
+        'medico',
+        'administrador',
+        'archivo',
+        'jefe_enfermeria',
+      ])
+    })
+
+    it('lista usuarios por estado y rol; valida rol inválido', async () => {
+      expect((await listarUsuarios()).every((u) => u.activo)).toBe(true)
+
+      const inactivos = await listarUsuarios({ estado: 'inactivos' })
+      expect(inactivos.length).toBeGreaterThan(0)
+      expect(inactivos.every((u) => !u.activo)).toBe(true)
+
+      const todos = await listarUsuarios({ estado: 'todos' })
+      expect(todos.length).toBeGreaterThan(inactivos.length)
+
+      const medicos = await listarUsuarios({ rol: 'medico' })
+      expect(medicos.every((u) => u.rolPrincipal === 'medico')).toBe(true)
+
+      await expect(listarUsuarios({ rol: 'inexistente' })).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('obtiene un usuario por id y devuelve 404 si no existe', async () => {
+      const usuario = await obtenerUsuario(1)
+      expect(usuario.id).toBe(1)
+
+      await expect(obtenerUsuario(99999)).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('activa y desactiva de forma idempotente', async () => {
+      const desactivado = await desactivarUsuario(1)
+      expect(desactivado.activo).toBe(false)
+
+      const otraVez = await desactivarUsuario(1)
+      expect(otraVez.activo).toBe(false)
+
+      const activado = await activarUsuario(1)
+      expect(activado.activo).toBe(true)
+    })
+
+    it('actualiza el rol principal y rechaza roles inválidos', async () => {
+      const actualizado = await actualizarRolUsuario(1, { rolPrincipal: 'medico' })
+      expect(actualizado.rolPrincipal).toBe('medico')
+
+      await expect(
+        actualizarRolUsuario(1, { rolPrincipal: 'superusuario' }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('lista permisos por usuario y por subespecialidad, filtrando por estado', async () => {
+      const activos = await listarPermisosUsuario(2)
+      expect(activos.every((p) => p.activo)).toBe(true)
+      expect(activos[0]).toHaveProperty('subespecialidadNombre')
+      expect(activos[0]).toHaveProperty('especialidadNombre')
+
+      const inactivos = await listarPermisosUsuario(2, 'inactivos')
+      expect(inactivos.every((p) => !p.activo)).toBe(true)
+
+      const porSub = await listarPermisosSubespecialidad({ subespecialidadId: 1 })
+      expect(porSub.every((p) => p.subespecialidadId === 1)).toBe(true)
+
+      await expect(listarPermisosUsuario(99999)).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('asigna un permiso nuevo', async () => {
+      const creado = await asignarPermisoSubespecialidad({
+        usuarioId: 2,
+        subespecialidadId: 3,
+        tipoPermiso: 'autorizar_cupo',
+      })
+
+      expect(creado.usuarioId).toBe(2)
+      expect(creado.subespecialidadId).toBe(3)
+      expect(creado.tipoPermiso).toBe('autorizar_cupo')
+      expect(creado.activo).toBe(true)
+    })
+
+    it('rechaza un permiso duplicado activo (400)', async () => {
+      await expect(
+        asignarPermisoSubespecialidad({
+          usuarioId: 2,
+          subespecialidadId: 1,
+          tipoPermiso: 'avanzar_turno',
+        }),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('reactiva un permiso inactivo mediante POST', async () => {
+      const reactivado = await asignarPermisoSubespecialidad({
+        usuarioId: 2,
+        subespecialidadId: 2,
+        tipoPermiso: 'autorizar_cupo',
+      })
+
+      expect(reactivado.id).toBe(2)
+      expect(reactivado.activo).toBe(true)
+    })
+
+    it('rechaza tipos inválidos y usuarios/subespecialidades inactivos', async () => {
+      await expect(
+        asignarPermisoSubespecialidad({
+          usuarioId: 2,
+          subespecialidadId: 1,
+          tipoPermiso: 'permiso_inexistente',
+        }),
+      ).rejects.toMatchObject({ status: 400 })
+
+      await expect(
+        asignarPermisoSubespecialidad({
+          usuarioId: 3,
+          subespecialidadId: 1,
+          tipoPermiso: 'avanzar_turno',
+        }),
+      ).rejects.toThrow(/usuario .* inactivo/i)
+
+      await expect(
+        asignarPermisoSubespecialidad({
+          usuarioId: 2,
+          subespecialidadId: 9,
+          tipoPermiso: 'avanzar_turno',
+        }),
+      ).rejects.toThrow(/subespecialidad .* inactiva/i)
+    })
+
+    it('desactiva y reactiva permisos; reactivar falla con usuario inactivo', async () => {
+      const desactivado = await desactivarPermisoSubespecialidad(1)
+      expect(desactivado.activo).toBe(false)
+
+      const reactivado = await reactivarPermisoSubespecialidad(1)
+      expect(reactivado.activo).toBe(true)
+
+      await desactivarPermisoSubespecialidad(3)
+      await expect(reactivarPermisoSubespecialidad(3)).rejects.toThrow(/usuario está inactivo/i)
     })
   })
 })

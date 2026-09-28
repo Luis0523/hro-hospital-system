@@ -370,10 +370,17 @@ export function reiniciarCatalogosMock() {
     ...clonar(MEDICO_SUBESPECIALIDADES_BASE),
   )
   diasNoLaborablesMock.splice(0, diasNoLaborablesMock.length, ...clonar(DIAS_NO_LABORABLES_BASE))
+  usuariosMock.splice(0, usuariosMock.length, ...clonar(USUARIOS_BASE))
+  permisosSubespecialidadMock.splice(
+    0,
+    permisosSubespecialidadMock.length,
+    ...clonar(PERMISOS_SUBESPECIALIDAD_BASE),
+  )
   contadorIdEspecialidad = ESPECIALIDADES_BASE.length
   contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
   contadorUuid = ESPACIOS_FISICOS_BASE.length
   contadorIdDiaNoLaborable = DIAS_NO_LABORABLES_BASE.length
+  contadorIdPermiso = PERMISOS_SUBESPECIALIDAD_BASE.length
 }
 
 // ---------------------------------------------------------------------------
@@ -999,4 +1006,275 @@ export function obtenerResumenDashboardMock(fecha) {
     ...clonar(DASHBOARD_RESUMEN_MOCK),
     fecha: fecha || hoyISO(),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios, roles y permisos — /usuarios, /roles, /permisos-subespecialidad
+// Datos de prueba; replican los DTO reales. El alta de usuarios es JIT (no hay POST).
+// ---------------------------------------------------------------------------
+
+const ROLES_MOCK = [
+  'personal_citas',
+  'enfermeria',
+  'medico',
+  'administrador',
+  'archivo',
+  'jefe_enfermeria',
+]
+
+const TIPOS_PERMISO_VALIDOS = ['avanzar_turno', 'generar_orden_laboratorio', 'autorizar_cupo']
+
+const USUARIOS_BASE = [
+  {
+    id: 1,
+    idExterno: 'ana-perez',
+    nombreMostrar: 'Ana Pérez',
+    rolPrincipal: 'administrador',
+    activo: true,
+    ultimoAcceso: '2026-09-25T14:05:00Z',
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 2,
+    idExterno: 'luis-gomez',
+    nombreMostrar: 'Luis Gómez',
+    rolPrincipal: 'medico',
+    activo: true,
+    ultimoAcceso: null,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 3,
+    idExterno: 'marta-ruiz',
+    nombreMostrar: 'Marta Ruiz',
+    rolPrincipal: 'enfermeria',
+    activo: false,
+    ultimoAcceso: '2026-08-30T09:00:00Z',
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 4,
+    idExterno: 'jorge-salas',
+    nombreMostrar: 'Jorge Salas',
+    rolPrincipal: 'personal_citas',
+    activo: true,
+    ultimoAcceso: null,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 5,
+    idExterno: 'elena-diaz',
+    nombreMostrar: 'Elena Díaz',
+    rolPrincipal: 'archivo',
+    activo: false,
+    ultimoAcceso: null,
+    creadoEn: creadoEnBase,
+  },
+]
+
+const PERMISOS_SUBESPECIALIDAD_BASE = [
+  {
+    id: 1,
+    usuarioId: 2,
+    subespecialidadId: 1,
+    tipoPermiso: 'avanzar_turno',
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 2,
+    usuarioId: 2,
+    subespecialidadId: 2,
+    tipoPermiso: 'autorizar_cupo',
+    activo: false,
+    creadoEn: creadoEnBase,
+  },
+  {
+    id: 3,
+    usuarioId: 3,
+    subespecialidadId: 1,
+    tipoPermiso: 'generar_orden_laboratorio',
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+]
+
+export const usuariosMock = clonar(USUARIOS_BASE)
+export const permisosSubespecialidadMock = clonar(PERMISOS_SUBESPECIALIDAD_BASE)
+
+let contadorIdPermiso = PERMISOS_SUBESPECIALIDAD_BASE.length
+
+export function listarRolesMock() {
+  return [...ROLES_MOCK]
+}
+
+export function listarUsuariosMock({ estado, rol } = {}) {
+  let rolNormalizado = null
+  if (rol) {
+    rolNormalizado = String(rol).trim().toLowerCase()
+    if (!ROLES_MOCK.includes(rolNormalizado)) {
+      throw errorBackend(
+        `Rol no válido: '${rol}'. Roles permitidos: ${ROLES_MOCK.join(', ')}.`,
+      )
+    }
+  }
+
+  return filtrarPorEstado(usuariosMock, estado).filter((usuario) =>
+    rolNormalizado ? usuario.rolPrincipal === rolNormalizado : true,
+  )
+}
+
+export function obtenerUsuarioMock(id) {
+  const usuario = usuariosMock.find((item) => item.id === id)
+  if (!usuario) {
+    throw errorBackend(`No se encontró el usuario con ID ${id}`, 404)
+  }
+  return usuario
+}
+
+export function activarUsuarioMock(id) {
+  return cambiarEstadoUsuarioMock(id, true)
+}
+
+export function desactivarUsuarioMock(id) {
+  return cambiarEstadoUsuarioMock(id, false)
+}
+
+function cambiarEstadoUsuarioMock(id, activo) {
+  const usuario = obtenerUsuarioMock(id)
+  usuario.activo = activo
+  return usuario
+}
+
+export function actualizarRolUsuarioMock(id, { rolPrincipal }) {
+  const rolNormalizado = String(rolPrincipal ?? '')
+    .trim()
+    .toLowerCase()
+  if (!ROLES_MOCK.includes(rolNormalizado)) {
+    throw errorBackend(
+      `Rol no válido: '${rolPrincipal}'. Roles permitidos: ${ROLES_MOCK.join(', ')}.`,
+    )
+  }
+  const usuario = obtenerUsuarioMock(id)
+  usuario.rolPrincipal = rolNormalizado
+  return usuario
+}
+
+function enriquecerPermiso(permiso) {
+  const usuario = usuariosMock.find((item) => item.id === permiso.usuarioId)
+  const subespecialidad = subespecialidadesMock.find(
+    (item) => item.id === permiso.subespecialidadId,
+  )
+  const especialidad = especialidadesMock.find(
+    (item) => item.id === subespecialidad?.especialidadId,
+  )
+  return {
+    ...permiso,
+    usuarioNombre: usuario?.nombreMostrar ?? '',
+    subespecialidadNombre: subespecialidad?.nombre ?? '',
+    especialidadId: especialidad?.id ?? null,
+    especialidadNombre: especialidad?.nombre ?? '',
+  }
+}
+
+export function listarPermisosUsuarioMock(usuarioId, estado) {
+  obtenerUsuarioMock(usuarioId)
+  return filtrarPorEstado(permisosSubespecialidadMock, estado)
+    .filter((permiso) => permiso.usuarioId === usuarioId)
+    .map(enriquecerPermiso)
+}
+
+export function listarPermisosSubespecialidadMock({ subespecialidadId, estado } = {}) {
+  return filtrarPorEstado(permisosSubespecialidadMock, estado)
+    .filter((permiso) =>
+      subespecialidadId ? permiso.subespecialidadId === Number(subespecialidadId) : true,
+    )
+    .map(enriquecerPermiso)
+}
+
+export function asignarPermisoSubespecialidadMock({ usuarioId, subespecialidadId, tipoPermiso }) {
+  const tipoNormalizado = String(tipoPermiso ?? '')
+    .trim()
+    .toLowerCase()
+  if (!TIPOS_PERMISO_VALIDOS.includes(tipoNormalizado)) {
+    throw errorBackend(
+      `Tipo de permiso no válido: '${tipoPermiso}'. Valores permitidos: ${TIPOS_PERMISO_VALIDOS.join(', ')}.`,
+    )
+  }
+
+  const usuario = usuariosMock.find((item) => item.id === Number(usuarioId))
+  if (!usuario) {
+    throw errorBackend(`No se encontró el usuario con ID ${usuarioId}`, 404)
+  }
+  if (!usuario.activo) {
+    throw errorBackend(`El usuario ${usuario.nombreMostrar} está inactivo.`)
+  }
+
+  const subespecialidad = subespecialidadesMock.find(
+    (item) => item.id === Number(subespecialidadId),
+  )
+  if (!subespecialidad) {
+    throw errorBackend(`No se encontró la subespecialidad con ID ${subespecialidadId}`, 404)
+  }
+  if (!subespecialidad.activo) {
+    throw errorBackend(`La subespecialidad ${subespecialidad.nombre} está inactiva.`)
+  }
+
+  const existente = permisosSubespecialidadMock.find(
+    (permiso) =>
+      permiso.usuarioId === usuario.id &&
+      permiso.subespecialidadId === subespecialidad.id &&
+      permiso.tipoPermiso === tipoNormalizado,
+  )
+
+  if (existente) {
+    if (existente.activo) {
+      throw errorBackend(
+        `El usuario ya tiene el permiso '${tipoNormalizado}' sobre la subespecialidad ${subespecialidad.nombre}.`,
+      )
+    }
+    existente.activo = true
+    return enriquecerPermiso(existente)
+  }
+
+  contadorIdPermiso += 1
+  const nuevo = {
+    id: contadorIdPermiso,
+    usuarioId: usuario.id,
+    subespecialidadId: subespecialidad.id,
+    tipoPermiso: tipoNormalizado,
+    activo: true,
+    creadoEn: new Date().toISOString(),
+  }
+  permisosSubespecialidadMock.push(nuevo)
+  return enriquecerPermiso(nuevo)
+}
+
+export function desactivarPermisoSubespecialidadMock(id) {
+  return cambiarEstadoPermisoMock(id, false)
+}
+
+export function reactivarPermisoSubespecialidadMock(id) {
+  return cambiarEstadoPermisoMock(id, true)
+}
+
+function cambiarEstadoPermisoMock(id, activo) {
+  const permiso = permisosSubespecialidadMock.find((item) => item.id === id)
+  if (!permiso) {
+    throw errorBackend(`No se encontró el permiso con ID ${id}`, 404)
+  }
+  if (activo) {
+    const usuario = usuariosMock.find((item) => item.id === permiso.usuarioId)
+    if (!usuario || !usuario.activo) {
+      throw errorBackend('No se puede reactivar el permiso: el usuario está inactivo.')
+    }
+    const subespecialidad = subespecialidadesMock.find(
+      (item) => item.id === permiso.subespecialidadId,
+    )
+    if (!subespecialidad || !subespecialidad.activo) {
+      throw errorBackend('No se puede reactivar el permiso: la subespecialidad está inactiva.')
+    }
+  }
+  permiso.activo = activo
+  return enriquecerPermiso(permiso)
 }
