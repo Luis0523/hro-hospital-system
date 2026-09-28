@@ -15,7 +15,7 @@ describe('ScannerDock', () => {
       />,
     )
 
-    await userEvent.type(screen.getByLabelText('DPI o carné del paciente'), '{Enter}')
+    await userEvent.type(screen.getByLabelText('Código de expediente del paciente'), '{Enter}')
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })

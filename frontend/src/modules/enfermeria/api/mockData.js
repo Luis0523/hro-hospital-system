@@ -8,6 +8,68 @@ export const clinicasMock = [
   { id: 9, nombre: 'Clínica 09 - Ginecología', cupos: 0 },
 ]
 
+export const estacionesMock = [
+  {
+    id: 'box-04',
+    terminal: 'BOX-04 Triage',
+    clinicaId: 1,
+    clinicaNombre: 'Clínica 101 - Medicina General',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+    estado: 'disponible',
+  },
+  {
+    id: 'box-05',
+    terminal: 'BOX-05 Pediatría',
+    clinicaId: 2,
+    clinicaNombre: 'Clínica 102 - Pediatría',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+    estado: 'disponible',
+  },
+  {
+    id: 'box-06',
+    terminal: 'BOX-06 Cardiología',
+    clinicaId: 4,
+    clinicaNombre: 'Clínica 104 - Cardiología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    estado: 'ocupada',
+  },
+  {
+    id: 'box-07',
+    terminal: 'BOX-07 Traumatología',
+    clinicaId: 7,
+    clinicaNombre: 'Clínica 107 - Traumatología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    estado: 'disponible',
+  },
+]
+
+/** Respuesta simulada de `GET /estaciones` (forma real del backend). */
+export const estacionesApiMock = estacionesMock.map((estacion) => ({
+  id: estacion.id,
+  codigo: estacion.terminal,
+  nombre: estacion.clinicaNombre,
+  ubicacion: estacion.ubicacion,
+  activo: true,
+  subespecialidades: [],
+}))
+
+/** Subespecialidades por estación (mock). Los ids coinciden con clinicasMock para reusar cupos/turnos. */
+export const SUBESPECIALIDADES_POR_ESTACION = {
+  'box-04': [{ id: 1, nombre: 'Medicina General' }],
+  'box-05': [{ id: 2, nombre: 'Pediatría General' }],
+  'box-06': [{ id: 4, nombre: 'Cardiología Clínica' }],
+  'box-07': [{ id: 7, nombre: 'Traumatología General' }],
+}
+
+export function subespecialidadesEstacionMock(estacionId) {
+  return SUBESPECIALIDADES_POR_ESTACION[estacionId] ?? []
+}
+
+export function turnosEstacionMock(estacionId) {
+  const ids = subespecialidadesEstacionMock(estacionId).map((sub) => sub.id)
+  return turnosMock.filter((turno) => ids.includes(turno.clinicaId))
+}
+
 export const pacientesMock = [
   {
     id: 1,
@@ -275,7 +337,7 @@ export function cuposDiaMock(fecha, clinicaIds = []) {
 
   return OFERTA_CUPOS.filter((oferta) => filtro.includes(oferta.clinicaId)).map((oferta) => {
     const id = oferta.clinicaId * 1000 + dia
-    const base = (dia * (oferta.clinicaId + 3)) % (oferta.capacidadMaxima + 1)
+    const base = (dia * (oferta.clinicaId + 3)) % oferta.capacidadMaxima
     const ocupados = Math.min(oferta.capacidadMaxima, base + (cuposReservados.get(id) ?? 0))
     const disponibles = Math.max(0, oferta.capacidadMaxima - ocupados)
 

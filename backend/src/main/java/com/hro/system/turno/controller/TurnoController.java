@@ -4,6 +4,7 @@ import com.hro.system.cita.dto.CierreDiarioRequestDTO;
 import com.hro.system.common.ApiResponse;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
+import com.hro.system.turno.dto.TableroTurnoDTO;
 import com.hro.system.turno.dto.TurnoResponseDTO;
 import com.hro.system.turno.service.TurnoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,9 +14,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/turnos")
@@ -35,11 +39,13 @@ public class TurnoController {
     }
 
     @PostMapping("/{id}/llamar")
-    @Operation(summary = "Llamar paciente al consultorio")
+    @Operation(summary = "Llamar paciente al consultorio",
+            description = "También sirve para re-llamar (incrementa intentos). Con porNombre=true el tablero anuncia por nombre.")
     public ResponseEntity<ApiResponse<TurnoResponseDTO>> llamarTurno(
             @PathVariable Long id,
-            @Parameter(description = "ID del usuario. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId) {
-        return ResponseEntity.ok(ApiResponse.ok(turnoService.llamarTurno(id, usuarioId), "Turno llamado exitosamente"));
+            @Parameter(description = "ID del usuario. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false, defaultValue = "false") boolean porNombre) {
+        return ResponseEntity.ok(ApiResponse.ok(turnoService.llamarTurno(id, usuarioId, porNombre), "Turno llamado exitosamente"));
     }
 
     @PostMapping("/{id}/no-responde")
@@ -80,9 +86,61 @@ public class TurnoController {
         return ResponseEntity.ok(ApiResponse.ok(turnoService.listarTurnosEnEspera(asignacionDiariaEspacioId), "Turnos en espera obtenidos con éxito"));
     }
 
+    @PostMapping("/asignacion/{asignacionDiariaEspacioId}/siguiente")
+    @Operation(summary = "Pasar al siguiente turno de la sala",
+            description = "Llama atómicamente al primer turno en espera (orden por correlativo). Devuelve 409 si la fila está vacía.")
+    public ResponseEntity<ApiResponse<TurnoResponseDTO>> avanzarSiguiente(
+            @PathVariable Long asignacionDiariaEspacioId,
+            @Parameter(description = "ID del usuario. Opcional: si se omite, se toma del usuario autenticado.") @RequestParam(required = false) Long usuarioId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.avanzarSiguiente(asignacionDiariaEspacioId, usuarioId), "Siguiente turno llamado exitosamente"));
+    }
+
+    @GetMapping("/asignacion/{asignacionDiariaEspacioId}/tablero")
+    @Operation(summary = "Estado del tablero de la sala",
+            description = "Carga inicial del tablero (contadores turno actual/siguiente) sin esperar WebSocket.")
+    public ResponseEntity<ApiResponse<TableroTurnoDTO>> obtenerEstadoTablero(@PathVariable Long asignacionDiariaEspacioId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.obtenerEstadoTablero(asignacionDiariaEspacioId), "Estado del tablero obtenido con éxito"));
+    }
+
+    @GetMapping("/estacion/{estacionId}")
+    @Operation(summary = "Listar la cola de turnos de una estación",
+            description = "Turnos de todas las salas de la estación para la fecha (hoy por defecto). "
+                    + "Por defecto solo activos; con incluirNoResponde=true agrega los no respondidos.")
+    public ResponseEntity<ApiResponse<List<TurnoResponseDTO>>> listarTurnosEstacion(
+            @PathVariable Long estacionId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false, defaultValue = "false") boolean incluirNoResponde) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.listarTurnosEstacion(estacionId, fecha, incluirNoResponde),
+                "Cola de la estación obtenida con éxito"));
+    }
+
+    @GetMapping("/estacion/{estacionId}/tablero")
+    @Operation(summary = "Estado del tablero de la estación",
+            description = "Carga inicial: todas las salas del día cuyas subespecialidades pertenecen a la estación, con sus contadores.")
+    public ResponseEntity<ApiResponse<List<TableroTurnoDTO>>> tableroEstacion(
+            @PathVariable Long estacionId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.obtenerTableroEstacion(estacionId, fecha), "Estado del tablero de la estación"));
+    }
+
     @GetMapping("/activos")
     @Operation(summary = "Listar turnos en espera globales")
     public ResponseEntity<ApiResponse<List<TurnoResponseDTO>>> listarActivos() {
         return ResponseEntity.ok(ApiResponse.ok(turnoService.listarTurnosActivos(), "Turnos activos listados con éxito"));
+    }
+
+    @PatchMapping("/{id}/sala")
+    @Operation(summary = "Reasignar la sala de un turno",
+            description = "Mueve el turno a otra sala de la misma subespecialidad (p. ej. si una se desocupa antes). Queda auditado.")
+    public ResponseEntity<ApiResponse<TurnoResponseDTO>> reasignarSala(
+            @PathVariable Long id,
+            @RequestParam UUID nuevoEspacioFisicoId,
+            @RequestParam(required = false) String motivo) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoService.reasignarSala(id, nuevoEspacioFisicoId, motivo), "Sala del turno reasignada"));
     }
 }

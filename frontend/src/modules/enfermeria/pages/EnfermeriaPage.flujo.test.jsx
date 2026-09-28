@@ -3,18 +3,28 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
+import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import EnfermeriaPage from './EnfermeriaPage.jsx'
 
 function renderPagina() {
+  localStorage.setItem(
+    'hro_estacion',
+    JSON.stringify({ id: 'box-04', codigo: 'BOX-04 Triage', nombre: 'Clínica 101 - Medicina General' }),
+  )
   return render(
-    <MemoryRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <EnfermeriaPage />
-        </ToastProvider>
-      </AuthProvider>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <AuthProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <EnfermeriaPage />
+            </ToastProvider>
+          </EstacionProvider>
+        </AuthProvider>
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 
@@ -34,7 +44,7 @@ describe('EnfermeriaPage - flujos', () => {
   it('agenda una cita para un paciente sin cita hoy', async () => {
     renderPagina()
 
-    const lector = screen.getByLabelText('DPI o carné del paciente')
+    const lector = screen.getByLabelText('Código de expediente del paciente')
     await userEvent.type(lector, '3012456780101{Enter}')
 
     const panel = await screen.findByRole('dialog')

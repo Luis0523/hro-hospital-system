@@ -4,10 +4,12 @@ import {
   estaEnModoMock,
   estaPermitida,
   fusionarAsignacion,
+  obtenerEstadoInicialEstacion,
   obtenerEstadoInicialTablero,
 } from '../api/tableroApi'
 import { resolverConfiguracionSala } from '../api/configuracionSala'
-import { crearClienteTablero } from '../api/tableroSocket'
+import { resolverConfiguracionEstacion } from '../api/configuracionEstacion'
+import { crearClienteTablero, TOPIC_TABLERO, topicEstacion } from '../api/tableroSocket'
 import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
 import ControlLimpiarUltimos from '../components/ControlLimpiarUltimos.jsx'
@@ -86,6 +88,7 @@ export default function TableroPage() {
   const simuladorTurnoRef = useRef(0)
   const simuladorIntentoRef = useRef(0)
   const configPermitidasRef = useRef(null)
+  const configEstacionRef = useRef(null)
   const configResueltaRef = useRef(false)
   const salaActivaRef = useRef(undefined)
   const vozActivaRef = useRef(false)
@@ -101,21 +104,31 @@ export default function TableroPage() {
     setError(null)
     configResueltaRef.current = false
     try {
-      // Primero se resuelve la sala/TV; el snapshot y el WebSocket usan la
-      // misma lista de asignaciones permitidas.
-      const config = await resolverConfiguracionSala()
+      // Modo estación (?estacion=CODE): el backend acota por estación y la TV se
+      // suscribe al topic de su estación. Sin parámetro, se conserva el modo sala.
+      const estacion = await resolverConfiguracionEstacion()
       if (!montadoRef.current) return
-      const sala = config?.sala ?? null
-      if (debeLimpiarRecientes({ salaAnterior: salaActivaRef.current, salaNueva: sala })) {
-        setUltimosLlamados([])
+      configEstacionRef.current = estacion
+
+      let permitidas = null
+      if (!estacion) {
+        // Primero se resuelve la sala/TV; el snapshot y el WebSocket usan la
+        // misma lista de asignaciones permitidas.
+        const config = await resolverConfiguracionSala()
+        if (!montadoRef.current) return
+        const sala = config?.sala ?? null
+        if (debeLimpiarRecientes({ salaAnterior: salaActivaRef.current, salaNueva: sala })) {
+          setUltimosLlamados([])
+        }
+        salaActivaRef.current = sala
+        permitidas = config?.permitidas ?? null
       }
-      salaActivaRef.current = sala
-      configPermitidasRef.current = config?.permitidas ?? null
+      configPermitidasRef.current = permitidas
       configResueltaRef.current = true
 
-      const estado = await obtenerEstadoInicialTablero({
-        permitidas: configPermitidasRef.current,
-      })
+      const estado = estacion
+        ? await obtenerEstadoInicialEstacion({ estacionId: estacion.estacionId })
+        : await obtenerEstadoInicialTablero({ permitidas })
       if (montadoRef.current) setAsignaciones(estado)
     } catch (err) {
       // Si falla la resolución de sala, el flag sigue en false y el WebSocket
@@ -352,6 +365,10 @@ export default function TableroPage() {
     if (estaEnModoMock()) return undefined
 
     const cliente = crearClienteTablero({
+      topic: () =>
+        configEstacionRef.current
+          ? topicEstacion(configEstacionRef.current.estacionId)
+          : TOPIC_TABLERO,
       onMensaje: procesarEventoTablero,
       onConnected: () => {
         if (montadoRef.current) setEstadoConexion('conectado')

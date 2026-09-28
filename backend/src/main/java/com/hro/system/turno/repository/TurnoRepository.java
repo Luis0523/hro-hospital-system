@@ -1,7 +1,9 @@
 package com.hro.system.turno.repository;
 
 import com.hro.system.turno.entity.Turno;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,8 +19,26 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
 
     List<Turno> findByEstado(String estado);
 
+    /**
+     * Primer turno en espera de una asignación diaria (sala del día), ordenado por correlativo.
+     * Toma un lock pesimista de escritura para que dos terminales no llamen al mismo turno
+     * de forma concurrente (avance atómico de "pasar siguiente").
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Turno> findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoAsc(
+            Long asignacionDiariaEspacioId, String estado);
+
+    /** Último turno llamado de una sala (para anunciar el nombre del paciente). */
+    Optional<Turno> findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoDesc(
+            Long asignacionDiariaEspacioId, String estado);
+
     @Query(value = "SELECT fn_siguiente_turno(:asignacionDiariaEspacioId)", nativeQuery = true)
     Integer obtenerSiguienteTurnoAtomico(@Param("asignacionDiariaEspacioId") Long asignacionDiariaEspacioId);
+
+    @Query(value = "SELECT fn_siguiente_turno_fecha(CAST(:fecha AS date))", nativeQuery = true)
+    Integer obtenerSiguienteTurnoGlobal(@Param("fecha") LocalDate fecha);
+
+    long countByAsignacionDiariaEspacioIdAndEstado(Long asignacionDiariaEspacioId, String estado);
 
     @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId")
     List<Turno> buscarPorAsignacion(@Param("asignacionId") Long asignacionId);
@@ -35,4 +55,9 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId " +
             "AND t.estado IN ('en_espera', 'llamado', 'reintegrado') ORDER BY t.numeroTurno ASC")
     List<Turno> buscarTurnosEnEsperaPorAsignacion(@Param("asignacionId") Long asignacionId);
+
+    /** Turnos no respondidos de una sala (para el panel de reintegración de la estación). */
+    @Query("SELECT t FROM Turno t WHERE t.asignacionDiariaEspacio.id = :asignacionId " +
+            "AND t.estado = 'no_responde' ORDER BY t.numeroTurno ASC")
+    List<Turno> buscarNoRespondePorAsignacion(@Param("asignacionId") Long asignacionId);
 }

@@ -191,8 +191,7 @@ public class DiaNoLaborableService {
                 .estado(c.getEstado())
                 .pacienteId(c.getPaciente().getId())
                 .pacienteNombre(c.getPaciente().getNombres() + " " + c.getPaciente().getApellidos())
-                .medicoNombre(c.getCupoDiario().getMedicoSubespecialidad().getMedico().getNombres())
-                .subespecialidadNombre(c.getCupoDiario().getMedicoSubespecialidad().getSubespecialidad().getNombre())
+                .subespecialidadNombre(c.getCupoDiario().getSubespecialidadHorario().getSubespecialidad().getNombre())
                 .build();
     }
 

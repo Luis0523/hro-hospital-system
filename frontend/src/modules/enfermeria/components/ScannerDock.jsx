@@ -14,8 +14,8 @@ export default function ScannerDock({ value, onChange, onSubmit, onSimular, inpu
             type="text"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder="Escanee el DPI o carné del paciente..."
-            aria-label="DPI o carné del paciente"
+            placeholder="Escanee el código de expediente..."
+            aria-label="Código de expediente del paciente"
             className="h-14 w-full rounded-xl bg-surface-container-low pl-14 pr-14 text-title-md text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container sm:pr-44"
           />
           <span className="absolute right-3 hidden items-center gap-1 rounded-lg bg-secondary-fixed px-2 py-1 text-on-secondary-container sm:flex">

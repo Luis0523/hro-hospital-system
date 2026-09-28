@@ -21,9 +21,9 @@ import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.turno.repository.TurnoRepository;
@@ -84,7 +84,7 @@ class ArchivoCicloTest {
     private CupoDiarioRepository cupoDiarioRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     @Autowired
     private MedicoRepository medicoRepository;
@@ -115,7 +115,7 @@ class ArchivoCicloTest {
         citaEstadoHistorialRepository.deleteAllInBatch();
         citaRepository.deleteAllInBatch();
         cupoDiarioRepository.deleteAllInBatch();
-        medicoSubespecialidadRepository.deleteAllInBatch();
+        subespecialidadHorarioRepository.deleteAllInBatch();
 
         String suffix = UUID.randomUUID().toString().substring(0, 5);
 
@@ -153,8 +153,7 @@ class ArchivoCicloTest {
                 .activo(true)
                 .build());
 
-        MedicoSubespecialidad medicoSubespecialidad = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario medicoSubespecialidad = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) 1)
                 .horaInicio(LocalTime.of(8, 0))
@@ -165,7 +164,7 @@ class ArchivoCicloTest {
                 .build());
 
         CupoDiario cupo = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(medicoSubespecialidad)
+                .subespecialidadHorario(medicoSubespecialidad)
                 .fecha(LocalDate.of(2026, 9, 14))
                 .capacidadMaxima(10)
                 .cuposOcupados(1)

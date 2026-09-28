@@ -19,9 +19,9 @@ import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.medico.dto.AsignarMedicoSubespecialidadRequestDTO;
 import com.hro.system.medico.dto.CrearMedicoRequestDTO;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.medico.repository.MedicoRepository;
-import com.hro.system.medico.repository.MedicoSubespecialidadRepository;
+import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
@@ -69,7 +69,7 @@ class CatalogosYCalendarioTest {
     private MedicoRepository medicoRepository;
 
     @Autowired
-    private MedicoSubespecialidadRepository medicoSubespecialidadRepository;
+    private SubespecialidadHorarioRepository subespecialidadHorarioRepository;
 
     @Autowired
     private DiaNoLaborableRepository diaNoLaborableRepository;
@@ -96,7 +96,7 @@ class CatalogosYCalendarioTest {
     void setUp() {
         citaRepository.deleteAll();
         cupoDiarioRepository.deleteAll();
-        medicoSubespecialidadRepository.deleteAll();
+        subespecialidadHorarioRepository.deleteAll();
         diaNoLaborableRepository.deleteAll();
         espacioFisicoRepository.deleteAll();
         subespecialidadRepository.deleteAll();
@@ -272,8 +272,7 @@ class CatalogosYCalendarioTest {
     void registrarDiaNoLaborable_rechazoPorCitasExistentes() throws Exception {
         LocalDate fecha = LocalDate.of(2026, 9, 20);
 
-        MedicoSubespecialidad ms = medicoSubespecialidadRepository.save(MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario ms = subespecialidadHorarioRepository.save(SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .diaSemana((short) 7)
                 .horaInicio(LocalTime.of(8, 0))
@@ -282,7 +281,7 @@ class CatalogosYCalendarioTest {
                 .build());
 
         CupoDiario cupo = cupoDiarioRepository.save(CupoDiario.builder()
-                .medicoSubespecialidad(ms)
+                .subespecialidadHorario(ms)
                 .fecha(fecha)
                 .capacidadMaxima(10)
                 .cuposOcupados(1)

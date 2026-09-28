@@ -2,6 +2,8 @@ package com.hro.system.turno.service;
 
 import com.hro.system.agenda.config.HroAgendaProperties;
 import com.hro.system.agenda.entity.CupoDiario;
+import com.hro.system.common.BusinessException;
+import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.repository.CitaEstadoHistorialRepository;
 import com.hro.system.cita.repository.CitaRepository;
@@ -9,11 +11,16 @@ import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
+import com.hro.system.estacion.entity.EstacionEnfermeria;
+import com.hro.system.estacion.entity.EstacionSubespecialidad;
+import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
+import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
-import com.hro.system.medico.entity.MedicoSubespecialidad;
+import com.hro.system.clinica.entity.SubespecialidadHorario;
 import com.hro.system.turno.dto.GenerarTurnoRequestDTO;
 import com.hro.system.turno.dto.ReintegrarTurnoRequestDTO;
 import com.hro.system.turno.dto.TableroTurnoDTO;
+import com.hro.system.turno.dto.TurnoResponseDTO;
 import com.hro.system.turno.entity.ContadorTurnoDiario;
 import com.hro.system.turno.entity.Turno;
 import com.hro.system.turno.repository.ContadorTurnoDiarioRepository;
@@ -39,9 +46,12 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -58,6 +68,8 @@ class TurnoServiceTableroTest {
     private CitaEstadoHistorialRepository historialRepository;
     private UsuarioReferenciaRepository usuarioRepository;
     private AsignacionDiariaEspacioRepository asignacionRepository;
+    private EstacionEnfermeriaRepository estacionRepository;
+    private EstacionSubespecialidadRepository estacionSubespecialidadRepository;
 
     private TurnoService service;
 
@@ -77,6 +89,8 @@ class TurnoServiceTableroTest {
         historialRepository = mock(CitaEstadoHistorialRepository.class);
         usuarioRepository = mock(UsuarioReferenciaRepository.class);
         asignacionRepository = mock(AsignacionDiariaEspacioRepository.class);
+        estacionRepository = mock(EstacionEnfermeriaRepository.class);
+        estacionSubespecialidadRepository = mock(EstacionSubespecialidadRepository.class);
 
         SimpMessagingTemplate messagingTemplate = new SimpMessagingTemplate(new CanalCapturador());
         MessageConverter conversor = new MessageConverter() {
@@ -101,6 +115,8 @@ class TurnoServiceTableroTest {
                 historialRepository,
                 usuarioRepository,
                 asignacionRepository,
+                estacionRepository,
+                estacionSubespecialidadRepository,
                 new HroAgendaProperties(),
                 messagingTemplate,
                 mock(ApplicationEventPublisher.class));
@@ -120,13 +136,12 @@ class TurnoServiceTableroTest {
                 .build();
 
         Medico medico = Medico.builder().nombres("Dra. Elena Ramos").build();
-        MedicoSubespecialidad medicoSubespecialidad = MedicoSubespecialidad.builder()
-                .medico(medico)
+        SubespecialidadHorario medicoSubespecialidad = SubespecialidadHorario.builder()
                 .subespecialidad(subespecialidad)
                 .build();
 
         CupoDiario cupoDiario = CupoDiario.builder()
-                .medicoSubespecialidad(medicoSubespecialidad)
+                .subespecialidadHorario(medicoSubespecialidad)
                 .fecha(LocalDate.now())
                 .build();
 
@@ -160,6 +175,7 @@ class TurnoServiceTableroTest {
                 .build();
 
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(usuario));
+        when(asignacionRepository.findById(ASIGNACION_ID)).thenReturn(Optional.of(asignacion));
         when(contadorRepository.findByAsignacionDiariaEspacioId(ASIGNACION_ID))
                 .thenReturn(Optional.of(contador));
         when(contadorRepository.save(any(ContadorTurnoDiario.class)))
@@ -256,8 +272,8 @@ class TurnoServiceTableroTest {
         when(citaRepository.findById(1L)).thenReturn(Optional.of(cita));
         when(turnoRepository.findByCitaId(1L)).thenReturn(Optional.empty());
         when(asignacionRepository.findBySubespecialidadIdAndFecha(any(), any()))
-                .thenReturn(Optional.of(asignacion));
-        when(turnoRepository.obtenerSiguienteTurnoAtomico(anyLong())).thenReturn(1);
+                .thenReturn(List.of(asignacion));
+        when(turnoRepository.obtenerSiguienteTurnoGlobal(any())).thenReturn(1);
         when(turnoRepository.save(any(Turno.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
         when(citaRepository.save(any(Cita.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 
@@ -269,6 +285,142 @@ class TurnoServiceTableroTest {
         TableroTurnoDTO tablero = capturarTablero();
         assertEquals("ACTUALIZACION", tablero.getTipoEvento());
         assertNull(tablero.getIntentosLlamado());
+    }
+
+    @Test
+    @DisplayName("Pasar siguiente llama al primer turno en espera y publica LLAMADO con el turno actual")
+    void testAvanzarSiguienteLlamaPrimerEnEspera() {
+        Turno siguiente = turnoEn(8, "en_espera", 0);
+        when(turnoRepository.findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoAsc(ASIGNACION_ID, "en_espera"))
+                .thenReturn(Optional.of(siguiente));
+
+        var respuesta = service.avanzarSiguiente(ASIGNACION_ID, 7L);
+
+        assertEquals(8, respuesta.getNumeroTurno());
+        assertEquals("llamado", respuesta.getEstado());
+
+        TableroTurnoDTO tablero = capturarTablero();
+        assertEquals("LLAMADO", tablero.getTipoEvento());
+        assertEquals(8, tablero.getTurnoActual());
+        assertEquals(1, tablero.getIntentosLlamado());
+    }
+
+    @Test
+    @DisplayName("Pasar siguiente sin turnos en espera lanza BusinessException")
+    void testAvanzarSiguienteSinTurnos() {
+        when(turnoRepository.findFirstByAsignacionDiariaEspacioIdAndEstadoOrderByNumeroTurnoAsc(ASIGNACION_ID, "en_espera"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(BusinessException.class, () -> service.avanzarSiguiente(ASIGNACION_ID, 7L));
+    }
+
+    @Test
+    @DisplayName("Pasar siguiente con asignación inexistente lanza ResourceNotFoundException")
+    void testAvanzarSiguienteAsignacionInexistente() {
+        when(asignacionRepository.findById(ASIGNACION_ID)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.avanzarSiguiente(ASIGNACION_ID, 7L));
+    }
+
+    @Test
+    @DisplayName("Estado del tablero devuelve los contadores de la asignación")
+    void testObtenerEstadoTablero() {
+        contador.setTurnoActual(12);
+        contador.setTurnoSiguiente(13);
+
+        TableroTurnoDTO estado = service.obtenerEstadoTablero(ASIGNACION_ID);
+
+        assertEquals(ASIGNACION_ID, estado.getAsignacionDiariaEspacioId());
+        assertEquals("201", estado.getEspacioNumero());
+        assertEquals("Pediatría General", estado.getSubespecialidadNombre());
+        assertEquals(12, estado.getTurnoActual());
+        assertEquals(13, estado.getTurnoSiguiente());
+    }
+
+    @Test
+    @DisplayName("notificar crea el contador si no existe para no descartar el evento (B4)")
+    void testNotificarCreaContadorSiNoExiste() {
+        when(contadorRepository.findByAsignacionDiariaEspacioId(ASIGNACION_ID)).thenReturn(Optional.empty());
+        turnoEn(8, "llamado", 1);
+
+        service.marcarNoResponde(99L, 7L, "No se presentó");
+
+        TableroTurnoDTO tablero = capturarTablero();
+        assertEquals("ACTUALIZACION", tablero.getTipoEvento());
+        assertEquals(0, tablero.getTurnoActual());
+        assertEquals(1, tablero.getTurnoSiguiente());
+        verify(contadorRepository).save(any(ContadorTurnoDiario.class));
+    }
+
+    @Test
+    @DisplayName("Al llamar también se publica en /topic/estacion/{id} cuando la subespecialidad pertenece a una estación")
+    void testNotificarPublicaTopicEstacion() {
+        turnoEn(8, "en_espera", 0);
+        EstacionEnfermeria estacion = EstacionEnfermeria.builder()
+                .id(77L).codigo("EST-07").nombre("Estación 7").build();
+        EstacionSubespecialidad asignacionSub = EstacionSubespecialidad.builder()
+                .id(1L).estacion(estacion).subespecialidad(asignacion.getSubespecialidad()).build();
+        when(estacionSubespecialidadRepository.findBySubespecialidadId(5L)).thenReturn(Optional.of(asignacionSub));
+
+        service.llamarTurno(99L, 7L);
+
+        // notificarActualizacionTablero publica: /topic/tablero, /topic/clinica/{id} y /topic/estacion/{id}
+        assertEquals(3, capturados.size(), "Debe publicarse también el evento de la estación");
+        assertEquals("LLAMADO", capturarTablero().getTipoEvento());
+    }
+
+    @Test
+    @DisplayName("Sin estación asociada solo se publican 2 topics (tablero y clínica)")
+    void testNotificarSinEstacionPublicaSoloDosTopics() {
+        turnoEn(8, "en_espera", 0);
+
+        service.llamarTurno(99L, 7L);
+
+        assertEquals(2, capturados.size());
+    }
+
+    @Test
+    @DisplayName("El tablero de una estación devuelve las salas de sus subespecialidades con subespecialidadId")
+    void testObtenerTableroEstacion() {
+        EstacionEnfermeria estacion = EstacionEnfermeria.builder()
+                .id(77L).codigo("EST-07").nombre("Estación 7").build();
+        EstacionSubespecialidad asignacionSub = EstacionSubespecialidad.builder()
+                .id(1L).estacion(estacion).subespecialidad(asignacion.getSubespecialidad()).build();
+        when(estacionRepository.findById(77L)).thenReturn(Optional.of(estacion));
+        when(estacionSubespecialidadRepository.findByEstacionIdAndActivoTrue(77L)).thenReturn(List.of(asignacionSub));
+        when(asignacionRepository.findByFechaAndSubespecialidadIdIn(any(), anyList())).thenReturn(List.of(asignacion));
+
+        List<TableroTurnoDTO> tablero = service.obtenerTableroEstacion(77L, LocalDate.now());
+
+        assertEquals(1, tablero.size());
+        assertEquals(5L, tablero.get(0).getSubespecialidadId());
+        assertEquals("201", tablero.get(0).getEspacioNumero());
+    }
+
+    @Test
+    @DisplayName("La cola de la estación incluye no respondidos solo cuando se solicita")
+    void testListarTurnosEstacionIncluyeNoResponde() {
+        EstacionEnfermeria estacion = EstacionEnfermeria.builder()
+                .id(77L).codigo("EST-07").nombre("Estación 7").build();
+        EstacionSubespecialidad asignacionSub = EstacionSubespecialidad.builder()
+                .id(1L).estacion(estacion).subespecialidad(asignacion.getSubespecialidad()).build();
+        when(estacionRepository.findById(77L)).thenReturn(Optional.of(estacion));
+        when(estacionSubespecialidadRepository.findByEstacionIdAndActivoTrue(77L)).thenReturn(List.of(asignacionSub));
+        when(asignacionRepository.findByFechaAndSubespecialidadIdIn(any(), anyList())).thenReturn(List.of(asignacion));
+
+        Turno enEspera = Turno.builder().id(1L).cita(cita).asignacionDiariaEspacio(asignacion)
+                .numeroTurno(8).estado("en_espera").intentosLlamado(0).build();
+        Turno noResponde = Turno.builder().id(2L).cita(cita).asignacionDiariaEspacio(asignacion)
+                .numeroTurno(9).estado("no_responde").intentosLlamado(1).build();
+        when(turnoRepository.buscarTurnosEnEsperaPorAsignacion(ASIGNACION_ID)).thenReturn(List.of(enEspera));
+        when(turnoRepository.buscarNoRespondePorAsignacion(ASIGNACION_ID)).thenReturn(List.of(noResponde));
+
+        List<TurnoResponseDTO> conNoResponde = service.listarTurnosEstacion(77L, LocalDate.now(), true);
+        assertEquals(2, conNoResponde.size());
+
+        List<TurnoResponseDTO> soloActivos = service.listarTurnosEstacion(77L, LocalDate.now(), false);
+        assertEquals(1, soloActivos.size());
+        assertEquals("en_espera", soloActivos.get(0).getEstado());
     }
 
     /** Canal que acepta los mensajes; el converter ya registró el payload. */

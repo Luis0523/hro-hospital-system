@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
+import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso, rangoDelMes } from '@/shared/utils/fecha'
 import { reproducirBeep } from '@/shared/utils/sonido'
+import { crearClienteTurnos, topicEstacion } from '@/shared/ws/turnosSocket'
 import {
   agendarCita,
   buscarCitaDelDia,
@@ -10,15 +13,16 @@ import {
   cambiarEstadoTablero,
   consultarDisponibilidad,
   hacerCheckIn,
-  listarClinicas,
   listarCuposDelDia,
+  listarPacientes,
+  listarSubespecialidadesEstacion,
   listarTurnosActivos,
-  listarTurnosClinica,
+  listarTurnosEstacion,
   llamarTurno,
   marcarAtendido,
   marcarNoResponde,
   obtenerEstadoTablero,
-  pasarSiguiente as pasarSiguienteApi,
+  pasarSiguienteEstacion,
   reintegrarTurno,
 } from '../api/enfermeriaApi'
 import { pacientesMock } from '../api/mockData'
@@ -29,13 +33,19 @@ import ScannerDock from '../components/ScannerDock.jsx'
 import ConfirmacionCita from '../components/ConfirmacionCita.jsx'
 import ColaPanel from '../components/ColaPanel.jsx'
 import AgendaPanel from '../components/AgendaPanel.jsx'
+import PacientesTemporalModal from '../components/PacientesTemporalModal.jsx'
+import MenuUsuario from '../components/MenuUsuario.jsx'
 
 const SEGUNDOS_GRACIA = 180
 const ESTADOS_EN_COLA = ['en_espera', 'llamado']
+const USE_MOCK =
+  import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
 export default function EnfermeriaPage() {
-  const { usuario } = useAuth()
+  const { usuario, cerrarSesion } = useAuth()
+  const { estacion } = useEstacion()
   const { mostrarToast } = useToast()
+  const navigate = useNavigate()
 
   const ahora = new Date()
   const scannerRef = useRef(null)
@@ -69,12 +79,22 @@ export default function EnfermeriaPage() {
   const [errorAgenda, setErrorAgenda] = useState(null)
   const [sinCupo, setSinCupo] = useState(false)
   const [cargandoDias, setCargandoDias] = useState(false)
+  const [pacientesAbierto, setPacientesAbierto] = useState(false)
+  const [perfilAbierto, setPerfilAbierto] = useState(false)
 
-  const clinicaActivaId = seleccionadas[0] ?? clinicas[0]?.id ?? null
+  const estacionId = estacion?.id ?? null
+  const subespecialidadIds = useMemo(
+    () => (seleccionadas.length > 0 ? seleccionadas : clinicas.map((c) => c.id)),
+    [seleccionadas, clinicas],
+  )
 
   useEffect(() => {
-    listarClinicas()
-      .then(setClinicas)
+    if (!estacionId) {
+      setClinicas([])
+      return
+    }
+    listarSubespecialidadesEstacion(estacionId)
+      .then((subs) => setClinicas(subs.map((sub) => ({ id: sub.id, nombre: sub.nombre }))))
       .catch(() => setClinicas([]))
     obtenerEstadoTablero()
       .then((estado) => setTableroActivo(estado.activo))
@@ -86,38 +106,69 @@ export default function EnfermeriaPage() {
         setTurnoActual(ultimo)
       })
       .catch(() => {})
-  }, [])
+  }, [estacionId])
 
   useEffect(() => {
     const { fechaInicio, fechaFin } = rangoDelMes(mes.getFullYear(), mes.getMonth())
     setCargandoDias(true)
-    consultarDisponibilidad({ clinicaIds: seleccionadas, fechaInicio, fechaFin })
+    consultarDisponibilidad({ subespecialidadIds, fechaInicio, fechaFin })
       .then(setDias)
       .catch(() => setDias([]))
       .finally(() => setCargandoDias(false))
-  }, [mes, seleccionadas])
+  }, [mes, subespecialidadIds])
 
   useEffect(() => {
     if (!agendaAbierta) return
     setCargandoCupos(true)
-    listarCuposDelDia(seleccionada, seleccionadas)
+    listarCuposDelDia(seleccionada, subespecialidadIds)
       .then(setCuposDelDia)
       .catch(() => setCuposDelDia([]))
       .finally(() => setCargandoCupos(false))
-  }, [agendaAbierta, seleccionada, seleccionadas])
+  }, [agendaAbierta, seleccionada, subespecialidadIds])
 
   const refrescarCola = useCallback(async () => {
-    if (!clinicaActivaId) return
-    const lista = await listarTurnosClinica(clinicaActivaId)
+    if (!estacionId) return
+    const lista = await listarTurnosEstacion(estacionId, hoyIso(), true)
     const enCola = lista.filter((turno) => ESTADOS_EN_COLA.includes(turno.estado))
     setTurnos(enCola)
     setNoRespondidos(lista.filter((turno) => turno.estado === 'no_responde'))
     setColaEnEspera(enCola.length)
-  }, [clinicaActivaId])
+  }, [estacionId])
 
   useEffect(() => {
     refrescarCola().catch(() => {})
   }, [refrescarCola])
+
+  // Auto-refresco en tiempo real: la estación se suscribe al topic de su estación
+  // y refresca la cola ante cualquier cambio (propio o de otra terminal).
+  const refrescoTimerRef = useRef(null)
+  const programarRefresco = useCallback(() => {
+    if (refrescoTimerRef.current) clearTimeout(refrescoTimerRef.current)
+    refrescoTimerRef.current = setTimeout(() => {
+      refrescarCola().catch(() => {})
+    }, 300)
+  }, [refrescarCola])
+
+  useEffect(() => {
+    if (!estacionId || USE_MOCK) return undefined
+    const cliente = crearClienteTurnos({
+      topics: [topicEstacion(estacionId)],
+      onMensaje: (evento) => {
+        if (evento?.tipoEvento === 'LLAMADO' && evento.turnoActual != null) {
+          setTurnoActual(evento.turnoActual)
+        }
+        programarRefresco()
+      },
+    })
+    cliente.activate()
+    return () => {
+      cliente.deactivate()
+      if (refrescoTimerRef.current) {
+        clearTimeout(refrescoTimerRef.current)
+        refrescoTimerRef.current = null
+      }
+    }
+  }, [estacionId, programarRefresco])
 
   useEffect(() => {
     if (!turnoEnGracia?.id) return
@@ -171,7 +222,7 @@ export default function EnfermeriaPage() {
           mostrarToast({
             tone: 'error',
             title: 'Paciente no encontrado',
-            message: 'Verifique el DPI o carné escaneado.',
+            message: 'Verifique el código de expediente escaneado.',
           })
           enfocarScanner()
           return
@@ -203,8 +254,8 @@ export default function EnfermeriaPage() {
 
   async function simularScan() {
     const paciente = pacientesMock[0]
-    setScanner(paciente.dpi)
-    await escanear(paciente.dpi)
+    setScanner(paciente.numeroExpediente)
+    await escanear(paciente.numeroExpediente)
   }
 
   async function confirmarLlegada() {
@@ -257,7 +308,7 @@ export default function EnfermeriaPage() {
   async function manejarPasarSiguiente() {
     setPasando(true)
     try {
-      const llamado = await pasarSiguienteApi(clinicaActivaId)
+      const llamado = await pasarSiguienteEstacion(estacionId, hoyIso())
       if (llamado?.numeroTurno) setTurnoActual(llamado.numeroTurno)
       if (llamado?.pacienteNombre) setPacienteActual(llamado.pacienteNombre)
       activarGracia(llamado)
@@ -310,6 +361,36 @@ export default function EnfermeriaPage() {
     )
   }
 
+  function manejarRellamar(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      async () => {
+        const llamado = await llamarTurno(turno.id, { porNombre: false })
+        activarGracia(llamado)
+        reproducirBeep()
+        setTurnoActual(llamado.numeroTurno)
+        setPacienteActual(llamado.pacienteNombre ?? '')
+        return llamado
+      },
+      'Paciente llamado nuevamente.',
+    )
+  }
+
+  function manejarLlamarPorNombre(turno) {
+    return ejecutarAccionTurno(
+      turno,
+      async () => {
+        const llamado = await llamarTurno(turno.id, { porNombre: true })
+        activarGracia(llamado)
+        reproducirBeep()
+        setTurnoActual(llamado.numeroTurno)
+        setPacienteActual(llamado.pacienteNombre ?? '')
+        return llamado
+      },
+      'Paciente llamado por nombre.',
+    )
+  }
+
   function manejarAtendido(turno) {
     return ejecutarAccionTurno(
       turno,
@@ -332,6 +413,22 @@ export default function EnfermeriaPage() {
       () => reintegrarTurno(turno.id, 'Paciente regresó el mismo día'),
       'Paciente reintegrado al final de la fila.',
     )
+  }
+
+  function abrirPacientes() {
+    setPacientesAbierto(true)
+  }
+
+  function seleccionarPacienteTemporal(paciente) {
+    setPacientesAbierto(false)
+    abrirAgenda(paciente)
+  }
+
+  function confirmarCierreSesion() {
+    setPerfilAbierto(false)
+    cerrarSesion()
+    mostrarToast({ tone: 'info', title: 'Sesión cerrada', message: 'Puede volver a ingresar.' })
+    navigate('/sesion-cerrada')
   }
 
   function abrirAgenda(paciente = null) {
@@ -383,7 +480,7 @@ export default function EnfermeriaPage() {
       mostrarToast({ tone: 'error', title: 'No se pudo agendar', message: error.message })
     } finally {
       setAgendando(false)
-      listarCuposDelDia(seleccionada, seleccionadas)
+      listarCuposDelDia(seleccionada, subespecialidadIds)
         .then(setCuposDelDia)
         .catch(() => {})
     }
@@ -416,12 +513,14 @@ export default function EnfermeriaPage() {
     <div className="min-h-screen bg-surface pb-28">
       <TopHud
         usuario={usuario}
-        terminal={usuario?.terminal}
+        terminal={estacion?.codigo ?? estacion?.nombre ?? usuario?.terminal}
         turnoActual={turnoActual}
         pacienteActual={pacienteActual}
         tableroActivo={tableroActivo}
         onToggleTablero={alternarTablero}
         onPasarSiguiente={manejarPasarSiguiente}
+        onVerPacientes={abrirPacientes}
+        onAbrirPerfil={() => setPerfilAbierto(true)}
         pasandoSiguiente={pasando}
       />
 
@@ -443,6 +542,8 @@ export default function EnfermeriaPage() {
             segundosRestantes={turnoEnGracia?.restante ?? 0}
             cargandoId={cargandoId}
             onLlamar={manejarLlamar}
+            onRellamar={manejarRellamar}
+            onLlamarPorNombre={manejarLlamarPorNombre}
             onAtendido={manejarAtendido}
             onNoResponde={manejarNoResponde}
             onReintegrar={manejarReintegrar}
@@ -494,6 +595,21 @@ export default function EnfermeriaPage() {
         error={errorAgenda}
         onAgendar={confirmarAgenda}
         onCerrar={cerrarAgenda}
+      />
+
+      <PacientesTemporalModal
+        abierto={pacientesAbierto}
+        onCerrar={() => setPacientesAbierto(false)}
+        onCargarPacientes={listarPacientes}
+        onSeleccionarPaciente={seleccionarPacienteTemporal}
+      />
+
+      <MenuUsuario
+        abierto={perfilAbierto}
+        onCerrar={() => setPerfilAbierto(false)}
+        usuario={usuario}
+        terminal={estacion?.codigo ?? estacion?.nombre ?? usuario?.terminal}
+        onCerrarSesion={confirmarCierreSesion}
       />
 
       <ScannerDock

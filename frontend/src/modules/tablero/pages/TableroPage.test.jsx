@@ -9,8 +9,11 @@ const {
   estaEnModoMockMock,
   estaPermitidaMock,
   hablarMock,
+  obtenerEstadoInicialEstacionMock,
   obtenerEstadoInicialMock,
+  resolverConfiguracionEstacionMock,
   resolverConfiguracionSalaMock,
+  topicEstacionMock,
 } = vi.hoisted(() => ({
   anunciarTurnoMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
@@ -18,16 +21,25 @@ const {
   estaEnModoMockMock: vi.fn(),
   estaPermitidaMock: vi.fn(),
   hablarMock: vi.fn(),
+  obtenerEstadoInicialEstacionMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  resolverConfiguracionEstacionMock: vi.fn(),
   resolverConfiguracionSalaMock: vi.fn(),
+  topicEstacionMock: vi.fn(),
 }))
 
 vi.mock('../api/tableroSocket', () => ({
   crearClienteTablero: crearClienteTableroMock,
+  TOPIC_TABLERO: '/topic/tablero',
+  topicEstacion: topicEstacionMock,
 }))
 
 vi.mock('../api/configuracionSala', () => ({
   resolverConfiguracionSala: resolverConfiguracionSalaMock,
+}))
+
+vi.mock('../api/configuracionEstacion', () => ({
+  resolverConfiguracionEstacion: resolverConfiguracionEstacionMock,
 }))
 
 vi.mock('../api/comunicacionVoz', () => ({
@@ -43,6 +55,7 @@ vi.mock('../api/tableroApi', async (importOriginal) => {
     ...actual,
     estaEnModoMock: estaEnModoMockMock,
     estaPermitida: estaPermitidaMock,
+    obtenerEstadoInicialEstacion: obtenerEstadoInicialEstacionMock,
     obtenerEstadoInicialTablero: obtenerEstadoInicialMock,
   }
 })
@@ -138,6 +151,9 @@ function configurarAntesDeCada({ capturarHandlers = true } = {}) {
     sala: null,
     permitidas: null,
   })
+  resolverConfiguracionEstacionMock.mockResolvedValue(null)
+  obtenerEstadoInicialEstacionMock.mockResolvedValue(ASIGNACIONES_INICIALES)
+  topicEstacionMock.mockImplementation((estacionId) => `/topic/estacion/${estacionId}`)
   estaDisponibleVozMock.mockReturnValue(true)
   hablarMock.mockReturnValue(true)
   anunciarTurnoMock.mockReturnValue('mensaje')
@@ -174,6 +190,24 @@ describe('TableroPage', () => {
 
     expect(crearClienteTableroMock).toHaveBeenCalledTimes(1)
     expect(handlers).toBeTruthy()
+  })
+
+  it('con ?estacion usa el snapshot por estación y se suscribe a su topic', async () => {
+    resolverConfiguracionEstacionMock.mockResolvedValue({
+      estacionId: 9,
+      codigo: 'TRIAGE',
+      nombre: 'Triage',
+      subespecialidadIds: [],
+    })
+
+    render(<TableroPage />)
+
+    await screen.findByTestId('tablero-tabla')
+
+    expect(obtenerEstadoInicialEstacionMock).toHaveBeenCalledWith({ estacionId: 9 })
+    expect(obtenerEstadoInicialMock).not.toHaveBeenCalled()
+    expect(resolverConfiguracionSalaMock).not.toHaveBeenCalled()
+    expect(handlers.topic()).toBe('/topic/estacion/9')
   })
 
   it('renderiza una tabla con una fila por asignación y su turno actual', async () => {

@@ -12,9 +12,9 @@ export default function Table({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
       <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <thead className="bg-surface-container-low text-xs uppercase tracking-wide text-on-surface-variant">
           <tr>
             {columns.map((columna) => (
               <th key={columna.key} className="px-4 py-3 font-semibold">
@@ -23,11 +23,11 @@ export default function Table({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-outline-variant/60">
           {data.map((fila) => (
-            <tr key={fila[keyField]} className="hover:bg-cyan-50/40">
+            <tr key={fila[keyField]} className="hover:bg-surface-container-low/60">
               {columns.map((columna) => (
-                <td key={columna.key} className="px-4 py-3 text-slate-700">
+                <td key={columna.key} className="px-4 py-3 text-on-surface">
                   {renderCell ? renderCell(fila, columna.key) : fila[columna.key]}
                 </td>
               ))}

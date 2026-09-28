@@ -21,6 +21,5 @@ public class CitaAfectadaDTO {
     private String estado;
     private UUID pacienteId;
     private String pacienteNombre;
-    private String medicoNombre;
     private String subespecialidadNombre;
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,6 +17,8 @@ public class TableroTurnoDTO {
     private String espacioNumero;
     private Short nivel;
     private String subespecialidadNombre;
+    private Long subespecialidadId;
+    private Long especialidadId;
     private Integer turnoActual;
     private Integer turnoSiguiente;
     private OffsetDateTime ultimaActualizacion;
@@ -23,4 +26,10 @@ public class TableroTurnoDTO {
     private Integer intentosLlamado;
     /** "LLAMADO" si el evento representa una acción real de llamar; "ACTUALIZACION" en el resto. */
     private String tipoEvento;
+    /** Nombre del paciente del turno actualmente llamado (para llamar por nombre). */
+    private String pacienteNombre;
+    /** Números de turno en espera de esa sala (cola visible en el tablero). */
+    private List<Integer> turnosEnEspera;
+    /** true si el llamado se pidió por nombre. */
+    private Boolean porNombre;
 }

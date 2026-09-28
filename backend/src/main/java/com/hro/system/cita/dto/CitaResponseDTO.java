@@ -23,7 +23,6 @@ public class CitaResponseDTO {
     private UUID cupoDiarioId;
     private LocalDate fechaCita;
     private String subespecialidadNombre;
-    private String medicoNombre;
     private LocalTime horaEstimada;
     private LocalTime horaVentanaInicio;
     private LocalTime horaVentanaFin;

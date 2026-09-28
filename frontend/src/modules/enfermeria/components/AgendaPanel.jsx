@@ -5,35 +5,13 @@ import Button from '@/shared/components/ui/Button.jsx'
 import Alert from '@/shared/components/ui/Alert.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { formatearFechaLarga } from '@/shared/utils/fecha'
-
-function ChipPaciente({ paciente, onQuitar }) {
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary-fixed px-3 py-2 text-on-secondary-container">
-      <div className="min-w-0">
-        <p className="truncate text-title-sm">
-          {paciente.nombres} {paciente.apellidos}
-        </p>
-        <p className="text-label-sm">
-          DPI {paciente.dpi} • {paciente.numeroExpediente}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onQuitar}
-        aria-label="Quitar paciente"
-        className="rounded-md p-1 hover:bg-on-secondary-container/10"
-      >
-        <Icon name="close" className="text-[18px]" />
-      </button>
-    </div>
-  )
-}
+import FichaPaciente from './FichaPaciente.jsx'
 
 function ComprobanteCita({ cita, onCerrar }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
           <Icon name="event_available" className="text-[28px]" />
         </span>
         <p className="text-headline-sm text-on-surface">Cita agendada</p>
@@ -144,7 +122,7 @@ export default function AgendaPanel({
                     Paciente
                   </p>
                   {paciente ? (
-                    <ChipPaciente paciente={paciente} onQuitar={onQuitarPaciente} />
+                    <FichaPaciente paciente={paciente} onQuitar={onQuitarPaciente} />
                   ) : (
                     <div className="space-y-2">
                       <form onSubmit={manejarBusqueda} className="flex gap-2">
@@ -180,7 +158,7 @@ export default function AgendaPanel({
                         </ul>
                       )}
                       <p className="text-label-sm text-on-surface-variant">
-                        También puede escanear el DPI o carné en la barra inferior.
+                        También puede escanear el código de expediente en la barra inferior.
                       </p>
                     </div>
                   )}

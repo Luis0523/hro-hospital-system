@@ -10,6 +10,6 @@ describe('EstadoBadge', () => {
 
   it('usa el color por defecto ante un estado desconocido', () => {
     render(<EstadoBadge estado="desconocido" />)
-    expect(screen.getByText('desconocido')).toHaveClass('bg-slate-100')
+    expect(screen.getByText('desconocido')).toHaveClass('bg-surface-container')
   })
 })
