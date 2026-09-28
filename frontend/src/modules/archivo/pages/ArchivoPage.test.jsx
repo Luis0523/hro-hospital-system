@@ -250,12 +250,22 @@ describe('ArchivoPage — sin efectos en backend', () => {
 })
 
 describe('ArchivoPage — estructura de la pantalla', () => {
-  it('conserva el scanner', () => {
+  it('conserva el buscador manual y la cámara', () => {
     renderPagina()
 
     expect(screen.getByLabelText('Buscar expediente por código')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Simular' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /escanear con cámara/i })).toBeInTheDocument()
+  })
+
+  it('mantiene la búsqueda manual cuando la cámara no está disponible', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(screen.getByRole('button', { name: /escanear con cámara/i }))
+
+    expect(await screen.findByText('Cámara no disponible')).toBeInTheDocument()
+    expect(screen.getByLabelText('Buscar expediente por código')).toBeInTheDocument()
   })
 
   it('conserva los filtros', () => {

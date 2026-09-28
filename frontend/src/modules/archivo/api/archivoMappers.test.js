@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { mapearCita, mapearMedico, mapearPaciente, mapearSubespecialidad } from './archivoMappers'
+import {
+  mapearCita,
+  mapearExpedienteBusqueda,
+  mapearMedico,
+  mapearPaciente,
+  mapearSubespecialidad,
+} from './archivoMappers'
 
 // DTOs de ejemplo tomados de respuestas reales del backend desplegado.
 const MEDICO_DTO = {
@@ -103,8 +109,28 @@ describe('archivoMappers', () => {
     expect(cita).not.toHaveProperty('expedienteNuevo')
   })
 
+  it('mapea el resultado de la búsqueda por código', () => {
+    const expediente = mapearExpedienteBusqueda({
+      id: '3f1c-uuid',
+      pacienteId: '9b2a-uuid',
+      numeroExpediente: 'EXP-001234',
+      ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
+      activo: true,
+      creadoEn: '2026-09-20T10:00:00',
+    })
+
+    expect(expediente).toEqual({
+      id: '3f1c-uuid',
+      numeroExpediente: 'EXP-001234',
+      codigo: 'EXP-001234',
+      ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
+      activo: true,
+    })
+  })
+
   it('devuelve null ante entradas vacías', () => {
     expect(mapearMedico(null)).toBeNull()
+    expect(mapearExpedienteBusqueda(null)).toBeNull()
     expect(mapearSubespecialidad(undefined)).toBeNull()
     expect(mapearPaciente(null)).toBeNull()
     expect(mapearCita(null)).toBeNull()

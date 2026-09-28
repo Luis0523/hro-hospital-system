@@ -1,5 +1,10 @@
 import client from '@/shared/api/client'
-import { mapearMedico, mapearPaciente, mapearSubespecialidad } from './archivoMappers'
+import {
+  mapearExpedienteBusqueda,
+  mapearMedico,
+  mapearPaciente,
+  mapearSubespecialidad,
+} from './archivoMappers'
 import {
   avanzarEstadoMock,
   buscarExpedientePorCodigoMock,
@@ -111,9 +116,12 @@ export async function marcarNoLocalizado(id) {
 export async function buscarExpedientePorCodigo(codigo) {
   if (USE_MOCK) return buscarExpedientePorCodigoMock(codigo)
 
-  // PENDIENTE BACKEND (contrato propuesto, sin confirmar):
-  // GET /expedientes/buscar?codigo=...  -> Expediente | 404
-  return pendienteBackend('buscar el expediente por código')
+  // GET /expedientes/buscar?codigo=  -> ApiResponse<Page<ExpedienteResponseDTO>>
+  // El backend acepta UUID (QR) o número de expediente (código de barras) y
+  // responde 404 si el código no existe.
+  const pagina = desenvolver(await client.get('/expedientes/buscar', { params: { codigo } }))
+  const contenido = pagina?.content ?? []
+  return mapearExpedienteBusqueda(contenido[0] ?? null)
 }
 
 export async function crearExpediente(pacienteId) {

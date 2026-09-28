@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { buscarExpedientePorCodigo } from '../api/archivoApi'
-import { expedientesMock } from '../api/mockData'
 import { useExpedientes } from '../hooks/useExpedientes'
 import { useAccionesArchivo } from '../hooks/useAccionesArchivo'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
@@ -183,11 +182,12 @@ export default function ArchivoPage() {
     ejecutarBusqueda(codigo)
   }
 
-  function simularScan() {
-    const conCodigo = expedientesMock.find((expediente) => expediente.codigo)
-    if (!conCodigo) return
-    setCodigo(conCodigo.codigo)
-    ejecutarBusqueda(conCodigo.codigo)
+  // La lectura de cámara reutiliza exactamente el mismo flujo que la búsqueda
+  // manual: normalizar/trim, guarda anti doble búsqueda, resaltar, scroll y
+  // foco del checkbox. No marca el expediente automáticamente.
+  function manejarCodigoEscaneado(valor) {
+    setCodigo(valor)
+    ejecutarBusqueda(valor)
   }
 
   async function manejarConsultarResumen() {
@@ -233,7 +233,7 @@ export default function ArchivoPage() {
           value={codigo}
           onChange={setCodigo}
           onSubmit={manejarBusqueda}
-          onSimular={simularScan}
+          onCodigoEscaneado={manejarCodigoEscaneado}
         />
 
         <FiltrosArchivo

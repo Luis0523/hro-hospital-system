@@ -45,6 +45,20 @@ export function mapearPaciente(dto) {
   }
 }
 
+// Resultado de GET /expedientes/buscar?codigo= (ExpedienteResponseDTO).
+// El backend acepta UUID (QR) o número de expediente (código de barras) y
+// devuelve el expediente físico; no se inventan campos.
+export function mapearExpedienteBusqueda(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id,
+    numeroExpediente: dto.numeroExpediente ?? null,
+    codigo: dto.numeroExpediente ?? null,
+    ubicacionBase: dto.ubicacionBase ?? null,
+    activo: dto.activo ?? null,
+  }
+}
+
 export function mapearCita(dto) {
   if (!dto) return null
   return {
