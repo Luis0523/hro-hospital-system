@@ -239,6 +239,17 @@ class ArchivoCicloTest {
                 .andExpect(jsonPath("$.data.estadoActual").value(estadoEsperado));
     }
 
+    private UUID checkIn(UUID expedienteId, Long citaId) throws Exception {
+        String body = (citaId != null) ? "{\"citaId\":" + citaId + "}" : "{}";
+        String resp = mockMvc.perform(auth(post("/expedientes/" + expedienteId + "/check-in"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andReturn().getResponse().getContentAsString();
+        return UUID.fromString(objectMapper.readTree(resp).get("data").get("id").asText());
+    }
+
     @Test
     @DisplayName("Flujo completo: crear expediente, iniciar ciclo y recorrer las 7 transiciones hasta archivar")
     void testFlujoCompletoExpediente() throws Exception {
@@ -342,5 +353,70 @@ class ArchivoCicloTest {
         Expediente expediente = expedienteRepository.findById(expedienteId).orElseThrow();
         assertEquals(paciente.getNumeroExpediente(), expediente.getNumeroExpediente());
         assertEquals(ubicacionId, expediente.getUbicacionBase().getId());
+    }
+
+    @Test
+    @DisplayName("Check-in crea el ciclo de la cita indicada y lo deja en búsqueda")
+    void testCheckInCreaCicloYEnBusqueda() throws Exception {
+        Long ubicacionId = crearUbicacion("G", "3", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+
+        ExpedienteCiclo ciclo = expedienteCicloRepository.findById(cicloId).orElseThrow();
+        assertEquals("en_busqueda", ciclo.getEstadoActual());
+        assertEquals(2, expedienteMovimientoRepository
+                .findByExpedienteCicloIdOrderByFechaMovimientoAscIdAsc(cicloId).size(),
+                "El check-in debe registrar la creación y el paso a en_busqueda");
+    }
+
+    @Test
+    @DisplayName("Check-in es idempotente: no duplica el ciclo de la misma cita")
+    void testCheckInIdempotente() throws Exception {
+        Long ubicacionId = crearUbicacion("H", "2", "2");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID primero = checkIn(expedienteId, cita.getId());
+        UUID segundo = checkIn(expedienteId, cita.getId());
+
+        assertEquals(primero, segundo);
+        assertEquals(1, expedienteCicloRepository.count(), "No debe crearse un ciclo duplicado");
+    }
+
+    @Test
+    @DisplayName("Check-in sin cita de hoy crea el ciclo sin cita (Fase 1, condicional)")
+    void testCheckInSinCitaDeHoyCreaCiclo() throws Exception {
+        Long ubicacionId = crearUbicacion("I", "1", "9");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID cicloId = checkIn(expedienteId, null);
+
+        ExpedienteCiclo ciclo = expedienteCicloRepository.findById(cicloId).orElseThrow();
+        assertEquals("en_busqueda", ciclo.getEstadoActual());
+        assertNull(ciclo.getCita(), "En Fase 1 el ciclo puede quedar sin cita asociada");
+    }
+
+    @Test
+    @DisplayName("Un rol no autorizado no puede ejecutar una transición de archivo (403)")
+    void testTransicionRechazadaPorRol() throws Exception {
+        Long ubicacionId = crearUbicacion("J", "4", "4");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+
+        UsuarioReferencia enfermeria = usuarioReferenciaRepository.save(UsuarioReferencia.builder()
+                .idExterno("enf-" + UUID.randomUUID().toString().substring(0, 5))
+                .nombreMostrar("Enfermería Test")
+                .rolPrincipal("enfermeria")
+                .activo(true)
+                .build());
+
+        mockMvc.perform(post("/expediente-ciclos/" + cicloId + "/localizar")
+                        .header("X-Usuario-Id", enfermeria.getIdExterno())
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", enfermeria.getNombreMostrar())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

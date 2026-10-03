@@ -23,6 +23,19 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
 
     boolean existsByCitaId(Long citaId);
 
+    /**
+     * Ciclos del expediente sin cita asociada (check-in de Fase 1) que siguen abiertos.
+     * Se usa para la idempotencia del check-in cuando no hay cita vinculada.
+     */
+    @Query("""
+            SELECT ec FROM ExpedienteCiclo ec
+            WHERE ec.expediente.id = :expedienteId
+              AND ec.cita IS NULL
+              AND ec.estadoActual <> 'archivado'
+            ORDER BY ec.creadoEn DESC
+            """)
+    List<ExpedienteCiclo> buscarCiclosSinCitaActivos(@Param("expedienteId") UUID expedienteId);
+
     @Query("""
             SELECT ec FROM ExpedienteCiclo ec
             WHERE (:estado IS NULL OR ec.estadoActual = :estado)
