@@ -7,6 +7,7 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
+  "verifyEmail": false,
   "accessTokenLifespan": 1800,
   "roles": {
     "realm": [
@@ -39,8 +40,10 @@
       "username": "admin",
       "enabled": true,
       "emailVerified": true,
+      "email": "admin@hro.gob.gt",
       "firstName": "Admin",
       "lastName": "HRO",
+      "requiredActions": [],
       "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
       "realmRoles": ["administrador"]
     },
@@ -48,8 +51,10 @@
       "username": "archivo01",
       "enabled": true,
       "emailVerified": true,
+      "email": "archivo01@hro.gob.gt",
       "firstName": "Operador",
       "lastName": "Archivo",
+      "requiredActions": [],
       "credentials": [{ "type": "password", "value": "archivo", "temporary": false }],
       "realmRoles": ["archivo"]
     },
@@ -57,8 +62,10 @@
       "username": "enfermeria01",
       "enabled": true,
       "emailVerified": true,
+      "email": "enfermeria01@hro.gob.gt",
       "firstName": "Estacion",
       "lastName": "Enfermeria",
+      "requiredActions": [],
       "credentials": [{ "type": "password", "value": "enfermeria", "temporary": false }],
       "realmRoles": ["enfermeria"]
     },
@@ -66,8 +73,10 @@
       "username": "digitador01",
       "enabled": true,
       "emailVerified": true,
+      "email": "digitador01@hro.gob.gt",
       "firstName": "Digitador",
       "lastName": "Libro",
+      "requiredActions": [],
       "credentials": [{ "type": "password", "value": "digitador", "temporary": false }],
       "realmRoles": ["personal_citas"]
     }
