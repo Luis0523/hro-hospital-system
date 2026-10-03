@@ -53,11 +53,13 @@ public class ExpedienteCicloController {
     }
 
     @GetMapping
-    @Operation(summary = "Cola de trabajo por estado", description = "Lista los ciclos filtrados por estado y/o fecha de la cita.")
+    @Operation(summary = "Cola de trabajo por estado y área",
+            description = "Lista los ciclos filtrados por estado, fecha de la cita y/o área (subespecialidad). Si no se indica subespecialidadId, se usan las áreas de la estación enviada en X-Estacion-Id.")
     public ResponseEntity<ApiResponse<List<ExpedienteCicloResponseDTO>>> listarCola(
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return ResponseEntity.ok(ApiResponse.ok(archivoService.listarCola(estado, fecha), "Cola de archivo obtenida con éxito"));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long subespecialidadId) {
+        return ResponseEntity.ok(ApiResponse.ok(archivoService.listarCola(estado, fecha, subespecialidadId), "Cola de archivo obtenida con éxito"));
     }
 
     @PostMapping("/{id}/iniciar-busqueda")

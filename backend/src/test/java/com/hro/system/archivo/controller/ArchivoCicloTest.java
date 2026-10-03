@@ -104,6 +104,7 @@ class ArchivoCicloTest {
     private UsuarioReferencia usuario;
     private Paciente paciente;
     private Cita cita;
+    private Subespecialidad subespecialidad;
 
     @BeforeEach
     void setUp() {
@@ -140,7 +141,7 @@ class ArchivoCicloTest {
                 .activo(true)
                 .build());
 
-        Subespecialidad subespecialidad = subespecialidadRepository.save(Subespecialidad.builder()
+        subespecialidad = subespecialidadRepository.save(Subespecialidad.builder()
                 .especialidad(especialidad)
                 .nombre("Medicina General " + suffix)
                 .activo(true)
@@ -418,5 +419,22 @@ class ArchivoCicloTest {
                         .content("{}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("La cola de ciclos se filtra por área (subespecialidad)")
+    void testColaFiltradaPorArea() throws Exception {
+        Long ubicacionId = crearUbicacion("K", "1", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        checkIn(expedienteId, cita.getId());
+
+        mockMvc.perform(auth(get("/expediente-ciclos")
+                        .param("subespecialidadId", subespecialidad.getId().toString())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("subespecialidadId", "999999")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 }

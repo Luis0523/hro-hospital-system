@@ -44,6 +44,25 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
             """)
     List<ExpedienteCiclo> buscarCola(@Param("estado") String estado, @Param("fecha") LocalDate fecha);
 
+    /**
+     * Cola de trabajo filtrada por área(s) de atención (subespecialidades de la cita).
+     * Solo considera ciclos con cita asociada (los ciclos sin cita de la Fase 1 no
+     * pertenecen a un área).
+     */
+    @Query("""
+            SELECT DISTINCT ec FROM ExpedienteCiclo ec
+              JOIN ec.cita c
+              JOIN c.cupoDiario cd
+              JOIN cd.subespecialidadHorario sh
+            WHERE (:estado IS NULL OR ec.estadoActual = :estado)
+              AND (:fecha IS NULL OR cd.fecha = :fecha)
+              AND sh.subespecialidad.id IN :areaIds
+            ORDER BY ec.creadoEn ASC
+            """)
+    List<ExpedienteCiclo> buscarColaPorArea(@Param("estado") String estado,
+                                            @Param("fecha") LocalDate fecha,
+                                            @Param("areaIds") Collection<Long> areaIds);
+
     @Query("""
             SELECT ec FROM ExpedienteCiclo ec
               JOIN FETCH ec.cita c

@@ -12,6 +12,8 @@ import com.hro.system.archivo.repository.UbicacionArchivoRepository;
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.repository.CitaRepository;
+import com.hro.system.estacion.context.EstacionContexto;
+import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
@@ -31,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -111,6 +114,7 @@ public class ArchivoService {
     private final PacienteRepository pacienteRepository;
     private final CitaRepository citaRepository;
     private final UsuarioReferenciaRepository usuarioReferenciaRepository;
+    private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
 
     // ------------------------------------------------------------------
     // Catálogo de ubicaciones
@@ -418,11 +422,31 @@ public class ArchivoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExpedienteCicloResponseDTO> listarCola(String estado, LocalDate fecha) {
+    public List<ExpedienteCicloResponseDTO> listarCola(String estado, LocalDate fecha, Long subespecialidadId) {
         String estadoNormalizado = (estado != null && !estado.isBlank()) ? estado.trim() : null;
-        return expedienteCicloRepository.buscarCola(estadoNormalizado, fecha).stream()
+        Collection<Long> areas = resolverAreas(subespecialidadId);
+        List<ExpedienteCiclo> ciclos = areas.isEmpty()
+                ? expedienteCicloRepository.buscarCola(estadoNormalizado, fecha)
+                : expedienteCicloRepository.buscarColaPorArea(estadoNormalizado, fecha, areas);
+        return ciclos.stream()
                 .map(this::mapCiclo)
                 .toList();
+    }
+
+    /**
+     * Áreas (subespecialidades) por las que filtrar la cola: si se indica una explícita se usa
+     * esa; si no, se toman las subespecialidades activas de la estación de la sesión
+     * ({@code X-Estacion-Id}). Sin área ni estación no se filtra.
+     */
+    private Collection<Long> resolverAreas(Long subespecialidadId) {
+        if (subespecialidadId != null) {
+            return List.of(subespecialidadId);
+        }
+        return EstacionContexto.idActual()
+                .map(estacionId -> estacionSubespecialidadRepository.findByEstacionIdAndActivoTrue(estacionId).stream()
+                        .map(estacionSub -> estacionSub.getSubespecialidad().getId())
+                        .toList())
+                .orElseGet(List::of);
     }
 
     // ------------------------------------------------------------------
