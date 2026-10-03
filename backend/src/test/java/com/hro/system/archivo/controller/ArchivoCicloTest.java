@@ -46,6 +46,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -436,5 +437,29 @@ class ArchivoCicloTest {
         mockMvc.perform(auth(get("/expediente-ciclos").param("subespecialidadId", "999999")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("Salida de expedientes: listado y PDF de la jornada")
+    void testSalidaExpedientes() throws Exception {
+        Long ubicacionId = crearUbicacion("L", "2", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+        transicion(cicloId, "localizar", "{\"observacion\":\"Listo para salir\"}", "localizado");
+
+        mockMvc.perform(auth(get("/archivo/salida").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items[0].numeroExpediente").value(paciente.getNumeroExpediente()));
+
+        byte[] pdf = mockMvc.perform(auth(get("/archivo/salida/pdf").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertTrue(pdf.length > 500, "El PDF debe tener contenido");
+
+        mockMvc.perform(auth(get("/archivo/salida").param("fecha", "2030-01-01")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(0));
     }
 }

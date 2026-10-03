@@ -63,6 +63,25 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
                                             @Param("fecha") LocalDate fecha,
                                             @Param("areaIds") Collection<Long> areaIds);
 
+    /**
+     * Ciclos de una fecha en estados de salida (localizados o en tránsito de entrega),
+     * con el expediente, paciente y área ya cargados. Base del documento "Salida de EXP".
+     */
+    @Query("""
+            SELECT DISTINCT ec FROM ExpedienteCiclo ec
+              JOIN FETCH ec.expediente e
+              JOIN FETCH e.paciente
+              LEFT JOIN FETCH ec.cita c
+              LEFT JOIN FETCH c.cupoDiario cd
+              LEFT JOIN FETCH cd.subespecialidadHorario sh
+              LEFT JOIN FETCH sh.subespecialidad
+            WHERE ec.estadoActual IN :estados
+              AND cd.fecha = :fecha
+            ORDER BY ec.creadoEn ASC
+            """)
+    List<ExpedienteCiclo> buscarSalidaPorFecha(@Param("fecha") LocalDate fecha,
+                                               @Param("estados") Collection<String> estados);
+
     @Query("""
             SELECT ec FROM ExpedienteCiclo ec
               JOIN FETCH ec.cita c
