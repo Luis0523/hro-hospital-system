@@ -23,12 +23,14 @@ const DEFAULT_ACCESO = {
     return area ? RUTA_POR_AREA[area] : '/sin-acceso'
   },
   recargar: async () => MAPEO_DEFECTO,
+  cargando: false,
 }
 
 const AccesoContext = createContext(DEFAULT_ACCESO)
 
 export function AccesoProvider({ children }) {
   const [paginasPorRol, setPaginasPorRol] = useState(MAPEO_DEFECTO)
+  const [cargando, setCargando] = useState(true)
 
   const recargar = useCallback(async () => {
     try {
@@ -42,6 +44,8 @@ export function AccesoProvider({ children }) {
     } catch {
       // Sin backend: se conserva MAPEO_DEFECTO.
       return MAPEO_DEFECTO
+    } finally {
+      setCargando(false)
     }
   }, [])
 
@@ -66,8 +70,8 @@ export function AccesoProvider({ children }) {
   )
 
   const value = useMemo(
-    () => ({ paginasPorRol, paginasDe, puedeAcceder, inicioSegunRol, recargar }),
-    [paginasPorRol, paginasDe, puedeAcceder, inicioSegunRol, recargar],
+    () => ({ paginasPorRol, paginasDe, puedeAcceder, inicioSegunRol, recargar, cargando }),
+    [paginasPorRol, paginasDe, puedeAcceder, inicioSegunRol, recargar, cargando],
   )
 
   return <AccesoContext.Provider value={value}>{children}</AccesoContext.Provider>

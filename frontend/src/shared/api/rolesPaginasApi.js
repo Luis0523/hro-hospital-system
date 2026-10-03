@@ -31,6 +31,13 @@ export const RUTA_POR_AREA = {
 }
 export const PRIORIDAD_AREAS = ['administracion', 'enfermeria', 'archivo', 'jefe_enfermeria']
 
+/** Pantalla inicial de un rol a partir de un mapeo rol → páginas dado. */
+export function inicioSegunMapa(mapa, rol) {
+  const paginas = (mapa && mapa[rol]) || []
+  const area = PRIORIDAD_AREAS.find((candidata) => paginas.includes(candidata))
+  return area ? RUTA_POR_AREA[area] : '/sin-acceso'
+}
+
 export async function listarPaginas() {
   if (USE_MOCK) return PAGINAS
   return desenvolver(await client.get('/paginas'))

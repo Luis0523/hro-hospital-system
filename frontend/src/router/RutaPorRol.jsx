@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useAcceso } from '@/shared/context/AccesoContext.jsx'
+import Spinner from '@/shared/components/ui/Spinner.jsx'
 
 /**
  * Guard de acceso por área: exige sesión y, en modo keycloak, que el rol del
@@ -11,11 +12,20 @@ import { useAcceso } from '@/shared/context/AccesoContext.jsx'
  */
 export default function RutaPorRol({ area }) {
   const { autenticado, usuario, modoAuth } = useAuth()
-  const { puedeAcceder, inicioSegunRol } = useAcceso()
+  const { puedeAcceder, inicioSegunRol, cargando } = useAcceso()
   const location = useLocation()
 
   if (!autenticado) {
     return <Navigate to="/login" replace />
+  }
+
+  // Mientras carga el mapeo rol → páginas no se decide el acceso.
+  if (modoAuth === 'keycloak' && cargando) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner label="Verificando acceso…" />
+      </div>
+    )
   }
 
   if (modoAuth === 'keycloak' && area && !puedeAcceder(usuario?.rol, area)) {

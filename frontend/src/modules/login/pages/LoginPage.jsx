@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useAcceso } from '@/shared/context/AccesoContext.jsx'
+import { inicioSegunMapa } from '@/shared/api/rolesPaginasApi.js'
 
 const CUENTAS_DEMO = [
   { etiqueta: 'Archivo', icono: 'folder_shared', username: 'archivo01', password: 'archivo' },
@@ -12,7 +13,7 @@ const CUENTAS_DEMO = [
 export default function LoginPage() {
   const navigate = useNavigate()
   const { autenticado, usuario, iniciarSesionConCredenciales } = useAuth()
-  const { inicioSegunRol, recargar } = useAcceso()
+  const { inicioSegunRol, recargar, cargando } = useAcceso()
 
   const [identificador, setIdentificador] = useState('')
   const [password, setPassword] = useState('')
@@ -23,10 +24,11 @@ export default function LoginPage() {
 
   // Si ya hay sesión, ir directo a la pantalla del rol.
   useEffect(() => {
-    if (autenticado) {
+    // Espera a que el mapeo rol → páginas haya cargado antes de decidir.
+    if (autenticado && !cargando) {
       navigate(inicioSegunRol(usuario?.rol), { replace: true })
     }
-  }, [autenticado, usuario, navigate, inicioSegunRol])
+  }, [autenticado, usuario, navigate, inicioSegunRol, cargando])
 
   async function manejarEnvio(evento) {
     evento.preventDefault()
@@ -35,9 +37,9 @@ export default function LoginPage() {
     setEnviando(true)
     try {
       const usuarioFinal = await iniciarSesionConCredenciales(identificador.trim(), password)
-      // Recargar páginas por rol (por si se configuró un rol mientras la app ya estaba abierta).
-      await recargar()
-      navigate(inicioSegunRol(usuarioFinal.rol), { replace: true })
+      // Recargar páginas por rol y usar el mapeo recién cargado para la pantalla inicial.
+      const mapa = await recargar()
+      navigate(inicioSegunMapa(mapa, usuarioFinal.rol), { replace: true })
     } catch (fallo) {
       setError(
         fallo.status === 401

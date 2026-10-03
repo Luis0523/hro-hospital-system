@@ -25,13 +25,21 @@ import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
 import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
 import EstacionesJefePage from '@/modules/jefeEnfermeria/pages/EstacionesPage.jsx'
 import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
+import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useAcceso } from '@/shared/context/AccesoContext.jsx'
 
 /** Pantalla inicial según las páginas configuradas para el rol. */
 function InicioPorRol() {
   const { usuario } = useAuth()
-  const { inicioSegunRol } = useAcceso()
+  const { inicioSegunRol, cargando } = useAcceso()
+  if (cargando) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner label="Cargando…" />
+      </div>
+    )
+  }
   return <Navigate to={inicioSegunRol(usuario?.rol)} replace />
 }
 
