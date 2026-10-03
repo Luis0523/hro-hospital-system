@@ -1,0 +1,602 @@
+//////////////////////////////////////////////////////
+// HRO Hospital System - DBML para dbdiagram.io (v2 FHIR)
+// Estado final consolidado (migraciones Flyway V1..V13)
+// 33 tablas | 46 FKs | 26 UNIQUE | 43 indices explicitos
+//
+// v2: agrega notas de mapeo al recurso FHIR R5 `Appointment`.
+//     AVISO: es documentacion. No se aplico ninguna migracion V14+.
+//     Ver "MAPEO FHIR R5 - Appointment" al final del archivo.
+//////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////
+// Seguridad y referencia de usuarios
+// FHIR: usuario_referencia no es recurso directo; -> Provenance.agent /
+//       PractitionerRole si se integra de verdad.
+//////////////////////////////////////////////////////
+
+Table usuario_referencia {
+  id bigint [pk, increment]
+  id_externo varchar(255) [unique, not null]
+  nombre_mostrar varchar(200) [not null]
+  rol_principal varchar(30) [not null, note: 'personal_citas | enfermeria | medico | administrador | archivo | jefe_enfermeria']
+  activo boolean [not null, default: true]
+  ultimo_acceso timestamptz
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table permiso_subespecialidad {
+  id bigint [pk, increment]
+  usuario_referencia_id bigint [not null]
+  subespecialidad_id bigint [not null]
+  tipo_permiso varchar(40) [not null, note: 'avanzar_turno | generar_orden_laboratorio | autorizar_cupo']
+  creado_en timestamptz [not null, default: `now()`]
+  activo boolean [not null, default: true]
+  indexes {
+    (usuario_referencia_id, subespecialidad_id, tipo_permiso) [unique, name: 'uq_permiso_subespecialidad']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Catalogos clinicos
+// FHIR: especialidad -> serviceCategory; subespecialidad -> serviceType
+//       y specialty. Aun SIN codigos (ver propuesta futura en el .sql).
+//////////////////////////////////////////////////////
+
+Table especialidad {
+  id bigint [pk, increment]
+  nombre varchar(150) [unique, not null]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: -> Appointment.serviceCategory (CodeableConcept)'
+}
+
+Table subespecialidad {
+  id bigint [pk, increment]
+  especialidad_id bigint [not null]
+  nombre varchar(150) [not null]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: -> Appointment.serviceType / specialty (sin codigos aun)'
+  indexes {
+    (especialidad_id, nombre) [unique]
+  }
+}
+
+Table tipo_examen_laboratorio {
+  id bigint [pk, increment]
+  nombre varchar(150) [not null]
+  codigo varchar(30) [unique]
+  activo boolean [not null, default: true]
+  note: 'Precedente de codificacion terminologica (ideal LOINC/HL7)'
+}
+
+//////////////////////////////////////////////////////
+// Espacios fisicos y asignacion diaria
+// FHIR: espacio_fisico -> Location (participant.actor futuro).
+//////////////////////////////////////////////////////
+
+Table espacio_fisico {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nombre varchar(150) [not null]
+  ubicacion varchar(150)
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  numero varchar(30) [unique, not null]
+  nivel smallint [not null]
+  capacidad_camillas int [not null, default: 1]
+  coordenadas_plano jsonb
+  note: 'FHIR: -> Location (Appointment.participant.actor, futuro)'
+  indexes {
+    nivel [name: 'idx_espacio_fisico_nivel']
+  }
+}
+
+Table asignacion_diaria_espacio {
+  id bigint [pk, increment]
+  espacio_fisico_id uuid [not null]
+  subespecialidad_id bigint [not null]
+  fecha date [not null]
+  creado_por bigint [not null]
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    (espacio_fisico_id, fecha, subespecialidad_id) [unique, name: 'uq_asignacion_espacio_fecha_sub']
+    fecha [name: 'idx_asignacion_fecha']
+    subespecialidad_id [name: 'idx_asignacion_subespecialidad']
+  }
+}
+
+Table cierre_asignacion_diaria {
+  fecha date [pk]
+  estado varchar(10) [not null, default: 'abierta', note: 'abierta | cerrada']
+  confirmado_por bigint
+  confirmado_en timestamptz
+}
+
+Table plano_hospital {
+  id bigint [pk, increment]
+  nivel smallint [unique, not null]
+  archivo_svg varchar(255) [not null]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+//////////////////////////////////////////////////////
+// Medicos y horario por subespecialidad
+// FHIR: medico -> Practitioner. subespecialidad_horario es la base del
+//       Schedule y de los start/end sintetizados del Appointment.
+//////////////////////////////////////////////////////
+
+Table medico {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nombres varchar(200) [not null]
+  numero_colegiado varchar(50) [unique, not null]
+  usuario_referencia_id bigint
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: -> Practitioner (participant.actor). numero_colegiado = identifier'
+}
+
+Table medico_subespecialidad {
+  id uuid [pk, default: `gen_random_uuid()`]
+  medico_id uuid [not null]
+  subespecialidad_id bigint [not null]
+  dia_semana smallint [not null, note: '1=lunes ... 7=domingo']
+  hora_inicio time [not null]
+  hora_fin time [not null]
+  capacidad_maxima int [not null]
+  duracion_consulta_minutos int [not null, default: 35]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    (medico_id, subespecialidad_id, dia_semana) [unique, name: 'uq_medico_subespecialidad_dia']
+    medico_id [name: 'idx_medico_subespecialidad_medico']
+    subespecialidad_id [name: 'idx_medico_subespecialidad_sub']
+  }
+}
+
+Table subespecialidad_horario {
+  id uuid [pk, default: `gen_random_uuid()`]
+  subespecialidad_id bigint [not null]
+  dia_semana smallint [not null, note: '1=lunes ... 7=domingo']
+  hora_inicio time [not null]
+  hora_fin time [not null]
+  capacidad_maxima int [not null]
+  duracion_consulta_minutos int [not null, default: 35]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: base del Schedule; con cupo_diario.fecha da la ventana (start/end) del Appointment'
+  indexes {
+    (subespecialidad_id, dia_semana) [unique, name: 'uq_subespecialidad_horario_dia']
+    subespecialidad_id [name: 'idx_subespecialidad_horario_sub']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Calendario y cupos
+// FHIR: cupo_diario se aproxima a Slot (franja/jornada con capacidad).
+//////////////////////////////////////////////////////
+
+Table dia_no_laborable {
+  id bigint [pk, increment]
+  fecha date [unique, not null]
+  motivo varchar(200) [not null]
+  creado_por bigint [not null]
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table cupo_diario {
+  id uuid [pk, default: `gen_random_uuid()`]
+  subespecialidad_horario_id uuid [not null]
+  fecha date [not null]
+  capacidad_maxima int [not null]
+  cupos_ocupados int [not null, default: 0]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: ~ Slot. Appointment.slot -> cupo_diario_id'
+  indexes {
+    (subespecialidad_horario_id, fecha) [unique, name: 'uq_cupo_horario_fecha']
+    fecha [name: 'idx_cupo_diario_fecha']
+    subespecialidad_horario_id [name: 'idx_cupo_diario_horario']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Pacientes y citas
+// FHIR: paciente -> Patient; cita -> Appointment (recurso R5).
+//////////////////////////////////////////////////////
+
+Table paciente {
+  id uuid [pk, default: `gen_random_uuid()`]
+  dpi varchar(20) [unique, not null]
+  nombres varchar(150) [not null]
+  apellidos varchar(150) [not null]
+  fecha_nacimiento date [not null]
+  sexo char(1) [not null, note: 'M | F']
+  telefono varchar(20)
+  direccion varchar(255)
+  numero_expediente varchar(30) [unique]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: -> Patient. dpi/numero_expediente = identifier; subject del Appointment'
+  indexes {
+    dpi [name: 'idx_paciente_dpi']
+    (apellidos, nombres) [name: 'idx_paciente_apellidos_nombres']
+  }
+}
+
+Table cita {
+  id bigint [pk, increment]
+  paciente_id uuid [not null]
+  cupo_diario_id uuid [not null]
+  hora_estimada time
+  hora_ventana_inicio time
+  hora_ventana_fin time
+  estado varchar(20) [not null, default: 'pendiente', note: 'pendiente | confirmada | atendida | cancelada | reprogramada | no_asistio']
+  cita_origen_id bigint
+  registrado_por bigint [not null]
+  version int [not null, default: 0]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR: -> Appointment. start/end SINTETIZADOS de la jornada (no almacenados); hora_estimada/ventana_* quedan NULL'
+  indexes {
+    paciente_id [name: 'idx_cita_paciente']
+    cupo_diario_id [name: 'idx_cita_cupo_diario']
+    estado [name: 'idx_cita_estado']
+    (cupo_diario_id, estado) [name: 'idx_cita_cupo_estado']
+  }
+}
+
+Table cita_estado_historial {
+  id bigint [pk, increment]
+  cita_id bigint [not null]
+  estado_anterior varchar(20)
+  estado_nuevo varchar(20) [not null]
+  usuario_referencia_id bigint [not null]
+  motivo text
+  fecha_cambio timestamptz [not null, default: `now()`]
+  note: 'FHIR: Provenance; fuente de cancellationDate/cancellationReason (solo cancelled/noshow)'
+  indexes {
+    cita_id [name: 'idx_cita_estado_historial_cita']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Turnos
+// FHIR: turno aporta el estado de llegada (arrived) al Appointment y es
+//       insumo de un futuro Encounter (hora_llamado/hora_atendido).
+//////////////////////////////////////////////////////
+
+Table contador_turno_diario {
+  id bigint [pk, increment]
+  asignacion_diaria_espacio_id bigint [unique]
+  turno_actual int [not null, default: 0]
+  turno_siguiente int [not null, default: 1]
+  creado_en timestamptz [not null, default: `now()`]
+  note: 'Contador por asignacion (tablero / ultimo llamado).'
+}
+
+Table contador_turno_fecha {
+  fecha date [pk]
+  turno_actual int [not null, default: 0]
+  turno_siguiente int [not null, default: 1]
+  note: 'Correlativo global de turnos por dia.'
+}
+
+Table turno {
+  id bigint [pk, increment]
+  cita_id bigint [not null]
+  asignacion_diaria_espacio_id bigint
+  numero_turno int [not null]
+  estado varchar(20) [not null, default: 'en_espera', note: 'en_espera | llamado | atendido | no_responde | reintegrado']
+  intentos_llamado int [not null, default: 0]
+  hora_generado timestamptz [not null, default: `now()`]
+  hora_llamado timestamptz
+  hora_atendido timestamptz
+  note: 'FHIR: en_espera/llamado -> Appointment.status=arrived; es insumo de Encounter futuro'
+  indexes {
+    cita_id [name: 'idx_turno_cita']
+    estado [name: 'idx_turno_estado']
+    (cita_id, estado) [name: 'idx_turno_cita_estado']
+    (estado, hora_generado) [name: 'idx_turno_estado_hora']
+    asignacion_diaria_espacio_id [name: 'idx_turno_asignacion']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Laboratorio HL7
+//////////////////////////////////////////////////////
+
+Table orden_laboratorio {
+  id uuid [pk, default: `gen_random_uuid()`]
+  cita_id bigint [not null]
+  tipo_examen_id bigint [not null]
+  estado varchar(20) [not null, default: 'pendiente', note: 'pendiente | enviada | procesada | resultado_recibido']
+  fecha_orden timestamptz [not null, default: `now()`]
+  fecha_toma_muestra_programada date
+  prioridad varchar(10) [not null, default: 'normal', note: 'normal | urgente']
+  indexes {
+    cita_id [name: 'idx_orden_laboratorio_cita']
+  }
+}
+
+Table resultado_laboratorio {
+  id uuid [pk, default: `gen_random_uuid()`]
+  orden_laboratorio_id uuid [unique, not null]
+  fecha_resultado timestamptz
+  contenido jsonb
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    orden_laboratorio_id [name: 'idx_resultado_orden']
+  }
+}
+
+Table mensaje_hl7_log {
+  id uuid [pk, default: `gen_random_uuid()`]
+  orden_laboratorio_id uuid
+  direccion varchar(10) [not null, note: 'enviado | recibido']
+  contenido_crudo text [not null]
+  estado_procesamiento varchar(15) [not null, default: 'ok', note: 'ok | error | reintentando']
+  fecha timestamptz [not null, default: `now()`]
+  note: 'Patron reutilizable para un futuro outbox_fhir'
+  indexes {
+    orden_laboratorio_id [name: 'idx_mensaje_hl7_orden']
+    fecha [name: 'idx_mensaje_hl7_log_fecha']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Auditoria
+//////////////////////////////////////////////////////
+
+Table auditoria_general {
+  id bigint [pk, increment]
+  tabla_afectada varchar(100) [not null]
+  entidad_id varchar(64) [not null, note: 'UUID o numerico (VARCHAR desde V5)']
+  accion varchar(15) [not null, note: 'crear | actualizar | eliminar']
+  usuario_referencia_id bigint
+  valores_anteriores jsonb
+  valores_nuevos jsonb
+  fecha timestamptz [not null, default: `now()`]
+  indexes {
+    (tabla_afectada, entidad_id) [name: 'idx_auditoria_tabla_entidad']
+    fecha [name: 'idx_auditoria_fecha']
+    usuario_referencia_id [name: 'idx_auditoria_usuario']
+    accion [name: 'idx_auditoria_accion']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Archivo: expedientes fisicos
+// FHIR: expediente_ciclo es el punto natural para futuro medico_id
+//       (medico que atiende) -> trazabilidad del expediente.
+//////////////////////////////////////////////////////
+
+Table ubicacion_archivo {
+  id bigint [pk, increment]
+  pasillo varchar(20) [not null]
+  estante varchar(20) [not null]
+  balda varchar(20)
+  descripcion varchar(150)
+  indexes {
+    (pasillo, estante, balda) [unique]
+  }
+}
+
+Table expediente {
+  id uuid [pk, default: `gen_random_uuid()`]
+  paciente_id uuid [unique, not null]
+  numero_expediente varchar(30) [unique, not null]
+  ubicacion_base_id bigint
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table expediente_ciclo {
+  id uuid [pk, default: `gen_random_uuid()`]
+  expediente_id uuid [not null]
+  cita_id bigint [unique, not null]
+  estado_actual varchar(25) [not null, default: 'pendiente_localizar', note: 'pendiente_localizar | en_busqueda | localizado | en_transito_entrega | entregado | en_transito_retorno | archivado | no_localizado']
+  version int [not null, default: 0]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+  note: 'FHIR (futuro): medico_id al entregar -> Appointment.participant.actor (Practitioner)'
+  indexes {
+    expediente_id [name: 'idx_expediente_ciclo_expediente']
+    estado_actual [name: 'idx_expediente_ciclo_estado']
+  }
+}
+
+Table expediente_movimiento {
+  id bigint [pk, increment]
+  expediente_ciclo_id uuid [not null]
+  estado_anterior varchar(25)
+  estado_nuevo varchar(25) [not null]
+  ubicacion_origen_id bigint
+  ubicacion_destino_id bigint
+  usuario_referencia_id bigint [not null]
+  observacion text
+  fecha_movimiento timestamptz [not null, default: `now()`]
+  note: 'FHIR (futuro): medico_id en el evento de entrega (auditoria)'
+  indexes {
+    expediente_ciclo_id [name: 'idx_expediente_movimiento_ciclo']
+    fecha_movimiento [name: 'idx_expediente_movimiento_fecha']
+  }
+}
+
+Table acta_recepcion {
+  id bigint [pk, increment]
+  numero_acta varchar(30) [unique, not null]
+  fecha date [not null]
+  subespecialidad_id bigint
+  usuario_entrega_id bigint [not null]
+  usuario_recibe_id bigint
+  observaciones text
+  creado_por_id bigint [not null]
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    fecha [name: 'idx_acta_recepcion_fecha']
+  }
+}
+
+Table acta_recepcion_detalle {
+  id bigint [pk, increment]
+  acta_recepcion_id bigint [not null]
+  expediente_id uuid [not null]
+  cita_id bigint
+  indexes {
+    (acta_recepcion_id, expediente_id) [unique]
+    acta_recepcion_id [name: 'idx_acta_recepcion_detalle_acta']
+  }
+}
+
+//////////////////////////////////////////////////////
+// Estaciones de enfermeria
+//////////////////////////////////////////////////////
+
+Table estacion_enfermeria {
+  id bigint [pk, increment]
+  codigo varchar(30) [unique, not null]
+  nombre varchar(150) [not null]
+  ubicacion varchar(150)
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table estacion_subespecialidad {
+  id bigint [pk, increment]
+  estacion_id bigint [not null]
+  subespecialidad_id bigint [not null]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    (estacion_id, subespecialidad_id) [unique, name: 'uq_estacion_subespecialidad']
+    subespecialidad_id [unique, name: 'uq_estacion_sub_unica']
+    estacion_id [name: 'idx_estacion_sub_estacion']
+  }
+}
+
+Table estacion_acceso {
+  id bigint [pk, increment]
+  estacion_id bigint [not null]
+  usuario_referencia_id bigint [not null]
+  entrado_en timestamptz [not null, default: `now()`]
+  salido_en timestamptz
+  indexes {
+    estacion_id [name: 'idx_estacion_acceso_estacion']
+    usuario_referencia_id [name: 'idx_estacion_acceso_usuario']
+  }
+}
+
+//////////////////////////////////////////////////////
+// RELACIONES
+//////////////////////////////////////////////////////
+
+Ref: permiso_subespecialidad.usuario_referencia_id > usuario_referencia.id
+Ref: permiso_subespecialidad.subespecialidad_id > subespecialidad.id
+
+Ref: subespecialidad.especialidad_id > especialidad.id
+
+Ref: medico.usuario_referencia_id > usuario_referencia.id
+
+Ref: medico_subespecialidad.medico_id > medico.id
+Ref: medico_subespecialidad.subespecialidad_id > subespecialidad.id
+
+Ref: subespecialidad_horario.subespecialidad_id > subespecialidad.id
+
+Ref: asignacion_diaria_espacio.espacio_fisico_id > espacio_fisico.id
+Ref: asignacion_diaria_espacio.subespecialidad_id > subespecialidad.id
+Ref: asignacion_diaria_espacio.creado_por > usuario_referencia.id
+
+Ref: cierre_asignacion_diaria.confirmado_por > usuario_referencia.id
+
+Ref: dia_no_laborable.creado_por > usuario_referencia.id
+
+Ref: cupo_diario.subespecialidad_horario_id > subespecialidad_horario.id
+
+Ref: cita.paciente_id > paciente.id
+Ref: cita.cupo_diario_id > cupo_diario.id
+Ref: cita.registrado_por > usuario_referencia.id
+Ref: cita.cita_origen_id > cita.id
+
+Ref: cita_estado_historial.cita_id > cita.id
+Ref: cita_estado_historial.usuario_referencia_id > usuario_referencia.id
+
+Ref: contador_turno_diario.asignacion_diaria_espacio_id > asignacion_diaria_espacio.id
+
+Ref: turno.cita_id > cita.id
+Ref: turno.asignacion_diaria_espacio_id > asignacion_diaria_espacio.id
+
+Ref: orden_laboratorio.cita_id > cita.id
+Ref: orden_laboratorio.tipo_examen_id > tipo_examen_laboratorio.id
+
+Ref: resultado_laboratorio.orden_laboratorio_id > orden_laboratorio.id
+
+Ref: mensaje_hl7_log.orden_laboratorio_id > orden_laboratorio.id
+
+Ref: auditoria_general.usuario_referencia_id > usuario_referencia.id
+
+Ref: expediente.paciente_id > paciente.id
+Ref: expediente.ubicacion_base_id > ubicacion_archivo.id
+
+Ref: expediente_ciclo.expediente_id > expediente.id
+Ref: expediente_ciclo.cita_id > cita.id
+
+Ref: expediente_movimiento.expediente_ciclo_id > expediente_ciclo.id
+Ref: expediente_movimiento.ubicacion_origen_id > ubicacion_archivo.id
+Ref: expediente_movimiento.ubicacion_destino_id > ubicacion_archivo.id
+Ref: expediente_movimiento.usuario_referencia_id > usuario_referencia.id
+
+Ref: acta_recepcion.subespecialidad_id > subespecialidad.id
+Ref: acta_recepcion.usuario_entrega_id > usuario_referencia.id
+Ref: acta_recepcion.usuario_recibe_id > usuario_referencia.id
+Ref: acta_recepcion.creado_por_id > usuario_referencia.id
+
+Ref: acta_recepcion_detalle.acta_recepcion_id > acta_recepcion.id
+Ref: acta_recepcion_detalle.expediente_id > expediente.id
+Ref: acta_recepcion_detalle.cita_id > cita.id
+
+Ref: estacion_subespecialidad.estacion_id > estacion_enfermeria.id
+Ref: estacion_subespecialidad.subespecialidad_id > subespecialidad.id
+
+Ref: estacion_acceso.estacion_id > estacion_enfermeria.id
+Ref: estacion_acceso.usuario_referencia_id > usuario_referencia.id
+
+//////////////////////////////////////////////////////
+// MAPEO FHIR R5 - Appointment (referencia)
+// Documento. El mapper real vive en backend (main), no aqui.
+//////////////////////////////////////////////////////
+//
+// Campo FHIR              -> Origen HRO
+// ---------------------------------------------------------------------
+// identifier              -> cita.id (interno; opcional identifier.system)
+// status                  -> cita.estado (+ turno.estado si hay llegada)
+// subject                 -> cita.paciente_id (Reference(Patient))
+// participant[0]          -> paciente derivado (type=Patient, app-1)
+// start / end             -> SINTETIZADOS: cupo_diario.fecha +
+//                            subespecialidad_horario.hora_inicio/hora_fin
+//                            (America/Guatemala, UTC-6; NO almacenados)
+// minutesDuration          -> subespecialidad_horario.duracion_consulta_minutos
+// requestedPeriod          -> [fecha+hora_inicio, fecha+hora_fin]
+// slot                     -> cupo_diario_id (aproximacion)
+// created                  -> cita.creado_en
+// meta.versionId           -> cita.version
+// replaces                 -> cita.cita_origen_id
+// cancellationDate/Reason  -> cita_estado_historial (solo cancelled/noshow)
+// specialty/serviceType    -> especialidad/subespecialidad (sin codigos aun)
+//
+// Estado cita.estado -> Appointment.status
+// ---------------------------------------------------------------------
+// pendiente    -> proposed
+// confirmada   -> booked
+// atendida     -> fulfilled
+// cancelada    -> cancelled
+// reprogramada -> cancelled (la nueva cita lleva `replaces`)
+// no_asistio   -> noshow
+// turno activo (en_espera/llamado) -> arrived
+//
+// ADVERTENCIA: sin hora por paciente, TODAS las citas comparten el
+// start/end de la jornada. Es el techo de fidelidad de este modelo.
+//
+// PROPUESTA FUTURA (NO APLICADA, ver .sql seccion 17):
+//  - Codigos en especialidad/subespecialidad (codigo/codigo_sistema).
+//  - medico_id en expediente_ciclo + expediente_movimiento (APLAZADO).
+//  - Tabla outbox_fhir (patron de mensaje_hl7_log).
+//////////////////////////////////////////////////////
