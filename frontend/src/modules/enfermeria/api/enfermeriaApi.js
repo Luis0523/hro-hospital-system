@@ -261,6 +261,15 @@ export async function buscarCitaDelDia(identificador) {
   return { paciente, cita }
 }
 
+/**
+ * Cuerpo de `POST /citas` tal como lo espera el backend: `pacienteId` y
+ * `cupoDiarioId` son UUID (string). No convertir a número: `Number(uuid)`
+ * produce `NaN` y se serializa como `null`, lo que el backend rechaza con 400.
+ */
+export function construirPayloadCita({ pacienteId, cupo }) {
+  return { pacienteId, cupoDiarioId: cupo?.id }
+}
+
 export async function agendarCita({ pacienteId, cupo }) {
   if (USE_MOCK) {
     const paciente = pacientesMock.find((registro) => registro.id === Number(pacienteId))
@@ -278,9 +287,7 @@ export async function agendarCita({ pacienteId, cupo }) {
     return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
   }
 
-  const cita = desenvolver(
-    await client.post('/citas', { pacienteId: Number(pacienteId), cupoDiarioId: cupo.id }),
-  )
+  const cita = desenvolver(await client.post('/citas', construirPayloadCita({ pacienteId, cupo })))
   limpiarCachePrefijo('cupos')
   return cita
 }

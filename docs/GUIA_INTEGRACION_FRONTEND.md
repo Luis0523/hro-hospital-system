@@ -148,11 +148,14 @@ POST /api/v1/citas
 Content-Type: application/json
 
 {
-  "pacienteId": 5,
-  "cupoDiarioId": 10,
-  "usuarioId": 1
+  "pacienteId": "9b2a0000-0000-0000-0000-000000000000",
+  "cupoDiarioId": "7c2d0000-0000-0000-0000-000000000000"
 }
 ```
+
+> [!IMPORTANT]
+> `pacienteId` y `cupoDiarioId` son **UUID (string)**, no números. El `pacienteId` proviene de `POST /pacientes` o `GET /pacientes/buscar`; el `cupoDiarioId` de `GET /cupos`. Enviarlos como número (`Number(uuid)` → `NaN` → `null`) provoca `400` con el mensaje genérico *"Error de validación en los campos enviados"*. El `usuarioId` es opcional: si se omite, el backend toma el usuario del header `X-Usuario-Id`.
+
 **Respuesta del Backend:**
 ```json
 {
@@ -197,11 +200,11 @@ POST /api/v1/citas/{citaId}/reprogramar
 Content-Type: application/json
 
 {
-  "nuevoCupoDiarioId": 18,
-  "usuarioId": 1,
+  "nuevoCupoDiarioId": "7c2d0000-0000-0000-0000-000000000000",
   "motivo": "Paciente solicita cambio por viaje de trabajo"
 }
 ```
+* `nuevoCupoDiarioId` es **UUID (string)** (mismo tipo que `cupoDiarioId`). El `usuarioId` es opcional (se toma del header `X-Usuario-Id`).
 * El backend automáticamente libera el cupo anterior, reserva el nuevo y enlaza la cita mediante `cita_origen_id`.
 
 #### 5. Cancelar una Cita

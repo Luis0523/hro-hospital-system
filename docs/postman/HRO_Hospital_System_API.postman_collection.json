@@ -29,8 +29,15 @@
     },
     {
       "key": "pacienteId",
-      "value": "1",
-      "type": "string"
+      "value": "9b2a0000-0000-0000-0000-000000000000",
+      "type": "string",
+      "description": "UUID del paciente (no numérico). Obtenerlo de POST /pacientes o GET /pacientes/buscar"
+    },
+    {
+      "key": "cupoDiarioId",
+      "value": "7c2d0000-0000-0000-0000-000000000000",
+      "type": "string",
+      "description": "UUID del cupo diario (no numérico). Obtenerlo de GET /cupos"
     },
     {
       "key": "dpiEjemplo",
@@ -395,7 +402,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pacienteId\": {{pacienteId}},\n  \"cupoDiarioId\": 1\n}"
+              "raw": "{\n  \"pacienteId\": \"{{pacienteId}}\",\n  \"cupoDiarioId\": \"{{cupoDiarioId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas",
@@ -484,7 +491,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"motivo\": \"Paciente no podra viajar desde su municipio\"\n}"
+              "raw": "{\n  \"nuevoCupoDiarioId\": \"{{cupoDiarioId}}\",\n  \"motivo\": \"Paciente no podra viajar desde su municipio\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/citas/{{citaId}}/cancelar",

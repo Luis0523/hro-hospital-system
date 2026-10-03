@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest'
-import { agendarCita, buscarPaciente, buscarPacientes, listarCuposDelDia } from './enfermeriaApi'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  agendarCita,
+  buscarPaciente,
+  buscarPacientes,
+  construirPayloadCita,
+  listarCuposDelDia,
+} from './enfermeriaApi'
+
+vi.mock('@/shared/api/client', () => ({
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}))
 
 describe('enfermeriaApi (mock)', () => {
   it('busca pacientes por apellido', async () => {
@@ -48,5 +58,48 @@ describe('enfermeriaApi (mock)', () => {
     await expect(
       agendarCita({ pacienteId: 1, cupo: cupoSinCupo, usuarioId: 2 }),
     ).rejects.toMatchObject({ status: 409 })
+  })
+})
+
+describe('construirPayloadCita', () => {
+  it('conserva los UUID como string (no los convierte a número)', () => {
+    const pacienteId = 'b1f0c8e2-3a4d-4c21-9c01-000000000101'
+    const cupo = { id: '7c2d9f10-1a11-4d21-9c01-000000000202' }
+
+    expect(construirPayloadCita({ pacienteId, cupo })).toEqual({
+      pacienteId,
+      cupoDiarioId: cupo.id,
+    })
+    expect(construirPayloadCita({ pacienteId, cupo }).pacienteId).toBe(pacienteId)
+  })
+})
+
+describe('agendarCita contra backend real', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it('hace POST /citas con los UUID sin mutarlos a null', async () => {
+    vi.resetModules()
+    vi.stubEnv('MODE', 'production')
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+
+    const { default: client } = await import('@/shared/api/client')
+    client.post.mockResolvedValueOnce({
+      data: { id: 42, pacienteId: 'b1f0c8e2-3a4d-4c21-9c01-000000000101' },
+    })
+    const { agendarCita: agendarReal } = await import('./enfermeriaApi')
+
+    const pacienteId = 'b1f0c8e2-3a4d-4c21-9c01-000000000101'
+    const cupo = { id: '7c2d9f10-1a11-4d21-9c01-000000000202' }
+    await agendarReal({ pacienteId, cupo })
+
+    expect(client.post).toHaveBeenCalledWith('/citas', {
+      pacienteId,
+      cupoDiarioId: cupo.id,
+    })
+    const [, cuerpo] = client.post.mock.calls[0]
+    expect(cuerpo.pacienteId).not.toBeNull()
   })
 })
