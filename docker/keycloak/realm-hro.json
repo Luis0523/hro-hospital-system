@@ -1,0 +1,75 @@
+{
+  "realm": "hro",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 1800,
+  "roles": {
+    "realm": [
+      { "name": "administrador", "description": "Administrador del sistema" },
+      { "name": "archivo", "description": "Operador de Archivo / Registro Medico" },
+      { "name": "enfermeria", "description": "Estacion de Enfermeria" },
+      { "name": "medico", "description": "Medico" },
+      { "name": "personal_citas", "description": "Personal de citas / digitacion" },
+      { "name": "jefe_enfermeria", "description": "Jefe de Enfermeria" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "hro-frontend",
+      "name": "HRO Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:5173", "http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "HRO",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["administrador"]
+    },
+    {
+      "username": "archivo01",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Operador",
+      "lastName": "Archivo",
+      "credentials": [{ "type": "password", "value": "archivo", "temporary": false }],
+      "realmRoles": ["archivo"]
+    },
+    {
+      "username": "enfermeria01",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Estacion",
+      "lastName": "Enfermeria",
+      "credentials": [{ "type": "password", "value": "enfermeria", "temporary": false }],
+      "realmRoles": ["enfermeria"]
+    },
+    {
+      "username": "digitador01",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Digitador",
+      "lastName": "Libro",
+      "credentials": [{ "type": "password", "value": "digitador", "temporary": false }],
+      "realmRoles": ["personal_citas"]
+    }
+  ]
+}
