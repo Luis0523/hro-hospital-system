@@ -118,6 +118,8 @@ export function AuthProvider({ children }) {
     token,
     autenticado,
     modoAuth: MODO_AUTH,
+    // Destino tras cerrar sesión: login real (keycloak) o pantalla de sesión cerrada (mock).
+    rutaLogin: MODO_AUTH === 'keycloak' ? '/login' : '/sesion-cerrada',
     cerrarSesion,
     iniciarSesion,
     iniciarSesionConCredenciales,

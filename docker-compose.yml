@@ -24,8 +24,10 @@ services:
     restart: unless-stopped
     command: ["start-dev", "--import-realm"]
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Keycloak 25 usa KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD
+      # (KC_BOOTSTRAP_ADMIN_* es para Keycloak 26+).
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports:
       - "${KEYCLOAK_PORT:-8090}:8080"
     volumes:

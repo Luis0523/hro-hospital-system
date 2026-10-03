@@ -22,14 +22,14 @@ function claseEnlace({ isActive }) {
 }
 
 export default function ArchivoNavbar() {
-  const { cerrarSesion } = useAuth()
+  const { cerrarSesion, rutaLogin } = useAuth()
   const navigate = useNavigate()
 
-  // Reutiliza el mecanismo de sesión existente (AuthContext) y la ruta pública
-  // /sesion-cerrada, igual que la estación de Enfermería.
+  // Cierra la sesión y va al destino correcto según el modo:
+  // /login (keycloak) o /sesion-cerrada (mock).
   function manejarCierreSesion() {
     cerrarSesion()
-    navigate('/sesion-cerrada')
+    navigate(rutaLogin)
   }
 
   return (
