@@ -72,13 +72,14 @@ public class KeycloakProveedorIdentidad implements ProveedorIdentidad {
             String rol = extraerRol(jwt);
 
             UsuarioReferencia usuario = usuarioReferenciaRepository.findByIdExterno(idExterno)
-                    .orElseGet(() -> usuarioReferenciaService.sincronizarUsuarioJIT(idExterno, nombre, rol));
+                    .orElseGet(() -> usuarioReferenciaService.sincronizarUsuarioJIT(idExterno, nombre));
 
+            // El rol proviene del token de Keycloak, no de la base local.
             return Optional.of(new IdentidadUsuario(
                     usuario.getId(),
                     usuario.getIdExterno(),
                     usuario.getNombreMostrar(),
-                    usuario.getRolPrincipal()));
+                    rol));
         } catch (JwtException e) {
             log.warn("Token Keycloak inválido: {}", e.getMessage());
             return Optional.empty();

@@ -65,12 +65,13 @@ class KeycloakProveedorIdentidadTest {
     void resuelveIdentidadYJIT() {
         when(jwtDecoder.decode("token")).thenReturn(jwtConRol("archivo", "archivo01"));
         when(usuarioReferenciaRepository.findByIdExterno("sub-archivo01")).thenReturn(Optional.empty());
-        when(usuarioReferenciaService.sincronizarUsuarioJIT(eq("sub-archivo01"), anyString(), eq("archivo")))
+        // El rol de la BD es distinto a propósito: debe prevalecer el del token.
+        when(usuarioReferenciaService.sincronizarUsuarioJIT(eq("sub-archivo01"), anyString()))
                 .thenReturn(UsuarioReferencia.builder()
                         .id(7L)
                         .idExterno("sub-archivo01")
                         .nombreMostrar("Nombre archivo01")
-                        .rolPrincipal("archivo")
+                        .rolPrincipal("medico")
                         .activo(true)
                         .build());
 
@@ -87,10 +88,10 @@ class KeycloakProveedorIdentidadTest {
     void rolPorDefecto() {
         when(jwtDecoder.decode("token")).thenReturn(jwtConRol("rol_desconocido", "user"));
         when(usuarioReferenciaRepository.findByIdExterno("sub-user")).thenReturn(Optional.empty());
-        when(usuarioReferenciaService.sincronizarUsuarioJIT(eq("sub-user"), anyString(), eq("enfermeria")))
+        when(usuarioReferenciaService.sincronizarUsuarioJIT(eq("sub-user"), anyString()))
                 .thenReturn(UsuarioReferencia.builder()
                         .id(3L).idExterno("sub-user").nombreMostrar("Nombre user")
-                        .rolPrincipal("enfermeria").activo(true).build());
+                        .rolPrincipal(null).activo(true).build());
 
         Optional<IdentidadUsuario> identidad = proveedor.resolver(requestConToken("token"));
 

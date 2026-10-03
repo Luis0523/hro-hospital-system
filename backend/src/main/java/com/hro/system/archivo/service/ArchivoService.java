@@ -10,6 +10,7 @@ import com.hro.system.archivo.repository.ExpedienteMovimientoRepository;
 import com.hro.system.archivo.repository.ExpedienteRepository;
 import com.hro.system.archivo.repository.UbicacionArchivoRepository;
 import com.hro.system.auth.UsuarioContexto;
+import com.hro.system.auth.dto.IdentidadUsuario;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.repository.CitaRepository;
 import com.hro.system.estacion.context.EstacionContexto;
@@ -341,7 +342,7 @@ public class ArchivoService {
     public ExpedienteCicloResponseDTO checkIn(UUID expedienteId, CheckInExpedienteRequestDTO dto) {
         Expediente expediente = buscarExpediente(expedienteId);
         UsuarioReferencia usuario = usuarioActual();
-        validarRolParaAccion(usuario, ACCION_CHECK_IN);
+        validarRolParaAccion(ACCION_CHECK_IN);
 
         Cita cita = resolverCitaParaCheckIn(expediente, dto);
 
@@ -496,7 +497,7 @@ public class ArchivoService {
     private ExpedienteCicloResponseDTO transicionar(UUID cicloId, String accion, TransicionCicloRequestDTO dto) {
         ExpedienteCiclo ciclo = buscarCiclo(cicloId);
         UsuarioReferencia usuario = usuarioActual();
-        validarRolParaAccion(usuario, accion);
+        validarRolParaAccion(accion);
 
         String estadoAnterior = ciclo.getEstadoActual();
         String nuevoEstado;
@@ -569,15 +570,16 @@ public class ArchivoService {
     }
 
     /**
-     * Valida que el rol del usuario autenticado esté autorizado para la acción solicitada.
-     * Las acciones sin entrada en {@link #ROLES_POR_ACCION} no se restringen.
+     * Valida que el rol del usuario autenticado (resuelto desde el token/cabecera en el
+     * contexto de la petición) esté autorizado para la acción solicitada. Los roles no
+     * se leen de la base. Las acciones sin entrada en {@link #ROLES_POR_ACCION} no se restringen.
      */
-    private void validarRolParaAccion(UsuarioReferencia usuario, String accion) {
+    private void validarRolParaAccion(String accion) {
         Set<String> permitidos = ROLES_POR_ACCION.get(accion);
         if (permitidos == null) {
             return;
         }
-        String rol = usuario.getRolPrincipal();
+        String rol = UsuarioContexto.actual().map(IdentidadUsuario::rolPrincipal).orElse(null);
         if (rol == null || !permitidos.contains(rol)) {
             throw new AccessDeniedException(
                     "El rol '" + rol + "' no está autorizado para ejecutar la acción '" + accion + "'");

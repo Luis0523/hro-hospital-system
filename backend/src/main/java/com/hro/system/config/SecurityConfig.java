@@ -45,12 +45,15 @@ public class SecurityConfig {
     }
 
     private String[] rutasPublicas() {
+        // Se incluyen las variantes con y sin el context-path (/api/v1) para no depender
+        // de cómo se resuelva el path en los matchers de Spring Security.
         return new String[]{
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/ws-turnos/**",
-            "/api/v1/auth/**"
+            "/ws-turnos/**", "/api/v1/ws-turnos/**",
+            "/auth/**", "/api/v1/auth/**",
+            "/health", "/api/v1/health"
         };
     }
 }
