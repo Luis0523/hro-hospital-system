@@ -192,11 +192,15 @@ export default function AgendaPanel({
                         >
                           <span className="min-w-0">
                             <span className="block truncate text-title-sm text-on-surface">
-                              {cupo.clinicaNombre}
+                              {cupo.clinicaNombre ?? cupo.subespecialidadNombre ?? 'Clínica'}
                             </span>
                             <span className="block truncate text-label-sm text-on-surface-variant">
-                              {cupo.medicoNombre} • {cupo.horaInicio?.slice(0, 5)}–
-                              {cupo.horaFin?.slice(0, 5)}
+                              {[
+                                cupo.medicoNombre,
+                                `${cupo.horaInicio?.slice(0, 5)}–${cupo.horaFin?.slice(0, 5)}`,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')}
                             </span>
                           </span>
                           <span

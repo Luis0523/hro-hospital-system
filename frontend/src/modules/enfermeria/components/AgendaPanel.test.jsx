@@ -38,6 +38,24 @@ describe('AgendaPanel', () => {
     expect(screen.getByRole('button', { name: /Cardiología/ })).toBeDisabled()
   })
 
+  it('usa el nombre de subespecialidad cuando el backend no envía clinicaNombre', () => {
+    const cuposReales = [
+      {
+        id: 'uuid-cupo',
+        subespecialidadNombre: 'Cardiología Clínica',
+        horaInicio: '08:00:00',
+        horaFin: '12:00:00',
+        cuposDisponibles: 6,
+        disponible: true,
+      },
+    ]
+
+    render(<AgendaPanel abierto fecha="2026-09-28" cupos={cuposReales} onCerrar={() => {}} />)
+
+    expect(screen.getByText('Cardiología Clínica')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cardiología Clínica/ })).toBeEnabled()
+  })
+
   it('deshabilita "Agendar cita" sin paciente ni cupo seleccionado', () => {
     render(<AgendaPanel abierto fecha="2026-09-20" cupos={CUPOS} onCerrar={() => {}} />)
 

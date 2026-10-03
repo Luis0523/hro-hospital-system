@@ -27,27 +27,35 @@ function filas() {
 }
 
 describe('TablaTurnos', () => {
-  it('renderiza solo los encabezados turno actual y consultorio por sección', () => {
+  it('renderiza los encabezados de cada columna por sección', () => {
     render(
       <TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />,
     )
 
     expect(screen.queryByRole('columnheader', { name: /clínica|subespecialidad/i })).toBeNull()
-    expect(screen.getAllByRole('columnheader')).toHaveLength(4)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(8)
     expect(screen.getAllByRole('columnheader', { name: /turno actual/i })).toHaveLength(2)
     expect(screen.getAllByRole('columnheader', { name: /consultorio/i })).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: /siguiente/i })).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: /en espera/i })).toHaveLength(2)
   })
 
-  it('deja turno actual como primera columna y consultorio como segunda', () => {
-    render(<TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />)
+  it('ordena las columnas turno actual, consultorio, siguiente y en espera', () => {
+    render(
+      <TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />,
+    )
 
     const encabezados = screen.getAllByRole('columnheader')
 
     expect(encabezados.map((th) => th.textContent)).toEqual([
       'Turno actual',
       'Consultorio',
+      'Siguiente',
+      'En espera',
       'Turno actual',
       'Consultorio',
+      'Siguiente',
+      'En espera',
     ])
   })
 
@@ -97,13 +105,11 @@ describe('TablaTurnos', () => {
     ])
   })
 
-  it('no muestra clínica, nivel ni el siguiente turno', () => {
+  it('no muestra clínica ni nivel en las filas', () => {
     render(<TablaTurnos asignaciones={[asignacion(1), asignacion(2)]} />)
 
     expect(screen.queryByText(/Clínica/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
-    expect(screen.queryByText('#202')).not.toBeInTheDocument()
-    expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
   })
 })
 
