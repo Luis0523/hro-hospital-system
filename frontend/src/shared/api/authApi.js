@@ -10,15 +10,16 @@ const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8090
 const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'hro'
 const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'hro-frontend'
 
-/** Roles operativos reconocidos por el sistema. */
-export const ROLES_CONOCIDOS = [
-  'personal_citas',
-  'enfermeria',
-  'medico',
-  'administrador',
-  'archivo',
-  'jefe_enfermeria',
-]
+/**
+ * Roles internos de Keycloak que NO representan un rol operativo del SIGHO.
+ * Cualquier otro rol del realm (incluidos roles nuevos como "tecnico") se
+ * considera válido, de modo que no haya que tocar código al crear roles.
+ */
+const ROLES_IGNORADOS = new Set(['offline_access', 'uma_authorization'])
+
+function esRolOperativo(rol) {
+  return typeof rol === 'string' && !ROLES_IGNORADOS.has(rol) && !rol.startsWith('default-roles-')
+}
 
 /** Ruta inicial de cada rol. */
 export function inicioPorRol(rol) {
@@ -55,7 +56,7 @@ function decodificarJwt(token) {
 export function usuarioDesdeToken(token) {
   const claims = decodificarJwt(token)
   const roles = Array.isArray(claims?.realm_access?.roles) ? claims.realm_access.roles : []
-  const rol = roles.find((candidato) => ROLES_CONOCIDOS.includes(candidato)) || roles[0] || null
+  const rol = roles.find(esRolOperativo) || null
   return {
     idExterno: claims.preferred_username || claims.sub,
     nombre: claims.name || claims.preferred_username || '',

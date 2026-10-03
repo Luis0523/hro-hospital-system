@@ -12,7 +12,7 @@ const CUENTAS_DEMO = [
 export default function LoginPage() {
   const navigate = useNavigate()
   const { autenticado, usuario, iniciarSesionConCredenciales } = useAuth()
-  const { inicioSegunRol } = useAcceso()
+  const { inicioSegunRol, recargar } = useAcceso()
 
   const [identificador, setIdentificador] = useState('')
   const [password, setPassword] = useState('')
@@ -35,6 +35,8 @@ export default function LoginPage() {
     setEnviando(true)
     try {
       const usuarioFinal = await iniciarSesionConCredenciales(identificador.trim(), password)
+      // Recargar páginas por rol (por si se configuró un rol mientras la app ya estaba abierta).
+      await recargar()
       navigate(inicioSegunRol(usuarioFinal.rol), { replace: true })
     } catch (fallo) {
       setError(

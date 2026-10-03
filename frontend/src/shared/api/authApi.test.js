@@ -32,6 +32,16 @@ describe('usuarioDesdeToken', () => {
     expect(usuarioDesdeToken(token).rol).toBe('rol_raro')
   })
 
+  it('reconoce roles nuevos creados en Keycloak e ignora los internos', () => {
+    const token = tokenCon({
+      preferred_username: 'lufi',
+      realm_access: {
+        roles: ['default-roles-hro', 'tecnico', 'offline_access', 'uma_authorization'],
+      },
+    })
+    expect(usuarioDesdeToken(token).rol).toBe('tecnico')
+  })
+
   it('cae a sub cuando no hay preferred_username', () => {
     const token = tokenCon({ sub: 'abc-123', realm_access: { roles: ['enfermeria'] } })
     expect(usuarioDesdeToken(token).idExterno).toBe('abc-123')
