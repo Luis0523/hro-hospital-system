@@ -6,7 +6,7 @@ import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import LoginPage from '@/modules/login/pages/LoginPage.jsx'
-import ProtectedRoute from './ProtectedRoute.jsx'
+import RutaPrivada from './RutaPrivada.jsx'
 import RequiereEstacion from './RequiereEstacion.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
@@ -27,55 +27,57 @@ import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
 export default function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/enfermeria" replace />} />
+      {/* Rutas públicas */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
+      <Route path="/tablero" element={<TableroPage />} />
 
-      <Route
-        path="/enfermeria"
-        element={
-          <ProtectedRoute>
+      {/* Rutas privadas: requieren sesión (guard global) */}
+      <Route element={<RutaPrivada />}>
+        <Route path="/" element={<Navigate to="/enfermeria" replace />} />
+
+        <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
+        <Route
+          path="/enfermeria"
+          element={
             <RequiereEstacion>
               <EnfermeriaPage />
             </RequiereEstacion>
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
-      <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
-      <Route path="/login" element={<LoginPage />} />
+          }
+        />
 
-      <Route path="/archivo" element={<ArchivoPage />} />
-      <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
-      <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
+        <Route path="/archivo" element={<ArchivoPage />} />
+        <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
+        <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
 
-      <Route path="/administracion" element={<AdministracionLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="usuarios" element={<UsuariosPage />} />
-        <Route path="clinicas" element={<ClinicasPage />} />
-        <Route path="cupos" element={<CuposPage />} />
-        <Route path="calendario" element={<CalendarioPage />} />
-        <Route path="reportes" element={<ReportesPage />} />
-        <Route path="auditoria" element={<AuditoriaPage />} />
-        <Route path="*" element={<Navigate to="/administracion" replace />} />
+        <Route path="/administracion" element={<AdministracionLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="clinicas" element={<ClinicasPage />} />
+          <Route path="cupos" element={<CuposPage />} />
+          <Route path="calendario" element={<CalendarioPage />} />
+          <Route path="reportes" element={<ReportesPage />} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
+          <Route path="*" element={<Navigate to="/administracion" replace />} />
+        </Route>
+
+        <Route
+          path="/jefe-enfermeria"
+          element={
+            <RequiereRol>
+              <JefeEnfermeriaLayout />
+            </RequiereRol>
+          }
+        >
+          <Route index element={<CroquisPage />} />
+          <Route path="horarios" element={<HorariosPage />} />
+          <Route path="estaciones" element={<EstacionesJefePage />} />
+          <Route path="reportes" element={<ReportesJefePage />} />
+          <Route path="*" element={<Navigate to="/jefe-enfermeria" replace />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-
-      <Route path="/tablero" element={<TableroPage />} />
-
-      <Route
-        path="/jefe-enfermeria"
-        element={
-          <RequiereRol>
-            <JefeEnfermeriaLayout />
-          </RequiereRol>
-        }
-      >
-        <Route index element={<CroquisPage />} />
-        <Route path="horarios" element={<HorariosPage />} />
-        <Route path="estaciones" element={<EstacionesJefePage />} />
-        <Route path="reportes" element={<ReportesJefePage />} />
-        <Route path="*" element={<Navigate to="/jefe-enfermeria" replace />} />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/enfermeria" replace />} />
     </Routes>
   )
 }
