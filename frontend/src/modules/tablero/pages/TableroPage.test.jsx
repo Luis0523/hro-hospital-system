@@ -220,8 +220,9 @@ describe('TableroPage', () => {
     const primera = screen.getByTestId('fila-turno-1')
     expect(within(primera).getByText('#007')).toBeInTheDocument()
     expect(within(primera).getByText('201')).toBeInTheDocument()
-    // La tabla nunca muestra turnoSiguiente; la franja inferior sí puede mostrarlo.
-    expect(within(primera).queryByText('#008')).not.toBeInTheDocument()
+    // La tabla muestra también el siguiente turno de cada consultorio.
+    expect(within(primera).getByText('#008')).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: /en espera/i }).length).toBeGreaterThan(0)
   })
 
   it('muestra un guion cuando no hay turno actual', async () => {
@@ -240,7 +241,12 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-9')
-    expect(within(fila).getByText('—')).toBeInTheDocument()
+    const [turno, consultorio, siguiente, cola] = within(fila).getAllByRole('cell')
+
+    expect(turno).toHaveTextContent('—')
+    expect(consultorio).toHaveTextContent('401')
+    expect(siguiente).toHaveTextContent('—')
+    expect(cola).toHaveTextContent('—')
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
@@ -422,7 +428,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
 
     const fila = await screen.findByTestId('fila-turno-7')
-    expect(within(fila).getByText('—')).toBeInTheDocument()
+    expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })

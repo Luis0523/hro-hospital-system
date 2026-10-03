@@ -8,8 +8,10 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
     <table className="mx-auto w-full max-w-2xl table-fixed border-collapse text-center">
       <caption className="sr-only">{etiqueta ?? 'Turnos por consultorio'}</caption>
       <colgroup>
-        <col style={{ width: '58%' }} />
-        <col style={{ width: '42%' }} />
+        <col style={{ width: '30%' }} />
+        <col style={{ width: '24%' }} />
+        <col style={{ width: '20%' }} />
+        <col style={{ width: '26%' }} />
       </colgroup>
       <thead>
         <tr>
@@ -18,6 +20,12 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
           </th>
           <th scope="col" className={CLASE_ENCABEZADO}>
             Consultorio
+          </th>
+          <th scope="col" className={CLASE_ENCABEZADO}>
+            Siguiente
+          </th>
+          <th scope="col" className={CLASE_ENCABEZADO}>
+            En espera
           </th>
         </tr>
       </thead>

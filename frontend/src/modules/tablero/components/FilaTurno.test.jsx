@@ -9,6 +9,7 @@ const ASIGNACION = {
   subespecialidadNombre: 'Pediatría General',
   turnoActual: 7,
   turnoSiguiente: 8,
+  turnosEnEspera: [8, 9],
   ultimaActualizacion: '2026-09-20T08:05:32-06:00',
 }
 
@@ -23,26 +24,29 @@ function renderFila(asignacion) {
 }
 
 function celdas() {
-  return within(screen.getByTestId(`fila-turno-${ASIGNACION.asignacionDiariaEspacioId}`)).getAllByRole(
-    'cell',
-  )
+  return within(
+    screen.getByTestId(`fila-turno-${ASIGNACION.asignacionDiariaEspacioId}`),
+  ).getAllByRole('cell')
 }
 
 describe('FilaTurno', () => {
-  it('muestra turno actual y consultorio en ese orden', () => {
+  it('muestra turno actual, consultorio, siguiente y cola en ese orden', () => {
     renderFila(ASIGNACION)
 
-    const [turno, consultorio] = celdas()
+    const [turno, consultorio, siguiente, cola] = celdas()
 
     expect(turno).toHaveTextContent('#007')
     expect(consultorio).toHaveTextContent('201')
+    expect(siguiente).toHaveTextContent('#008')
+    expect(cola).toHaveTextContent('#008')
+    expect(cola).toHaveTextContent('#009')
   })
 
   it('no muestra la subespecialidad aunque venga en el objeto', () => {
     renderFila(ASIGNACION)
 
     expect(screen.queryByText('Pediatría General')).not.toBeInTheDocument()
-    expect(celdas()).toHaveLength(2)
+    expect(celdas()).toHaveLength(4)
   })
 
   it('no muestra el nivel aunque venga en el objeto', () => {
@@ -52,11 +56,15 @@ describe('FilaTurno', () => {
     expect(screen.queryByText('Nivel 2')).not.toBeInTheDocument()
   })
 
-  it('no muestra el siguiente turno en la vista normal', () => {
-    renderFila(ASIGNACION)
+  it('muestra un guion en la cola cuando no hay turnos en espera', () => {
+    renderFila({ ...ASIGNACION, turnosEnEspera: [] })
 
-    expect(screen.queryByText('Siguiente turno')).not.toBeInTheDocument()
-    expect(screen.queryByText('#008')).not.toBeInTheDocument()
+    const [turno, consultorio, siguiente, cola] = celdas()
+
+    expect(turno).toHaveTextContent('#007')
+    expect(consultorio).toHaveTextContent('201')
+    expect(siguiente).toHaveTextContent('#008')
+    expect(cola).toHaveTextContent('—')
   })
 
   it('no renderiza datos personales aunque el objeto los incluya', () => {
@@ -87,10 +95,14 @@ describe('FilaTurno', () => {
       turnoActual: null,
     })
 
-    const [turno, consultorio] = within(screen.getByTestId('fila-turno-9')).getAllByRole('cell')
+    const [turno, consultorio, siguiente, cola] = within(
+      screen.getByTestId('fila-turno-9'),
+    ).getAllByRole('cell')
 
     expect(turno).toHaveTextContent('—')
     expect(consultorio).toHaveTextContent('—')
+    expect(siguiente).toHaveTextContent('—')
+    expect(cola).toHaveTextContent('—')
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
   })
 })

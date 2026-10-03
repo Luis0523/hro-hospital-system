@@ -6,6 +6,7 @@ export const asignacionesMock = [
     subespecialidadNombre: 'Pediatría General',
     turnoActual: 7,
     turnoSiguiente: 8,
+    turnosEnEspera: [8, 9],
     ultimaActualizacion: '2026-09-20T08:05:32-06:00',
   },
   {
@@ -15,6 +16,7 @@ export const asignacionesMock = [
     subespecialidadNombre: 'Medicina General',
     turnoActual: 14,
     turnoSiguiente: 15,
+    turnosEnEspera: [15, 16],
     ultimaActualizacion: '2026-09-20T08:06:10-06:00',
   },
   {
@@ -24,6 +26,7 @@ export const asignacionesMock = [
     subespecialidadNombre: 'Cardiología',
     turnoActual: 3,
     turnoSiguiente: 4,
+    turnosEnEspera: [4],
     ultimaActualizacion: '2026-09-20T08:04:48-06:00',
   },
   {
@@ -33,6 +36,7 @@ export const asignacionesMock = [
     subespecialidadNombre: 'Traumatología',
     turnoActual: 21,
     turnoSiguiente: 22,
+    turnosEnEspera: [22, 23],
     ultimaActualizacion: '2026-09-20T08:06:55-06:00',
   },
 ]
@@ -59,6 +63,7 @@ export function generarAsignacionesVolumen(cantidad, { idBase = 1 } = {}) {
       subespecialidadNombre: `Clínica ${String(numero).padStart(3, '0')}`,
       turnoActual,
       turnoSiguiente: turnoActual + 1,
+      turnosEnEspera: [turnoActual + 1, turnoActual + 2],
       ultimaActualizacion: '2026-09-20T08:00:00-06:00',
     }
   })
