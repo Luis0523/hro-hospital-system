@@ -5,6 +5,7 @@ import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
+import LoginPage from '@/modules/login/pages/LoginPage.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import RequiereEstacion from './RequiereEstacion.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
@@ -40,6 +41,7 @@ export default function AppRouter() {
       />
       <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
       <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
+      <Route path="/login" element={<LoginPage />} />
 
       <Route path="/archivo" element={<ArchivoPage />} />
       <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />

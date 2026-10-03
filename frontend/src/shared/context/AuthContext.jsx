@@ -1,8 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { autenticar } from '@/shared/api/authApi.js'
 
-// Identidad simulada (modo dev, sin auth real). Se puede fijar por variables de
-// entorno para probar áreas con otro rol, p. ej. el área de Jefe de Enfermería
-// (VITE_USUARIO_ID=jefe-enfermeria-01, VITE_USUARIO_ROL=jefe_enfermeria).
+// Modo de autenticación: 'mock' (identidad simulada, dev/tests) o 'keycloak'
+// (login real contra Keycloak con formulario propio).
+// En modo test (Vitest) siempre se usa mock, igual que con VITE_USE_MOCK.
+export const MODO_AUTH =
+  import.meta.env.MODE === 'test' ? 'mock' : import.meta.env.VITE_AUTH_MODE || 'mock'
+
+// Identidad simulada (modo mock). Se puede fijar por variables de entorno para
+// probar áreas con otro rol, p. ej. Jefe de Enfermería.
 const USUARIO_BASE = {
   id: 2,
   idExterno: 'enfermeria-01',
@@ -20,14 +26,12 @@ const IDENTIDAD_ENV = {
   terminal: import.meta.env.VITE_USUARIO_TERMINAL,
 }
 
-// La identidad por entorno aplica solo fuera de tests (en tests se usa la base,
-// para que los tests no dependan del `.env` local).
-const APLICAR_ENV = import.meta.env.MODE !== 'test'
+// La identidad por entorno aplica solo fuera de tests y en modo mock.
+const APLICAR_ENV = import.meta.env.MODE !== 'test' && MODO_AUTH === 'mock'
 const envOverrides = APLICAR_ENV
   ? Object.fromEntries(Object.entries(IDENTIDAD_ENV).filter(([, valor]) => valor))
   : {}
 
-// Si el entorno fija identidad, manda sobre lo guardado en localStorage.
 const IDENTIDAD_FIJADA = APLICAR_ENV && Object.keys(envOverrides).length > 0
 
 const USUARIO_DEV = { ...USUARIO_BASE, ...envOverrides }
@@ -55,15 +59,30 @@ function sesionActiva() {
   }
 }
 
+function autenticadoInicial() {
+  if (!sesionActiva()) return false
+  // En modo Keycloak se exige un token guardado; en mock siempre hay sesión.
+  if (MODO_AUTH === 'keycloak') {
+    try {
+      return Boolean(localStorage.getItem('hro_token'))
+    } catch {
+      return false
+    }
+  }
+  return true
+}
+
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(leerUsuario)
-  const [autenticado, setAutenticado] = useState(sesionActiva)
-  const [token, setToken] = useState(() => localStorage.getItem('hro_token') || TOKEN_DEV)
+  const [autenticado, setAutenticado] = useState(autenticadoInicial)
+  const [token, setToken] = useState(
+    () => localStorage.getItem('hro_token') || (MODO_AUTH === 'mock' ? TOKEN_DEV : null),
+  )
 
   useEffect(() => {
     if (!autenticado) return
     localStorage.setItem('hro_usuario', JSON.stringify(usuario))
-    localStorage.setItem('hro_token', token)
+    if (token) localStorage.setItem('hro_token', token)
   }, [usuario, token, autenticado])
 
   const cerrarSesion = useCallback(() => {
@@ -80,13 +99,28 @@ export function AuthProvider({ children }) {
     setAutenticado(true)
   }, [])
 
+  /** Login real (modo Keycloak): canjea credenciales y guarda token + identidad. */
+  const iniciarSesionConCredenciales = useCallback(async (username, password) => {
+    const { token: nuevoToken, usuario: identidad } = await autenticar({ username, password })
+    const usuarioFinal = { ...USUARIO_BASE, ...identidad }
+    localStorage.setItem(CLAVE_SESION, 'activa')
+    localStorage.setItem('hro_token', nuevoToken)
+    localStorage.setItem('hro_usuario', JSON.stringify(usuarioFinal))
+    setUsuario(usuarioFinal)
+    setToken(nuevoToken)
+    setAutenticado(true)
+    return usuarioFinal
+  }, [])
+
   const value = {
     usuario,
     usuarioId: usuario.id,
     token,
     autenticado,
+    modoAuth: MODO_AUTH,
     cerrarSesion,
     iniciarSesion,
+    iniciarSesionConCredenciales,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
