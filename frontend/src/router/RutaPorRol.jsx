@@ -1,31 +1,26 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
-import { inicioPorRol } from '@/shared/api/authApi.js'
+import { useAcceso } from '@/shared/context/AccesoContext.jsx'
 
 /**
- * Guard de rol por área: además de exigir sesión, verifica que el rol del token
- * tenga permitido el área. Si no, redirige a la pantalla propia del rol (o a
- * "sin acceso" si su rol no corresponde a ninguna área).
+ * Guard de acceso por área: exige sesión y, en modo keycloak, que el rol del
+ * token tenga permitida el área según la configuración (rol → páginas).
+ * Si no, redirige a la pantalla inicial del rol (o a "sin acceso").
  *
- * En modo mock/test no se aplica (para no romper el desarrollo ni las pruebas);
- * en modo keycloak sí, que es donde los roles vienen del token.
+ * En modo mock/test no se aplica, para no romper el desarrollo ni las pruebas.
  */
-export default function RutaPorRol({ roles }) {
+export default function RutaPorRol({ area }) {
   const { autenticado, usuario, modoAuth } = useAuth()
+  const { puedeAcceder, inicioSegunRol } = useAcceso()
   const location = useLocation()
 
   if (!autenticado) {
     return <Navigate to="/login" replace />
   }
 
-  if (modoAuth === 'keycloak' && Array.isArray(roles) && !roles.includes(usuario?.rol)) {
-    const destino = inicioPorRol(usuario?.rol)
-    return (
-      <Navigate
-        to={destino !== location.pathname ? destino : '/sin-acceso'}
-        replace
-      />
-    )
+  if (modoAuth === 'keycloak' && area && !puedeAcceder(usuario?.rol, area)) {
+    const destino = inicioSegunRol(usuario?.rol)
+    return <Navigate to={destino !== location.pathname ? destino : '/sin-acceso'} replace />
   }
 
   return <Outlet />

@@ -14,6 +14,7 @@ import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
 import UsuariosPage from '@/modules/administracion/pages/UsuariosPage.jsx'
+import RolesPaginasPage from '@/modules/administracion/pages/RolesPaginasPage.jsx'
 import ClinicasPage from '@/modules/administracion/pages/ClinicasPage.jsx'
 import CuposPage from '@/modules/administracion/pages/CuposPage.jsx'
 import CalendarioPage from '@/modules/administracion/pages/CalendarioPage.jsx'
@@ -25,17 +26,13 @@ import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
 import EstacionesJefePage from '@/modules/jefeEnfermeria/pages/EstacionesPage.jsx'
 import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
-import { inicioPorRol } from '@/shared/api/authApi.js'
+import { useAcceso } from '@/shared/context/AccesoContext.jsx'
 
-// Roles autorizados por área. `administrador` es transversal.
-const ROLES_ENFERMERIA = ['enfermeria', 'medico', 'personal_citas', 'administrador']
-const ROLES_ARCHIVO = ['archivo', 'administrador']
-const ROLES_ADMINISTRACION = ['administrador']
-const ROLES_JEFE_ENFERMERIA = ['jefe_enfermeria', 'administrador']
-
+/** Pantalla inicial según las páginas configuradas para el rol. */
 function InicioPorRol() {
   const { usuario } = useAuth()
-  return <Navigate to={inicioPorRol(usuario?.rol)} replace />
+  const { inicioSegunRol } = useAcceso()
+  return <Navigate to={inicioSegunRol(usuario?.rol)} replace />
 }
 
 export default function AppRouter() {
@@ -47,11 +44,11 @@ export default function AppRouter() {
       <Route path="/sin-acceso" element={<SinAccesoPage />} />
       <Route path="/tablero" element={<TableroPage />} />
 
-      {/* Rutas privadas: requieren sesión (guard global) y rol por área */}
+      {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>
         <Route path="/" element={<InicioPorRol />} />
 
-        <Route element={<RutaPorRol roles={ROLES_ENFERMERIA} />}>
+        <Route element={<RutaPorRol area="enfermeria" />}>
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
           <Route
             path="/enfermeria"
@@ -63,16 +60,17 @@ export default function AppRouter() {
           />
         </Route>
 
-        <Route element={<RutaPorRol roles={ROLES_ARCHIVO} />}>
+        <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
           <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
           <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
         </Route>
 
-        <Route element={<RutaPorRol roles={ROLES_ADMINISTRACION} />}>
+        <Route element={<RutaPorRol area="administracion" />}>
           <Route path="/administracion" element={<AdministracionLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="usuarios" element={<UsuariosPage />} />
+            <Route path="roles" element={<RolesPaginasPage />} />
             <Route path="clinicas" element={<ClinicasPage />} />
             <Route path="cupos" element={<CuposPage />} />
             <Route path="calendario" element={<CalendarioPage />} />
@@ -82,7 +80,7 @@ export default function AppRouter() {
           </Route>
         </Route>
 
-        <Route element={<RutaPorRol roles={ROLES_JEFE_ENFERMERIA} />}>
+        <Route element={<RutaPorRol area="jefe_enfermeria" />}>
           <Route path="/jefe-enfermeria" element={<JefeEnfermeriaLayout />}>
             <Route index element={<CroquisPage />} />
             <Route path="horarios" element={<HorariosPage />} />

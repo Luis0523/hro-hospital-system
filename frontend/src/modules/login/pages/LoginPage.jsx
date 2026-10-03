@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
-import { inicioPorRol } from '@/shared/api/authApi.js'
+import { useAcceso } from '@/shared/context/AccesoContext.jsx'
 
 const CUENTAS_DEMO = [
   { etiqueta: 'Archivo', icono: 'folder_shared', username: 'archivo01', password: 'archivo' },
@@ -12,6 +12,7 @@ const CUENTAS_DEMO = [
 export default function LoginPage() {
   const navigate = useNavigate()
   const { autenticado, usuario, iniciarSesionConCredenciales } = useAuth()
+  const { inicioSegunRol } = useAcceso()
 
   const [identificador, setIdentificador] = useState('')
   const [password, setPassword] = useState('')
@@ -23,9 +24,9 @@ export default function LoginPage() {
   // Si ya hay sesión, ir directo a la pantalla del rol.
   useEffect(() => {
     if (autenticado) {
-      navigate(inicioPorRol(usuario?.rol), { replace: true })
+      navigate(inicioSegunRol(usuario?.rol), { replace: true })
     }
-  }, [autenticado, usuario, navigate])
+  }, [autenticado, usuario, navigate, inicioSegunRol])
 
   async function manejarEnvio(evento) {
     evento.preventDefault()
@@ -34,7 +35,7 @@ export default function LoginPage() {
     setEnviando(true)
     try {
       const usuarioFinal = await iniciarSesionConCredenciales(identificador.trim(), password)
-      navigate(inicioPorRol(usuarioFinal.rol), { replace: true })
+      navigate(inicioSegunRol(usuarioFinal.rol), { replace: true })
     } catch (fallo) {
       setError(
         fallo.status === 401

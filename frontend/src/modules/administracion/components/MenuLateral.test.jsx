@@ -13,10 +13,10 @@ function renderMenu(initialEntries = ['/administracion'], props = {}) {
 }
 
 describe('MenuLateral', () => {
-  it('contiene las siete opciones con sus URLs', () => {
+  it('contiene las ocho opciones con sus URLs', () => {
     renderMenu()
 
-    expect(ITEMS_ADMINISTRACION).toHaveLength(7)
+    expect(ITEMS_ADMINISTRACION).toHaveLength(8)
 
     for (const item of ITEMS_ADMINISTRACION) {
       expect(screen.getByRole('link', { name: item.etiqueta })).toHaveAttribute('href', item.to)
