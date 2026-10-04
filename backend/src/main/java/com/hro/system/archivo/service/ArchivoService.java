@@ -426,9 +426,19 @@ public class ArchivoService {
     public List<ExpedienteCicloResponseDTO> listarCola(String estado, LocalDate fecha, Long subespecialidadId) {
         String estadoNormalizado = (estado != null && !estado.isBlank()) ? estado.trim() : null;
         Collection<Long> areas = resolverAreas(subespecialidadId);
-        List<ExpedienteCiclo> ciclos = areas.isEmpty()
-                ? expedienteCicloRepository.buscarCola(estadoNormalizado, fecha)
-                : expedienteCicloRepository.buscarColaPorArea(estadoNormalizado, fecha, areas);
+        boolean conFecha = fecha != null;
+
+        List<ExpedienteCiclo> ciclos;
+        if (areas.isEmpty()) {
+            ciclos = conFecha
+                    ? expedienteCicloRepository.buscarColaConFecha(estadoNormalizado, fecha)
+                    : expedienteCicloRepository.buscarColaSinFecha(estadoNormalizado);
+        } else {
+            ciclos = conFecha
+                    ? expedienteCicloRepository.buscarColaPorAreaConFecha(estadoNormalizado, fecha, areas)
+                    : expedienteCicloRepository.buscarColaPorAreaSinFecha(estadoNormalizado, areas);
+        }
+
         return ciclos.stream()
                 .map(this::mapCiclo)
                 .toList();

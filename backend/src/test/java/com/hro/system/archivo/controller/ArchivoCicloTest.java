@@ -423,6 +423,22 @@ class ArchivoCicloTest {
     }
 
     @Test
+    @DisplayName("La cola de ciclos se filtra por fecha (PostgreSQL)")
+    void testColaConFecha() throws Exception {
+        Long ubicacionId = crearUbicacion("M", "1", "2");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        checkIn(expedienteId, cita.getId());
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("fecha", "2030-01-01")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
     @DisplayName("La cola de ciclos se filtra por área (subespecialidad)")
     void testColaFiltradaPorArea() throws Exception {
         Long ubicacionId = crearUbicacion("K", "1", "1");

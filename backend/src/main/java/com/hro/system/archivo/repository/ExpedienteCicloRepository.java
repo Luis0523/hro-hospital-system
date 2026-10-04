@@ -38,11 +38,22 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
 
     @Query("""
             SELECT ec FROM ExpedienteCiclo ec
+              JOIN ec.cita c
             WHERE (:estado IS NULL OR ec.estadoActual = :estado)
-              AND (:fecha IS NULL OR ec.cita.cupoDiario.fecha = :fecha)
             ORDER BY ec.creadoEn ASC
             """)
-    List<ExpedienteCiclo> buscarCola(@Param("estado") String estado, @Param("fecha") LocalDate fecha);
+    List<ExpedienteCiclo> buscarColaSinFecha(@Param("estado") String estado);
+
+    @Query("""
+            SELECT ec FROM ExpedienteCiclo ec
+              JOIN ec.cita c
+              JOIN c.cupoDiario cd
+            WHERE (:estado IS NULL OR ec.estadoActual = :estado)
+              AND cd.fecha = :fecha
+            ORDER BY ec.creadoEn ASC
+            """)
+    List<ExpedienteCiclo> buscarColaConFecha(@Param("estado") String estado,
+                                             @Param("fecha") LocalDate fecha);
 
     /**
      * Cola de trabajo filtrada por área(s) de atención (subespecialidades de la cita).
@@ -55,13 +66,25 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
               JOIN c.cupoDiario cd
               JOIN cd.subespecialidadHorario sh
             WHERE (:estado IS NULL OR ec.estadoActual = :estado)
-              AND (:fecha IS NULL OR cd.fecha = :fecha)
               AND sh.subespecialidad.id IN :areaIds
             ORDER BY ec.creadoEn ASC
             """)
-    List<ExpedienteCiclo> buscarColaPorArea(@Param("estado") String estado,
-                                            @Param("fecha") LocalDate fecha,
-                                            @Param("areaIds") Collection<Long> areaIds);
+    List<ExpedienteCiclo> buscarColaPorAreaSinFecha(@Param("estado") String estado,
+                                                    @Param("areaIds") Collection<Long> areaIds);
+
+    @Query("""
+            SELECT DISTINCT ec FROM ExpedienteCiclo ec
+              JOIN ec.cita c
+              JOIN c.cupoDiario cd
+              JOIN cd.subespecialidadHorario sh
+            WHERE (:estado IS NULL OR ec.estadoActual = :estado)
+              AND cd.fecha = :fecha
+              AND sh.subespecialidad.id IN :areaIds
+            ORDER BY ec.creadoEn ASC
+            """)
+    List<ExpedienteCiclo> buscarColaPorAreaConFecha(@Param("estado") String estado,
+                                                    @Param("fecha") LocalDate fecha,
+                                                    @Param("areaIds") Collection<Long> areaIds);
 
     /**
      * Ciclos de una fecha en estados de salida (localizados o en tránsito de entrega),
