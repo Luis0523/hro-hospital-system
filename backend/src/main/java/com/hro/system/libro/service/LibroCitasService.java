@@ -3,12 +3,17 @@ package com.hro.system.libro.service;
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
+import com.hro.system.common.BusinessException;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.libro.dto.*;
 import com.hro.system.libro.entity.LibroCitasDia;
 import com.hro.system.libro.entity.LibroCitasEspecialidad;
+import com.hro.system.libro.entity.LibroCitasExpediente;
 import com.hro.system.libro.repository.LibroCitasDiaRepository;
+import com.hro.system.libro.repository.LibroCitasExpedienteRepository;
+import com.hro.system.paciente.entity.Paciente;
+import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Digitalización del libro físico de citas: registro diario de contadores y del
@@ -30,7 +39,9 @@ import java.util.List;
 public class LibroCitasService {
 
     private final LibroCitasDiaRepository libroRepository;
+    private final LibroCitasExpedienteRepository libroCitasExpedienteRepository;
     private final SubespecialidadRepository subespecialidadRepository;
+    private final PacienteRepository pacienteRepository;
     private final UsuarioReferenciaRepository usuarioReferenciaRepository;
 
     @Transactional
@@ -112,6 +123,64 @@ public class LibroCitasService {
                         .totalExpedientes(0)
                         .items(List.of())
                         .build());
+    }
+
+    /**
+     * Registra una lista de citas del libro (por expediente individual). Resuelve el paciente a
+     * partir del número de expediente si no se envía {@code pacienteId}. Rechaza duplicados
+     * (misma fecha + subespecialidad + expediente) con 409.
+     */
+    @Transactional
+    public RegistroLibroCitasResponseDTO registrarExpedientes(RegistrarLibroCitasRequestDTO request) {
+        UsuarioReferencia usuario = usuarioActual();
+        Set<String> vistos = new HashSet<>();
+        List<LibroCitasExpediente> aGuardar = new ArrayList<>();
+
+        for (LibroCitasExpedienteItemDTO item : request.getItems()) {
+            String numero = (item.getNumeroExpediente() != null) ? item.getNumeroExpediente().trim() : null;
+            if (numero == null || numero.isBlank()) {
+                throw new BusinessException("El número de expediente es obligatorio");
+            }
+
+            Subespecialidad subespecialidad = subespecialidadRepository.findById(item.getSubespecialidadId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subespecialidad", "id", item.getSubespecialidadId()));
+
+            Paciente paciente = resolverPaciente(item.getPacienteId(), numero);
+
+            String clave = item.getFecha() + "|" + subespecialidad.getId() + "|" + numero;
+            boolean duplicadoEnLote = !vistos.add(clave);
+            boolean duplicadoEnBd = libroCitasExpedienteRepository
+                    .existsByFechaAndSubespecialidadIdAndNumeroExpediente(
+                            item.getFecha(), subespecialidad.getId(), numero);
+            if (duplicadoEnLote || duplicadoEnBd) {
+                throw new ConflictException("El expediente " + numero + " ya está registrado para el "
+                        + item.getFecha() + " en " + subespecialidad.getNombre());
+            }
+
+            aGuardar.add(LibroCitasExpediente.builder()
+                    .numeroExpediente(numero)
+                    .paciente(paciente)
+                    .fecha(item.getFecha())
+                    .subespecialidad(subespecialidad)
+                    .creadoPor(usuario)
+                    .build());
+        }
+
+        libroCitasExpedienteRepository.saveAll(aGuardar);
+        log.info("Libro de citas: {} cita(s) registradas por expediente", aGuardar.size());
+        return RegistroLibroCitasResponseDTO.builder()
+                .total(request.getItems().size())
+                .insertados(aGuardar.size())
+                .build();
+    }
+
+    private Paciente resolverPaciente(UUID pacienteId, String numeroExpediente) {
+        if (pacienteId != null) {
+            return pacienteRepository.findById(pacienteId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Paciente", "id", pacienteId));
+        }
+        return pacienteRepository.findByNumeroExpediente(numeroExpediente)
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente", "numeroExpediente", numeroExpediente));
     }
 
     private void aplicarEspecialidades(LibroCitasDia libro, List<LibroCitasEspecialidadRequestDTO> items) {

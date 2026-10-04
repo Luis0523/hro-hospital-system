@@ -8,6 +8,9 @@ import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.libro.dto.LibroCitasDiaRequestDTO;
 import com.hro.system.libro.dto.LibroCitasEspecialidadRequestDTO;
 import com.hro.system.libro.repository.LibroCitasDiaRepository;
+import com.hro.system.libro.repository.LibroCitasExpedienteRepository;
+import com.hro.system.paciente.entity.Paciente;
+import com.hro.system.paciente.repository.PacienteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -52,13 +56,21 @@ class LibroCitasControllerTest {
     @Autowired
     private EspecialidadRepository especialidadRepository;
 
+    @Autowired
+    private PacienteRepository pacienteRepository;
+
+    @Autowired
+    private LibroCitasExpedienteRepository libroExpedienteRepository;
+
     private static final LocalDate FECHA = LocalDate.of(2026, 11, 10);
 
     private Subespecialidad subespecialidad;
+    private Paciente paciente;
 
     @BeforeEach
     void setUp() {
         libroRepository.deleteAllInBatch();
+        libroExpedienteRepository.deleteAllInBatch();
 
         String suffix = UUID.randomUUID().toString().substring(0, 5);
         Especialidad especialidad = especialidadRepository.save(Especialidad.builder()
@@ -69,6 +81,14 @@ class LibroCitasControllerTest {
                 .especialidad(especialidad)
                 .nombre("Libro Sub " + suffix)
                 .activo(true)
+                .build());
+        paciente = pacienteRepository.save(Paciente.builder()
+                .dpi("DPI-LIBRO-" + suffix)
+                .nombres("Ana")
+                .apellidos("Libro")
+                .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                .sexo("F")
+                .numeroExpediente("1401-" + suffix.substring(0, 2))
                 .build());
     }
 
@@ -171,5 +191,81 @@ class LibroCitasControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalExpedientes", is(0)))
                 .andExpect(jsonPath("$.data.items", hasSize(0)));
+    }
+
+    // ------------------------------------------------------------------
+    // Libro de citas por expediente individual
+    // ------------------------------------------------------------------
+
+    private Map<String, Object> itemExpediente() {
+        return Map.of(
+                "numeroExpediente", paciente.getNumeroExpediente(),
+                "pacienteId", paciente.getId().toString(),
+                "fecha", FECHA.toString(),
+                "subespecialidadId", subespecialidad.getId());
+    }
+
+    private void registrar(Map<String, Object> item) throws Exception {
+        mockMvc.perform(post("/libro-citas/expedientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("items", List.of(item)))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.total", is(1)))
+                .andExpect(jsonPath("$.data.insertados", is(1)));
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes registra la lista de citas")
+    void registrarExpedientes() throws Exception {
+        registrar(itemExpediente());
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes resuelve el paciente por número si falta pacienteId")
+    void registrarSinPacienteId() throws Exception {
+        Map<String, Object> item = Map.of(
+                "numeroExpediente", paciente.getNumeroExpediente(),
+                "fecha", FECHA.toString(),
+                "subespecialidadId", subespecialidad.getId());
+        registrar(item);
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes rechaza duplicados con 409")
+    void registrarDuplicado() throws Exception {
+        registrar(itemExpediente());
+
+        mockMvc.perform(post("/libro-citas/expedientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("items", List.of(itemExpediente())))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes devuelve 404 si el paciente no existe")
+    void registrarPacienteInexistente() throws Exception {
+        Map<String, Object> item = Map.of(
+                "numeroExpediente", "9999-99",
+                "fecha", FECHA.toString(),
+                "subespecialidadId", subespecialidad.getId());
+        mockMvc.perform(post("/libro-citas/expedientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("items", List.of(item)))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes devuelve 404 si la subespecialidad no existe")
+    void registrarSubespecialidadInexistente() throws Exception {
+        Map<String, Object> item = Map.of(
+                "numeroExpediente", paciente.getNumeroExpediente(),
+                "pacienteId", paciente.getId().toString(),
+                "fecha", FECHA.toString(),
+                "subespecialidadId", 999999L);
+        mockMvc.perform(post("/libro-citas/expedientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("items", List.of(item)))))
+                .andExpect(status().isNotFound());
     }
 }

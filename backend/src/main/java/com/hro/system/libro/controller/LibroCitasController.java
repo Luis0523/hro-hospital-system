@@ -4,6 +4,8 @@ import com.hro.system.common.ApiResponse;
 import com.hro.system.libro.dto.ExpedientesEsperadosDTO;
 import com.hro.system.libro.dto.LibroCitasDiaRequestDTO;
 import com.hro.system.libro.dto.LibroCitasDiaResponseDTO;
+import com.hro.system.libro.dto.RegistrarLibroCitasRequestDTO;
+import com.hro.system.libro.dto.RegistroLibroCitasResponseDTO;
 import com.hro.system.libro.service.LibroCitasService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,6 +59,16 @@ public class LibroCitasController {
         LibroCitasDiaResponseDTO response = libroCitasService.crear(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Registro del libro creado exitosamente"));
+    }
+
+    @PostMapping("/expedientes")
+    @Operation(summary = "Registrar citas del libro por expediente",
+            description = "Registra una lista de citas (número de expediente + paciente + fecha + subespecialidad). Resuelve el paciente si no se envía pacienteId. 409 si hay duplicados.")
+    public ResponseEntity<ApiResponse<RegistroLibroCitasResponseDTO>> registrarExpedientes(
+            @Valid @RequestBody RegistrarLibroCitasRequestDTO dto) {
+        RegistroLibroCitasResponseDTO response = libroCitasService.registrarExpedientes(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(response, "Libro de citas guardado exitosamente"));
     }
 
     @PutMapping("/{id}")
