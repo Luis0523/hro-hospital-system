@@ -18,9 +18,10 @@ En este directorio se encuentran los archivos para importar en Postman, Insomnia
      - `09. Reportes (Admin)` (Citas por estado, demanda por especialidad, utilización de cupos)
      - `10. Auditoría (Admin)` (Bitácora con filtros combinados y paginación; solo rol administrador)
      - `11. Horario por Subespecialidad` (Días/horas por subespecialidad — sin médico —; cupos por subespecialidad y reasignación de sala de turno)
+     - `12. Estaciones de Enfermería` (Catálogo de estaciones, asignación de subespecialidades con pertenencia única, bitácora de acceso, cola y tablero por estación)
 2. **`HRO_Local_Environment.postman_environment.json`**:
    - Variables de entorno (`baseUrl`, `citaId`, `turnoId`, `pacienteId`, `dpiEjemplo`).
-   - Variables del modelo V4 (`subespecialidadId`, `espacioFisicoId`, `asignacionId`, `medicoSubespecialidadId`).
+     - Variables del modelo V4 (`subespecialidadId`, `espacioFisicoId`, `asignacionId`, `medicoSubespecialidadId`, `estacionId`).
    - Variables del módulo de Archivo (`expedienteId`, `numeroExpediente`, `expedienteCicloId`, `ubicacionArchivoId`).
    - Variables de autenticación simulada (`usuarioExterno`, `usuarioRol`, `usuarioNombre`).
 

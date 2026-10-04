@@ -12,6 +12,7 @@ export default function SelectorEstacion({
   onSeleccionar,
   onConfirmar,
   usuario,
+  confirmando = false,
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -65,22 +66,26 @@ export default function SelectorEstacion({
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-container text-on-primary">
                       <Icon name="point_of_sale" className="text-[20px]" />
                     </span>
-                    <span className="text-headline-sm text-on-surface">{estacion.terminal}</span>
+                    <span className="text-headline-sm text-on-surface">
+                      {estacion.codigo ?? estacion.terminal}
+                    </span>
                   </div>
-                  <span
-                    className={`rounded px-2 py-0.5 text-label-sm font-semibold capitalize ${
-                      estadoEstilo[estacion.estado] ??
-                      'bg-surface-container text-on-surface-variant'
-                    }`}
-                  >
-                    {estacion.estado}
-                  </span>
+                  {estacion.estado && (
+                    <span
+                      className={`rounded px-2 py-0.5 text-label-sm font-semibold capitalize ${
+                        estadoEstilo[estacion.estado] ??
+                        'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      {estacion.estado}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1 text-body-sm">
                   <p className="flex items-center gap-1 text-on-surface">
                     <Icon name="domain" className="text-[16px] text-primary" />
-                    {estacion.clinicaNombre}
+                    {estacion.nombre ?? estacion.clinicaNombre}
                   </p>
                   <p className="flex items-center gap-1 text-on-surface-variant">
                     <Icon name="location_on" className="text-[16px]" />
@@ -106,9 +111,9 @@ export default function SelectorEstacion({
               ? 'Confirme para entrar a la estación.'
               : 'Seleccione una estación para continuar.'}
           </p>
-          <Button size="lg" disabled={!seleccionada} onClick={onConfirmar}>
+          <Button size="lg" disabled={!seleccionada || confirmando} onClick={onConfirmar}>
             <Icon name="login" className="text-[20px]" />
-            Entrar a la estación
+            {confirmando ? 'Entrando…' : 'Entrar a la estación'}
           </Button>
         </div>
       </footer>

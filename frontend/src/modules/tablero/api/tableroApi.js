@@ -12,6 +12,9 @@ export const CAMPOS_PUBLICOS = [
   'ultimaActualizacion',
   'intentosLlamado',
   'tipoEvento',
+  'pacienteNombre',
+  'turnosEnEspera',
+  'porNombre',
 ]
 
 export const TIPOS_EVENTO = ['LLAMADO', 'ACTUALIZACION']
@@ -109,6 +112,13 @@ function normalizarTipoEvento(valor) {
   return TIPOS_EVENTO.includes(texto) ? texto : null
 }
 
+export function normalizarTurnosEnEspera(valor) {
+  if (!Array.isArray(valor)) return []
+  return valor
+    .map((numero) => Number(numero))
+    .filter((numero) => Number.isInteger(numero) && numero > 0)
+}
+
 export function normalizarEstadoTablero(payload) {
   if (!payload || typeof payload !== 'object') return null
 
@@ -122,6 +132,9 @@ export function normalizarEstadoTablero(payload) {
     ultimaActualizacion: normalizarFecha(payload.ultimaActualizacion),
     intentosLlamado: normalizarIntentosLlamado(payload.intentosLlamado),
     tipoEvento: normalizarTipoEvento(payload.tipoEvento),
+    pacienteNombre: normalizarTexto(payload.pacienteNombre),
+    turnosEnEspera: normalizarTurnosEnEspera(payload.turnosEnEspera),
+    porNombre: payload.porNombre === true,
   }
 
   if (estado.asignacionDiariaEspacioId === null) return null
@@ -143,10 +156,17 @@ export function ordenarAsignaciones(asignaciones = []) {
     )
     if (porEspacio !== 0) return porEspacio
 
-    return String(a.subespecialidadNombre ?? '').localeCompare(
+    const porSubespecialidad = String(a.subespecialidadNombre ?? '').localeCompare(
       String(b.subespecialidadNombre ?? ''),
       'es',
     )
+    if (porSubespecialidad !== 0) return porSubespecialidad
+
+    const idA = Number(a.asignacionDiariaEspacioId)
+    const idB = Number(b.asignacionDiariaEspacioId)
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB
+
+    return 0
   })
 }
 
@@ -181,6 +201,9 @@ export function mapearAsignacionDiaria(dto = {}) {
     ultimaActualizacion: null,
     intentosLlamado: null,
     tipoEvento: null,
+    pacienteNombre: dto?.pacienteNombre ?? null,
+    turnosEnEspera: [],
+    porNombre: false,
   }
 }
 
@@ -219,4 +242,35 @@ export async function obtenerEstadoInicialTablero({
     normalizarListaAsignaciones(lista.map(mapearAsignacionDiaria)),
   )
   return filtrarAsignaciones(asignaciones, permitidas)
+}
+
+/**
+ * Carga inicial del tablero de una estación: `GET /turnos/estacion/{id}/tablero`.
+ * El backend ya devuelve solo las salas de las subespecialidades de la estación.
+ */
+export async function obtenerEstadoInicialEstacion({
+  estacionId,
+  cliente = client,
+  fecha = hoyIso(),
+  modoMock = estaEnModoMock(),
+} = {}) {
+  if (modoMock) {
+    const volumen = resolverVolumenMock()
+    const base =
+      volumen > 0 ? { asignaciones: generarAsignacionesVolumen(volumen) } : estadoInicialMock
+    return ordenarAsignaciones(normalizarListaAsignaciones(base))
+  }
+
+  const cuerpo = await cliente.get(`/turnos/estacion/${estacionId}/tablero`, { params: { fecha } })
+  const lista = extraerListaRespuesta(cuerpo)
+
+  if (lista === null) {
+    const error = new Error(
+      'Respuesta inesperada del servidor al cargar el tablero de la estación.',
+    )
+    error.code = 'RESPUESTA_INESPERADA'
+    throw error
+  }
+
+  return ordenarAsignaciones(normalizarListaAsignaciones(lista))
 }

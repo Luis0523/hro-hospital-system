@@ -3,7 +3,7 @@
 
 **Audiencia:** Desarrolladores de Frontend (React / Angular / Vue / Mobile / Pantallas)  
 **URL Base de la API REST:** `http://localhost:8081/api/v1`  
-**Endpoint WebSocket (STOMP):** `ws://localhost:8081/api/v1/ws`  
+**Endpoint WebSocket (STOMP):** `ws://localhost:8081/api/v1/ws-turnos`  
 **Documentación Interactiva (Swagger UI):** `http://localhost:8081/api/v1/swagger-ui.html`  
 **Especificación OpenAPI JSON:** `http://localhost:8081/api/v1/v3/api-docs`  
 
@@ -148,11 +148,14 @@ POST /api/v1/citas
 Content-Type: application/json
 
 {
-  "pacienteId": 5,
-  "cupoDiarioId": 10,
-  "usuarioId": 1
+  "pacienteId": "9b2a0000-0000-0000-0000-000000000000",
+  "cupoDiarioId": "7c2d0000-0000-0000-0000-000000000000"
 }
 ```
+
+> [!IMPORTANT]
+> `pacienteId` y `cupoDiarioId` son **UUID (string)**, no números. El `pacienteId` proviene de `POST /pacientes` o `GET /pacientes/buscar`; el `cupoDiarioId` de `GET /cupos`. Enviarlos como número (`Number(uuid)` → `NaN` → `null`) provoca `400` con el mensaje genérico *"Error de validación en los campos enviados"*. El `usuarioId` es opcional: si se omite, el backend toma el usuario del header `X-Usuario-Id`.
+
 **Respuesta del Backend:**
 ```json
 {
@@ -197,11 +200,11 @@ POST /api/v1/citas/{citaId}/reprogramar
 Content-Type: application/json
 
 {
-  "nuevoCupoDiarioId": 18,
-  "usuarioId": 1,
+  "nuevoCupoDiarioId": "7c2d0000-0000-0000-0000-000000000000",
   "motivo": "Paciente solicita cambio por viaje de trabajo"
 }
 ```
+* `nuevoCupoDiarioId` es **UUID (string)** (mismo tipo que `cupoDiarioId`). El `usuarioId` es opcional (se toma del header `X-Usuario-Id`).
 * El backend automáticamente libera el cupo anterior, reserva el nuevo y enlaza la cita mediante `cita_origen_id`.
 
 #### 5. Cancelar una Cita
@@ -263,12 +266,13 @@ Content-Type: application/json
 Cuando el médico está listo para el siguiente paciente, presiona el botón **"Llamar Siguiente"** o **"Llamar Turno"**:
 
 ```http
-POST /api/v1/turnos/{turnoId}/llamar?usuarioId=2
+POST /api/v1/turnos/{turnoId}/llamar?usuarioId=2&porNombre=false
 ```
 * **Comportamiento en UI:**
   - El turno pasa a `llamado`.
   - En la pantalla de enfermería inicia un **temporizador regresivo de tiempo de gracia** (por defecto 3 minutos / 180 segundos).
-  - El tablero de la sala de espera empieza a parpadear y emite una alerta sonora.
+  - El tablero de la sala de espera parpadea, muestra el **nombre del paciente** y emite la locución (*"Turno N, paciente …, favor pasar a … consultorio …"*).
+  - Sirve también para **re-llamar** (incrementa `intentosLlamado`). Con `porNombre=true` el tablero anuncia por nombre (útil cuando el paciente no responde al número).
 
 #### 4. Paciente no se presenta tras el llamado (`no_responde`)
 Si el paciente no acude tras agotarse el tiempo de gracia o los reintentos de llamado, el personal presiona **"Marcar No Responde"**:
@@ -340,8 +344,9 @@ Esta aplicación web corre a pantalla completa (*kiosk mode*) en Smart TVs o mon
 
 #### 1. Conexión WebSocket STOMP
 * **Librerías recomendadas:** `@stomp/stompjs` y `sockjs-client`.
-* **Broker URL:** `ws://localhost:8081/api/v1/ws`
+* **Broker URL:** `ws://localhost:8081/api/v1/ws-turnos`
 * **Suscripciones disponibles:**
+  - **Canal por estación (recomendado para cada TV):** `/topic/estacion/{estacionId}`
   - Canal General (todas las asignaciones del día): `/topic/tablero`
   - Canal Específico por asignación diaria (sala + subespecialidad): `/topic/clinica/{asignacionDiariaEspacioId}`
 
@@ -354,11 +359,24 @@ Cada vez que se hace check-in, se llama a un paciente o se cambia un estado, el 
   "espacioNumero": "201",
   "nivel": 2,
   "subespecialidadNombre": "Pediatría General",
+  "subespecialidadId": 5,
+  "especialidadId": 2,
   "turnoActual": 7,
   "turnoSiguiente": 8,
-  "ultimaActualizacion": "2026-09-15T08:05:32-06:00"
+  "ultimaActualizacion": "2026-09-15T08:05:32-06:00",
+  "intentosLlamado": 1,
+  "tipoEvento": "LLAMADO",
+  "pacienteNombre": "Juan Pérez",
+  "turnosEnEspera": [9, 10],
+  "porNombre": false
 }
 ```
+
+> - `tipoEvento`: `LLAMADO` cuando la acción es llamar (incluye `intentosLlamado`); `ACTUALIZACION` en el resto.
+> - `pacienteNombre`: paciente del **turno actual** llamado (para llamar por nombre).
+> - `turnosEnEspera`: números de turno **en espera** de esa sala (cola visible en el tablero).
+> - `porNombre`: `true` si el llamado se pidió por nombre.
+> - En modo estación la TV se suscribe a `/topic/estacion/{id}` y carga su estado inicial con `GET /turnos/estacion/{id}/tablero`.
 
 #### 3. Recomendaciones de UX para la Pantalla de Turnos
 1. **Doble Indicador:** Mostrar claramente en números gigantes (ej. font-size 96px):
@@ -487,3 +505,92 @@ sequenceDiagram
 ## 5. Contacto y Recursos para Desarrollo
 - **Colección Postman / Swagger:** Disponible en `http://localhost:8081/api/v1/swagger-ui.html`.
 - **Canal de Preguntas Backend:** Para dudas o ajustes en contratos DTO, revisar los archivos en `backend/src/main/java/com/hro/system/`.
+
+---
+
+## 6. Estaciones de Enfermería (tableros por área)
+
+Una **estación de enfermería** es un puesto de trabajo que agrupa **subespecialidades**. Su tablero
+muestra únicamente los turnos de su área. La pertenencia es **única**: una subespecialidad pertenece
+a una sola estación.
+
+### 6.1 Catálogo de estaciones
+| Método | Ruta | Descripción | Roles |
+| --- | --- | --- | --- |
+| GET | `/estaciones?estado=activos\|inactivos\|todos` | Lista estaciones con sus subespecialidades | autenticado |
+| GET | `/estaciones/{id}` | Detalle | autenticado |
+| GET | `/estaciones/{id}/subespecialidades` | Subespecialidades de la estación | autenticado |
+| GET | `/estaciones/{id}/subespecialidades-activas?fecha=YYYY-MM-DD` | Filtra por horario activo del día | autenticado |
+| POST | `/estaciones` | Crear | jefe_enfermeria / administrador |
+| PUT | `/estaciones/{id}` | Actualizar | jefe_enfermeria / administrador |
+| PUT | `/estaciones/{id}/subespecialidades` | Asignar subespecialidades (reemplaza el conjunto) | jefe_enfermeria / administrador |
+| PATCH | `/estaciones/{id}/reactivar` | Reactivar | jefe_enfermeria / administrador |
+| DELETE | `/estaciones/{id}` | Baja lógica | jefe_enfermeria / administrador |
+
+`PUT /estaciones/{id}/subespecialidades`:
+
+```json
+{ "subespecialidadIds": [1, 2] }
+```
+
+Si la subespecialidad ya pertenece a otra estación, el backend responde `409` con código
+`SUBSESPECIALIDAD_YA_ASIGNADA`.
+
+### 6.2 Contexto de estación en las peticiones
+El frontend envía el header **`X-Estacion-Id`** (id numérico o código) en cada request. El backend lo
+expone en contexto y lo usa, por ejemplo, para validar el check-in. Si falta, la petición continúa
+(comportamiento por defecto).
+
+### 6.3 Bitácora de rotación
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| POST | `/estaciones/{id}/acceso` | Registra entrada del usuario y cierra su acceso previo |
+| PATCH | `/estaciones/acceso/{accesoId}/salida` | Marca salida |
+| GET | `/estaciones/{id}/accesos?abiertos=true` | Historial de rotación |
+
+### 6.4 Turnos por estación
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| GET | `/turnos/estacion/{id}?fecha=YYYY-MM-DD&incluirNoResponde=true` | Cola de la estación: activos (`en_espera`/`llamado`/`reintegrado`); con `incluirNoResponde=true` agrega los `no_responde` |
+| GET | `/turnos/estacion/{id}/tablero?fecha=YYYY-MM-DD` | Estado inicial del tablero de la estación |
+
+> El tablero (`/tablero?estacion=CODE`) resuelve la estación vía `GET /estaciones`, se suscribe a
+> `/topic/estacion/{id}` y carga con `GET /turnos/estacion/{id}/tablero`. Sin `?estacion` conserva el
+> modo sala legado (`?sala=` + `tablero-config.json`). Diseño completo en `docs/MODULO_ESTACIONES_ENFERMERIA.md`.
+
+---
+
+## 7. Área Jefe de Enfermería (`/jefe-enfermeria`)
+
+Área frontend para la **operación diaria del Jefe de Enfermería**. Las escrituras exigen rol
+`jefe_enfermeria` o `administrador`. Módulo: `frontend/src/modules/jefeEnfermeria/`.
+
+### 7.1 Rutas
+| Ruta | Pantalla |
+| --- | --- |
+| `/jefe-enfermeria` | Asignación diaria (Croquis del Día) |
+| `/jefe-enfermeria/horarios` | Horario por subespecialidad |
+| `/jefe-enfermeria/estaciones` | Estaciones + bitácora (mini reportes) |
+| `/jefe-enfermeria/reportes` | Reportes |
+
+### 7.2 Endpoints usados
+- **Asignación diaria:** `GET /asignaciones-diarias/vista?fecha=&nivel=`,
+  `PUT /asignaciones-diarias` (`{espacioFisicoId, subespecialidadId, fecha}`), `DELETE /asignaciones-diarias/{id}`,
+  `GET /asignaciones-diarias/cobertura?fecha=`, `POST /asignaciones-diarias/cerrar?fecha=`,
+  `POST /asignaciones-diarias/duplicar?fechaOrigen=&fechaDestino=`,
+  `POST /asignaciones-diarias/{id}/reasignar?nuevoEspacioFisicoId=&motivo=`.
+  > **Una sala puede tener varias subespecialidades** el mismo día (unicidad `(espacio, fecha, subespecialidad)`).
+- **Horario por subespecialidad:** `GET /subespecialidades/{id}/horarios`,
+  `POST /subespecialidad-horarios`, `PUT /subespecialidad-horarios/{id}`,
+  `PATCH /subespecialidad-horarios/{id}/reactivar`, `DELETE /subespecialidad-horarios/{id}`.
+- **Estaciones:** `GET /estaciones`, `POST/PUT/DELETE /estaciones...`,
+  `PUT /estaciones/{id}/subespecialidades`, `GET /estaciones/{id}/accesos?abiertos=`.
+- **Reportes:** `GET /reportes/citas-por-estado`, `/reportes/demanda-por-especialidad`, `/reportes/utilizacion-cupos`.
+
+### 7.3 Identidad simulada (sin auth real)
+El frontend envía `X-Usuario-Id/Rol/Nombre` desde `AuthContext`. Para probar el área contra el
+backend, fijar en `frontend/.env`: `VITE_USUARIO_ID=jefe-enfermeria-01` y
+`VITE_USUARIO_ROL=jefe_enfermeria` (si no, las escrituras responden 403).
+
+> El guard `RequiereRol` está cableado (allowlist `jefe_enfermeria`/`administrador`) pero **no bloquea**
+> mientras no exista el auth real.

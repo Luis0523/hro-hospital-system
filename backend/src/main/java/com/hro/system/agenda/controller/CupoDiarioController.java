@@ -1,7 +1,6 @@
 package com.hro.system.agenda.controller;
 
 import com.hro.system.agenda.dto.CupoDiarioResponseDTO;
-import com.hro.system.agenda.entity.CupoDiario;
 import com.hro.system.agenda.service.CupoDiarioService;
 import com.hro.system.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,8 +42,8 @@ public class CupoDiarioController {
             @PathVariable UUID subespecialidadHorarioId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
-        CupoDiario cupo = cupoDiarioService.obtenerOCrearCupoDiario(subespecialidadHorarioId, fecha);
-        return ResponseEntity.ok(ApiResponse.ok(CupoDiarioResponseDTO.fromEntity(cupo)));
+        return ResponseEntity.ok(ApiResponse.ok(
+                cupoDiarioService.obtenerOCrearCupoDiarioDTO(subespecialidadHorarioId, fecha)));
     }
 
     @PostMapping("/subespecialidad-horario/{subespecialidadHorarioId}/fecha/{fecha}/reservar")
@@ -54,8 +53,9 @@ public class CupoDiarioController {
             @PathVariable UUID subespecialidadHorarioId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
     ) {
-        CupoDiario cupo = cupoDiarioService.reservarCupoAtomico(subespecialidadHorarioId, fecha);
-        return ResponseEntity.ok(ApiResponse.ok(CupoDiarioResponseDTO.fromEntity(cupo), "Cupo reservado exitosamente de manera atómica"));
+        return ResponseEntity.ok(ApiResponse.ok(
+                cupoDiarioService.reservarCupoAtomicoDTO(subespecialidadHorarioId, fecha),
+                "Cupo reservado exitosamente de manera atómica"));
     }
 
     @PostMapping("/{cupoDiarioId}/liberar")

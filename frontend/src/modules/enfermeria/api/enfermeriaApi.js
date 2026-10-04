@@ -7,9 +7,12 @@ import {
   construirCitaMock,
   cuposDiaMock,
   disponibilidadMock,
+  estacionesApiMock,
   pacientesMock,
   reservarCupoMock,
+  subespecialidadesEstacionMock,
   tableroMock,
+  turnosEstacionMock,
   turnosMock,
 } from './mockData'
 
@@ -100,6 +103,52 @@ export async function listarClinicas() {
   return clinicas
 }
 
+export async function listarEstaciones() {
+  if (USE_MOCK) return estacionesApiMock
+  const lista = desenvolver(await client.get('/estaciones'))
+  return Array.isArray(lista) ? lista : (lista?.content ?? [])
+}
+
+export async function registrarAccesoEstacion(estacionId) {
+  if (USE_MOCK) {
+    return { id: 1, estacionId, entradoEn: new Date().toISOString(), salidoEn: null }
+  }
+  return desenvolver(await client.post(`/estaciones/${estacionId}/acceso`))
+}
+
+export async function listarSubespecialidadesEstacion(estacionId, fecha) {
+  if (USE_MOCK) return subespecialidadesEstacionMock(estacionId)
+  const lista = desenvolver(
+    await client.get(`/estaciones/${estacionId}/subespecialidades-activas`, {
+      params: fecha ? { fecha } : {},
+    }),
+  )
+  return Array.isArray(lista) ? lista : []
+}
+
+export async function listarTurnosEstacion(estacionId, fecha, incluirNoResponde = false) {
+  if (USE_MOCK) return turnosEstacionMock(estacionId)
+  const params = {}
+  if (fecha) params.fecha = fecha
+  if (incluirNoResponde) params.incluirNoResponde = true
+  return desenvolver(await client.get(`/turnos/estacion/${estacionId}`, { params }))
+}
+
+export async function pasarSiguienteEstacion(estacionId, fecha) {
+  if (USE_MOCK) {
+    const siguiente = turnosEstacionMock(estacionId).find((turno) => turno.estado === 'en_espera')
+    if (siguiente) return llamarTurno(siguiente.id)
+    tableroMock.turnoActual += 1
+    return { numeroTurno: tableroMock.turnoActual, estado: 'llamado' }
+  }
+  const turnos = await listarTurnosEstacion(estacionId, fecha)
+  const siguiente = turnos.find((turno) => turno.estado === 'en_espera')
+  if (!siguiente) {
+    throw new Error('No hay turnos en espera en esta estación')
+  }
+  return llamarTurno(siguiente.id)
+}
+
 export async function listarPacientes({ page = 0, size = 50 } = {}) {
   if (USE_MOCK) return pacientesMock
   const respuesta = await client.get('/pacientes', { params: { page, size } })
@@ -107,34 +156,50 @@ export async function listarPacientes({ page = 0, size = 50 } = {}) {
   return pagina?.content ?? pagina
 }
 
-export async function consultarDisponibilidad({ clinicaIds = [], fechaInicio, fechaFin } = {}) {
+export async function consultarDisponibilidad({ subespecialidadIds = [], fechaInicio, fechaFin } = {}) {
   if (USE_MOCK) {
-    return disponibilidadMock(fechaInicio, fechaFin, Math.max(1, clinicaIds.length))
+    return disponibilidadMock(fechaInicio, fechaFin, Math.max(1, subespecialidadIds.length))
   }
-  const params = { fechaInicio, fechaFin }
-  if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
-  const clave = `cupos_mes_${fechaInicio}_${fechaFin}_${clinicaIds.join('-') || 'all'}`
+  const clave = `cupos_mes_${fechaInicio}_${fechaFin}_${subespecialidadIds.join('-') || 'all'}`
   const cacheado = leerCache(clave)
   if (cacheado) return cacheado
-  const agrupado = agruparCuposPorFecha(desenvolver(await client.get('/cupos', { params })))
+  const cupos = await consultarCuposPorSubespecialidades(subespecialidadIds, { fechaInicio, fechaFin })
+  const agrupado = agruparCuposPorFecha(cupos)
   const feriados = await obtenerFeriados(fechaInicio, fechaFin)
   const resultado = completarRango(agrupado, fechaInicio, fechaFin, feriados)
   guardarCache(clave, resultado, 30 * 1000)
   return resultado
 }
 
-export async function listarCuposDelDia(fecha, clinicaIds = []) {
+export async function listarCuposDelDia(fecha, subespecialidadIds = []) {
   if (USE_MOCK) {
-    return cuposDiaMock(fecha, clinicaIds)
+    return cuposDiaMock(fecha, subespecialidadIds)
   }
-  const params = { fechaInicio: fecha, fechaFin: fecha }
-  if (clinicaIds.length === 1) params.clinicaId = clinicaIds[0]
-  const clave = `cupos_dia_${fecha}_${clinicaIds.join('-') || 'all'}`
+  const clave = `cupos_dia_${fecha}_${subespecialidadIds.join('-') || 'all'}`
   const cacheado = leerCache(clave)
   if (cacheado) return cacheado
-  const cupos = desenvolver(await client.get('/cupos', { params }))
+  const cupos = await consultarCuposPorSubespecialidades(subespecialidadIds, {
+    fechaInicio: fecha,
+    fechaFin: fecha,
+  })
   guardarCache(clave, cupos, 30 * 1000)
   return cupos
+}
+
+/**
+ * Consulta /cupos por cada subespecialidad (el backend filtra por una a la vez) y une resultados.
+ * Sin subespecialidades indicadas, consulta sin filtro.
+ */
+async function consultarCuposPorSubespecialidades(subespecialidadIds, paramsBase) {
+  if (subespecialidadIds.length === 0) {
+    return desenvolver(await client.get('/cupos', { params: paramsBase })) ?? []
+  }
+  const respuestas = await Promise.all(
+    subespecialidadIds.map((id) =>
+      client.get('/cupos', { params: { ...paramsBase, subespecialidadId: id } }),
+    ),
+  )
+  return respuestas.flatMap((respuesta) => desenvolver(respuesta) ?? [])
 }
 
 export async function listarCitasDePaciente(pacienteId) {
@@ -196,6 +261,15 @@ export async function buscarCitaDelDia(identificador) {
   return { paciente, cita }
 }
 
+/**
+ * Cuerpo de `POST /citas` tal como lo espera el backend: `pacienteId` y
+ * `cupoDiarioId` son UUID (string). No convertir a número: `Number(uuid)`
+ * produce `NaN` y se serializa como `null`, lo que el backend rechaza con 400.
+ */
+export function construirPayloadCita({ pacienteId, cupo }) {
+  return { pacienteId, cupoDiarioId: cupo?.id }
+}
+
 export async function agendarCita({ pacienteId, cupo }) {
   if (USE_MOCK) {
     const paciente = pacientesMock.find((registro) => registro.id === Number(pacienteId))
@@ -213,9 +287,7 @@ export async function agendarCita({ pacienteId, cupo }) {
     return construirCitaMock({ id: 5000 + (Date.now() % 100000), paciente, cupo })
   }
 
-  const cita = desenvolver(
-    await client.post('/citas', { pacienteId: Number(pacienteId), cupoDiarioId: cupo.id }),
-  )
+  const cita = desenvolver(await client.post('/citas', construirPayloadCita({ pacienteId, cupo })))
   limpiarCachePrefijo('cupos')
   return cita
 }
@@ -261,7 +333,7 @@ export async function listarTurnosActivos() {
   return desenvolver(await client.get('/turnos/activos'))
 }
 
-export async function llamarTurno(turnoId) {
+export async function llamarTurno(turnoId, { porNombre = false } = {}) {
   if (USE_MOCK) {
     const turno = turnosMock.find((registro) => registro.id === Number(turnoId))
     if (!turno) {
@@ -272,7 +344,9 @@ export async function llamarTurno(turnoId) {
     turno.horaLlamado = new Date().toISOString()
     return turno
   }
-  return desenvolver(await client.post(`/turnos/${turnoId}/llamar`))
+  return desenvolver(
+    await client.post(`/turnos/${turnoId}/llamar`, null, { params: { porNombre } }),
+  )
 }
 
 export async function marcarNoResponde(turnoId, motivo) {

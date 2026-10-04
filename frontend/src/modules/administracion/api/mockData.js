@@ -280,6 +280,7 @@ export function reiniciarCatalogosMock() {
     ...clonar(MEDICO_SUBESPECIALIDADES_BASE),
   )
   diasNoLaborablesMock.splice(0, diasNoLaborablesMock.length, ...clonar(DIAS_NO_LABORABLES_BASE))
+  estacionesAdminMock.splice(0, estacionesAdminMock.length, ...clonar(ESTACIONES_BASE))
   contadorIdEspecialidad = ESPECIALIDADES_BASE.length
   contadorIdSubespecialidad = SUBESPECIALIDADES_BASE.length
   contadorUuid = ESPACIOS_FISICOS_BASE.length
@@ -684,4 +685,118 @@ export function eliminarDiaNoLaborableMock(id) {
     throw errorBackend(`No se encontró el día no laborable con ID ${id}`, 404)
   }
   diasNoLaborablesMock.splice(indice, 1)
+}
+
+// ---------------------------------------------------------------------------
+// Estaciones de enfermería — /estaciones (contrato backend V12)
+// ---------------------------------------------------------------------------
+
+function subespecialidadDetalle(id) {
+  const sub = SUBESPECIALIDADES_BASE.find((item) => item.id === id)
+  if (!sub) return null
+  const esp = ESPECIALIDADES_BASE.find((item) => item.id === sub.especialidadId)
+  return {
+    id: sub.id,
+    nombre: sub.nombre,
+    especialidadId: sub.especialidadId,
+    especialidadNombre: esp?.nombre ?? '',
+  }
+}
+
+const ESTACIONES_BASE = [
+  {
+    id: 1,
+    codigo: 'EST-01',
+    nombre: 'Consulta Externa — Medicina y Cardiología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+    activo: true,
+    creadoEn: creadoEnBase,
+    subespecialidadIds: [1, 2],
+  },
+  {
+    id: 2,
+    codigo: 'EST-02',
+    nombre: 'Consulta Externa — Pediatría',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+    activo: true,
+    creadoEn: creadoEnBase,
+    subespecialidadIds: [3, 4, 5],
+  },
+  {
+    id: 3,
+    codigo: 'EST-03',
+    nombre: 'Consulta Externa — Ginecología y Obstetricia',
+    ubicacion: 'Edificio Consulta Externa, Nivel 3',
+    activo: true,
+    creadoEn: creadoEnBase,
+    subespecialidadIds: [6],
+  },
+  {
+    id: 4,
+    codigo: 'EST-04',
+    nombre: 'Consulta Externa — Cirugía y Traumatología',
+    ubicacion: 'Edificio Consulta Externa, Nivel 4',
+    activo: true,
+    creadoEn: creadoEnBase,
+    subespecialidadIds: [7, 8],
+  },
+]
+
+export const estacionesAdminMock = clonar(ESTACIONES_BASE)
+
+function aEstacionDTO(estacion) {
+  return {
+    id: estacion.id,
+    codigo: estacion.codigo,
+    nombre: estacion.nombre,
+    ubicacion: estacion.ubicacion,
+    activo: estacion.activo,
+    creadoEn: estacion.creadoEn,
+    subespecialidades: (estacion.subespecialidadIds ?? [])
+      .map(subespecialidadDetalle)
+      .filter(Boolean),
+  }
+}
+
+export function listarEstacionesMock() {
+  return estacionesAdminMock.map(aEstacionDTO)
+}
+
+export function crearEstacionMock({ codigo, nombre, ubicacion }) {
+  const id = estacionesAdminMock.reduce((max, item) => Math.max(max, item.id), 0) + 1
+  const nueva = {
+    id,
+    codigo,
+    nombre,
+    ubicacion: ubicacion ?? null,
+    activo: true,
+    creadoEn: creadoEnBase,
+    subespecialidadIds: [],
+  }
+  estacionesAdminMock.push(nueva)
+  return aEstacionDTO(nueva)
+}
+
+export function actualizarEstacionMock(id, { codigo, nombre, ubicacion, activo }) {
+  const estacion = estacionesAdminMock.find((item) => item.id === id)
+  if (!estacion) return null
+  if (codigo !== undefined) estacion.codigo = codigo
+  if (nombre !== undefined) estacion.nombre = nombre
+  if (ubicacion !== undefined) estacion.ubicacion = ubicacion
+  if (activo !== undefined) estacion.activo = activo
+  return aEstacionDTO(estacion)
+}
+
+export function desactivarEstacionMock(id) {
+  const estacion = estacionesAdminMock.find((item) => item.id === id)
+  if (!estacion) return null
+  estacion.activo = false
+  return aEstacionDTO(estacion)
+}
+
+export function asignarSubespecialidadesMock(id, subespecialidadIds) {
+  const estacion = estacionesAdminMock.find((item) => item.id === id)
+  if (!estacion) return null
+  estacion.subespecialidadIds = Array.from(new Set(subespecialidadIds))
+  return aEstacionDTO(estacion)
 }
