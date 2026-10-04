@@ -33,12 +33,11 @@ describe('LibroCitasPage', () => {
     expect(screen.getByText('Registro digital de citas')).toBeInTheDocument()
   })
 
-  it('incluye un contenedor inicial de la vista (sin formulario todavía)', () => {
+  it('incluye el formulario de captura (5F.2) con el botón deshabilitado al inicio', () => {
     renderPagina()
 
-    expect(screen.getByText('Aquí se construirá la captura del libro de citas.')).toBeInTheDocument()
-    // 5F.1 no implementa campos de captura.
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Fecha de la cita')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Número de expediente/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agregar a la lista/i })).toBeDisabled()
   })
 })
