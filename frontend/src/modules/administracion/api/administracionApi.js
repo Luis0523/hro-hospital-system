@@ -1,15 +1,19 @@
 import client from '@/shared/api/client'
 import {
+  actualizarEstacionMock,
   actualizarEspecialidadMock,
   actualizarEspacioFisicoMock,
+  asignarSubespecialidadesMock,
   actualizarMedicoMock,
   actualizarSubespecialidadMock,
   crearDiaNoLaborableMock,
+  crearEstacionMock,
   crearEspecialidadMock,
   crearEspacioFisicoMock,
   crearMedicoMock,
   crearProgramacionMock,
   crearSubespecialidadMock,
+  desactivarEstacionMock,
   desactivarEspecialidadMock,
   desactivarEspacioFisicoMock,
   desactivarMedicoMock,
@@ -21,6 +25,7 @@ import {
   listarDiasNoLaborablesPorRangoMock,
   listarEspecialidadesMock,
   listarEspaciosFisicosMock,
+  listarEstacionesMock,
   listarMedicosMock,
   listarProgramacionesPorMedicoMock,
   listarProgramacionesPorSubespecialidadMock,
@@ -201,4 +206,35 @@ export async function crearDiaNoLaborable({ fecha, motivo }) {
 export async function eliminarDiaNoLaborable(id) {
   if (USE_MOCK) return eliminarDiaNoLaborableMock(id)
   return desenvolver(await client.delete(`/dias-no-laborables/${id}`))
+}
+
+// ---------------------------------------------------------------------------
+// Estaciones de enfermería — /estaciones
+// ---------------------------------------------------------------------------
+
+export async function listarEstacionesAdmin() {
+  if (USE_MOCK) return listarEstacionesMock()
+  return desenvolver(await client.get('/estaciones'))
+}
+
+export async function crearEstacion(datos) {
+  if (USE_MOCK) return crearEstacionMock(datos)
+  return desenvolver(await client.post('/estaciones', datos))
+}
+
+export async function actualizarEstacion(id, datos) {
+  if (USE_MOCK) return actualizarEstacionMock(id, datos)
+  return desenvolver(await client.put(`/estaciones/${id}`, datos))
+}
+
+export async function desactivarEstacion(id) {
+  if (USE_MOCK) return desactivarEstacionMock(id)
+  return desenvolver(await client.delete(`/estaciones/${id}`))
+}
+
+export async function asignarSubespecialidadesEstacion(id, subespecialidadIds) {
+  if (USE_MOCK) return asignarSubespecialidadesMock(id, subespecialidadIds)
+  return desenvolver(
+    await client.put(`/estaciones/${id}/subespecialidades`, { subespecialidadIds }),
+  )
 }

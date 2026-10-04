@@ -78,6 +78,22 @@ public class CupoDiarioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cupo diario no encontrado"));
     }
 
+    /**
+     * Igual que {@link #obtenerOCrearCupoDiario}, pero devuelve el DTO mapeado dentro de la
+     * transacción. Necesario porque OSIV está deshabilitado y el mapeo accede a asociaciones
+     * lazy ({@code subespecialidad}).
+     */
+    @Transactional
+    public CupoDiarioResponseDTO obtenerOCrearCupoDiarioDTO(UUID subespecialidadHorarioId, LocalDate fecha) {
+        return CupoDiarioResponseDTO.fromEntity(obtenerOCrearCupoDiario(subespecialidadHorarioId, fecha));
+    }
+
+    /** Reserva atómica devolviendo el DTO mapeado dentro de la transacción. */
+    @Transactional
+    public CupoDiarioResponseDTO reservarCupoAtomicoDTO(UUID subespecialidadHorarioId, LocalDate fecha) {
+        return CupoDiarioResponseDTO.fromEntity(reservarCupoAtomico(subespecialidadHorarioId, fecha));
+    }
+
     @Transactional
     public void liberarCupoAtomico(UUID cupoDiarioId) {
         boolean decrementado = cupoDiarioRepository.decrementarCupoAtomico(cupoDiarioId);

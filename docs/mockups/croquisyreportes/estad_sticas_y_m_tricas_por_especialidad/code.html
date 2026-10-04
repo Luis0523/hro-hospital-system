@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Jefatura Operativa de Enfermería</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed-variant": "#384953", "on-tertiary-container": "#d2e3ef", "on-primary-fixed-variant": "#004b74", "surface-container": "#eaedff", "on-primary": "#ffffff", "tertiary": "#3d4e58", "inverse-on-surface": "#eef0ff", "on-surface": "#131b2e", "on-secondary": "#ffffff", "secondary-fixed-dim": "#89ceff", "on-tertiary": "#ffffff", "primary-fixed": "#cde5ff", "surface-container-lowest": "#ffffff", "on-secondary-fixed": "#001e2f", "surface-tint": "#006399", "on-primary-fixed": "#001d32", "surface-bright": "#faf8ff", "surface-dim": "#d2d9f4", "on-error": "#ffffff", "surface-variant": "#dae2fd", "secondary-container": "#39b8fd", "error": "#ba1a1a", "on-secondary-container": "#004666", "outline": "#707881", "inverse-surface": "#283044", "background": "#faf8ff", "inverse-primary": "#94ccff", "on-background": "#131b2e", "on-surface-variant": "#40474f", "error-container": "#ffdad6", "surface": "#faf8ff", "primary-fixed-dim": "#94ccff", "on-tertiary-fixed": "#0c1e26", "on-error-container": "#93000a", "tertiary-fixed": "#d3e5f1", "surface-container-low": "#f2f3ff", "on-primary-container": "#cbe4ff", "tertiary-container": "#556670", "primary": "#00507d", "secondary": "#006591", "surface-container-highest": "#dae2fd", "secondary-fixed": "#c9e6ff", "surface-container-high": "#e2e7ff", "primary-container": "#0369a1", "outline-variant": "#c0c7d1", "on-secondary-fixed-variant": "#004c6e", "tertiary-fixed-dim": "#b7c9d5" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-sm": "0.5rem", "margin-screen": "1rem", "space-md": "0.75rem", "space-xl": "1.5rem", "space-xs": "0.25rem", "gutter-spacious": "1rem", "gutter-compact": "0.5rem", "space-lg": "1.25rem", "space-2xl": "2rem", "space-2xs": "0.125rem", "space-base": "1rem", "gutter-default": "0.75rem" }, "fontFamily": { "headline-lg": ["Inter"], "label-md": ["Inter"], "headline-sm": ["Inter"], "metric-sub": ["Inter"], "label-sm": ["Inter"], "title-sm": ["Inter"], "body-lg": ["Inter"], "body-sm": ["Inter"], "headline-md": ["Inter"], "title-md": ["Inter"], "body-md": ["Inter"], "metric-display": ["Inter"] }, "fontSize": { "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "metric-sub": ["20px", { "lineHeight": "24px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "600" }], "title-sm": ["13px", { "lineHeight": "18px", "fontWeight": "600" }], "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "title-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "600" }], "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "metric-display": ["32px", { "lineHeight": "36px", "letterSpacing": "-0.03em", "fontWeight": "700" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 left-0 right-0 h-16 z-50 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="w-full h-16 px-space-base flex items-center justify-between gap-space-base"><div class="flex items-center gap-space-md shrink-0"><img alt="Brand logo. - Primary color: #0369a1 - Font: inter - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WQVPIBDJ4dsuXozz-bMgLXjs23ub5muZF1tFMHvDgc9HUM9TiwC6D2c0PAamE3EKmzxSqKhId9gkOZHA63td2iyQIeyKNUU83Oqsfg04Q2Yas8XNDvaHG-oIVRM0jcRCwzjqTUXFW--Gx0RUTtA8NyK2-Vod5VNsXfsIDA0T7Zz7gclKd7A9CU8E8fcINGGTcAqj-n8Dp3UPVBX5ICfFONROFxtAZ9z_aGNB8gKmUEjzRjLPcnuuvoeM4T"/><div class="flex flex-col"><span class="font-title-sm text-title-sm uppercase tracking-wide text-primary leading-tight">Jefatura Operativa de Enfermería</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-none">Gestión Diaria de Salas y Cobertura Asistencial</span></div></div><nav class="flex items-center gap-space-xs bg-surface-container-low p-space-2xs rounded-lg" data-active-classes="bg-primary-container text-on-primary font-title-sm shadow-sm"><a class="px-space-md py-space-xs rounded-lg font-title-sm text-title-sm text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap" data-path="croquis-del-dia" href="#">Croquis del Día</a><a class="px-space-md py-space-xs rounded-lg font-title-sm text-title-sm text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap" data-path="gestion-de-especialidades" href="#">Gestión de Especialidades</a><a class="px-space-md py-space-xs rounded-lg font-title-sm text-title-sm text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap" data-path="estadisticas-por-especialidad" href="#">Estadísticas por Especialidad</a></nav><div class="flex items-center gap-space-md shrink-0"><div class="hidden xl:flex items-center gap-space-xs bg-surface-container-low px-space-sm py-space-2xs rounded-lg"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="font-label-sm text-label-sm text-on-surface-variant">Servidor Operativo · Sede Central</span></div><div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-space-2xs rounded-lg"><span class="font-label-sm text-label-sm text-on-surface font-semibold">Pabellón Central · Ala Sur</span></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="flex flex-col text-right hidden lg:flex"><span class="font-title-sm text-title-sm text-on-surface leading-tight">Licda. Sofía Carrillo</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-none">Jefa Operativa de Guardia</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-16 bg-surface flex-1 flex flex-col"><div class="flex flex-col w-full">
+<!-- Command Bar & Filter Ribbon -->
+<div class="w-full bg-surface-container-lowest px-space-base py-space-md shadow-sm">
+<div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-space-md">
+<!-- Operational Breadcrumb & Contextual Title -->
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<span>Monitor Operativo</span>
+<span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+<span>Analítica de Pabellón</span>
+<span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+<span class="text-primary font-bold">Rendimiento por Especialidad</span>
+</div>
+<div class="flex items-center gap-space-sm mt-space-2xs">
+<h1 class="font-headline-md text-headline-md text-on-surface">Tablero de Productividad y Capacidad de Salas</h1>
+<span class="inline-flex items-center gap-1 bg-surface-container-high text-primary font-label-sm text-label-sm px-space-xs py-space-2xs rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Tiempo Real
+          </span>
+</div>
+</div>
+<!-- Segment Selector Controls & Actions -->
+<div class="flex flex-wrap items-center gap-space-sm w-full xl:w-auto">
+<!-- Specialty Dropdown -->
+<div class="flex flex-col">
+<label class="font-label-sm text-label-sm uppercase text-on-surface-variant mb-space-2xs font-semibold">Especialidad Asignada</label>
+<div class="relative inline-block">
+<select class="h-9 pl-space-sm pr-space-xl bg-surface-container-low font-title-sm text-title-sm text-on-surface rounded-lg appearance-none cursor-pointer focus:outline-none focus:bg-surface-container shadow-sm" id="specialty-selector">
+<option value="all">Todas las especialidades</option>
+<option selected="" value="cardio">Cardiología (Pabellón 1)</option>
+<option value="pediatria">Pediatría General</option>
+<option value="med_general">Medicina General</option>
+<option value="trauma">Traumatología y Ortopedia</option>
+<option value="gineco">Ginecología y Obstetricia</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2.5 pointer-events-none text-on-surface-variant text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Date Range Filter -->
+<div class="flex flex-col">
+<label class="font-label-sm text-label-sm uppercase text-on-surface-variant mb-space-2xs font-semibold">Ventana Temporal de Análisis</label>
+<div class="relative inline-block">
+<select class="h-9 pl-space-sm pr-space-xl bg-surface-container-low font-title-sm text-title-sm text-on-surface rounded-lg appearance-none cursor-pointer focus:outline-none focus:bg-surface-container shadow-sm" id="date-range-selector">
+<option value="7d">Últimos 7 días</option>
+<option selected="" value="current_month">Mes actual (01 Oct - 25 Oct 2024)</option>
+<option value="quarter">Último trimestre (Q3/Q4)</option>
+<option value="custom">Rango personalizado...</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2.5 pointer-events-none text-on-surface-variant text-[18px]">calendar_today</span>
+</div>
+</div>
+<!-- Operational Command Buttons -->
+<div class="flex items-end gap-space-xs pt-space-md xl:pt-0">
+<button class="h-9 px-space-md bg-surface-container-low hover:bg-surface-container font-title-sm text-title-sm text-on-surface flex items-center gap-space-xs rounded-lg shadow-sm transition-all active:scale-[0.98]" id="refresh-btn" title="Sincronizar telemetría actual">
+<span class="material-symbols-outlined text-[18px] text-primary" id="refresh-icon">sync</span>
+<span>Actualizar Datos</span>
+</button>
+<button class="h-9 px-space-md bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm flex items-center gap-space-xs rounded-lg shadow-sm transition-all active:scale-[0.98]" id="export-btn">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Exportar Reporte (PDF/XLS)</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Metrics Bento Strip (Layer 1) -->
+<div class="p-space-base w-full max-w-[1720px] mx-auto space-y-space-base">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- KPI 1: Demanda Total -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Demanda Bruta Registrada</span>
+<span class="w-7 h-7 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">clinical_notes</span>
+</span>
+</div>
+<div class="mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-metric-display text-metric-display text-on-surface tabular-nums">486</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant">solicitudes</span>
+</div>
+<div class="flex items-center gap-space-2xs mt-space-2xs">
+<span class="inline-flex items-center text-label-sm font-semibold text-[#166534] bg-[#F0FDF4] px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+              +12%
+            </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">vs. periodo anterior</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs text-on-surface-variant font-body-sm text-body-sm bg-surface-container-low/50 px-space-xs py-1 rounded">
+          Promedio: <strong class="text-on-surface">24.3</strong> pacientes/jornada en Cardiología.
+        </div>
+</div>
+<!-- KPI 2: Tasa de Ocupación -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Utilización de Cupos de Sala</span>
+<span class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">meeting_room</span>
+</span>
+</div>
+<div class="mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-metric-display text-metric-display text-primary tabular-nums">94.8%</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant">efectiva</span>
+</div>
+<div class="flex items-center gap-space-2xs mt-space-2xs">
+<span class="inline-flex items-center text-label-sm font-semibold text-primary bg-primary-fixed px-1.5 py-0.5 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-primary mr-1"></span>
+              Capacidad Óptima
+            </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Rango ideal: 85-95%</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs text-on-surface-variant font-body-sm text-body-sm bg-surface-container-low/50 px-space-xs py-1 rounded">
+<strong class="text-on-surface">380</strong> de 400 cupos programados en Salas 105 y 106.
+        </div>
+</div>
+<!-- KPI 3: Tasa de Inasistencias (No-Show) -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Inasistencias (No-Show)</span>
+<span class="w-7 h-7 rounded-lg bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[18px]">person_off</span>
+</span>
+</div>
+<div class="mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-metric-display text-metric-display text-error tabular-nums">8.2%</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant font-normal">(39 pacientes)</span>
+</div>
+<div class="flex items-center gap-space-2xs mt-space-2xs">
+<span class="inline-flex items-center text-label-sm font-semibold text-[#92400E] bg-[#FFFBEB] px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+              Impacto Moderado
+            </span>
+<span class="font-body-sm text-body-sm text-[#166534] font-medium">66% mitigado</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs text-on-surface-variant font-body-sm text-body-sm bg-surface-container-low/50 px-space-xs py-1 rounded">
+          Reasignados en guardia: <strong class="text-on-surface">26 de 39</strong> cupos recuperados.
+        </div>
+</div>
+<!-- KPI 4: Tiempo Promedio de Ocupación -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Ventana Activa por Turno</span>
+<span class="w-7 h-7 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</span>
+</div>
+<div class="mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-metric-display text-metric-display text-on-surface tabular-nums">5h 42m</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant font-normal">/ turno 6h</span>
+</div>
+<div class="flex items-center gap-space-2xs mt-space-2xs">
+<span class="inline-flex items-center text-label-sm font-semibold text-primary bg-surface-container px-1.5 py-0.5 rounded">
+              92.0% tiempo activo
+            </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">18m sanitización/rotación</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs text-on-surface-variant font-body-sm text-body-sm bg-surface-container-low/50 px-space-xs py-1 rounded">
+          Rotación óptima interpaciente: <strong class="text-on-surface">4.2 min</strong> de transición.
+        </div>
+</div>
+</div>
+<!-- Main Operational Workspace (Split Analytics Engine) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-base">
+<!-- Primary Comparative Chart: Demanda vs. Cupos vs. No-Shows (8 cols) -->
+<div class="xl:col-span-8 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div>
+<!-- Chart Header & Interactive Legend -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Comparativa Semanal: Demanda vs. Cupos Utilizados vs. Inasistencias</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Consolidado operativo de Cardiología durante el mes de Octubre 2024</p>
+</div>
+<!-- Dynamic Legend Pills -->
+<div class="flex items-center gap-space-sm flex-wrap text-label-sm font-label-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-primary"></span>
+<span class="text-on-surface">Atendidos / Utilizados</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-secondary-fixed-dim"></span>
+<span class="text-on-surface-variant">Programados</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-error"></span>
+<span class="text-error">Inasistencias</span>
+</div>
+</div>
+</div>
+<!-- Main SVG High-Density Graphic -->
+<div class="mt-space-lg w-full relative">
+<div class="w-full h-72 flex items-end">
+<!-- SVG Bar Canvas -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 760 260">
+<defs>
+<lineargradient id="primaryBarGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00507d"></stop>
+<stop offset="100%" stop-color="#0369a1"></stop>
+</lineargradient>
+</defs>
+<!-- Grid Guide Lines -->
+<line stroke="#eaedff" stroke-dasharray="4" stroke-width="1" x1="40" x2="740" y1="20" y2="20"></line>
+<text fill="#707881" font-family="Inter" font-size="10" text-anchor="end" x="32" y="24">120</text>
+<line stroke="#eaedff" stroke-dasharray="4" stroke-width="1" x1="40" x2="740" y1="70" y2="70"></line>
+<text fill="#707881" font-family="Inter" font-size="10" text-anchor="end" x="32" y="74">90</text>
+<line stroke="#eaedff" stroke-dasharray="4" stroke-width="1" x1="40" x2="740" y1="120" y2="120"></line>
+<text fill="#707881" font-family="Inter" font-size="10" text-anchor="end" x="32" y="124">60</text>
+<line stroke="#eaedff" stroke-dasharray="4" stroke-width="1" x1="40" x2="740" y1="170" y2="170"></line>
+<text fill="#707881" font-family="Inter" font-size="10" text-anchor="end" x="32" y="174">30</text>
+<line stroke="#cbd5e1" stroke-width="1.5" x1="40" x2="740" y1="220" y2="220"></line>
+<text fill="#707881" font-family="Inter" font-size="10" text-anchor="end" x="32" y="224">0</text>
+<!-- Week 1 Group (Oct 01 - Oct 07) -->
+<g class="chart-group cursor-pointer transition-opacity hover:opacity-90">
+<!-- Programmed (Celeste claro) -->
+<rect fill="#89ceff" height="165" rx="3" width="26" x="75" y="55"></rect>
+<!-- Attended (Azul primario) -->
+<rect fill="url(#primaryBarGrad)" height="155" rx="3" width="26" x="105" y="65"></rect>
+<!-- No-Show (Rojo) -->
+<rect fill="#ba1a1a" height="15" rx="2" width="16" x="135" y="205"></rect>
+<text fill="#40474f" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="118" y="240">Sem 1 (01-07)</text>
+<text fill="#00507d" font-family="Inter" font-size="11" font-weight="700" text-anchor="middle" x="118" y="50">94</text>
+</g>
+<!-- Week 2 Group (Oct 08 - Oct 14) -->
+<g class="chart-group cursor-pointer transition-opacity hover:opacity-90">
+<rect fill="#89ceff" height="173" rx="3" width="26" x="235" y="47"></rect>
+<rect fill="url(#primaryBarGrad)" height="163" rx="3" width="26" x="265" y="57"></rect>
+<rect fill="#ba1a1a" height="18" rx="2" width="16" x="295" y="202"></rect>
+<text fill="#40474f" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="278" y="240">Sem 2 (08-14)</text>
+<text fill="#00507d" font-family="Inter" font-size="11" font-weight="700" text-anchor="middle" x="278" y="42">98</text>
+</g>
+<!-- Week 3 Group (Oct 15 - Oct 21) -->
+<g class="chart-group cursor-pointer transition-opacity hover:opacity-90">
+<rect fill="#89ceff" height="182" rx="3" width="26" x="395" y="38"></rect>
+<rect fill="url(#primaryBarGrad)" height="170" rx="3" width="26" x="425" y="50"></rect>
+<rect fill="#ba1a1a" height="13" rx="2" width="16" x="455" y="207"></rect>
+<text fill="#40474f" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="438" y="240">Sem 3 (15-21)</text>
+<text fill="#00507d" font-family="Inter" font-size="11" font-weight="700" text-anchor="middle" x="438" y="33">102</text>
+</g>
+<!-- Week 4 Group (Oct 22 - Oct 25 Actual) -->
+<g class="chart-group cursor-pointer transition-opacity hover:opacity-90">
+<rect fill="#89ceff" height="150" rx="3" width="26" x="555" y="70"></rect>
+<rect fill="url(#primaryBarGrad)" height="140" rx="3" width="26" x="585" y="80"></rect>
+<rect fill="#ba1a1a" height="11" rx="2" width="16" x="615" y="209"></rect>
+<text fill="#40474f" font-family="Inter" font-size="11" font-weight="600" text-anchor="middle" x="598" y="240">Sem 4 (22-25*)</text>
+<text fill="#00507d" font-family="Inter" font-size="11" font-weight="700" text-anchor="middle" x="598" y="65">86</text>
+</g>
+</svg>
+</div>
+</div>
+</div>
+<!-- Metric Sub-strip for Deep Diagnostics -->
+<div class="mt-space-base pt-space-md border-t border-surface-container bg-surface-container-low/40 -mx-space-lg -mb-space-lg p-space-md rounded-b-xl flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant block uppercase">Pico de Ocupación Semanal</span>
+<span class="font-title-md text-title-md font-bold text-on-surface">Semana 3 (102 Consultas Realizadas)</span>
+</div>
+<div class="hidden sm:block h-7 w-[1px] bg-outline-variant"></div>
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant block uppercase">Mitigación No-Show</span>
+<span class="font-title-md text-title-md font-bold text-[#166534]">66.6% Cupos Salvados en Lista Activa</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">info</span>
+<span>Datos actualizados según bitácora enfermería 14:35 hrs</span>
+</div>
+</div>
+</div>
+<!-- Right Utility Column: Room Comparative & Chief Nursing Recommendation (4 cols) -->
+<div class="xl:col-span-4 flex flex-col gap-space-base">
+<!-- Room Utilization Performance Card -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">sensor_door</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Rendimiento por Sala Activa</h3>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">Octubre 2024</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">Aprovechamiento físico y retraso promedio por cubículo asistencial.</p>
+<div class="space-y-space-md">
+<!-- Sala 105 -->
+<div class="p-space-sm bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between mb-space-2xs">
+<div class="flex items-center gap-space-2xs">
+<span class="font-title-sm text-title-sm text-on-surface font-bold">Sala 105</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">· Consultorio Principal</span>
+</div>
+<span class="font-title-sm text-title-sm font-bold text-primary">96%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 96%"></div>
+</div>
+<div class="flex items-center justify-between mt-space-2xs text-label-sm font-label-sm">
+<span class="text-on-surface-variant">212 pacientes evaluados</span>
+<span class="inline-flex items-center text-[#166534] font-semibold gap-0.5">
+<span class="material-symbols-outlined text-[13px]">timer</span>
+                  4 min demora prom.
+                </span>
+</div>
+</div>
+<!-- Sala 106 -->
+<div class="p-space-sm bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between mb-space-2xs">
+<div class="flex items-center gap-space-2xs">
+<span class="font-title-sm text-title-sm text-on-surface font-bold">Sala 106</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">· Ecocardiografía y Pruebas</span>
+</div>
+<span class="font-title-sm text-title-sm font-bold text-secondary">91%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full rounded-full" style="width: 91%"></div>
+</div>
+<div class="flex items-center justify-between mt-space-2xs text-label-sm font-label-sm">
+<span class="text-on-surface-variant">168 pruebas cardiológicas</span>
+<span class="inline-flex items-center text-[#92400E] font-semibold gap-0.5">
+<span class="material-symbols-outlined text-[13px]">schedule</span>
+                  6 min demora prom.
+                </span>
+</div>
+</div>
+</div>
+<!-- Quick Summary Footer -->
+<div class="mt-space-md pt-space-xs text-on-surface-variant font-body-sm text-body-sm flex items-center justify-between">
+<span>Cuello de botella identificado:</span>
+<span class="font-semibold text-on-surface">Cambio de electrodos y calibración</span>
+</div>
+</div>
+<!-- Operational Actionable Intelligence / Recommendations for Nursing Leadership -->
+<div class="bg-primary-container text-on-primary p-space-lg rounded-xl shadow-md relative overflow-hidden flex-1 flex flex-col justify-between">
+<div class="absolute -right-4 -bottom-4 text-on-primary/10 select-none pointer-events-none">
+<span class="material-symbols-outlined text-[120px]">assignment_turned_in</span>
+</div>
+<div>
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary-fixed text-[22px]">lightbulb</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary-fixed font-bold">Recomendación Táctica</span>
+</div>
+<span class="bg-surface-container-lowest/20 text-white font-label-sm text-label-sm px-2 py-0.5 rounded">Alta Prioridad</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-white mb-space-2xs">Ajuste de Capacidad para Próximo Ciclo</h4>
+<p class="font-body-md text-body-md text-primary-fixed leading-relaxed">
+              La subespecialidad de <strong>Cardiología presenta sobredemanda los días lunes y jueves</strong> (factor de carga del 108%). Se sugiere habilitar la <strong>Sala 104</strong> como consultorio de apoyo para la próxima semana.
+            </p>
+</div>
+<div class="mt-space-md pt-space-sm border-t border-white/20 flex flex-wrap items-center justify-between gap-space-xs relative z-10">
+<span class="font-label-sm text-label-sm text-primary-fixed">Impacto previsto: -85% demora en espera</span>
+<button class="h-8 px-space-sm bg-white text-primary hover:bg-surface-container font-title-sm text-title-sm rounded shadow-sm flex items-center gap-1 transition-colors" id="activate-plan-btn">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+<span>Aplicar Asignación</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Comparative Table Registry by Clinical Turn & Specialty Detailed Logs -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<!-- Table Header Bar -->
+<div class="px-space-lg py-space-md bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>
+<div>
+<h3 class="font-title-md text-title-md text-on-surface font-bold">Desglose Detallado por Jornada Operativa y Facultativo</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Registro consolidado de turnos matutinos y vespertinos (Módulo Cardiología)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="relative">
+<input class="h-8 pl-space-lg pr-space-sm bg-surface-container-lowest font-body-sm text-body-sm text-on-surface rounded-lg placeholder-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary shadow-xs w-48 sm:w-64" placeholder="Filtrar por médico o sala..." type="text"/>
+<span class="material-symbols-outlined absolute left-2 top-2 text-[16px] text-on-surface-variant">search</span>
+</div>
+<button class="h-8 px-space-sm bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-title-sm text-title-sm rounded-lg shadow-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>Columnas</span>
+</button>
+</div>
+</div>
+<!-- High Density Clinical Data Table -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-8 bg-surface-container-high/60 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<th class="px-space-base py-space-2xs font-semibold">Día / Turno</th>
+<th class="px-space-md py-space-2xs font-semibold">Sala / Consultorio</th>
+<th class="px-space-md py-space-2xs font-semibold">Facultativo Responsable</th>
+<th class="px-space-md py-space-2xs font-semibold text-right">Cupos Prog.</th>
+<th class="px-space-md py-space-2xs font-semibold text-right">Atendidos</th>
+<th class="px-space-md py-space-2xs font-semibold text-right">Inasistencias</th>
+<th class="px-space-md py-space-2xs font-semibold text-right">Reasignados</th>
+<th class="px-space-md py-space-2xs font-semibold text-center">Eficiencia</th>
+<th class="px-space-base py-space-2xs font-semibold text-center">Estado Operativo</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container font-body-md text-body-md text-on-surface">
+<!-- Row 1 -->
+<tr class="h-11 hover:bg-surface-container-low transition-colors">
+<td class="px-space-base py-space-xs font-semibold">
+<span>Lunes 21 Oct</span>
+<span class="block font-label-sm text-label-sm text-on-surface-variant font-normal">Matutino (08:00 - 14:00)</span>
+</td>
+<td class="px-space-md py-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container text-primary font-title-sm text-title-sm">Sala 105</span>
+</td>
+<td class="px-space-md py-space-xs">
+<div class="font-semibold">Dr. Fernando Morales</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Cardiología Clínica</div>
+</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-medium">25</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-bold text-primary">24</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-error font-semibold">2</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-[#166534] font-medium">+1 lista esp.</td>
+<td class="px-space-md py-space-xs text-center tabular-nums font-bold">96.0%</td>
+<td class="px-space-base py-space-xs text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-semibold bg-[#F0FDF4] text-[#166534]">
+                  Completado
+                </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="h-11 hover:bg-surface-container-low transition-colors bg-surface-container-lowest/50">
+<td class="px-space-base py-space-xs font-semibold">
+<span>Lunes 21 Oct</span>
+<span class="block font-label-sm text-label-sm text-on-surface-variant font-normal">Vespertino (14:00 - 20:00)</span>
+</td>
+<td class="px-space-md py-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container text-primary font-title-sm text-title-sm">Sala 106</span>
+</td>
+<td class="px-space-md py-space-xs">
+<div class="font-semibold">Dra. Camila Vergara</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Ecocardiografía</div>
+</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-medium">20</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-bold text-primary">19</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-error font-semibold">1</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-on-surface-variant font-medium">0</td>
+<td class="px-space-md py-space-xs text-center tabular-nums font-bold">95.0%</td>
+<td class="px-space-base py-space-xs text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-semibold bg-[#F0FDF4] text-[#166534]">
+                  Completado
+                </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="h-11 hover:bg-surface-container-low transition-colors">
+<td class="px-space-base py-space-xs font-semibold">
+<span>Martes 22 Oct</span>
+<span class="block font-label-sm text-label-sm text-on-surface-variant font-normal">Matutino (08:00 - 14:00)</span>
+</td>
+<td class="px-space-md py-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container text-primary font-title-sm text-title-sm">Sala 105</span>
+</td>
+<td class="px-space-md py-space-xs">
+<div class="font-semibold">Dr. Fernando Morales</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Cardiología Clínica</div>
+</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-medium">25</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-bold text-primary">22</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-error font-semibold">4</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-[#166534] font-medium">+1 lista esp.</td>
+<td class="px-space-md py-space-xs text-center tabular-nums font-bold text-[#92400E]">88.0%</td>
+<td class="px-space-base py-space-xs text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-semibold bg-[#FFFBEB] text-[#92400E]">
+                  Inasistencia Alta
+                </span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="h-11 hover:bg-surface-container-low transition-colors bg-surface-container-lowest/50">
+<td class="px-space-base py-space-xs font-semibold">
+<span>Miércoles 23 Oct</span>
+<span class="block font-label-sm text-label-sm text-on-surface-variant font-normal">Matutino (08:00 - 14:00)</span>
+</td>
+<td class="px-space-md py-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container text-primary font-title-sm text-title-sm">Sala 105</span>
+</td>
+<td class="px-space-md py-space-xs">
+<div class="font-semibold">Dr. Ignacio Cárdenas</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Electrocardiografía y Arritmias</div>
+</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-medium">22</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-bold text-primary">22</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-on-surface-variant font-semibold">0</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-on-surface-variant font-medium">0</td>
+<td class="px-space-md py-space-xs text-center tabular-nums font-bold text-primary">100%</td>
+<td class="px-space-base py-space-xs text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-semibold bg-[#E0F2FE] text-[#0369a1]">
+                  Plena Ocupación
+                </span>
+</td>
+</tr>
+<!-- Row 5 (Active Turn) -->
+<tr class="h-11 bg-primary/5 hover:bg-primary/10 transition-colors">
+<td class="px-space-base py-space-xs font-semibold">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="text-primary font-bold">Viernes 25 Oct (En Curso)</span>
+</div>
+<span class="block font-label-sm text-label-sm text-on-surface-variant font-normal">Turno Tarde Activo</span>
+</td>
+<td class="px-space-md py-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-primary text-on-primary font-title-sm text-title-sm font-bold">Sala 105</span>
+</td>
+<td class="px-space-md py-space-xs">
+<div class="font-semibold">Dr. Fernando Morales</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Cardiología Clínica</div>
+</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-medium">25</td>
+<td class="px-space-md py-space-xs text-right tabular-nums font-bold text-primary">16 / 25</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-on-surface-variant font-semibold">1</td>
+<td class="px-space-md py-space-xs text-right tabular-nums text-[#166534] font-medium">+1 reasignado</td>
+<td class="px-space-md py-space-xs text-center tabular-nums font-bold text-primary">En Progreso</td>
+<td class="px-space-base py-space-xs text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-semibold bg-primary-container text-on-primary">
+                  Activa en Tiempo Real
+                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination and Range Footnote -->
+<div class="px-space-base py-space-sm bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-xs text-label-sm font-label-sm text-on-surface-variant">
+<span>Mostrando 5 de 38 jornadas registradas en la ventana actual</span>
+<div class="flex items-center gap-space-xs">
+<button class="px-2 py-1 bg-surface-container-lowest rounded shadow-xs text-on-surface disabled:opacity-40" disabled="">Anterior</button>
+<span class="px-2 py-1 font-bold text-on-surface">Página 1 de 8</span>
+<button class="px-2 py-1 bg-surface-container-lowest rounded shadow-xs text-on-surface hover:bg-surface-container">Siguiente</button>
+</div>
+</div>
+</div>
+<!-- Micro Diagnostic Banner for Shifts Handover -->
+<div class="p-space-md bg-surface-container-low rounded-xl flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[24px]">verified_user</span>
+<div>
+<span class="font-title-sm text-title-sm text-on-surface font-bold">Protocolo de Cierre Estadístico Mensual</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Las métricas operativas se concilian diariamente con el registro de admisión central y el sistema biométrico de guardia.</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="h-8 px-space-md bg-surface-container-lowest hover:bg-surface-container text-on-surface font-title-sm text-title-sm rounded shadow-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Histórico Trimestral</span>
+</button>
+<button class="h-8 px-space-md bg-secondary text-on-secondary hover:bg-secondary/90 font-title-sm text-title-sm rounded shadow-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Validar Cierre de Turno</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Micro Interaction Inline Logic -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const refreshBtn = document.getElementById('refresh-btn');
+      const refreshIcon = document.getElementById('refresh-icon');
+      const specialtySelector = document.getElementById('specialty-selector');
+      const exportBtn = document.getElementById('export-btn');
+      const activatePlanBtn = document.getElementById('activate-plan-btn');
+
+      if (refreshBtn && refreshIcon) {
+        refreshBtn.addEventListener('click', () => {
+          refreshIcon.classList.add('animate-spin');
+          refreshBtn.setAttribute('disabled', 'true');
+          setTimeout(() => {
+            refreshIcon.classList.remove('animate-spin');
+            refreshBtn.removeAttribute('disabled');
+          }, 850);
+        });
+      }
+
+      if (specialtySelector) {
+        specialtySelector.addEventListener('change', (e) => {
+          const specialty = e.target.value;
+          // Micro-feedback pulse on main container
+          const mainGrid = document.querySelector('.grid');
+          if (mainGrid) {
+            mainGrid.classList.add('opacity-75');
+            setTimeout(() => mainGrid.classList.remove('opacity-75'), 200);
+          }
+        });
+      }
+
+      if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+          const originalText = exportBtn.innerHTML;
+          exportBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span><span>Generando...</span>';
+          setTimeout(() => {
+            exportBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span><span>¡Descargado!</span>';
+            setTimeout(() => {
+              exportBtn.innerHTML = originalText;
+            }, 1800);
+          }, 1200);
+        });
+      }
+
+      if (activatePlanBtn) {
+        activatePlanBtn.addEventListener('click', () => {
+          activatePlanBtn.classList.remove('bg-white', 'text-primary');
+          activatePlanBtn.classList.add('bg-emerald-600', 'text-white');
+          activatePlanBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">done_all</span><span>Sala 104 Notificada</span>';
+          setTimeout(() => {
+            activatePlanBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span><span>Programada Lun-Jue</span>';
+          }, 1500);
+        });
+      }
+    });
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_4px_rgba(0,0,0,0.02)] py-space-sm"><div class="w-full px-space-base flex flex-col sm:flex-row items-center justify-between gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface-variant">Sistema Autónomo de Gestión de Cobertura y Camas · Hospital Central</span><span class="font-label-sm text-label-sm text-on-surface-variant">Turno Activo: 07:00 - 19:00 · Ciclo de Asignación en Tiempo Real</span></div></footer></body></html>

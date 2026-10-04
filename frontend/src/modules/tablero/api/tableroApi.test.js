@@ -43,16 +43,22 @@ describe('tableroApi · normalización y privacidad', () => {
     expect(Object.keys(normalizado).sort()).toEqual([...CAMPOS_PUBLICOS].sort())
   })
 
-  it('descarta cualquier dato personal aunque venga en el payload', () => {
+  it('conserva solo el nombre del paciente y descarta el resto de datos personales', () => {
     const normalizado = normalizarEstadoTablero(PAYLOAD_CON_PRIVADOS)
-    const serializado = JSON.stringify(normalizado)
 
-    expect(serializado).not.toContain('Juan')
-    expect(serializado).not.toContain('Perez')
-    expect(serializado).not.toContain('1234567890101')
-    expect(serializado).not.toContain('HRO-123')
-    expect(serializado).not.toContain('55555555')
-    expect(serializado).not.toContain('juan@example.com')
+    // Se conserva el nombre para poder llamar por nombre en el tablero.
+    expect(normalizado.pacienteNombre).toBe('Juan Perez')
+
+    // El resto de datos personales se descarta.
+    expect(normalizado).not.toHaveProperty('nombrePaciente')
+    expect(normalizado).not.toHaveProperty('pacienteNombreCompleto')
+    expect(normalizado).not.toHaveProperty('dpi')
+    expect(normalizado).not.toHaveProperty('expediente')
+    expect(normalizado).not.toHaveProperty('numeroExpediente')
+    expect(normalizado).not.toHaveProperty('telefono')
+    expect(normalizado).not.toHaveProperty('correo')
+    expect(normalizado).not.toHaveProperty('fechaNacimiento')
+
     expect(normalizado).toEqual({
       asignacionDiariaEspacioId: 1,
       espacioNumero: '201',
@@ -63,6 +69,9 @@ describe('tableroApi · normalización y privacidad', () => {
       ultimaActualizacion: '2026-09-20T14:05:32.000Z',
       intentosLlamado: null,
       tipoEvento: null,
+      pacienteNombre: 'Juan Perez',
+      turnosEnEspera: [],
+      porNombre: false,
     })
   })
 
@@ -131,15 +140,74 @@ describe('tableroApi · normalización y privacidad', () => {
 })
 
 describe('tableroApi · orden y fusión', () => {
-  it('ordena por nivel y luego por número de consultorio', () => {
+  it('ordena por número de consultorio ignorando el nivel', () => {
     const orden = ordenarAsignaciones([
-      { asignacionDiariaEspacioId: 4, nivel: 3, espacioNumero: '302' },
-      { asignacionDiariaEspacioId: 2, nivel: 2, espacioNumero: '202' },
-      { asignacionDiariaEspacioId: 3, nivel: 3, espacioNumero: '301' },
-      { asignacionDiariaEspacioId: 1, nivel: 2, espacioNumero: '201' },
+      { asignacionDiariaEspacioId: 1, nivel: 3, espacioNumero: '101' },
+      { asignacionDiariaEspacioId: 2, nivel: 1, espacioNumero: '102' },
+      { asignacionDiariaEspacioId: 3, nivel: 2, espacioNumero: '103' },
+      { asignacionDiariaEspacioId: 4, nivel: 1, espacioNumero: '104' },
     ])
 
-    expect(orden.map((a) => a.asignacionDiariaEspacioId)).toEqual([1, 2, 3, 4])
+    expect(orden.map((a) => a.espacioNumero)).toEqual(['101', '102', '103', '104'])
+  })
+
+  it('desempata por subespecialidad cuando el consultorio se repite', () => {
+    const orden = ordenarAsignaciones([
+      { asignacionDiariaEspacioId: 1, espacioNumero: '201', subespecialidadNombre: 'Pediatría' },
+      { asignacionDiariaEspacioId: 2, espacioNumero: '201', subespecialidadNombre: 'Cardiología' },
+    ])
+
+    expect(orden.map((a) => a.subespecialidadNombre)).toEqual(['Cardiología', 'Pediatría'])
+  })
+
+  it('desempata de forma determinista por id cuando consultorio y subespecialidad coinciden', () => {
+    const orden = ordenarAsignaciones([
+      {
+        asignacionDiariaEspacioId: 9,
+        espacioNumero: '201',
+        subespecialidadNombre: 'Pediatría',
+      },
+      {
+        asignacionDiariaEspacioId: 3,
+        espacioNumero: '201',
+        subespecialidadNombre: 'Pediatría',
+      },
+    ])
+
+    expect(orden.map((a) => a.asignacionDiariaEspacioId)).toEqual([3, 9])
+  })
+
+  it('ordena 101-110 y reparte 101-105 / 106-110 sin depender del nivel', () => {
+    const orden = ordenarAsignaciones(
+      [3, 1, 2, 1, 3, 2, 1, 3, 2, 1].map((nivel, indice) => ({
+        asignacionDiariaEspacioId: indice + 1,
+        espacioNumero: String(101 + indice),
+        subespecialidadNombre: `Clínica ${101 + indice}`,
+        nivel,
+      })),
+    )
+
+    expect(orden.map((a) => a.espacioNumero)).toEqual([
+      '101',
+      '102',
+      '103',
+      '104',
+      '105',
+      '106',
+      '107',
+      '108',
+      '109',
+      '110',
+    ])
+  })
+
+  it('maneja espacioNumero nulo de forma segura', () => {
+    const orden = ordenarAsignaciones([
+      { asignacionDiariaEspacioId: 1, espacioNumero: null },
+      { asignacionDiariaEspacioId: 2, espacioNumero: '102' },
+    ])
+
+    expect(orden).toHaveLength(2)
   })
 
   it('actualiza solo la asignación que coincide por id', () => {
@@ -333,6 +401,9 @@ describe('tableroApi · estado inicial real (REST)', () => {
       ultimaActualizacion: null,
       intentosLlamado: null,
       tipoEvento: null,
+      pacienteNombre: null,
+      turnosEnEspera: [],
+      porNombre: false,
     })
   })
 

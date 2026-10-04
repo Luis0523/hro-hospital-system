@@ -6,6 +6,7 @@ import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
+import RequiereEstacion from './RequiereEstacion.jsx'
 import TableroPage from '@/modules/tablero/pages/TableroPage.jsx'
 import AdministracionLayout from '@/modules/administracion/AdministracionLayout.jsx'
 import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
@@ -15,6 +16,12 @@ import CuposPage from '@/modules/administracion/pages/CuposPage.jsx'
 import CalendarioPage from '@/modules/administracion/pages/CalendarioPage.jsx'
 import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
 import AuditoriaPage from '@/modules/administracion/pages/AuditoriaPage.jsx'
+import RequiereRol from './RequiereRol.jsx'
+import JefeEnfermeriaLayout from '@/modules/jefeEnfermeria/JefeEnfermeriaLayout.jsx'
+import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
+import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
+import EstacionesJefePage from '@/modules/jefeEnfermeria/pages/EstacionesPage.jsx'
+import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
 
 export default function AppRouter() {
   return (
@@ -25,7 +32,9 @@ export default function AppRouter() {
         path="/enfermeria"
         element={
           <ProtectedRoute>
-            <EnfermeriaPage />
+            <RequiereEstacion>
+              <EnfermeriaPage />
+            </RequiereEstacion>
           </ProtectedRoute>
         }
       />
@@ -48,6 +57,21 @@ export default function AppRouter() {
       </Route>
 
       <Route path="/tablero" element={<TableroPage />} />
+
+      <Route
+        path="/jefe-enfermeria"
+        element={
+          <RequiereRol>
+            <JefeEnfermeriaLayout />
+          </RequiereRol>
+        }
+      >
+        <Route index element={<CroquisPage />} />
+        <Route path="horarios" element={<HorariosPage />} />
+        <Route path="estaciones" element={<EstacionesJefePage />} />
+        <Route path="reportes" element={<ReportesJefePage />} />
+        <Route path="*" element={<Navigate to="/jefe-enfermeria" replace />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/enfermeria" replace />} />
     </Routes>

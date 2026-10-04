@@ -17,6 +17,8 @@ export default function ColaPanel({
   segundosRestantes = 0,
   cargandoId,
   onLlamar,
+  onRellamar,
+  onLlamarPorNombre,
   onAtendido,
   onNoResponde,
   onReintegrar,
@@ -80,6 +82,24 @@ export default function ColaPanel({
                     <button
                       type="button"
                       disabled={cargandoId === turno.id}
+                      onClick={() => onRellamar?.(turno)}
+                      className={`${botonAccion} bg-secondary-container text-on-secondary-container hover:brightness-95`}
+                    >
+                      <Icon name="replay" className="text-[16px]" />
+                      Re-llamar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cargandoId === turno.id}
+                      onClick={() => onLlamarPorNombre?.(turno)}
+                      className={`${botonAccion} bg-surface-container-high text-on-surface hover:bg-surface-container-highest`}
+                    >
+                      <Icon name="record_voice_over" className="text-[16px]" />
+                      Llamar por nombre
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cargandoId === turno.id}
                       onClick={() => onAtendido(turno)}
                       className={`${botonAccion} bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400`}
                     >
@@ -124,15 +144,26 @@ export default function ColaPanel({
                     {turno.pacienteNombre ?? 'Paciente'}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  disabled={cargandoId === turno.id}
-                  onClick={() => onReintegrar(turno)}
-                  className={`${botonAccion} bg-primary-container text-on-primary hover:brightness-110`}
-                >
-                  <Icon name="undo" className="text-[16px]" />
-                  Reintegrar
-                </button>
+                <span className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={cargandoId === turno.id}
+                    onClick={() => onRellamar?.(turno)}
+                    className={`${botonAccion} bg-secondary-container text-on-secondary-container hover:brightness-95`}
+                  >
+                    <Icon name="replay" className="text-[16px]" />
+                    Re-llamar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cargandoId === turno.id}
+                    onClick={() => onReintegrar(turno)}
+                    className={`${botonAccion} bg-primary-container text-on-primary hover:brightness-110`}
+                  >
+                    <Icon name="undo" className="text-[16px]" />
+                    Reintegrar
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

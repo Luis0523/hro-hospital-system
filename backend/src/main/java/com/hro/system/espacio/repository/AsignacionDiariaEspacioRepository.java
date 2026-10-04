@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,7 +19,17 @@ public interface AsignacionDiariaEspacioRepository extends JpaRepository<Asignac
 
     List<AsignacionDiariaEspacio> findByFechaAndSubespecialidadId(LocalDate fecha, Long subespecialidadId);
 
+    /** Asignaciones del día para un conjunto de subespecialidades (tablero/cola por estación). */
+    List<AsignacionDiariaEspacio> findByFechaAndSubespecialidadIdIn(LocalDate fecha, Collection<Long> subespecialidadIds);
+
     Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
+
+    /** Una misma subespecialidad no puede repetirse en la misma sala/fecha (sí puede haber varias). */
+    Optional<AsignacionDiariaEspacio> findByEspacioFisicoIdAndFechaAndSubespecialidadId(
+            UUID espacioFisicoId, LocalDate fecha, Long subespecialidadId);
+
+    boolean existsByEspacioFisicoIdAndFechaAndSubespecialidadId(
+            UUID espacioFisicoId, LocalDate fecha, Long subespecialidadId);
 
     List<AsignacionDiariaEspacio> findBySubespecialidadIdAndFecha(Long subespecialidadId, LocalDate fecha);
 
