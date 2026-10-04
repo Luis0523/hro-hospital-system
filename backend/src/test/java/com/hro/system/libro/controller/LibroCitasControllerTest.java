@@ -88,7 +88,7 @@ class LibroCitasControllerTest {
                 .apellidos("Libro")
                 .fechaNacimiento(LocalDate.of(1990, 1, 1))
                 .sexo("F")
-                .numeroExpediente("1401-" + suffix.substring(0, 2))
+                .numeroExpediente("1323-23")
                 .build());
     }
 
@@ -253,6 +253,19 @@ class LibroCitasControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("items", List.of(item)))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /libro-citas/expedientes rechaza un formato de expediente inválido (400)")
+    void registrarFormatoInvalido() throws Exception {
+        Map<String, Object> item = Map.of(
+                "numeroExpediente", "EXP-2024-035",
+                "fecha", FECHA.toString(),
+                "subespecialidadId", subespecialidad.getId());
+        mockMvc.perform(post("/libro-citas/expedientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("items", List.of(item)))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

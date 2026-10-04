@@ -2,6 +2,7 @@ package com.hro.system.libro.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class LibroCitasExpedienteItemDTO {
 
     @NotBlank(message = "El número de expediente es obligatorio")
+    @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "El número de expediente debe tener el formato NNNN-NN (ej. 1323-23)")
     private String numeroExpediente;
 
     private UUID pacienteId;

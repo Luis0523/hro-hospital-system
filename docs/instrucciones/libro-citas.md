@@ -67,7 +67,7 @@ Debe permitir ingresar **una cita** y agregarla a la tabla.
 |---|---|---|---|
 | **Fecha de la cita** | `date` | Sí | La fecha a la que corresponde la cita. |
 | **Especialidad** | `select` | Sí | **Un único select.** Por ahora solo **Medicina Interna** y **Medicina General**. Se irán agregando más. |
-| **Número de expediente** | `text` | Sí | Formato **4 dígitos + guion + 2 dígitos**, ejemplo: **`1401-24`**. Validar el formato. |
+| **Número de expediente** | `text` | Sí | Formato **`NNNN-NN`** = 4 dígitos + guion + 2 dígitos. Ejemplo: **`1323-23`**. El backend valida el patrón (`^\d{4}-\d{2}$`); el frontend debe aplicar la misma validación. |
 | **Nombre del paciente** | texto de lectura | — | Se muestra **automáticamente** al ingresar el expediente (resultado de la consulta). No se escribe a mano. |
 | Botón **"Agregar a la lista"** | — | — | Valida y agrega la fila a la tabla; limpia el campo de expediente. |
 
@@ -164,9 +164,9 @@ X-Usuario-Nombre: Registro Médico
   duplicado.
 
 > **Nota para el desarrollo:** por ahora **no** se conecta la API. Cuando se integre, estas son
-> las dos llamadas a usar. El contrato de §6.2 es el objetivo; el backend se está ajustando a
-> este modelo de **expedientes individuales** (hoy el módulo guarda cantidades por
-> subespecialidad y pasará a este contrato).
+> las dos llamadas a usar. El contrato de §6.2 **ya está implementado en el backend desplegado**
+> (expedientes individuales, `POST /libro-citas/expedientes`). El número de expediente debe venir
+> con el formato real **`NNNN-NN`** (ej. `1323-23`); otro formato responde **400**.
 
 ### 6.3 Cabeceras (modo mock)
 
