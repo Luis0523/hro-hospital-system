@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
+import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
@@ -44,6 +45,9 @@ export default function AppRouter() {
       <Route path="/archivo" element={<ArchivoPage />} />
       <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
       <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
+
+      {/* Mismo criterio de acceso general que /archivo: sin guard propio ni login. */}
+      <Route path="/libro-citas" element={<LibroCitasPage />} />
 
       <Route path="/administracion" element={<AdministracionLayout />}>
         <Route index element={<DashboardPage />} />
