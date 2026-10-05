@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import AppRouter from '@/router/AppRouter.jsx'
@@ -52,9 +53,11 @@ function renderPagina(ruta = '/archivo') {
     <MemoryRouter initialEntries={[ruta]}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <ArchivoPage />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <ArchivoPage />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -66,9 +69,11 @@ function renderRuta(ruta) {
     <MemoryRouter initialEntries={[ruta]}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <AppRouter />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <AppRouter />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
