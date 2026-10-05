@@ -21,8 +21,13 @@ import {
   obtenerExpedienteMock,
   resumenArchivoMock,
 } from './mockData'
+import { construirPdfResumen } from '../utils/pdfMock'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
+
+// Bandera de solo lectura para la UI: permite etiquetar "Datos simulados"
+// cuando VITE_USE_MOCK=true (o en los tests). En modo real es false.
+export const USANDO_DATOS_MOCK = USE_MOCK
 
 const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 
@@ -205,7 +210,9 @@ export async function obtenerResumenArchivo({ fecha } = {}) {
 }
 
 export async function obtenerResumenArchivoPdf({ fecha } = {}) {
-  if (USE_MOCK) return pdfMock('%PDF-1.4 resumen mock')
+  // En mock se devuelve un PDF mínimo pero estructuralmente válido; en modo real
+  // el backend produce el PDF y se descarga el Blob recibido sin transformarlo.
+  if (USE_MOCK) return construirPdfResumen(resumenArchivoMock(fecha))
   return client.get('/archivo/resumen/pdf', { params: { fecha }, responseType: 'blob' })
 }
 

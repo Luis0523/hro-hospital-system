@@ -105,6 +105,20 @@ describe('useAccionesArchivo', () => {
 
     expect(obtenerResumenArchivoPdf).toHaveBeenCalledWith({ fecha: '2026-11-09' })
     expect(descargarBlob).toHaveBeenCalledTimes(1)
+    expect(descargarBlob).toHaveBeenCalledWith(expect.any(Blob), 'resumen-archivo-2026-11-09.pdf')
+  })
+
+  it('expone la hora de actualización al consultar el resumen', async () => {
+    obtenerResumenArchivo.mockResolvedValue({ fecha: '2026-11-09', totalCiclos: 3 })
+
+    const { result } = renderHook(() => useAccionesArchivo())
+    expect(result.current.resumenActualizadoEn).toBeNull()
+
+    await act(async () => {
+      await result.current.consultarResumen('2026-11-09')
+    })
+
+    expect(result.current.resumenActualizadoEn).toBeInstanceOf(Date)
   })
 
   it('crea un acta y descarga su PDF', async () => {

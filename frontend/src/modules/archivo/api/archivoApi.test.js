@@ -158,6 +158,31 @@ describe('archivoApi (resumen y actas - SCRUM-96)', () => {
     expect(blob.type).toBe('application/pdf')
   })
 
+  it('el PDF de resumen mock es un Blob PDF no vacío', async () => {
+    const blob = await obtenerResumenArchivoPdf({ fecha: '2026-09-28' })
+
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob.type).toBe('application/pdf')
+    expect(blob.size).toBeGreaterThan(0)
+  })
+
+  it('el resumen mock refleja la jornada simulada y no solo ceros', async () => {
+    const resumen = await obtenerResumenArchivo({ fecha: null })
+
+    expect(resumen.totalCiclos).toBeGreaterThan(0)
+    const sumaEstados =
+      resumen.pendienteLocalizar +
+      resumen.enBusqueda +
+      resumen.localizado +
+      resumen.enTransitoEntrega +
+      resumen.enTransitoRetorno +
+      resumen.entregado +
+      resumen.archivado +
+      resumen.noLocalizado
+    expect(sumaEstados).toBe(resumen.totalCiclos)
+    expect(resumen.expedientesNuevos).toBeGreaterThan(0)
+  })
+
   it('crea un acta de recepción con su detalle', async () => {
     const acta = await crearActaRecepcion({
       fecha: '2026-11-09',

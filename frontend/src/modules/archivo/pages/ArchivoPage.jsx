@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
-import { buscarExpedientePorCodigo } from '../api/archivoApi'
+import { USANDO_DATOS_MOCK, buscarExpedientePorCodigo } from '../api/archivoApi'
 import { useExpedientes } from '../hooks/useExpedientes'
 import { useAccionesArchivo } from '../hooks/useAccionesArchivo'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
@@ -16,6 +16,12 @@ function ordenarPorHora(expedientes) {
   return [...expedientes].sort((a, b) =>
     (a.horaEstimada ?? '99:99:99').localeCompare(b.horaEstimada ?? '99:99:99'),
   )
+}
+
+// Hora local de la última consulta del resumen (marca del frontend, no backend).
+function horaCorta(fecha) {
+  if (!fecha) return ''
+  return fecha.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
 }
 
 // Relaciona un resultado de búsqueda con una fila de la jornada usando el
@@ -91,6 +97,7 @@ export default function ArchivoPage() {
   } = useExpedientes()
   const {
     resumen: resumenServidor,
+    resumenActualizadoEn,
     cargandoResumen,
     cargandoResumenPdf,
     consultarResumen,
@@ -352,24 +359,38 @@ export default function ArchivoPage() {
           </div>
 
           {resumenServidor && (
-            <dl
-              aria-label="Resumen del servidor"
-              className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl bg-surface-container-low p-3 text-body-sm sm:grid-cols-3"
-            >
-              {[
-                ['Total de ciclos', resumenServidor.totalCiclos],
-                ['Pendientes', resumenServidor.pendienteLocalizar],
-                ['Localizados', resumenServidor.localizado],
-                ['Entregados', resumenServidor.entregado],
-                ['No localizados', resumenServidor.noLocalizado],
-                ['Expedientes nuevos', resumenServidor.expedientesNuevos],
-              ].map(([etiqueta, valor]) => (
-                <div key={etiqueta} className="flex items-center justify-between gap-2">
-                  <dt className="text-on-surface-variant">{etiqueta}</dt>
-                  <dd className="font-semibold text-on-surface">{valor}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="mt-4 space-y-3 rounded-xl bg-surface-container-low p-3">
+              <div className="flex flex-wrap items-center gap-2 text-body-sm">
+                {resumenActualizadoEn && (
+                  <span className="text-on-surface-variant">
+                    Actualizado: {horaCorta(resumenActualizadoEn)}
+                  </span>
+                )}
+                {USANDO_DATOS_MOCK && (
+                  <span className="rounded bg-amber-100 px-2 py-0.5 text-label-sm font-semibold text-amber-800">
+                    Datos simulados
+                  </span>
+                )}
+              </div>
+              <dl
+                aria-label="Resumen del servidor"
+                className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm sm:grid-cols-3"
+              >
+                {[
+                  ['Total de ciclos', resumenServidor.totalCiclos],
+                  ['Pendientes', resumenServidor.pendienteLocalizar],
+                  ['Localizados', resumenServidor.localizado],
+                  ['Entregados', resumenServidor.entregado],
+                  ['No localizados', resumenServidor.noLocalizado],
+                  ['Expedientes nuevos', resumenServidor.expedientesNuevos],
+                ].map(([etiqueta, valor]) => (
+                  <div key={etiqueta} className="flex items-center justify-between gap-2">
+                    <dt className="text-on-surface-variant">{etiqueta}</dt>
+                    <dd className="font-semibold text-on-surface">{valor}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           )}
         </section>
       </main>

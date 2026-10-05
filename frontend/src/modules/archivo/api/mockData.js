@@ -376,23 +376,48 @@ export function crearExpedienteMock(pacienteId) {
 }
 
 // ---------------------------------------------------------------------------
-// Resumen operativo diario (contrato ResumenArchivoDTO). Valores en cero para
-// no inventar métricas; el backend real calcula los conteos.
+// Resumen operativo diario (contrato ResumenArchivoDTO). En modo mock se
+// derivan los conteos de la jornada simulada actual para que no aparezcan solo
+// ceros; el backend real es la fuente de verdad.
 // ---------------------------------------------------------------------------
 export function resumenArchivoMock(fecha) {
-  return {
-    fecha: fecha ?? null,
-    totalCiclos: 0,
-    pendienteLocalizar: 0,
-    enBusqueda: 0,
+  const filas = expedientesMock.filter((expediente) => !fecha || expediente.fechaCita === fecha)
+  const conteo = {
+    pendiente_localizar: 0,
+    en_busqueda: 0,
     localizado: 0,
-    enTransitoEntrega: 0,
-    enTransitoRetorno: 0,
+    en_transito_entrega: 0,
+    en_transito_retorno: 0,
     entregado: 0,
     archivado: 0,
-    noLocalizado: 0,
-    enTransito: 0,
-    expedientesNuevos: 0,
+    no_localizado: 0,
+  }
+  let expedientesNuevos = 0
+
+  for (const expediente of filas) {
+    if (!expediente.numeroExpediente) {
+      expedientesNuevos += 1
+      continue
+    }
+    const estado = ESTADO_JORNADA_MOCK[expediente.id] ?? 'pendiente_localizar'
+    if (estado in conteo) conteo[estado] += 1
+  }
+
+  const totalCiclos = Object.values(conteo).reduce((total, valor) => total + valor, 0)
+
+  return {
+    fecha: fecha ?? null,
+    totalCiclos,
+    pendienteLocalizar: conteo.pendiente_localizar,
+    enBusqueda: conteo.en_busqueda,
+    localizado: conteo.localizado,
+    enTransitoEntrega: conteo.en_transito_entrega,
+    enTransitoRetorno: conteo.en_transito_retorno,
+    entregado: conteo.entregado,
+    archivado: conteo.archivado,
+    noLocalizado: conteo.no_localizado,
+    enTransito: conteo.en_transito_entrega + conteo.en_transito_retorno,
+    expedientesNuevos,
   }
 }
 

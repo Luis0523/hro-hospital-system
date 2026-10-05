@@ -12,6 +12,7 @@ import { descargarBlob } from '../utils/descargarBlob'
 // expone su propio estado de carga. No genera PDFs en el frontend.
 export function useAccionesArchivo() {
   const [resumen, setResumen] = useState(null)
+  const [resumenActualizadoEn, setResumenActualizadoEn] = useState(null)
   const [cargandoResumen, setCargandoResumen] = useState(false)
   const [cargandoResumenPdf, setCargandoResumenPdf] = useState(false)
   const [creandoActa, setCreandoActa] = useState(false)
@@ -37,6 +38,8 @@ export function useAccionesArchivo() {
       ejecutar('resumen', setCargandoResumen, async () => {
         const datos = await obtenerResumenArchivo({ fecha })
         setResumen(datos)
+        // Marca local de cuándo se ejecutó la consulta (no es un dato backend).
+        setResumenActualizadoEn(new Date())
         return datos
       }),
     [ejecutar],
@@ -69,6 +72,7 @@ export function useAccionesArchivo() {
 
   return {
     resumen,
+    resumenActualizadoEn,
     cargandoResumen,
     cargandoResumenPdf,
     creandoActa,
