@@ -1123,3 +1123,35 @@ describe('MesaCoexPage - Fase 5 (responsive y targets táctiles)', () => {
     expect(within(dialogo).getByRole('button', { name: 'Devolver' }).className).toContain('min-h-11')
   })
 })
+
+describe('MesaCoexPage - regresión empty-state con fuente de ciclos', () => {
+  it('39. muestra expedientes operativos aunque subespecialidades esté vacío', async () => {
+    cargarLoteEstacion.mockResolvedValue({
+      subespecialidades: [],
+      filas: [fila({ numeroExpediente: 'EXP-CICLO' })],
+    })
+
+    renderPagina()
+
+    expect(await screen.findByText('EXP-CICLO')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Sin expedientes para la fecha seleccionada'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('La estación no tiene subespecialidades activas para esta fecha.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('40. mantiene el empty-state previo cuando no hay subespecialidades ni filas', async () => {
+    cargarLoteEstacion.mockResolvedValue({ subespecialidades: [], filas: [] })
+
+    renderPagina()
+
+    expect(
+      await screen.findByText('Sin expedientes para la fecha seleccionada'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('La estación no tiene subespecialidades activas para esta fecha.'),
+    ).toBeInTheDocument()
+  })
+})

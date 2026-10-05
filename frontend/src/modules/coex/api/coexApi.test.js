@@ -4,8 +4,13 @@ import {
   cargarLoteEstacion,
   claveFila,
   entregarExpedienteCiclo,
+  listarCiclosCoex,
+  obtenerDetalleCicloCoex,
+  obtenerSalidaCoex,
+  obtenerSalidaPdfCoex,
   retornarExpedienteCiclo,
 } from './coexApi'
+import { CICLO_EN_TRANSITO_ENTREGA } from './fixturesCiclosCoex'
 
 describe('coexApi - identidad y agregación', () => {
   it('claveFila prioriza cicloId, luego citaId y finalmente expedienteId', () => {
@@ -178,5 +183,142 @@ describe('coexApi - retornarExpedienteCiclo', () => {
     const resultado = await retornarExpedienteCiclo('c1')
 
     expect(resultado).toMatchObject({ id: 'c1', estadoActual: 'en_transito_retorno' })
+  })
+})
+
+describe('coexApi - listarCiclosCoex', () => {
+  it('sin filtros consulta la cola sin params y desenvuelve ApiResponse', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: [CICLO_EN_TRANSITO_ENTREGA] }) }
+
+    const resultado = await listarCiclosCoex({ cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/expediente-ciclos', { params: {} })
+    expect(resultado).toEqual([CICLO_EN_TRANSITO_ENTREGA])
+  })
+
+  it('envía solo los params definidos (fecha)', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: [] }) }
+
+    await listarCiclosCoex({ fecha: '2026-10-05', cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/expediente-ciclos', {
+      params: { fecha: '2026-10-05' },
+    })
+  })
+
+  it('envía estado cuando se define', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: [] }) }
+
+    await listarCiclosCoex({ estado: 'entregado', cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/expediente-ciclos', {
+      params: { estado: 'entregado' },
+    })
+  })
+
+  it('envía subespecialidadId cuando se define (incluido 0)', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: [] }) }
+
+    await listarCiclosCoex({ subespecialidadId: 7, cliente, usarMock: false })
+    expect(cliente.get).toHaveBeenCalledWith('/expediente-ciclos', {
+      params: { subespecialidadId: 7 },
+    })
+
+    await listarCiclosCoex({ subespecialidadId: 0, cliente, usarMock: false })
+    expect(cliente.get).toHaveBeenLastCalledWith('/expediente-ciclos', {
+      params: { subespecialidadId: 0 },
+    })
+  })
+
+  it('tolera una respuesta paginada (data.content)', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: { content: [CICLO_EN_TRANSITO_ENTREGA] } }) }
+
+    const resultado = await listarCiclosCoex({ cliente, usarMock: false })
+
+    expect(resultado).toEqual([CICLO_EN_TRANSITO_ENTREGA])
+  })
+
+  it('propaga el error normalizado del cliente', async () => {
+    const fallo = Object.assign(new Error('No autorizado'), { status: 401 })
+    const cliente = { get: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(listarCiclosCoex({ cliente, usarMock: false })).rejects.toMatchObject({
+      status: 401,
+    })
+  })
+})
+
+describe('coexApi - obtenerDetalleCicloCoex', () => {
+  it('consulta el detalle por id y desenvuelve ApiResponse', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: CICLO_EN_TRANSITO_ENTREGA }) }
+
+    const resultado = await obtenerDetalleCicloCoex('ciclo-001', { cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/expediente-ciclos/ciclo-001')
+    expect(resultado).toEqual(CICLO_EN_TRANSITO_ENTREGA)
+  })
+
+  it('propaga el 404', async () => {
+    const fallo = Object.assign(new Error('No encontrado'), { status: 404 })
+    const cliente = { get: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(
+      obtenerDetalleCicloCoex('x', { cliente, usarMock: false }),
+    ).rejects.toMatchObject({ status: 404 })
+  })
+})
+
+describe('coexApi - obtenerSalidaCoex', () => {
+  it('consulta la salida con fecha y normaliza el sobre', async () => {
+    const salida = { fecha: '2026-10-05', total: 1, items: [{ expedienteId: 'e1' }] }
+    const cliente = { get: vi.fn().mockResolvedValue({ data: salida }) }
+
+    const resultado = await obtenerSalidaCoex({ fecha: '2026-10-05', cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/archivo/salida', {
+      params: { fecha: '2026-10-05' },
+    })
+    expect(resultado).toEqual(salida)
+  })
+
+  it('usa valores por defecto si el sobre viene incompleto', async () => {
+    const cliente = { get: vi.fn().mockResolvedValue({ data: {} }) }
+
+    const resultado = await obtenerSalidaCoex({ fecha: '2026-10-05', cliente, usarMock: false })
+
+    expect(resultado).toEqual({ fecha: '2026-10-05', total: 0, items: [] })
+  })
+
+  it('propaga el error del cliente', async () => {
+    const fallo = Object.assign(new Error('Fallo'), { status: 500 })
+    const cliente = { get: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(obtenerSalidaCoex({ cliente, usarMock: false })).rejects.toMatchObject({
+      status: 500,
+    })
+  })
+})
+
+describe('coexApi - obtenerSalidaPdfCoex', () => {
+  it('solicita el PDF con responseType blob y devuelve el Blob', async () => {
+    const blob = new Blob(['pdf'], { type: 'application/pdf' })
+    const cliente = { get: vi.fn().mockResolvedValue(blob) }
+
+    const resultado = await obtenerSalidaPdfCoex({ fecha: '2026-10-05', cliente, usarMock: false })
+
+    expect(cliente.get).toHaveBeenCalledWith('/archivo/salida/pdf', {
+      params: { fecha: '2026-10-05' },
+      responseType: 'blob',
+    })
+    expect(resultado).toBe(blob)
+  })
+
+  it('propaga el error del cliente', async () => {
+    const fallo = Object.assign(new Error('Fallo PDF'), { status: 500 })
+    const cliente = { get: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(obtenerSalidaPdfCoex({ cliente, usarMock: false })).rejects.toMatchObject({
+      status: 500,
+    })
   })
 })
