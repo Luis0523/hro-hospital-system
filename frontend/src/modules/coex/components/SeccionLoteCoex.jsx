@@ -1,8 +1,46 @@
+import { useEffect, useRef } from 'react'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
 import FilaExpedienteCoex from './FilaExpedienteCoex.jsx'
 
-// Sección de solo lectura del lote (Pendientes de recibir / En uso).
-export default function SeccionLoteCoex({ titulo, descripcion, filas = [], vacio }) {
+// Checkbox maestro con soporte para estado indeterminado (selección parcial).
+// El indeterminado es una propiedad imperativa del DOM, de ahí el ref.
+function CheckboxMaestro({ marcado, indeterminado, onChange, etiqueta }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminado
+  }, [indeterminado])
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="h-5 w-5 cursor-pointer rounded accent-hro-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+      checked={marcado}
+      onChange={onChange}
+      aria-label={etiqueta}
+    />
+  )
+}
+
+// Sección del lote. Por defecto es de solo lectura; cuando `mostrarSeleccion`
+// está activo habilita el checklist (maestro + por fila). Los slots `acciones`
+// y `alerta` permiten a la página inyectar la barra de recepción y el resumen de
+// fallos sin acoplar el módulo.
+export default function SeccionLoteCoex({
+  titulo,
+  descripcion,
+  filas = [],
+  vacio,
+  mostrarSeleccion = false,
+  todasSeleccionadas = false,
+  seleccionParcial = false,
+  onToggleTodas,
+  estaSeleccionada,
+  onToggleFila,
+  acciones,
+  alerta,
+}) {
   return (
     <section
       aria-label={titulo}
@@ -18,12 +56,35 @@ export default function SeccionLoteCoex({ titulo, descripcion, filas = [], vacio
         </span>
       </div>
 
+      {mostrarSeleccion && filas.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant pb-3">
+          <label className="flex cursor-pointer items-center gap-2 text-body-sm text-on-surface">
+            <CheckboxMaestro
+              marcado={todasSeleccionadas}
+              indeterminado={seleccionParcial}
+              onChange={onToggleTodas}
+              etiqueta="Seleccionar todos los expedientes pendientes de recibir"
+            />
+            Seleccionar todo
+          </label>
+          {acciones}
+        </div>
+      )}
+
+      {alerta && <div className="mb-3">{alerta}</div>}
+
       {filas.length === 0 ? (
         <EmptyState title={vacio?.title} description={vacio?.description} />
       ) : (
         <ul className="flex flex-col gap-2">
           {filas.map((fila) => (
-            <FilaExpedienteCoex key={fila.cicloId ?? fila.citaId} fila={fila} />
+            <FilaExpedienteCoex
+              key={fila.cicloId ?? fila.citaId}
+              fila={fila}
+              seleccionable={mostrarSeleccion}
+              seleccionada={mostrarSeleccion ? !!estaSeleccionada?.(fila.cicloId) : false}
+              onToggle={onToggleFila}
+            />
           ))}
         </ul>
       )}

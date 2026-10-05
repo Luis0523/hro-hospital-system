@@ -1,15 +1,22 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { metadatosEstadoCoex } from '../estadosCoex'
 
-// Fila de lectura de Mesa COEX. Puramente presentacional: no conoce la API, no
-// avanza estados y no ofrece acciones. Fase 1 no incluye checkbox ni botones.
-export default function FilaExpedienteCoex({ fila }) {
+// Fila de Mesa COEX. Presentacional: no conoce la API ni avanza estados. Cuando
+// `seleccionable` está activo expone un checkbox nativo que informa al padre el
+// `cicloId` marcado mediante `onToggle`; en caso contrario se muestra como
+// fila de solo lectura (p. ej. la sección "En uso").
+export default function FilaExpedienteCoex({
+  fila,
+  seleccionable = false,
+  seleccionada = false,
+  onToggle,
+}) {
   const meta = metadatosEstadoCoex(fila?.estadoActual)
   const numero = fila?.numeroExpediente || 'Sin número de expediente'
   const hora = fila?.horaEstimada ? fila.horaEstimada.slice(0, 5) : null
 
-  return (
-    <li className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
+  const contenido = (
+    <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-title-md font-semibold text-on-surface">{numero}</span>
         <span
@@ -35,6 +42,25 @@ export default function FilaExpedienteCoex({ fila }) {
           </span>
         )}
       </div>
+    </>
+  )
+
+  return (
+    <li className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
+      {seleccionable ? (
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer rounded accent-hro-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+            checked={seleccionada}
+            onChange={() => onToggle?.(fila?.cicloId)}
+            aria-label={`Seleccionar expediente ${numero}`}
+          />
+          <span className="min-w-0 flex-1">{contenido}</span>
+        </label>
+      ) : (
+        contenido
+      )}
     </li>
   )
 }

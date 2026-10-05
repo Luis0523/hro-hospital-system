@@ -1,15 +1,21 @@
+import { useState } from 'react'
 import Alert from '@/shared/components/ui/Alert.jsx'
+import Button from '@/shared/components/ui/Button.jsx'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
+import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useLoteCoex } from '../hooks/useLoteCoex'
+import { useRecepcionCoex } from '../hooks/useRecepcionCoex'
+import ConfirmacionRecepcionCoex from '../components/ConfirmacionRecepcionCoex.jsx'
 import ResumenLoteCoex from '../components/ResumenLoteCoex.jsx'
 import SeccionLoteCoex from '../components/SeccionLoteCoex.jsx'
 
-// Mesa COEX — Fase 1 (solo lectura). Carga el lote de la estación activa para
-// la fecha de trabajo y lo separa en "Pendientes de recibir" y "En uso".
-// No incluye transiciones, checklist, PDF ni actas.
+// Mesa COEX. Fase 1: carga el lote de la estación activa y lo separa en
+// "Pendientes de recibir" y "En uso". Fase 2: checklist de recepción sobre las
+// filas accionables (`en_transito_entrega`) y transición `entregar` por ciclo.
+// No incluye PDF, devolución ni refresco en vivo.
 export default function MesaCoexPage() {
   const {
     estacion,
@@ -21,7 +27,63 @@ export default function MesaCoexPage() {
     total,
     cargando,
     error,
+    recargar,
   } = useLoteCoex()
+
+  const { mostrarToast } = useToast()
+  const recepcion = useRecepcionCoex({ pendientesRecibir, recargar, mostrarToast })
+  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
+
+  async function confirmarRecepcion() {
+    await recepcion.recibirSeleccionados()
+    setConfirmacionAbierta(false)
+  }
+
+  const fallidos = recepcion.ultimoResultado?.fallidos ?? []
+  const exitosos = recepcion.ultimoResultado?.exitosos ?? []
+  const alertaFallos =
+    fallidos.length > 0 ? (
+      <Alert
+        tone={exitosos.length === 0 ? 'error' : 'warning'}
+        title={
+          exitosos.length === 0
+            ? 'No se pudo recibir ningún expediente'
+            : `${exitosos.length} recibido${exitosos.length === 1 ? '' : 's'}, ${fallidos.length} sin recibir`
+        }
+      >
+        <p className="mb-2">Los siguientes expedientes no se recibieron y siguen seleccionados:</p>
+        <ul className="list-inside list-disc">
+          {fallidos.map(({ fila, error: fallo }) => (
+            <li key={String(fila.cicloId)}>
+              {fila.numeroExpediente || fila.cicloId}
+              {fallo?.message ? ` — ${fallo.message}` : ''}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2">
+          <Button variant="ghost" size="sm" onClick={recepcion.descartarResultado}>
+            Descartar
+          </Button>
+        </div>
+      </Alert>
+    ) : null
+
+  const accionesRecepcion = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-label-md text-on-surface-variant" aria-live="polite">
+        {recepcion.cantidadSeleccionada} seleccionado{recepcion.cantidadSeleccionada === 1 ? '' : 's'}
+      </span>
+      <Button
+        size="sm"
+        onClick={() => setConfirmacionAbierta(true)}
+        disabled={recepcion.cantidadSeleccionada === 0 || recepcion.enviando}
+        aria-busy={recepcion.enviando || undefined}
+      >
+        <Icon name="inbox" className="text-[18px]" />
+        Recibir seleccionados
+      </Button>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-surface pb-10">
@@ -93,6 +155,14 @@ export default function MesaCoexPage() {
                 title: 'Sin pendientes de recibir',
                 description: 'No hay expedientes en tránsito hacia la estación.',
               }}
+              mostrarSeleccion
+              todasSeleccionadas={recepcion.todasSeleccionadas}
+              seleccionParcial={recepcion.seleccionParcial}
+              onToggleTodas={recepcion.toggleTodas}
+              estaSeleccionada={recepcion.estaSeleccionada}
+              onToggleFila={recepcion.toggleFila}
+              acciones={accionesRecepcion}
+              alerta={alertaFallos}
             />
             <SeccionLoteCoex
               titulo="En uso"
@@ -106,6 +176,14 @@ export default function MesaCoexPage() {
           </>
         )}
       </main>
+
+      <ConfirmacionRecepcionCoex
+        abierto={confirmacionAbierta}
+        expedientes={recepcion.seleccionadas}
+        enviando={recepcion.enviando}
+        onCancelar={() => setConfirmacionAbierta(false)}
+        onConfirmar={confirmarRecepcion}
+      />
     </div>
   )
 }

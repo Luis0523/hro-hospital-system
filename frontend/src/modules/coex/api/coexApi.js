@@ -1,5 +1,6 @@
 import client from '@/shared/api/client'
 import {
+  entregarCicloCoexMock,
   jornadaSubespecialidadCoexMock,
   subespecialidadesEstacionCoexMock,
 } from './mockDataCoex'
@@ -36,6 +37,21 @@ export async function listarJornadaSubespecialidad({ fecha, subespecialidadId } 
     }),
   )
   return Array.isArray(datos) ? datos : (datos?.content ?? [])
+}
+
+// Recepción de un expediente: transición `en_transito_entrega -> entregado`.
+// El backend valida la transición; el frontend solo la solicita. El cuerpo es
+// opcional: se envía `{}` cuando no hay observación y `{ observacion }` solo si
+// se proporciona programáticamente (la UI de COEX no captura observación).
+// Devuelve el `ExpedienteCicloResponseDTO` ya desenvuelto de `ApiResponse`.
+export async function entregarExpedienteCiclo(
+  cicloId,
+  { observacion, cliente = client, usarMock = USE_MOCK } = {},
+) {
+  if (usarMock) return entregarCicloCoexMock(cicloId, { observacion })
+
+  const cuerpo = observacion == null ? {} : { observacion }
+  return desenvolver(await cliente.post(`/expediente-ciclos/${cicloId}/entregar`, cuerpo))
 }
 
 // Identidad estable de una fila de jornada para deduplicar de forma defensiva

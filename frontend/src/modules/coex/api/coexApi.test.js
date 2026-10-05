@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { agregarJornadas, cargarLoteEstacion, claveFila } from './coexApi'
+import {
+  agregarJornadas,
+  cargarLoteEstacion,
+  claveFila,
+  entregarExpedienteCiclo,
+} from './coexApi'
 
 describe('coexApi - identidad y agregación', () => {
   it('claveFila prioriza cicloId, luego citaId y finalmente expedienteId', () => {
@@ -58,5 +63,53 @@ describe('coexApi - cargarLoteEstacion', () => {
 
     expect(lote).toEqual({ subespecialidades: [], filas: [] })
     expect(listarSubs).not.toHaveBeenCalled()
+  })
+})
+
+describe('coexApi - entregarExpedienteCiclo', () => {
+  it('hace POST a /expediente-ciclos/{id}/entregar sin cuerpo cuando no hay observación', async () => {
+    const cliente = { post: vi.fn().mockResolvedValue({ data: { id: 'c1' } }) }
+
+    await entregarExpedienteCiclo('c1', { cliente, usarMock: false })
+
+    expect(cliente.post).toHaveBeenCalledWith('/expediente-ciclos/c1/entregar', {})
+  })
+
+  it('envía la observación cuando se proporciona', async () => {
+    const cliente = { post: vi.fn().mockResolvedValue({ data: { id: 'c1' } }) }
+
+    await entregarExpedienteCiclo('c1', {
+      observacion: 'Recibido por enfermería',
+      cliente,
+      usarMock: false,
+    })
+
+    expect(cliente.post).toHaveBeenCalledWith('/expediente-ciclos/c1/entregar', {
+      observacion: 'Recibido por enfermería',
+    })
+  })
+
+  it('devuelve el DTO desenvuelto de ApiResponse', async () => {
+    const esperado = { id: 'c1', estadoActual: 'entregado' }
+    const cliente = { post: vi.fn().mockResolvedValue({ data: esperado }) }
+
+    const resultado = await entregarExpedienteCiclo('c1', { cliente, usarMock: false })
+
+    expect(resultado).toEqual(esperado)
+  })
+
+  it('propaga el error normalizado del cliente (400)', async () => {
+    const fallo = Object.assign(new Error('Transición inválida'), { status: 400 })
+    const cliente = { post: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(
+      entregarExpedienteCiclo('c1', { cliente, usarMock: false }),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('en modo mock devuelve el ciclo como entregado', async () => {
+    const resultado = await entregarExpedienteCiclo('c1')
+
+    expect(resultado).toMatchObject({ id: 'c1', estadoActual: 'entregado' })
   })
 })

@@ -104,3 +104,17 @@ export function jornadaSubespecialidadCoexMock({ subespecialidadId } = {}) {
     (fila) => !subespecialidadId || fila.subespecialidadId === Number(subespecialidadId),
   ).map((fila) => ({ ...fila }))
 }
+
+// Recepción de un ciclo. Reproduce de forma mínima el `ExpedienteCicloResponseDTO`
+// devuelto por `POST /expediente-ciclos/{id}/entregar` en modo mock: el estado
+// resultante es `entregado`. Las pruebas que necesiten fallos inyectan su propio
+// rechazo sobre `entregarExpedienteCiclo`, por lo que este fixture solo cubre el
+// camino feliz.
+export function entregarCicloCoexMock(cicloId, { observacion } = {}) {
+  return {
+    id: cicloId,
+    estadoActual: 'entregado',
+    observacion: observacion ?? null,
+    movimientos: [],
+  }
+}
