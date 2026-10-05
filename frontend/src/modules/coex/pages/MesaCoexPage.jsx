@@ -6,8 +6,10 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
+import { useDevolucionCoex } from '../hooks/useDevolucionCoex'
 import { useLoteCoex } from '../hooks/useLoteCoex'
 import { useRecepcionCoex } from '../hooks/useRecepcionCoex'
+import ConfirmacionDevolucionCoex from '../components/ConfirmacionDevolucionCoex.jsx'
 import ConfirmacionRecepcionCoex from '../components/ConfirmacionRecepcionCoex.jsx'
 import ResumenLoteCoex from '../components/ResumenLoteCoex.jsx'
 import SeccionLoteCoex from '../components/SeccionLoteCoex.jsx'
@@ -15,7 +17,8 @@ import SeccionLoteCoex from '../components/SeccionLoteCoex.jsx'
 // Mesa COEX. Fase 1: carga el lote de la estación activa y lo separa en
 // "Pendientes de recibir" y "En uso". Fase 2: checklist de recepción sobre las
 // filas accionables (`en_transito_entrega`) y transición `entregar` por ciclo.
-// No incluye PDF, devolución ni refresco en vivo.
+// Fase 3: checklist de devolución sobre las filas en uso (`entregado`) y
+// transición `retornar` por ciclo. No incluye PDF ni refresco en vivo.
 export default function MesaCoexPage() {
   const {
     estacion,
@@ -32,11 +35,18 @@ export default function MesaCoexPage() {
 
   const { mostrarToast } = useToast()
   const recepcion = useRecepcionCoex({ pendientesRecibir, recargar, mostrarToast })
+  const devolucion = useDevolucionCoex({ enUso, recargar, mostrarToast })
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
+  const [confirmacionDevolucionAbierta, setConfirmacionDevolucionAbierta] = useState(false)
 
   async function confirmarRecepcion() {
     await recepcion.recibirSeleccionados()
     setConfirmacionAbierta(false)
+  }
+
+  async function confirmarDevolucion() {
+    await devolucion.devolverSeleccionados()
+    setConfirmacionDevolucionAbierta(false)
   }
 
   const fallidos = recepcion.ultimoResultado?.fallidos ?? []
@@ -81,6 +91,52 @@ export default function MesaCoexPage() {
       >
         <Icon name="inbox" className="text-[18px]" />
         Recibir seleccionados
+      </Button>
+    </div>
+  )
+
+  const fallidosDevolucion = devolucion.ultimoResultado?.fallidos ?? []
+  const exitososDevolucion = devolucion.ultimoResultado?.exitosos ?? []
+  const alertaFallosDevolucion =
+    fallidosDevolucion.length > 0 ? (
+      <Alert
+        tone={exitososDevolucion.length === 0 ? 'error' : 'warning'}
+        title={
+          exitososDevolucion.length === 0
+            ? 'No se pudo devolver ningún expediente'
+            : `${exitososDevolucion.length} devuelto${exitososDevolucion.length === 1 ? '' : 's'}, ${fallidosDevolucion.length} sin devolver`
+        }
+      >
+        <p className="mb-2">Los siguientes expedientes no se devolvieron y siguen seleccionados:</p>
+        <ul className="list-inside list-disc">
+          {fallidosDevolucion.map(({ fila, error: fallo }) => (
+            <li key={String(fila.cicloId)}>
+              {fila.numeroExpediente || fila.cicloId}
+              {fallo?.message ? ` — ${fallo.message}` : ''}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2">
+          <Button variant="ghost" size="sm" onClick={devolucion.descartarResultado}>
+            Descartar
+          </Button>
+        </div>
+      </Alert>
+    ) : null
+
+  const accionesDevolucion = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-label-md text-on-surface-variant" aria-live="polite">
+        {devolucion.cantidadSeleccionada} seleccionado{devolucion.cantidadSeleccionada === 1 ? '' : 's'}
+      </span>
+      <Button
+        size="sm"
+        onClick={() => setConfirmacionDevolucionAbierta(true)}
+        disabled={devolucion.cantidadSeleccionada === 0 || devolucion.enviando}
+        aria-busy={devolucion.enviando || undefined}
+      >
+        <Icon name="undo" className="text-[18px]" />
+        Devolver seleccionados
       </Button>
     </div>
   )
@@ -172,6 +228,15 @@ export default function MesaCoexPage() {
                 title: 'Sin expedientes en uso',
                 description: 'No hay expedientes recibidos actualmente.',
               }}
+              mostrarSeleccion
+              etiquetaSeleccionarTodo="Seleccionar todos los expedientes en uso"
+              todasSeleccionadas={devolucion.todasSeleccionadas}
+              seleccionParcial={devolucion.seleccionParcial}
+              onToggleTodas={devolucion.toggleTodas}
+              estaSeleccionada={devolucion.estaSeleccionada}
+              onToggleFila={devolucion.toggleFila}
+              acciones={accionesDevolucion}
+              alerta={alertaFallosDevolucion}
             />
           </>
         )}
@@ -183,6 +248,14 @@ export default function MesaCoexPage() {
         enviando={recepcion.enviando}
         onCancelar={() => setConfirmacionAbierta(false)}
         onConfirmar={confirmarRecepcion}
+      />
+
+      <ConfirmacionDevolucionCoex
+        abierto={confirmacionDevolucionAbierta}
+        expedientes={devolucion.seleccionadas}
+        enviando={devolucion.enviando}
+        onCancelar={() => setConfirmacionDevolucionAbierta(false)}
+        onConfirmar={confirmarDevolucion}
       />
     </div>
   )

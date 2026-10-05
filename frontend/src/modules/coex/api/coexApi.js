@@ -2,6 +2,7 @@ import client from '@/shared/api/client'
 import {
   entregarCicloCoexMock,
   jornadaSubespecialidadCoexMock,
+  retornarCicloCoexMock,
   subespecialidadesEstacionCoexMock,
 } from './mockDataCoex'
 
@@ -52,6 +53,20 @@ export async function entregarExpedienteCiclo(
 
   const cuerpo = observacion == null ? {} : { observacion }
   return desenvolver(await cliente.post(`/expediente-ciclos/${cicloId}/entregar`, cuerpo))
+}
+
+// Devolución de un expediente: transición `entregado -> en_transito_retorno`.
+// Igual que `entregar`: el backend valida la transición y el cuerpo es opcional.
+// La UI de COEX no captura observación, pero se acepta de forma programática para
+// simetría con `entregar` y para pruebas.
+export async function retornarExpedienteCiclo(
+  cicloId,
+  { observacion, cliente = client, usarMock = USE_MOCK } = {},
+) {
+  if (usarMock) return retornarCicloCoexMock(cicloId, { observacion })
+
+  const cuerpo = observacion == null ? {} : { observacion }
+  return desenvolver(await cliente.post(`/expediente-ciclos/${cicloId}/retornar`, cuerpo))
 }
 
 // Identidad estable de una fila de jornada para deduplicar de forma defensiva

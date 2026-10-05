@@ -38,6 +38,7 @@ export default function SeccionLoteCoex({
   onToggleTodas,
   estaSeleccionada,
   onToggleFila,
+  etiquetaSeleccionarTodo = 'Seleccionar todos los expedientes pendientes de recibir',
   acciones,
   alerta,
 }) {
@@ -63,7 +64,7 @@ export default function SeccionLoteCoex({
               marcado={todasSeleccionadas}
               indeterminado={seleccionParcial}
               onChange={onToggleTodas}
-              etiqueta="Seleccionar todos los expedientes pendientes de recibir"
+              etiqueta={etiquetaSeleccionarTodo}
             />
             Seleccionar todo
           </label>

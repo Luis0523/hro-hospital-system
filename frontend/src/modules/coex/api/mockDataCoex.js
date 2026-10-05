@@ -118,3 +118,17 @@ export function entregarCicloCoexMock(cicloId, { observacion } = {}) {
     movimientos: [],
   }
 }
+
+// Devolución de un ciclo. Reproduce de forma mínima el `ExpedienteCicloResponseDTO`
+// devuelto por `POST /expediente-ciclos/{id}/retornar` en modo mock: el estado
+// resultante es `en_transito_retorno`. Las pruebas que necesiten fallos inyectan su
+// propio rechazo sobre `retornarExpedienteCiclo`, por lo que este fixture solo
+// cubre el camino feliz.
+export function retornarCicloCoexMock(cicloId, { observacion } = {}) {
+  return {
+    id: cicloId,
+    estadoActual: 'en_transito_retorno',
+    observacion: observacion ?? null,
+    movimientos: [],
+  }
+}

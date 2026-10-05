@@ -7,12 +7,21 @@ import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import AppRouter from '@/router/AppRouter.jsx'
-import { cargarLoteEstacion, entregarExpedienteCiclo } from '../api/coexApi'
+import {
+  cargarLoteEstacion,
+  entregarExpedienteCiclo,
+  retornarExpedienteCiclo,
+} from '../api/coexApi'
 import MesaCoexPage from './MesaCoexPage.jsx'
 
 vi.mock('../api/coexApi', async (importOriginal) => {
   const actual = await importOriginal()
-  return { ...actual, cargarLoteEstacion: vi.fn(), entregarExpedienteCiclo: vi.fn() }
+  return {
+    ...actual,
+    cargarLoteEstacion: vi.fn(),
+    entregarExpedienteCiclo: vi.fn(),
+    retornarExpedienteCiclo: vi.fn(),
+  }
 })
 
 function activarEstacion() {
@@ -68,8 +77,25 @@ const pendientes = (n) =>
 
 const lote = (filas) => ({ subespecialidades: [{ id: 1 }], filas })
 
+// Lote con `n` expedientes en uso (entregado) en la sección "En uso".
+const enUso = (n) =>
+  Array.from({ length: n }, (_, i) =>
+    fila({
+      citaId: 100 + i,
+      cicloId: `u${i + 1}`,
+      numeroExpediente: `EXP-U0${i + 1}`,
+      estadoActual: 'entregado',
+    }),
+  )
+
 async function abrirYConfirmar(user, nombreBoton = 'Recibir') {
   await user.click(screen.getByRole('button', { name: /Recibir seleccionados/ }))
+  await screen.findByRole('dialog')
+  await user.click(screen.getByRole('button', { name: nombreBoton }))
+}
+
+async function abrirYConfirmarDevolucion(user, nombreBoton = 'Devolver') {
+  await user.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
   await screen.findByRole('dialog')
   await user.click(screen.getByRole('button', { name: nombreBoton }))
 }
@@ -175,7 +201,7 @@ describe('MesaCoexPage - Fase 1 (lectura)', () => {
 })
 
 describe('MesaCoexPage - Fase 2 (recepción)', () => {
-  it('muestra checkbox solo en Pendientes de recibir', async () => {
+  it('muestra checkbox en Pendientes y en En uso (una por fila accionable)', async () => {
     cargarLoteEstacion.mockResolvedValue(
       lote([
         fila({ citaId: 1, cicloId: 'c1', numeroExpediente: 'EXP-001' }),
@@ -186,12 +212,14 @@ describe('MesaCoexPage - Fase 2 (recepción)', () => {
     renderPagina()
 
     const pendientesRegion = await screen.findByRole('region', { name: 'Pendientes de recibir' })
-    const enUso = screen.getByRole('region', { name: 'En uso' })
+    const enUsoRegion = screen.getByRole('region', { name: 'En uso' })
 
     expect(
       within(pendientesRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }),
     ).toBeInTheDocument()
-    expect(within(enUso).queryAllByRole('checkbox')).toHaveLength(0)
+    expect(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-002' }),
+    ).toBeInTheDocument()
   })
 
   it('selecciona una fila y refleja el contador', async () => {
@@ -458,5 +486,359 @@ describe('MesaCoexPage - Fase 2 (recepción)', () => {
     const pendientesRegion = screen.getByRole('region', { name: 'Pendientes de recibir' })
     expect(within(pendientesRegion).queryByText('EXP-001')).not.toBeInTheDocument()
     expect(within(pendientesRegion).queryAllByRole('listitem')).toHaveLength(0)
+  })
+})
+
+describe('MesaCoexPage - Fase 3 (devolución)', () => {
+  it('lista en En uso solo filas entregado con checkbox seleccionable', async () => {
+    cargarLoteEstacion.mockResolvedValue(
+      lote([
+        fila({ citaId: 1, cicloId: 'c1', numeroExpediente: 'EXP-001', estadoActual: 'localizado' }),
+        fila({ citaId: 2, cicloId: 'c2', numeroExpediente: 'EXP-002', estadoActual: 'entregado' }),
+      ]),
+    )
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    expect(within(enUsoRegion).getByText('EXP-002')).toBeInTheDocument()
+    expect(within(enUsoRegion).queryByText('EXP-001')).not.toBeInTheDocument()
+    expect(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-002' }),
+    ).toBeInTheDocument()
+  })
+
+  it('selecciona una fila en uso y refleja el contador', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(2)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+
+    expect(within(enUsoRegion).getByText('1 seleccionado')).toBeInTheDocument()
+  })
+
+  it('deselecciona y vuelve a cero', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    const checkbox = within(enUsoRegion).getByRole('checkbox', {
+      name: 'Seleccionar expediente EXP-U01',
+    })
+    await user.click(checkbox)
+    expect(within(enUsoRegion).getByText('1 seleccionado')).toBeInTheDocument()
+
+    await user.click(checkbox)
+    expect(within(enUsoRegion).getByText('0 seleccionados')).toBeInTheDocument()
+  })
+
+  it('selecciona todo con el maestro de En uso', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(3)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', {
+        name: 'Seleccionar todos los expedientes en uso',
+      }),
+    )
+
+    expect(within(enUsoRegion).getByText('3 seleccionados')).toBeInTheDocument()
+  })
+
+  it('marca el maestro de En uso como indeterminado en selección parcial', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(2)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    const maestro = within(enUsoRegion).getByRole('checkbox', {
+      name: 'Seleccionar todos los expedientes en uso',
+    })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+
+    expect(maestro.indeterminate).toBe(true)
+  })
+
+  it('deshabilita el botón de devolver sin selección', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(2)))
+
+    renderPagina()
+
+    const boton = await screen.findByRole('button', { name: /Devolver seleccionados/ })
+    expect(boton).toBeDisabled()
+  })
+
+  it('mantiene independientes la selección de recepción y de devolución', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(
+      lote([
+        fila({ citaId: 1, cicloId: 'c1', numeroExpediente: 'EXP-001' }),
+        ...enUso(1),
+      ]),
+    )
+
+    renderPagina()
+
+    const pendientesRegion = await screen.findByRole('region', { name: 'Pendientes de recibir' })
+    const enUsoRegion = screen.getByRole('region', { name: 'En uso' })
+
+    await user.click(
+      within(pendientesRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }),
+    )
+
+    expect(within(pendientesRegion).getByText('1 seleccionado')).toBeInTheDocument()
+    expect(within(enUsoRegion).getByText('0 seleccionados')).toBeInTheDocument()
+
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+
+    expect(within(pendientesRegion).getByText('1 seleccionado')).toBeInTheDocument()
+    expect(within(enUsoRegion).getByText('1 seleccionado')).toBeInTheDocument()
+  })
+
+  it('abre el modal de confirmación de devolución', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await user.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Confirmar devolución')).toBeInTheDocument()
+  })
+
+  it('cancelar no envía la transición', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await user.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
+    await screen.findByRole('dialog')
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(retornarExpedienteCiclo).not.toHaveBeenCalled()
+  })
+
+  it('confirmar un expediente hace una sola llamada con su cicloId', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockResolvedValue({ id: 'u1', estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(retornarExpedienteCiclo).toHaveBeenCalledTimes(1))
+    expect(retornarExpedienteCiclo).toHaveBeenCalledWith('u1')
+  })
+
+  it('confirmar varios hace N llamadas', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(3)))
+    retornarExpedienteCiclo.mockResolvedValue({ estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', {
+        name: 'Seleccionar todos los expedientes en uso',
+      }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(retornarExpedienteCiclo).toHaveBeenCalledTimes(3))
+  })
+
+  it('éxito total: limpia selección, notifica y recarga el lote', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(2)))
+    retornarExpedienteCiclo.mockResolvedValue({ estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', {
+        name: 'Seleccionar todos los expedientes en uso',
+      }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    expect(await screen.findByText(/2 expedientes devueltos/i)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(within(enUsoRegion).getByText('0 seleccionados')).toBeInTheDocument(),
+    )
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+  })
+
+  it('fallo parcial 4/1: conserva solo el fallido seleccionado y recarga', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(5)))
+    retornarExpedienteCiclo.mockImplementation((cicloId) =>
+      cicloId === 'u5'
+        ? Promise.reject(Object.assign(new Error('Transición inválida'), { status: 400 }))
+        : Promise.resolve({ id: cicloId, estadoActual: 'en_transito_retorno' }),
+    )
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', {
+        name: 'Seleccionar todos los expedientes en uso',
+      }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(retornarExpedienteCiclo).toHaveBeenCalledTimes(5))
+    const alerta = await screen.findByRole('alert')
+    expect(within(alerta).getByText(/4 devueltos, 1 sin devolver/i)).toBeInTheDocument()
+    expect(within(alerta).getByText(/EXP-U05/)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(within(enUsoRegion).getByText('1 seleccionado')).toBeInTheDocument(),
+    )
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+  })
+
+  it('fallo total: conserva la selección y reporta error', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(2)))
+    retornarExpedienteCiclo.mockRejectedValue(
+      Object.assign(new Error('Conflicto'), { status: 409 }),
+    )
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', {
+        name: 'Seleccionar todos los expedientes en uso',
+      }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    const alerta = await screen.findByRole('alert')
+    expect(within(alerta).getByText('No se pudo devolver ningún expediente')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(within(enUsoRegion).getByText('2 seleccionados')).toBeInTheDocument(),
+    )
+  })
+
+  it('muestra el mensaje del error 400 por expediente', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockRejectedValue(
+      Object.assign(new Error('La transición no es válida'), { status: 400 }),
+    )
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    const alerta = await screen.findByRole('alert')
+    expect(within(alerta).getByText(/La transición no es válida/)).toBeInTheDocument()
+  })
+
+  it('no realiza doble envío ante doble clic', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await user.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
+    const botonDevolver = await screen.findByRole('button', { name: 'Devolver' })
+
+    fireEvent.click(botonDevolver)
+    fireEvent.click(botonDevolver)
+
+    expect(retornarExpedienteCiclo).toHaveBeenCalledTimes(1)
+  })
+
+  it('tras el refresco el expediente devuelto sale de En uso y no vuelve a Pendientes', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion
+      .mockReset()
+      .mockResolvedValueOnce(lote(enUso(1)))
+      .mockResolvedValueOnce(
+        lote([
+          fila({
+            citaId: 9,
+            cicloId: 'c9',
+            numeroExpediente: 'EXP-PEND',
+            estadoActual: 'en_transito_entrega',
+          }),
+        ]),
+      )
+    retornarExpedienteCiclo.mockResolvedValue({ id: 'u1', estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+
+    const enUsoRegion = await screen.findByRole('region', { name: 'En uso' })
+    await user.click(
+      within(enUsoRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }),
+    )
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+    const pendientesRegion = await screen.findByRole('region', { name: 'Pendientes de recibir' })
+    expect(within(pendientesRegion).getByText('EXP-PEND')).toBeInTheDocument()
+    expect(within(pendientesRegion).queryByText('EXP-U01')).not.toBeInTheDocument()
+    expect(screen.queryByText('EXP-U01')).not.toBeInTheDocument()
+  })
+
+  it('regresión: recepción sigue funcionando igual', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+    entregarExpedienteCiclo.mockResolvedValue({ id: 'c1', estadoActual: 'entregado' })
+
+    renderPagina()
+
+    const pendientesRegion = await screen.findByRole('region', { name: 'Pendientes de recibir' })
+    await user.click(
+      within(pendientesRegion).getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }),
+    )
+    await abrirYConfirmar(user)
+
+    await waitFor(() => expect(entregarExpedienteCiclo).toHaveBeenCalledTimes(1))
+    expect(entregarExpedienteCiclo).toHaveBeenCalledWith('c1')
+    expect(await screen.findByText(/1 expediente recibido/i)).toBeInTheDocument()
   })
 })

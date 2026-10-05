@@ -4,6 +4,7 @@ import {
   cargarLoteEstacion,
   claveFila,
   entregarExpedienteCiclo,
+  retornarExpedienteCiclo,
 } from './coexApi'
 
 describe('coexApi - identidad y agregación', () => {
@@ -111,5 +112,71 @@ describe('coexApi - entregarExpedienteCiclo', () => {
     const resultado = await entregarExpedienteCiclo('c1')
 
     expect(resultado).toMatchObject({ id: 'c1', estadoActual: 'entregado' })
+  })
+})
+
+describe('coexApi - retornarExpedienteCiclo', () => {
+  it('hace POST a /expediente-ciclos/{id}/retornar sin cuerpo cuando no hay observación', async () => {
+    const cliente = { post: vi.fn().mockResolvedValue({ data: { id: 'c1' } }) }
+
+    await retornarExpedienteCiclo('c1', { cliente, usarMock: false })
+
+    expect(cliente.post).toHaveBeenCalledWith('/expediente-ciclos/c1/retornar', {})
+  })
+
+  it('envía la observación cuando se proporciona', async () => {
+    const cliente = { post: vi.fn().mockResolvedValue({ data: { id: 'c1' } }) }
+
+    await retornarExpedienteCiclo('c1', {
+      observacion: 'Atención finalizada',
+      cliente,
+      usarMock: false,
+    })
+
+    expect(cliente.post).toHaveBeenCalledWith('/expediente-ciclos/c1/retornar', {
+      observacion: 'Atención finalizada',
+    })
+  })
+
+  it('devuelve el DTO desenvuelto de ApiResponse', async () => {
+    const esperado = { id: 'c1', estadoActual: 'en_transito_retorno' }
+    const cliente = { post: vi.fn().mockResolvedValue({ data: esperado }) }
+
+    const resultado = await retornarExpedienteCiclo('c1', { cliente, usarMock: false })
+
+    expect(resultado).toEqual(esperado)
+  })
+
+  it('propaga el error normalizado del cliente (400)', async () => {
+    const fallo = Object.assign(new Error('Transición inválida'), { status: 400 })
+    const cliente = { post: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(
+      retornarExpedienteCiclo('c1', { cliente, usarMock: false }),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('propaga el error normalizado del cliente (404)', async () => {
+    const fallo = Object.assign(new Error('No encontrado'), { status: 404 })
+    const cliente = { post: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(
+      retornarExpedienteCiclo('c1', { cliente, usarMock: false }),
+    ).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('propaga el error normalizado del cliente (409)', async () => {
+    const fallo = Object.assign(new Error('Conflicto'), { status: 409 })
+    const cliente = { post: vi.fn().mockRejectedValue(fallo) }
+
+    await expect(
+      retornarExpedienteCiclo('c1', { cliente, usarMock: false }),
+    ).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('en modo mock devuelve el ciclo como en_transito_retorno', async () => {
+    const resultado = await retornarExpedienteCiclo('c1')
+
+    expect(resultado).toMatchObject({ id: 'c1', estadoActual: 'en_transito_retorno' })
   })
 })
