@@ -53,9 +53,11 @@ function renderPagina(ruta = '/archivo') {
     <MemoryRouter initialEntries={[ruta]}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <ArchivoPage />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <ArchivoPage />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -310,6 +312,8 @@ describe('ArchivoPage — acciones del día (SCRUM-96)', () => {
       expect(obtenerResumenArchivo).toHaveBeenCalledWith({ fecha: expect.any(String) }),
     )
     expect(await screen.findByText('Total de ciclos')).toBeInTheDocument()
+    expect(await screen.findByText(/actualizado:/i)).toBeInTheDocument()
+    expect(screen.getByText('Datos simulados')).toBeInTheDocument()
   })
 
   it('deshabilita el botón mientras consulta el resumen', async () => {

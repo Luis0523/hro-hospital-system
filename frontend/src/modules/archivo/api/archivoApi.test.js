@@ -1,21 +1,29 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import {
+  archivarCiclo,
   avanzarEstado,
   buscarExpedientePorCodigo,
   buscarPacientePorDpi,
   buscarPacientePorExpediente,
+  checkInExpediente,
   crearActaRecepcion,
   crearExpediente,
+  despacharCiclo,
+  iniciarBusquedaCiclo,
   listarClinicas,
   listarExpedientes,
   listarJornadaArchivo,
   listarSubespecialidades,
+  localizarCiclo,
   marcarNoLocalizado,
+  noLocalizadoCiclo,
   obtenerActaRecepcion,
   obtenerActaRecepcionPdf,
+  obtenerCicloPorCita,
   obtenerExpediente,
   obtenerResumenArchivo,
   obtenerResumenArchivoPdf,
+  reintentarBusquedaCiclo,
 } from './archivoApi'
 
 describe('archivoApi (mock)', () => {
@@ -158,6 +166,31 @@ describe('archivoApi (resumen y actas - SCRUM-96)', () => {
     expect(blob.type).toBe('application/pdf')
   })
 
+  it('el PDF de resumen mock es un Blob PDF no vacío', async () => {
+    const blob = await obtenerResumenArchivoPdf({ fecha: '2026-09-28' })
+
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob.type).toBe('application/pdf')
+    expect(blob.size).toBeGreaterThan(0)
+  })
+
+  it('el resumen mock refleja la jornada simulada y no solo ceros', async () => {
+    const resumen = await obtenerResumenArchivo({ fecha: null })
+
+    expect(resumen.totalCiclos).toBeGreaterThan(0)
+    const sumaEstados =
+      resumen.pendienteLocalizar +
+      resumen.enBusqueda +
+      resumen.localizado +
+      resumen.enTransitoEntrega +
+      resumen.enTransitoRetorno +
+      resumen.entregado +
+      resumen.archivado +
+      resumen.noLocalizado
+    expect(sumaEstados).toBe(resumen.totalCiclos)
+    expect(resumen.expedientesNuevos).toBeGreaterThan(0)
+  })
+
   it('crea un acta de recepción con su detalle', async () => {
     const acta = await crearActaRecepcion({
       fecha: '2026-11-09',
@@ -223,5 +256,122 @@ describe('archivoApi — numeroExpediente como identificador opaco', () => {
 
     const detalle = await obtenerExpediente(7)
     expect(detalle.numeroExpediente).toBeNull()
+  })
+})
+
+// Fixtures del mock: expedienteId = uuidMock('10000000', id),
+// cicloId = uuidMock('20000000', id).
+const EXPEDIENTE_SIN_CICLO = '10000000-0000-4000-8000-000000000008'
+const CICLO_PENDIENTE = '20000000-0000-4000-8000-000000000001'
+const CICLO_EN_BUSQUEDA = '20000000-0000-4000-8000-000000000002'
+const CICLO_LOCALIZADO = '20000000-0000-4000-8000-000000000003'
+const CICLO_EN_TRANSITO_ENTREGA = '20000000-0000-4000-8000-000000000004'
+const CICLO_ENTREGADO = '20000000-0000-4000-8000-000000000005'
+const CICLO_NO_LOCALIZADO = '20000000-0000-4000-8000-000000000006'
+const CICLO_EN_TRANSITO_RETORNO = '20000000-0000-4000-8000-000000000009'
+
+describe('archivoApi (ciclo real - SCRUM-179)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    localStorage.setItem('hro_usuario', JSON.stringify({ rol: 'archivo', idExterno: 'archivo-01' }))
+  })
+
+  it('el check-in usa el expedienteId y deja el ciclo en en_busqueda', async () => {
+    const ciclo = await checkInExpediente(EXPEDIENTE_SIN_CICLO)
+
+    expect(ciclo.estadoActual).toBe('en_busqueda')
+    expect(ciclo.expedienteId).toBe(EXPEDIENTE_SIN_CICLO)
+  })
+
+  it('el check-in envía el citaId cuando existe', async () => {
+    const ciclo = await checkInExpediente(EXPEDIENTE_SIN_CICLO, { citaId: 555 })
+
+    expect(ciclo.citaId).toBe(555)
+  })
+
+  it('el check-in es idempotente para la misma cita', async () => {
+    const primero = await checkInExpediente(EXPEDIENTE_SIN_CICLO)
+    const segundo = await checkInExpediente(EXPEDIENTE_SIN_CICLO)
+
+    expect(segundo.cicloId).toBe(primero.cicloId)
+    expect(segundo.estadoActual).toBe('en_busqueda')
+  })
+
+  it('el check-in responde 404 si el expediente no existe', async () => {
+    await expect(checkInExpediente('00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({
+      status: 404,
+    })
+  })
+
+  it('el check-in responde 403 si el rol no es de Archivo', async () => {
+    localStorage.setItem('hro_usuario', JSON.stringify({ rol: 'enfermeria' }))
+
+    await expect(checkInExpediente(EXPEDIENTE_SIN_CICLO)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('consulta el ciclo por cita conservando los campos reales', async () => {
+    const ciclo = await obtenerCicloPorCita(102)
+
+    expect(ciclo.cicloId).toBe(CICLO_EN_BUSQUEDA)
+    expect(ciclo.citaId).toBe(102)
+    expect(ciclo.estadoActual).toBe('en_busqueda')
+    expect(Array.isArray(ciclo.movimientos)).toBe(true)
+  })
+
+  it('consulta el ciclo por cita responde 404 si no existe', async () => {
+    await expect(obtenerCicloPorCita(999999)).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('iniciar búsqueda: pendiente_localizar -> en_busqueda', async () => {
+    const ciclo = await iniciarBusquedaCiclo(CICLO_PENDIENTE)
+
+    expect(ciclo.estadoActual).toBe('en_busqueda')
+  })
+
+  it('localizar: en_busqueda -> localizado', async () => {
+    const ciclo = await localizarCiclo(CICLO_EN_BUSQUEDA)
+
+    expect(ciclo.estadoActual).toBe('localizado')
+  })
+
+  it('despachar: localizado -> en_transito_entrega', async () => {
+    const ciclo = await despacharCiclo(CICLO_LOCALIZADO)
+
+    expect(ciclo.estadoActual).toBe('en_transito_entrega')
+  })
+
+  it('archivar: en_transito_retorno -> archivado', async () => {
+    const ciclo = await archivarCiclo(CICLO_EN_TRANSITO_RETORNO)
+
+    expect(ciclo.estadoActual).toBe('archivado')
+  })
+
+  it('no localizado: requiere observación y deja no_localizado', async () => {
+    const ciclo = await noLocalizadoCiclo(CICLO_ENTREGADO, { observacion: 'No estaba' })
+
+    expect(ciclo.estadoActual).toBe('no_localizado')
+  })
+
+  it('reintentar búsqueda: no_localizado -> en_busqueda', async () => {
+    const ciclo = await reintentarBusquedaCiclo(CICLO_NO_LOCALIZADO)
+
+    expect(ciclo.estadoActual).toBe('en_busqueda')
+  })
+
+  it('propaga el 400 de una transición inválida', async () => {
+    await expect(localizarCiclo(CICLO_EN_TRANSITO_ENTREGA)).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('propaga el 400 cuando no-localizado no trae observación', async () => {
+    await expect(
+      noLocalizadoCiclo(CICLO_EN_TRANSITO_ENTREGA, { observacion: '  ' }),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('NO expone entregar ni retornar como acciones de Archivo', async () => {
+    const api = await import('./archivoApi')
+
+    expect(api.entregarCiclo).toBeUndefined()
+    expect(api.retornarCiclo).toBeUndefined()
   })
 })

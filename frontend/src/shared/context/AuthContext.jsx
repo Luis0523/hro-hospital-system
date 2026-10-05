@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react'
 
 // Identidad simulada (modo dev, sin auth real). Se puede fijar por variables de
 // entorno para probar áreas con otro rol, p. ej. el área de Jefe de Enfermería
@@ -60,7 +60,10 @@ export function AuthProvider({ children }) {
   const [autenticado, setAutenticado] = useState(sesionActiva)
   const [token, setToken] = useState(() => localStorage.getItem('hro_token') || TOKEN_DEV)
 
-  useEffect(() => {
+  // useLayoutEffect: la identidad efectiva debe quedar persistida en
+  // `hro_usuario` ANTES de que los efectos de los componentes hijos disparen
+  // peticiones (que `client.js` resuelve leyendo ese storage).
+  useLayoutEffect(() => {
     if (!autenticado) return
     localStorage.setItem('hro_usuario', JSON.stringify(usuario))
     localStorage.setItem('hro_token', token)
@@ -80,6 +83,13 @@ export function AuthProvider({ children }) {
     setAutenticado(true)
   }, [])
 
+  // Permite que una estación asuma su identidad efectiva (rol/idExterno/nombre)
+  // sin duplicar el almacenamiento: el mismo efecto que persiste `usuario` en
+  // `hro_usuario` (que `client.js` lee para las cabeceras) se reutiliza aquí.
+  const establecerIdentidad = useCallback((parcial) => {
+    setUsuario((actual) => ({ ...actual, ...parcial }))
+  }, [])
+
   const value = {
     usuario,
     usuarioId: usuario.id,
@@ -87,6 +97,7 @@ export function AuthProvider({ children }) {
     autenticado,
     cerrarSesion,
     iniciarSesion,
+    establecerIdentidad,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

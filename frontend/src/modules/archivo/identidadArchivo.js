@@ -28,3 +28,27 @@ export function resolverUsuarioArchivo(usuario) {
     puesto: usuario.puesto || USUARIO_ARCHIVO_POR_DEFECTO.puesto,
   }
 }
+
+// Identidad efectiva que la Estación de Archivo asume ante la API. El backend
+// (Fase 1) autoriza las transiciones de Archivo al rol `archivo` (o
+// `administrador`); una identidad con otro rol responde 403. No se fija en cada
+// request: `client.js` sigue enviando las cabeceras desde la identidad global.
+export const IDENTIDAD_API_ARCHIVO = {
+  idExterno: 'archivo-01',
+  rol: 'archivo',
+  nombre: USUARIO_ARCHIVO_POR_DEFECTO.nombre,
+  puesto: USUARIO_ARCHIVO_POR_DEFECTO.puesto,
+}
+
+export function resolverIdentidadApiArchivo(usuario) {
+  if (usuario && esRolArchivo(usuario.rol)) {
+    return {
+      idExterno: usuario.idExterno ?? usuario.id ?? IDENTIDAD_API_ARCHIVO.idExterno,
+      rol: usuario.rol,
+      nombre: usuario.nombre || IDENTIDAD_API_ARCHIVO.nombre,
+      puesto: usuario.puesto || IDENTIDAD_API_ARCHIVO.puesto,
+    }
+  }
+
+  return { ...IDENTIDAD_API_ARCHIVO }
+}
