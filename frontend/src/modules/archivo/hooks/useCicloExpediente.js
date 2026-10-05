@@ -45,22 +45,34 @@ export function useCicloExpediente() {
   )
 
   const iniciarBusqueda = useCallback(
-    (cicloId, datos) => ejecutar(() => iniciarBusquedaCiclo(cicloId, datos)),
+    (cicloId, datos) =>
+      ejecutar(() =>
+        datos === undefined ? iniciarBusquedaCiclo(cicloId) : iniciarBusquedaCiclo(cicloId, datos),
+      ),
     [ejecutar],
   )
 
   const localizar = useCallback(
-    (cicloId, datos) => ejecutar(() => localizarCiclo(cicloId, datos)),
+    (cicloId, datos) =>
+      ejecutar(() =>
+        datos === undefined ? localizarCiclo(cicloId) : localizarCiclo(cicloId, datos),
+      ),
     [ejecutar],
   )
 
   const despachar = useCallback(
-    (cicloId, datos) => ejecutar(() => despacharCiclo(cicloId, datos)),
+    (cicloId, datos) =>
+      ejecutar(() =>
+        datos === undefined ? despacharCiclo(cicloId) : despacharCiclo(cicloId, datos),
+      ),
     [ejecutar],
   )
 
   const archivar = useCallback(
-    (cicloId, datos) => ejecutar(() => archivarCiclo(cicloId, datos)),
+    (cicloId, datos) =>
+      ejecutar(() =>
+        datos === undefined ? archivarCiclo(cicloId) : archivarCiclo(cicloId, datos),
+      ),
     [ejecutar],
   )
 
@@ -70,7 +82,12 @@ export function useCicloExpediente() {
   )
 
   const reintentarBusqueda = useCallback(
-    (cicloId, datos) => ejecutar(() => reintentarBusquedaCiclo(cicloId, datos)),
+    (cicloId, datos) =>
+      ejecutar(() =>
+        datos === undefined
+          ? reintentarBusquedaCiclo(cicloId)
+          : reintentarBusquedaCiclo(cicloId, datos),
+      ),
     [ejecutar],
   )
 

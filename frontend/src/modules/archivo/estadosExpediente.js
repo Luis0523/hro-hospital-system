@@ -23,7 +23,7 @@ export const ESTADOS_EXPEDIENTE = {
     excepcion: false,
   },
   localizado: {
-    etiqueta: 'Localizado en archivo',
+    etiqueta: 'Localizado',
     descripcion: 'El expediente fue encontrado físicamente.',
     color: 'bg-sky-100 text-sky-800',
     punto: 'bg-sky-500',
@@ -31,8 +31,8 @@ export const ESTADOS_EXPEDIENTE = {
     excepcion: false,
   },
   en_transito_entrega: {
-    etiqueta: 'En tránsito de entrega',
-    descripcion: 'El expediente va camino a la clínica correspondiente.',
+    etiqueta: 'En tránsito a COEX',
+    descripcion: 'El expediente va camino a la consulta externa.',
     color: 'bg-blue-100 text-blue-800',
     punto: 'bg-blue-600',
     icono: 'local_shipping',
@@ -47,7 +47,7 @@ export const ESTADOS_EXPEDIENTE = {
     excepcion: false,
   },
   en_transito_retorno: {
-    etiqueta: 'En tránsito de retorno',
+    etiqueta: 'En retorno',
     descripcion: 'El expediente regresa al archivo tras la atención.',
     color: 'bg-indigo-100 text-indigo-800',
     punto: 'bg-indigo-500',
