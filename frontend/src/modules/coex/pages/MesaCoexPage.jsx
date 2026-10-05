@@ -83,17 +83,17 @@ export default function MesaCoexPage() {
             : `${exitosos.length} recibido${exitosos.length === 1 ? '' : 's'}, ${fallidos.length} sin recibir`
         }
       >
-        <p className="mb-2">Los siguientes expedientes no se recibieron y siguen seleccionados:</p>
+        <p className="mb-2 break-words">Los siguientes expedientes no se recibieron y siguen seleccionados:</p>
         <ul className="list-inside list-disc">
           {fallidos.map(({ fila, error: fallo }) => (
-            <li key={String(fila.cicloId)}>
+            <li key={String(fila.cicloId)} className="break-words">
               {fila.numeroExpediente || fila.cicloId}
               {fallo?.message ? ` — ${fallo.message}` : ''}
             </li>
           ))}
         </ul>
         <div className="mt-2">
-          <Button variant="ghost" size="sm" onClick={recepcion.descartarResultado}>
+          <Button variant="ghost" size="sm" className="min-h-11" onClick={recepcion.descartarResultado}>
             Descartar
           </Button>
         </div>
@@ -101,12 +101,13 @@ export default function MesaCoexPage() {
     ) : null
 
   const accionesRecepcion = (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-label-md text-on-surface-variant" aria-live="polite">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+      <span className="min-w-0 break-words text-label-md text-on-surface-variant" aria-live="polite">
         {recepcion.cantidadSeleccionada} seleccionado{recepcion.cantidadSeleccionada === 1 ? '' : 's'}
       </span>
       <Button
         size="sm"
+        className="min-h-11 w-full sm:w-auto"
         onClick={() => setConfirmacionAbierta(true)}
         disabled={recepcion.cantidadSeleccionada === 0 || recepcion.enviando}
         aria-busy={recepcion.enviando || undefined}
@@ -129,17 +130,17 @@ export default function MesaCoexPage() {
             : `${exitososDevolucion.length} devuelto${exitososDevolucion.length === 1 ? '' : 's'}, ${fallidosDevolucion.length} sin devolver`
         }
       >
-        <p className="mb-2">Los siguientes expedientes no se devolvieron y siguen seleccionados:</p>
+        <p className="mb-2 break-words">Los siguientes expedientes no se devolvieron y siguen seleccionados:</p>
         <ul className="list-inside list-disc">
           {fallidosDevolucion.map(({ fila, error: fallo }) => (
-            <li key={String(fila.cicloId)}>
+            <li key={String(fila.cicloId)} className="break-words">
               {fila.numeroExpediente || fila.cicloId}
               {fallo?.message ? ` — ${fallo.message}` : ''}
             </li>
           ))}
         </ul>
         <div className="mt-2">
-          <Button variant="ghost" size="sm" onClick={devolucion.descartarResultado}>
+          <Button variant="ghost" size="sm" className="min-h-11" onClick={devolucion.descartarResultado}>
             Descartar
           </Button>
         </div>
@@ -147,12 +148,13 @@ export default function MesaCoexPage() {
     ) : null
 
   const accionesDevolucion = (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-label-md text-on-surface-variant" aria-live="polite">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+      <span className="min-w-0 break-words text-label-md text-on-surface-variant" aria-live="polite">
         {devolucion.cantidadSeleccionada} seleccionado{devolucion.cantidadSeleccionada === 1 ? '' : 's'}
       </span>
       <Button
         size="sm"
+        className="min-h-11 w-full sm:w-auto"
         onClick={() => setConfirmacionDevolucionAbierta(true)}
         disabled={devolucion.cantidadSeleccionada === 0 || devolucion.enviando}
         aria-busy={devolucion.enviando || undefined}
@@ -166,20 +168,20 @@ export default function MesaCoexPage() {
   return (
     <div className="min-h-screen bg-surface pb-10">
       <header className="border-b border-outline-variant bg-surface-container-lowest px-4 py-4">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary-container text-on-primary">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-container text-on-primary">
             <Icon name="folder_shared" className="text-[26px]" />
           </span>
-          <div className="leading-tight">
-            <p className="text-label-sm uppercase tracking-widest text-secondary">
+          <div className="min-w-0 leading-tight">
+            <p className="break-words text-label-sm uppercase tracking-widest text-secondary">
               Hospital Regional de Occidente
             </p>
-            <h1 className="text-headline-md text-on-surface">Mesa COEX</h1>
+            <h1 className="break-words text-headline-md text-on-surface">Mesa COEX</h1>
           </div>
           {estacion && (
-            <div className="ml-auto text-right leading-tight">
-              <p className="text-title-sm text-on-surface">{estacion.nombre ?? estacion.codigo}</p>
-              <p className="text-label-sm uppercase text-on-surface-variant">
+            <div className="w-full min-w-0 leading-tight sm:ml-auto sm:w-auto sm:text-right">
+              <p className="break-words text-title-sm text-on-surface">{estacion.nombre ?? estacion.codigo}</p>
+              <p className="break-words text-label-sm uppercase text-on-surface-variant">
                 {estacion.codigo}
                 {estacion.ubicacion ? ` · ${estacion.ubicacion}` : ''}
               </p>
@@ -189,7 +191,7 @@ export default function MesaCoexPage() {
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
-        <div className="max-w-xs">
+        <div className="w-full max-w-xs">
           <Input
             label="Fecha de trabajo"
             type="date"
@@ -200,10 +202,11 @@ export default function MesaCoexPage() {
         </div>
 
         {estacion && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Button
               variant="ghost"
               size="sm"
+              className="min-h-11"
               onClick={() => refrescarSilencioso()}
               disabled={refrescando || mutando || cargando}
               aria-busy={refrescando || undefined}
@@ -211,7 +214,7 @@ export default function MesaCoexPage() {
               <Icon name="refresh" className="text-[18px]" />
               {refrescando ? 'Actualizando…' : 'Actualizar'}
             </Button>
-            <span className="text-label-sm text-on-surface-variant" aria-live="polite">
+            <span className="min-w-0 break-words text-label-sm text-on-surface-variant" aria-live="polite">
               {ultimaActualizacion
                 ? `Última actualización: ${horaLocal(ultimaActualizacion)}`
                 : 'Sin actualización todavía'}
@@ -250,6 +253,7 @@ export default function MesaCoexPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="min-h-11"
                     onClick={() => refrescarSilencioso()}
                     disabled={refrescando || mutando}
                   >

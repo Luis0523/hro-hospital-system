@@ -1034,3 +1034,92 @@ describe('MesaCoexPage - Fase 4 (refresco en vivo)', () => {
     await screen.findByText('EXP-002')
   })
 })
+
+describe('MesaCoexPage - Fase 5 (responsive y targets táctiles)', () => {
+  it('32. el header expone el título y la estación activa en su propio bloque', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+
+    expect(screen.getByRole('heading', { name: 'Mesa COEX' })).toBeInTheDocument()
+    expect(screen.getByText('COEX Consulta Externa')).toBeInTheDocument()
+    await screen.findByText('EXP-001')
+  })
+
+  it('33. el botón Actualizar tiene un target táctil de al menos 44px (min-h-11)', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+
+    const boton = await screen.findByRole('button', { name: 'Actualizar' })
+    expect(boton.className).toContain('min-h-11')
+  })
+
+  it('34. el checkbox de fila es nativo y vive en un contenedor de target 44x44', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' })
+    expect(checkbox).toHaveAttribute('type', 'checkbox')
+    expect(checkbox.parentElement.className).toContain('h-11')
+    expect(checkbox.parentElement.className).toContain('w-11')
+  })
+
+  it('35. el checkbox maestro conserva aria-label y target táctil en su label', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    const maestro = screen.getByRole('checkbox', {
+      name: 'Seleccionar todos los expedientes pendientes de recibir',
+    })
+    expect(maestro).toHaveAttribute('type', 'checkbox')
+    expect(maestro.closest('label').className).toContain('min-h-11')
+  })
+
+  it('36. los botones de acción están deshabilitados sin selección y tienen target táctil', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    const recibir = screen.getByRole('button', { name: /Recibir seleccionados/ })
+    expect(recibir).toBeDisabled()
+    expect(recibir.className).toContain('min-h-11')
+    expect(recibir.className).toContain('w-full')
+  })
+
+  it('37. el modal de recepción conserva role dialog y botones táctiles', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }))
+    await user.click(screen.getByRole('button', { name: /Recibir seleccionados/ }))
+
+    const dialogo = await screen.findByRole('dialog')
+    expect(dialogo).toBeInTheDocument()
+    expect(within(dialogo).getByRole('button', { name: 'Cancelar' }).className).toContain('min-h-11')
+    expect(within(dialogo).getByRole('button', { name: 'Recibir' }).className).toContain('min-h-11')
+  })
+
+  it('38. el modal de devolución conserva role dialog y botones táctiles', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+
+    renderPagina()
+    await screen.findByText('EXP-U01')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }))
+    await user.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
+
+    const dialogo = await screen.findByRole('dialog')
+    expect(within(dialogo).getByRole('button', { name: 'Cancelar' }).className).toContain('min-h-11')
+    expect(within(dialogo).getByRole('button', { name: 'Devolver' }).className).toContain('min-h-11')
+  })
+})

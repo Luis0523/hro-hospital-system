@@ -17,12 +17,12 @@ export default function FilaExpedienteCoex({
 
   const contenido = (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-title-md font-semibold text-on-surface">{numero}</span>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <span className="min-w-0 break-words text-title-md font-semibold text-on-surface">{numero}</span>
         <span
-          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-label-sm font-semibold ${meta.color}`}
+          className={`inline-flex max-w-full items-center gap-1 break-words rounded px-2 py-0.5 text-label-sm font-semibold ${meta.color}`}
         >
-          <Icon name={meta.icono} className="text-[16px]" />
+          <Icon name={meta.icono} className="shrink-0 text-[16px]" />
           {meta.etiqueta}
         </span>
       </div>
@@ -48,14 +48,16 @@ export default function FilaExpedienteCoex({
   return (
     <li className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
       {seleccionable ? (
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer rounded accent-hro-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
-            checked={seleccionada}
-            onChange={() => onToggle?.(fila?.cicloId)}
-            aria-label={`Seleccionar expediente ${numero}`}
-          />
+        <label className="flex min-w-0 cursor-pointer items-start gap-1">
+          <span className="flex h-11 w-11 shrink-0 items-start justify-center pt-0.5">
+            <input
+              type="checkbox"
+              className="h-6 w-6 cursor-pointer rounded accent-hro-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+              checked={seleccionada}
+              onChange={() => onToggle?.(fila?.cicloId)}
+              aria-label={`Seleccionar expediente ${numero}`}
+            />
+          </span>
           <span className="min-w-0 flex-1">{contenido}</span>
         </label>
       ) : (

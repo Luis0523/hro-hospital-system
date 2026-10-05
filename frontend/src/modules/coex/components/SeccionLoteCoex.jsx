@@ -47,19 +47,19 @@ export default function SeccionLoteCoex({
       aria-label={titulo}
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-title-md text-on-surface">{titulo}</h2>
-          {descripcion && <p className="text-body-sm text-on-surface-variant">{descripcion}</p>}
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="break-words text-title-md text-on-surface">{titulo}</h2>
+          {descripcion && <p className="break-words text-body-sm text-on-surface-variant">{descripcion}</p>}
         </div>
-        <span className="rounded-lg bg-surface-container px-3 py-1 text-label-md font-bold text-on-surface">
+        <span className="shrink-0 rounded-lg bg-surface-container px-3 py-1 text-label-md font-bold text-on-surface">
           {filas.length}
         </span>
       </div>
 
       {mostrarSeleccion && filas.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant pb-3">
-          <label className="flex cursor-pointer items-center gap-2 text-body-sm text-on-surface">
+        <div className="mb-3 flex flex-col gap-3 border-b border-outline-variant pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-body-sm text-on-surface">
             <CheckboxMaestro
               marcado={todasSeleccionadas}
               indeterminado={seleccionParcial}

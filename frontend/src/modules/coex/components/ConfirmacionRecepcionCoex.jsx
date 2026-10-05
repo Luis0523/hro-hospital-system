@@ -21,10 +21,10 @@ export default function ConfirmacionRecepcionCoex({
       title="Confirmar recepción"
       footer={
         <>
-          <Button variant="secondary" onClick={onCancelar} disabled={enviando}>
+          <Button variant="secondary" className="min-h-11" onClick={onCancelar} disabled={enviando}>
             Cancelar
           </Button>
-          <Button onClick={onConfirmar} disabled={enviando} aria-busy={enviando || undefined}>
+          <Button className="min-h-11" onClick={onConfirmar} disabled={enviando} aria-busy={enviando || undefined}>
             {enviando ? 'Recibiendo…' : 'Recibir'}
           </Button>
         </>
@@ -34,15 +34,15 @@ export default function ConfirmacionRecepcionCoex({
         <Spinner label="Recibiendo…" />
       ) : (
         <>
-          <p>
+          <p className="break-words">
             Se {total === 1 ? 'recibirá' : 'recibirán'} <strong>{total}</strong> expediente
             {total === 1 ? '' : 's'}. Esta acción registra la transición a “Recibido en COEX”.
           </p>
           {total > 0 && (
             <ul className="mt-3 flex max-h-56 flex-col gap-1 overflow-y-auto">
               {expedientes.map((fila) => (
-                <li key={String(fila.cicloId)} className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-on-surface">
+                <li key={String(fila.cicloId)} className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 break-words font-semibold text-on-surface">
                     {fila.numeroExpediente || 'Sin número de expediente'}
                   </span>
                   {fila.pacienteNombre && (
