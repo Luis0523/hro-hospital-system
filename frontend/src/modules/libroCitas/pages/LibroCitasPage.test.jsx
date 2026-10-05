@@ -106,15 +106,11 @@ describe('LibroCitasPage', () => {
     expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
   })
 
-  it('muestra la sección "Contadores diarios" con los 8 indicadores', () => {
+  it('no muestra la sección de contadores diarios', () => {
     renderPagina()
 
-    expect(screen.getByText('Contadores diarios')).toBeInTheDocument()
-    expect(screen.getAllByRole('spinbutton')).toHaveLength(8)
-    expect(screen.getByRole('spinbutton', { name: 'Historias Archivadas' })).toBeInTheDocument()
-    expect(
-      screen.getByRole('spinbutton', { name: 'Tarjetas Índices Archivadas' }),
-    ).toBeInTheDocument()
+    expect(screen.queryByText('Contadores diarios')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
   })
 
   it('muestra el estado vacío de la tabla y "Guardar registro" deshabilitado', () => {
@@ -189,19 +185,16 @@ describe('LibroCitasPage', () => {
     expect(screen.getByTestId('resumen-especialidad-1')).toHaveTextContent('1')
   })
 
-  it('guarda con el servicio mock (payload sin pacienteId) y conserva contadores', async () => {
+  it('guarda con el servicio mock (payload solo con items) y limpia la tabla', async () => {
     renderPagina()
     await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
-
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Historias Archivadas' }), {
-      target: { value: '4' },
-    })
 
     await userEvent.click(screen.getByRole('button', { name: /guardar registro/i }))
 
     expect(guardarLibroCitasMock).toHaveBeenCalledTimes(1)
     const payload = guardarLibroCitasMock.mock.calls[0][0]
-    expect(payload.contadores).toMatchObject({ ha: 4 })
+    expect(Object.keys(payload)).toEqual(['items'])
+    expect(payload).not.toHaveProperty('contadores')
     expect(payload.items).toHaveLength(1)
     expect(payload.items[0]).toMatchObject({
       numeroExpediente: EXPEDIENTE_A,
@@ -210,12 +203,9 @@ describe('LibroCitasPage', () => {
     })
     expect(payload.items[0]).not.toHaveProperty('pacienteId')
     expect(payload.items[0]).not.toHaveProperty('idLocal')
-    expect(payload).not.toHaveProperty('total')
-    expect(payload).not.toHaveProperty('resumenPorEspecialidad')
 
     expect(await screen.findByText('Registro guardado correctamente.')).toBeInTheDocument()
     expect(screen.getByText('No hay citas agregadas.')).toBeInTheDocument()
-    expect(screen.getByTestId('total-contadores')).toHaveTextContent('4')
   })
 
   it('limpia el mensaje de duplicado al eliminar la fila existente', async () => {
@@ -236,7 +226,7 @@ describe('LibroCitasPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('limpia el mensaje de duplicado al guardar correctamente y conserva contadores', async () => {
+  it('limpia el mensaje de duplicado al guardar correctamente', async () => {
     renderPagina()
 
     await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
@@ -245,10 +235,6 @@ describe('LibroCitasPage', () => {
       screen.getByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Historias Archivadas' }), {
-      target: { value: '3' },
-    })
-
     await userEvent.click(screen.getByRole('button', { name: /guardar registro/i }))
 
     expect(await screen.findByText('Registro guardado correctamente.')).toBeInTheDocument()
@@ -256,6 +242,5 @@ describe('LibroCitasPage', () => {
     expect(
       screen.queryByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).not.toBeInTheDocument()
-    expect(screen.getByTestId('total-contadores')).toHaveTextContent('3')
   })
 })
