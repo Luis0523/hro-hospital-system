@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
+import MesaCoexPage from '@/modules/coex/pages/MesaCoexPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
@@ -44,6 +45,8 @@ export default function AppRouter() {
       <Route path="/archivo" element={<ArchivoPage />} />
       <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
       <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
+
+      <Route path="/coex" element={<MesaCoexPage />} />
 
       <Route path="/administracion" element={<AdministracionLayout />}>
         <Route index element={<DashboardPage />} />
