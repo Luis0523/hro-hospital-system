@@ -9,16 +9,23 @@ import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useDevolucionCoex } from '../hooks/useDevolucionCoex'
 import { useLoteCoex } from '../hooks/useLoteCoex'
 import { useRecepcionCoex } from '../hooks/useRecepcionCoex'
+import { useRefrescoAutomaticoCoex } from '../hooks/useRefrescoAutomaticoCoex'
 import ConfirmacionDevolucionCoex from '../components/ConfirmacionDevolucionCoex.jsx'
 import ConfirmacionRecepcionCoex from '../components/ConfirmacionRecepcionCoex.jsx'
 import ResumenLoteCoex from '../components/ResumenLoteCoex.jsx'
 import SeccionLoteCoex from '../components/SeccionLoteCoex.jsx'
 
+function horaLocal(instante) {
+  if (!instante) return ''
+  return new Date(instante).toLocaleTimeString('es-GT', { hour12: false })
+}
+
 // Mesa COEX. Fase 1: carga el lote de la estación activa y lo separa en
 // "Pendientes de recibir" y "En uso". Fase 2: checklist de recepción sobre las
 // filas accionables (`en_transito_entrega`) y transición `entregar` por ciclo.
 // Fase 3: checklist de devolución sobre las filas en uso (`entregado`) y
-// transición `retornar` por ciclo. No incluye PDF ni refresco en vivo.
+// transición `retornar` por ciclo. Fase 4: seguimiento near-real-time por
+// polling silencioso cada 30 s (sin WebSocket; no hay eventos de expedientes).
 export default function MesaCoexPage() {
   const {
     estacion,
@@ -30,12 +37,27 @@ export default function MesaCoexPage() {
     total,
     cargando,
     error,
-    recargar,
+    refrescarSilencioso,
+    refrescando,
+    ultimaActualizacion,
+    errorRefresco,
   } = useLoteCoex()
 
   const { mostrarToast } = useToast()
-  const recepcion = useRecepcionCoex({ pendientesRecibir, recargar, mostrarToast })
-  const devolucion = useDevolucionCoex({ enUso, recargar, mostrarToast })
+  const recepcion = useRecepcionCoex({
+    pendientesRecibir,
+    recargar: refrescarSilencioso,
+    mostrarToast,
+  })
+  const devolucion = useDevolucionCoex({
+    enUso,
+    recargar: refrescarSilencioso,
+    mostrarToast,
+  })
+
+  const mutando = recepcion.enviando || devolucion.enviando
+  useRefrescoAutomaticoCoex({ refrescar: refrescarSilencioso, pausado: mutando })
+
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [confirmacionDevolucionAbierta, setConfirmacionDevolucionAbierta] = useState(false)
 
@@ -177,6 +199,26 @@ export default function MesaCoexPage() {
           />
         </div>
 
+        {estacion && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refrescarSilencioso()}
+              disabled={refrescando || mutando || cargando}
+              aria-busy={refrescando || undefined}
+            >
+              <Icon name="refresh" className="text-[18px]" />
+              {refrescando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+            <span className="text-label-sm text-on-surface-variant" aria-live="polite">
+              {ultimaActualizacion
+                ? `Última actualización: ${horaLocal(ultimaActualizacion)}`
+                : 'Sin actualización todavía'}
+            </span>
+          </div>
+        )}
+
         {!estacion ? (
           <Alert tone="warning" title="Sin estación activa">
             Seleccione una estación de enfermería para cargar el lote de expedientes.
@@ -198,6 +240,24 @@ export default function MesaCoexPage() {
           />
         ) : (
           <>
+            {errorRefresco && (
+              <Alert tone="warning" title="No se pudo actualizar el lote">
+                <p>
+                  Se muestran los últimos datos disponibles
+                  {ultimaActualizacion ? ` (${horaLocal(ultimaActualizacion)})` : ''}.
+                </p>
+                <div className="mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => refrescarSilencioso()}
+                    disabled={refrescando || mutando}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              </Alert>
+            )}
             <ResumenLoteCoex
               total={total}
               pendientesRecibir={pendientesRecibir.length}

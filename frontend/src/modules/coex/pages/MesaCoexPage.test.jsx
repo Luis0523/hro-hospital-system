@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
@@ -104,6 +104,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   activarEstacion()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('MesaCoexPage - Fase 1 (lectura)', () => {
@@ -840,5 +844,193 @@ describe('MesaCoexPage - Fase 3 (devolución)', () => {
     await waitFor(() => expect(entregarExpedienteCiclo).toHaveBeenCalledTimes(1))
     expect(entregarExpedienteCiclo).toHaveBeenCalledWith('c1')
     expect(await screen.findByText(/1 expediente recibido/i)).toBeInTheDocument()
+  })
+})
+
+describe('MesaCoexPage - Fase 4 (refresco en vivo)', () => {
+  it('20. muestra el botón Actualizar', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+
+    expect(await screen.findByRole('button', { name: 'Actualizar' })).toBeInTheDocument()
+  })
+
+  it('21. el botón Actualizar dispara el refresco manual', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+  })
+
+  it('22. muestra "Actualizando…" mientras refresca', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila()]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    cargarLoteEstacion.mockImplementationOnce(() => new Promise(() => {}))
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    expect(await screen.findByRole('button', { name: 'Actualizando…' })).toBeDisabled()
+  })
+
+  it('23. muestra la última actualización con aria-live', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+
+    const indicador = await screen.findByText(/Última actualización: /)
+    expect(indicador).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('24. un error de refresco silencioso muestra una advertencia no destructiva', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila({ numeroExpediente: 'EXP-001' })]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    cargarLoteEstacion.mockRejectedValueOnce(new Error('red caída'))
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    expect(await screen.findByText('No se pudo actualizar el lote')).toBeInTheDocument()
+  })
+
+  it('25. los datos permanecen visibles después del error de refresco', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila({ numeroExpediente: 'EXP-001' })]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    cargarLoteEstacion.mockRejectedValueOnce(new Error('red caída'))
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await screen.findByText('No se pudo actualizar el lote')
+
+    expect(screen.getByText('EXP-001')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('26. "Reintentar" vuelve a refrescar y limpia la advertencia', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila({ numeroExpediente: 'EXP-001' })]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    cargarLoteEstacion.mockRejectedValueOnce(new Error('red caída'))
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await screen.findByText('No se pudo actualizar el lote')
+
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila({ numeroExpediente: 'EXP-002' })]))
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    await screen.findByText('EXP-002')
+    await waitFor(() =>
+      expect(screen.queryByText('No se pudo actualizar el lote')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('27. el polling se pausa durante Recibir', async () => {
+    vi.useFakeTimers()
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+    entregarExpedienteCiclo.mockReturnValue(new Promise(() => {}))
+
+    renderPagina()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByText('EXP-001')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }))
+    fireEvent.click(screen.getByRole('button', { name: /Recibir seleccionados/ }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Recibir' }))
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000)
+    })
+
+    expect(cargarLoteEstacion).toHaveBeenCalledTimes(1)
+  })
+
+  it('28. el polling se pausa durante Devolver', async () => {
+    vi.useFakeTimers()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockReturnValue(new Promise(() => {}))
+
+    renderPagina()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByText('EXP-U01')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }))
+    fireEvent.click(screen.getByRole('button', { name: /Devolver seleccionados/ }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Devolver' }))
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000)
+    })
+
+    expect(cargarLoteEstacion).toHaveBeenCalledTimes(1)
+  })
+
+  it('29. recepción continúa funcionando con el refresco en vivo activo', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+    entregarExpedienteCiclo.mockResolvedValue({ id: 'c1', estadoActual: 'entregado' })
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }))
+    await abrirYConfirmar(user)
+
+    await waitFor(() => expect(entregarExpedienteCiclo).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/1 expediente recibido/i)).toBeInTheDocument()
+  })
+
+  it('30. devolución continúa funcionando con el refresco en vivo activo', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockResolvedValue({ id: 'u1', estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+    await screen.findByText('EXP-U01')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }))
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(retornarExpedienteCiclo).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/1 expediente devuelto/i)).toBeInTheDocument()
+  })
+
+  it('31. no muestra Spinner de página completa durante el refresco silencioso', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValueOnce(lote([fila({ numeroExpediente: 'EXP-001' })]))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    let resolver
+    cargarLoteEstacion.mockImplementationOnce(() => new Promise((r) => (resolver = r)))
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText('EXP-001')).toBeInTheDocument()
+
+    await act(async () => {
+      resolver(lote([fila({ numeroExpediente: 'EXP-002' })]))
+    })
+    await screen.findByText('EXP-002')
   })
 })
