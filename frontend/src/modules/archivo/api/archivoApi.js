@@ -1,5 +1,6 @@
 import client from '@/shared/api/client'
 import {
+  mapearCiclo,
   mapearExpedienteBusqueda,
   mapearJornadaArchivo,
   mapearMedico,
@@ -9,6 +10,7 @@ import {
 import {
   avanzarEstadoMock,
   buscarExpedientePorCodigoMock,
+  checkInExpedienteMock,
   clinicasArchivoMock,
   crearActaRecepcionMock,
   crearExpedienteMock,
@@ -18,8 +20,10 @@ import {
   marcarNoLocalizadoMock,
   medicosArchivoMock,
   obtenerActaRecepcionMock,
+  obtenerCicloPorCitaMock,
   obtenerExpedienteMock,
   resumenArchivoMock,
+  transicionCicloMock,
 } from './mockData'
 import { construirPdfResumen } from '../utils/pdfMock'
 
@@ -229,4 +233,57 @@ export async function obtenerActaRecepcion(id) {
 export async function obtenerActaRecepcionPdf(id) {
   if (USE_MOCK) return pdfMock(`%PDF-1.4 acta ${id} mock`)
   return client.get(`/actas-recepcion/${id}/pdf`, { responseType: 'blob' })
+}
+
+// ---------------------------------------------------------------------------
+// Ciclo real del expediente (Archivo Fase 1). Contratos confirmados en el
+// backend desplegado v1.6.0:
+//   POST /expedientes/{expedienteId}/check-in
+//   GET  /expediente-ciclos/cita/{citaId}
+//   POST /expediente-ciclos/{cicloId}/{accion}   (solo acciones de Archivo)
+// El rol efectivo lo aporta la identidad de la estación (X-Usuario-Rol).
+// ---------------------------------------------------------------------------
+
+export async function checkInExpediente(expedienteId, datos = {}) {
+  if (USE_MOCK) return mapearCiclo(checkInExpedienteMock(expedienteId, datos))
+  const respuesta = await client.post(`/expedientes/${expedienteId}/check-in`, datos)
+  return mapearCiclo(desenvolver(respuesta))
+}
+
+export async function obtenerCicloPorCita(citaId) {
+  if (USE_MOCK) return mapearCiclo(obtenerCicloPorCitaMock(citaId))
+  const respuesta = await client.get(`/expediente-ciclos/cita/${citaId}`)
+  return mapearCiclo(desenvolver(respuesta))
+}
+
+async function ejecutarTransicionCiclo(cicloId, accion, datos = {}) {
+  if (USE_MOCK) return mapearCiclo(transicionCicloMock(cicloId, accion, datos))
+  const respuesta = await client.post(`/expediente-ciclos/${cicloId}/${accion}`, datos)
+  return mapearCiclo(desenvolver(respuesta))
+}
+
+// Transiciones que corresponden al Operador de Archivo. NO se exponen
+// `entregar` ni `retornar`: pertenecen al flujo de Enfermería.
+export function iniciarBusquedaCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'iniciar-busqueda', datos)
+}
+
+export function localizarCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'localizar', datos)
+}
+
+export function despacharCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'despachar', datos)
+}
+
+export function archivarCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'archivar', datos)
+}
+
+export function noLocalizadoCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'no-localizado', datos)
+}
+
+export function reintentarBusquedaCiclo(cicloId, datos) {
+  return ejecutarTransicionCiclo(cicloId, 'reintentar-busqueda', datos)
 }

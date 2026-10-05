@@ -97,6 +97,42 @@ export function mapearJornadaArchivo(dto) {
   }
 }
 
+// Movimiento/checkpoint del ciclo (bitácora inmutable del backend).
+export function mapearMovimientoCiclo(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id ?? null,
+    estadoAnterior: dto.estadoAnterior ?? null,
+    estadoNuevo: dto.estadoNuevo ?? null,
+    ubicacionOrigen: dto.ubicacionOrigen ?? null,
+    ubicacionDestino: dto.ubicacionDestino ?? null,
+    usuarioId: dto.usuarioId ?? null,
+    usuarioNombre: dto.usuarioNombre ?? null,
+    observacion: dto.observacion ?? null,
+    fechaMovimiento: dto.fechaMovimiento ?? null,
+  }
+}
+
+// Ciclo del expediente para una cita (ExpedienteCicloResponseDTO). Copia
+// literalmente los campos reales del backend: no inventa cicloId, expedienteId,
+// estado ni timestamps. `cicloId` es el `id` del DTO.
+export function mapearCiclo(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id ?? null,
+    cicloId: dto.id ?? null,
+    expedienteId: dto.expedienteId ?? null,
+    numeroExpediente: dto.numeroExpediente ?? null,
+    paciente: dto.paciente ?? null,
+    citaId: dto.citaId ?? null,
+    estadoActual: dto.estadoActual ?? null,
+    version: dto.version ?? null,
+    creadoEn: dto.creadoEn ?? null,
+    actualizadoEn: dto.actualizadoEn ?? null,
+    movimientos: Array.isArray(dto.movimientos) ? dto.movimientos.map(mapearMovimientoCiclo) : [],
+  }
+}
+
 export function mapearCita(dto) {
   if (!dto) return null
   return {
