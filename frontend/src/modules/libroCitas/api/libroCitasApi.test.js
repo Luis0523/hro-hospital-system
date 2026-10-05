@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buscarPacientePorExpediente } from './libroCitasApi'
+import { buscarPacientePorExpediente, guardarLibroCitas } from './libroCitasApi'
 import { buscarPacienteMock, PACIENTES_MOCK } from './mockData'
 
 describe('libroCitasApi · buscarPacientePorExpediente (mock)', () => {
@@ -46,5 +46,29 @@ describe('libroCitasApi · buscarPacientePorExpediente (mock)', () => {
   it('buscarPacienteMock hace match exacto por número de expediente', () => {
     expect(buscarPacienteMock('1323-23')).not.toBeNull()
     expect(buscarPacienteMock('1323-24')).toBeNull()
+  })
+})
+
+describe('libroCitasApi · guardarLibroCitas (mock)', () => {
+  const payload = {
+    contadores: { ha: 1, eh: 0, hdt: 0, hdc: 0, sobres: 2, hr: 0, hd: 0, tia: 0 },
+    items: [{ numeroExpediente: '1323-23', especialidadId: 1 }],
+  }
+
+  it('devuelve éxito con el total de items', async () => {
+    await expect(guardarLibroCitas(payload)).resolves.toEqual({ ok: true, total: 1 })
+  })
+
+  it('devuelve total 0 sin items', async () => {
+    await expect(guardarLibroCitas({ contadores: {} })).resolves.toEqual({ ok: true, total: 0 })
+    await expect(guardarLibroCitas()).resolves.toEqual({ ok: true, total: 0 })
+  })
+
+  it('no muta el payload recibido', async () => {
+    const copia = JSON.parse(JSON.stringify(payload))
+
+    await guardarLibroCitas(payload)
+
+    expect(payload).toEqual(copia)
   })
 })

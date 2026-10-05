@@ -185,4 +185,38 @@ describe('FormularioCita', () => {
     expect(screen.queryByText(/direcci[oó]n/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/diagn[oó]stico/i)).not.toBeInTheDocument()
   })
+
+  it('si onAgregar devuelve true, limpia expediente y paciente y conserva fecha y especialidad', async () => {
+    const onAgregar = vi.fn().mockReturnValue(true)
+    render(<FormularioCita onAgregar={onAgregar} />)
+
+    fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
+    await elegirEspecialidad('Medicina Interna')
+    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    await screen.findByTestId('nombre-paciente')
+
+    await userEvent.click(botonAgregar())
+
+    expect(onAgregar).toHaveBeenCalledTimes(1)
+    expect(campoExpediente()).toHaveValue('')
+    expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
+    expect(campoFecha()).toHaveValue('2026-10-06')
+    expect(screen.getByRole('button', { name: 'Medicina Interna' })).toBeInTheDocument()
+    expect(botonAgregar()).toBeDisabled()
+  })
+
+  it('si onAgregar devuelve false (duplicado), conserva expediente y paciente', async () => {
+    const onAgregar = vi.fn().mockReturnValue(false)
+    render(<FormularioCita onAgregar={onAgregar} />)
+
+    fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
+    await elegirEspecialidad('Medicina Interna')
+    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    await screen.findByTestId('nombre-paciente')
+
+    await userEvent.click(botonAgregar())
+
+    expect(campoExpediente()).toHaveValue('1323-23')
+    expect(screen.getByTestId('nombre-paciente')).toBeInTheDocument()
+  })
 })

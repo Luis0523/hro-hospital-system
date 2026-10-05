@@ -71,7 +71,7 @@ export default function FormularioCita({ onAgregar }) {
       (item) => String(item.id) === String(especialidadId),
     )
 
-    onAgregar({
+    const agregado = onAgregar({
       numeroExpediente: expedienteNormalizado,
       pacienteId: paciente.id,
       nombrePaciente: paciente.nombre,
@@ -79,6 +79,16 @@ export default function FormularioCita({ onAgregar }) {
       especialidadId: especialidad.id,
       especialidadNombre: especialidad.nombre,
     })
+
+    // Solo se limpia el expediente si la fila fue aceptada. Mantiene fecha y
+    // especialidad para capturar varios expedientes de la misma jornada.
+    if (agregado) {
+      secuenciaRef.current += 1
+      setNumeroExpediente('')
+      setPaciente(null)
+      setNoEncontrado(false)
+      setBuscando(false)
+    }
   }
 
   return (
