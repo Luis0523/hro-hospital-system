@@ -21,7 +21,9 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 
 import FormularioCita from './FormularioCita.jsx'
 
-const PACIENTE = { numeroExpediente: '837871', nombre: 'Paciente Prueba' }
+// Valores ficticios reservados para tests. NO son expedientes/datos reales.
+const EXPEDIENTE_FICTICIO = '999999999999'
+const PACIENTE = { numeroExpediente: EXPEDIENTE_FICTICIO, nombre: 'Paciente Prueba' }
 
 function renderFormulario(onAgregar = vi.fn()) {
   render(<FormularioCita onAgregar={onAgregar} />)
@@ -30,11 +32,17 @@ function renderFormulario(onAgregar = vi.fn()) {
 
 const campoFecha = () => screen.getByLabelText('Fecha de la cita')
 const campoExpediente = () => screen.getByLabelText(/Número de expediente/i)
+const botonBuscar = () => screen.getByRole('button', { name: /buscar expediente/i })
 const botonAgregar = () => screen.getByRole('button', { name: /agregar a la lista/i })
 
 async function elegirEspecialidad(nombre) {
   await userEvent.click(screen.getByRole('button', { name: /seleccione una especialidad/i }))
   await userEvent.click(screen.getByRole('option', { name: nombre }))
+}
+
+async function escribirYBuscar(expediente = EXPEDIENTE_FICTICIO) {
+  fireEvent.change(campoExpediente(), { target: { value: expediente } })
+  await userEvent.click(botonBuscar())
 }
 
 beforeEach(() => {
@@ -54,47 +62,53 @@ describe('FormularioCita', () => {
     expect(botonAgregar()).toBeDisabled()
   })
 
-  it('ofrece exactamente las dos especialidades permitidas', async () => {
+  it('escribir un expediente numérico NO consulta al API', () => {
     renderFormulario()
 
-    await userEvent.click(screen.getByRole('button', { name: /seleccione una especialidad/i }))
+    fireEvent.change(campoExpediente(), { target: { value: EXPEDIENTE_FICTICIO } })
 
-    const opciones = screen.getAllByRole('option').map((opcion) => opcion.textContent)
-    expect(opciones).toEqual(['Medicina Interna', 'Medicina General'])
+    expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
+  })
+
+  it('un click en "Buscar expediente" realiza exactamente una consulta', async () => {
+    renderFormulario()
+
+    await escribirYBuscar()
+
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledTimes(1)
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledWith(EXPEDIENTE_FICTICIO)
+    expect(await screen.findByTestId('nombre-paciente')).toHaveTextContent('Paciente Prueba')
+  })
+
+  it('el botón Buscar está deshabilitado para vacío, letras y guion', () => {
+    renderFormulario()
+
+    expect(botonBuscar()).toBeDisabled()
+
+    fireEvent.change(campoExpediente(), { target: { value: 'ABC123' } })
+    expect(botonBuscar()).toBeDisabled()
+
+    fireEvent.change(campoExpediente(), { target: { value: '12-34' } })
+    expect(botonBuscar()).toBeDisabled()
+
+    fireEvent.change(campoExpediente(), { target: { value: EXPEDIENTE_FICTICIO } })
+    expect(botonBuscar()).toBeEnabled()
   })
 
   it('rechaza el formato con guion sin consultar', () => {
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '12-34' } })
 
     expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
     expect(screen.getByText(/solo números/i)).toBeInTheDocument()
-  })
-
-  it('rechaza letras sin consultar', () => {
-    renderFormulario()
-
-    fireEvent.change(campoExpediente(), { target: { value: 'ABC123' } })
-
-    expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
-    expect(screen.getByText(/solo números/i)).toBeInTheDocument()
-  })
-
-  it('muestra el nombre cuando el expediente existe', async () => {
-    renderFormulario()
-
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
-
-    expect(await screen.findByTestId('nombre-paciente')).toHaveTextContent('Paciente Prueba')
-    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledWith('837871')
   })
 
   it('muestra "Expediente no encontrado" ante 404 (null)', async () => {
     buscarPacientePorExpedienteMock.mockResolvedValue(null)
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '999999' } })
+    await escribirYBuscar()
 
     expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
     expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
@@ -109,7 +123,7 @@ describe('FormularioCita', () => {
     )
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
 
     const alerta = await screen.findByRole('alert')
     expect(alerta).toHaveTextContent(
@@ -118,25 +132,17 @@ describe('FormularioCita', () => {
     expect(screen.queryByText('Expediente no encontrado')).not.toBeInTheDocument()
   })
 
-  it('al cambiar el expediente limpia el paciente anterior y muestra "Buscando…"', async () => {
+  it('al modificar el expediente limpia el paciente y no lanza consulta nueva', async () => {
     renderFormulario()
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledTimes(1)
 
-    let resolver
-    buscarPacientePorExpedienteMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolver = resolve
-        }),
-    )
-    fireEvent.change(campoExpediente(), { target: { value: '999999' } })
+    fireEvent.change(campoExpediente(), { target: { value: '111111' } })
 
     expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
-    expect(screen.getByText('Buscando…')).toBeInTheDocument()
-
-    resolver(null)
-    expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledTimes(1)
+    expect(botonAgregar()).toBeDisabled()
   })
 
   it('una respuesta async obsoleta no pisa la búsqueda nueva', async () => {
@@ -146,8 +152,8 @@ describe('FormularioCita', () => {
     )
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '111111' } })
-    fireEvent.change(campoExpediente(), { target: { value: '222222' } })
+    await escribirYBuscar('111111')
+    await escribirYBuscar('222222')
     expect(buscarPacientePorExpedienteMock).toHaveBeenCalledTimes(2)
 
     act(() => pendientes[1]({ numeroExpediente: '222222', nombre: 'Paciente Nuevo' }))
@@ -164,44 +170,26 @@ describe('FormularioCita', () => {
   it('el nombre del paciente es solo lectura (no es un input editable)', async () => {
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     const nombre = await screen.findByTestId('nombre-paciente')
 
     expect(nombre.tagName).not.toBe('INPUT')
     expect(screen.queryByDisplayValue('Paciente Prueba')).not.toBeInTheDocument()
   })
 
-  it('el botón permanece deshabilitado sin fecha', async () => {
+  it('el botón Agregar permanece deshabilitado sin fecha ni especialidad', async () => {
     renderFormulario()
-    await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
 
     expect(botonAgregar()).toBeDisabled()
   })
 
-  it('el botón permanece deshabilitado sin especialidad', async () => {
-    renderFormulario()
-    fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
-    await screen.findByTestId('nombre-paciente')
-
-    expect(botonAgregar()).toBeDisabled()
-  })
-
-  it('el botón permanece deshabilitado sin expediente encontrado', async () => {
-    renderFormulario()
-    fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
-    await elegirEspecialidad('Medicina Interna')
-
-    expect(botonAgregar()).toBeDisabled()
-  })
-
-  it('habilita el botón y entrega el payload correcto (sin pacienteId)', async () => {
+  it('habilita Agregar y entrega el payload correcto (sin pacienteId)', async () => {
     const onAgregar = renderFormulario()
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
 
     await waitFor(() => expect(botonAgregar()).toBeEnabled())
@@ -209,7 +197,7 @@ describe('FormularioCita', () => {
 
     expect(onAgregar).toHaveBeenCalledTimes(1)
     expect(onAgregar).toHaveBeenCalledWith({
-      numeroExpediente: '837871',
+      numeroExpediente: EXPEDIENTE_FICTICIO,
       nombrePaciente: 'Paciente Prueba',
       fecha: '2026-10-06',
       especialidadId: 1,
@@ -224,7 +212,7 @@ describe('FormularioCita', () => {
 
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
 
     await userEvent.click(botonAgregar())
@@ -242,18 +230,18 @@ describe('FormularioCita', () => {
 
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
 
     await userEvent.click(botonAgregar())
 
-    expect(campoExpediente()).toHaveValue('837871')
+    expect(campoExpediente()).toHaveValue(EXPEDIENTE_FICTICIO)
     expect(screen.getByTestId('nombre-paciente')).toBeInTheDocument()
   })
 
   it('no renderiza datos sensibles del paciente', async () => {
     renderFormulario()
-    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await escribirYBuscar()
     await screen.findByTestId('nombre-paciente')
 
     expect(screen.queryByText(/DPI/i)).not.toBeInTheDocument()

@@ -35,9 +35,13 @@ export async function buscarPacientePorExpediente(numeroExpediente) {
       nombre: datos.nombreCompleto,
     }
   } catch (error) {
-    if (error?.status === 404) return null
+    // `shared/api/client` normaliza el error y expone `status`; se cubre también
+    // la forma cruda de axios (`error.response.status`) por si cambiara.
+    const status = error?.status ?? error?.response?.status ?? null
 
-    if (error?.status === 502) {
+    if (status === 404) return null
+
+    if (status === 502) {
       throw crearError(
         'No fue posible consultar el sistema hospitalario. Intente de nuevo.',
         'INTEGRACION',
@@ -48,7 +52,7 @@ export async function buscarPacientePorExpediente(numeroExpediente) {
     throw crearError(
       'No se pudo consultar el expediente. Intente de nuevo.',
       'INESPERADO',
-      error?.status ?? null,
+      status,
     )
   }
 }

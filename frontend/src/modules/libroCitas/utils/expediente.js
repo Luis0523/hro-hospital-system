@@ -1,5 +1,5 @@
 // El número de expediente real es numérico, sin guion y sin longitud fija.
-// Ejemplos válidos: 837871, 123456. Inválidos: 1323-23, ABC123.
+// Ejemplos válidos: 987654321, 123456. Inválidos: 12-34, ABC123.
 export const PATRON_EXPEDIENTE = /^\d+$/
 
 export function normalizarExpediente(valor) {

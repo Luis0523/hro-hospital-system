@@ -26,6 +26,7 @@ export default function FormularioCita({ onAgregar }) {
   const expedienteNormalizado = normalizarExpediente(numeroExpediente)
   const formatoValido = esExpedienteValido(expedienteNormalizado)
   const mostrarFormatoInvalido = expedienteNormalizado !== '' && !formatoValido
+  const puedeBuscar = formatoValido && !buscando
 
   async function buscarExpediente(expediente) {
     const secuencia = ++secuenciaRef.current
@@ -53,20 +54,20 @@ export default function FormularioCita({ onAgregar }) {
     }
   }
 
+  // Escribir NO consulta al API: solo actualiza el valor e invalida el estado.
   function manejarCambioExpediente(event) {
-    const valor = event.target.value
-    setNumeroExpediente(valor)
+    setNumeroExpediente(event.target.value)
     setPaciente(null)
     setNoEncontrado(false)
     setErrorConsulta(null)
+    setBuscando(false)
     secuenciaRef.current += 1
+  }
 
-    const expediente = normalizarExpediente(valor)
-    if (!esExpedienteValido(expediente)) {
-      setBuscando(false)
-      return
-    }
-    buscarExpediente(expediente)
+  // Acción explícita del usuario: exactamente una consulta por click.
+  function manejarBuscar() {
+    if (!puedeBuscar) return
+    buscarExpediente(expedienteNormalizado)
   }
 
   const completo =
@@ -151,17 +152,31 @@ export default function FormularioCita({ onAgregar }) {
           placeholder="Seleccione una especialidad"
         />
 
-        <Input
-          id="libro-citas-expediente"
-          name="numeroExpediente"
-          label="Número de expediente"
-          placeholder="837871"
-          hint="Solo números"
-          error={mostrarFormatoInvalido ? MENSAJE_FORMATO : undefined}
-          value={numeroExpediente}
-          onChange={manejarCambioExpediente}
-          autoComplete="off"
-        />
+        <div className="space-y-2">
+          <Input
+            id="libro-citas-expediente"
+            name="numeroExpediente"
+            label="Número de expediente"
+            placeholder="Ingrese el número de expediente"
+            hint="Solo números"
+            inputMode="numeric"
+            error={mostrarFormatoInvalido ? MENSAJE_FORMATO : undefined}
+            value={numeroExpediente}
+            onChange={manejarCambioExpediente}
+            autoComplete="off"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={manejarBuscar}
+            disabled={!puedeBuscar}
+          >
+            <Icon name="search" className="text-[18px]" />
+            Buscar expediente
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-1">
