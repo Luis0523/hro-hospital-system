@@ -10,8 +10,10 @@ import AppRouter from '@/router/AppRouter.jsx'
 import {
   cargarLoteEstacion,
   entregarExpedienteCiclo,
+  obtenerSalidaPdfCoex,
   retornarExpedienteCiclo,
 } from '../api/coexApi'
+import { descargarBlobCoex, nombreArchivoSalidaCoex } from '../utils/descargarBlobCoex'
 import MesaCoexPage from './MesaCoexPage.jsx'
 
 vi.mock('../api/coexApi', async (importOriginal) => {
@@ -20,8 +22,16 @@ vi.mock('../api/coexApi', async (importOriginal) => {
     ...actual,
     cargarLoteEstacion: vi.fn(),
     entregarExpedienteCiclo: vi.fn(),
+    obtenerSalidaPdfCoex: vi.fn(),
     retornarExpedienteCiclo: vi.fn(),
   }
+})
+
+// Solo se espía `descargarBlobCoex`; `nombreArchivoSalidaCoex` conserva su
+// implementación real para verificar el nombre determinista.
+vi.mock('../utils/descargarBlobCoex', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, descargarBlobCoex: vi.fn() }
 })
 
 function activarEstacion() {
@@ -104,6 +114,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   activarEstacion()
+  descargarBlobCoex.mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -1153,5 +1164,182 @@ describe('MesaCoexPage - regresión empty-state con fuente de ciclos', () => {
     expect(
       screen.getByText('La estación no tiene subespecialidades activas para esta fecha.'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('MesaCoexPage - Fase 7 (PDF de salida)', () => {
+  const PDF_BOTON = /Descargar PDF de salida/
+
+  it('41. muestra el botón "Descargar PDF de salida del día" con target táctil', async () => {
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+
+    renderPagina()
+
+    const boton = await screen.findByRole('button', { name: PDF_BOTON })
+    expect(boton).toBeInTheDocument()
+    expect(boton.className).toContain('min-h-11')
+    expect(boton).not.toBeDisabled()
+  })
+
+  it('42. usa la fecha seleccionada al pedir el PDF', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
+
+    renderPagina()
+    fireEvent.change(await screen.findByLabelText('Fecha de trabajo'), {
+      target: { value: '2026-10-05' },
+    })
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+
+    await user.click(screen.getByRole('button', { name: PDF_BOTON }))
+
+    await waitFor(() =>
+      expect(obtenerSalidaPdfCoex).toHaveBeenCalledWith({ fecha: '2026-10-05' }),
+    )
+  })
+
+  it('43. llama a obtenerSalidaPdfCoex al pulsar', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
+
+    renderPagina()
+    await user.click(await screen.findByRole('button', { name: PDF_BOTON }))
+
+    await waitFor(() => expect(obtenerSalidaPdfCoex).toHaveBeenCalledTimes(1))
+    expect(obtenerSalidaPdfCoex.mock.calls[0][0]).toHaveProperty('fecha')
+  })
+
+  it('44. llama a descargarBlobCoex con el blob devuelto', async () => {
+    const user = userEvent.setup()
+    const blob = new Blob(['%PDF'], { type: 'application/pdf' })
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockResolvedValue(blob)
+
+    renderPagina()
+    await user.click(await screen.findByRole('button', { name: PDF_BOTON }))
+
+    await waitFor(() => expect(descargarBlobCoex).toHaveBeenCalledTimes(1))
+    expect(descargarBlobCoex).toHaveBeenCalledWith(blob, expect.stringContaining('salida-expedientes-'))
+  })
+
+  it('45. usa el nombre determinista salida-expedientes-YYYY-MM-DD.pdf', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
+
+    renderPagina()
+    fireEvent.change(await screen.findByLabelText('Fecha de trabajo'), {
+      target: { value: '2026-10-05' },
+    })
+    await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
+
+    await user.click(screen.getByRole('button', { name: PDF_BOTON }))
+
+    await waitFor(() =>
+      expect(descargarBlobCoex).toHaveBeenCalledWith(
+        expect.anything(),
+        nombreArchivoSalidaCoex('2026-10-05'),
+      ),
+    )
+    expect(nombreArchivoSalidaCoex('2026-10-05')).toBe('salida-expedientes-2026-10-05.pdf')
+  })
+
+  it('46. muestra "Descargando…" mientras está en curso', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockReturnValue(new Promise(() => {}))
+
+    renderPagina()
+    await user.click(await screen.findByRole('button', { name: PDF_BOTON }))
+
+    expect(await screen.findByRole('button', { name: 'Descargando…' })).toBeInTheDocument()
+  })
+
+  it('47. deshabilita el botón durante la descarga', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockReturnValue(new Promise(() => {}))
+
+    renderPagina()
+    await user.click(await screen.findByRole('button', { name: PDF_BOTON }))
+
+    const boton = await screen.findByRole('button', { name: 'Descargando…' })
+    expect(boton).toBeDisabled()
+    expect(boton).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('48. un fallo muestra el Toast de error', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila()]))
+    obtenerSalidaPdfCoex.mockRejectedValue(new Error('servidor no disponible'))
+
+    renderPagina()
+    await user.click(await screen.findByRole('button', { name: PDF_BOTON }))
+
+    expect(
+      await screen.findByText('No se pudo descargar el PDF de salida.'),
+    ).toBeInTheDocument()
+  })
+
+  it('49. el fallo del PDF no borra el lote', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote([fila({ numeroExpediente: 'EXP-001' })]))
+    obtenerSalidaPdfCoex.mockRejectedValue(new Error('boom'))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+    await user.click(screen.getByRole('button', { name: PDF_BOTON }))
+    await screen.findByText('No se pudo descargar el PDF de salida.')
+
+    expect(screen.getByText('EXP-001')).toBeInTheDocument()
+    expect(screen.queryByText('No se pudo cargar el lote')).not.toBeInTheDocument()
+  })
+
+  it('50. no dispara entregar ni retornar', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(
+      lote([fila({ cicloId: 'c1', numeroExpediente: 'EXP-001' }), ...enUso(1)]),
+    )
+    obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+    await user.click(screen.getByRole('button', { name: PDF_BOTON }))
+    await waitFor(() => expect(obtenerSalidaPdfCoex).toHaveBeenCalledTimes(1))
+
+    expect(entregarExpedienteCiclo).not.toHaveBeenCalled()
+    expect(retornarExpedienteCiclo).not.toHaveBeenCalled()
+  })
+
+  it('51. recepción sigue funcionando con el botón PDF presente', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(pendientes(1)))
+    entregarExpedienteCiclo.mockResolvedValue({ id: 'c1', estadoActual: 'entregado' })
+
+    renderPagina()
+    await screen.findByText('EXP-001')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-001' }))
+    await abrirYConfirmar(user)
+
+    await waitFor(() => expect(entregarExpedienteCiclo).toHaveBeenCalledWith('c1'))
+    expect(await screen.findByText(/1 expediente recibido/i)).toBeInTheDocument()
+  })
+
+  it('52. devolución sigue funcionando con el botón PDF presente', async () => {
+    const user = userEvent.setup()
+    cargarLoteEstacion.mockResolvedValue(lote(enUso(1)))
+    retornarExpedienteCiclo.mockResolvedValue({ id: 'u1', estadoActual: 'en_transito_retorno' })
+
+    renderPagina()
+    await screen.findByText('EXP-U01')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar expediente EXP-U01' }))
+    await abrirYConfirmarDevolucion(user)
+
+    await waitFor(() => expect(retornarExpedienteCiclo).toHaveBeenCalledWith('u1'))
+    expect(await screen.findByText(/1 expediente devuelto/i)).toBeInTheDocument()
   })
 })

@@ -7,6 +7,7 @@ import Input from '@/shared/components/ui/Input.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useDevolucionCoex } from '../hooks/useDevolucionCoex'
+import { useDescargaPdfCoex } from '../hooks/useDescargaPdfCoex'
 import { useLoteCoex } from '../hooks/useLoteCoex'
 import { useRecepcionCoex } from '../hooks/useRecepcionCoex'
 import { useRefrescoAutomaticoCoex } from '../hooks/useRefrescoAutomaticoCoex'
@@ -54,6 +55,10 @@ export default function MesaCoexPage() {
     recargar: refrescarSilencioso,
     mostrarToast,
   })
+
+  // Descarga del PDF de salida: acción manual independiente (no acoplada a
+  // Recibir/Devolver). Ver `useDescargaPdfCoex` para el motivo.
+  const { descargandoPdf, descargarSalidaPdf } = useDescargaPdfCoex({ fecha, mostrarToast })
 
   const mutando = recepcion.enviando || devolucion.enviando
   useRefrescoAutomaticoCoex({ refrescar: refrescarSilencioso, pausado: mutando })
@@ -203,17 +208,30 @@ export default function MesaCoexPage() {
 
         {estacion && (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="min-h-11"
-              onClick={() => refrescarSilencioso()}
-              disabled={refrescando || mutando || cargando}
-              aria-busy={refrescando || undefined}
-            >
-              <Icon name="refresh" className="text-[18px]" />
-              {refrescando ? 'Actualizando…' : 'Actualizar'}
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() => refrescarSilencioso()}
+                disabled={refrescando || mutando || cargando}
+                aria-busy={refrescando || undefined}
+              >
+                <Icon name="refresh" className="text-[18px]" />
+                {refrescando ? 'Actualizando…' : 'Actualizar'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 w-full text-center sm:w-auto"
+                onClick={descargarSalidaPdf}
+                disabled={descargandoPdf}
+                aria-busy={descargandoPdf || undefined}
+              >
+                <Icon name="picture_as_pdf" className="text-[18px]" />
+                {descargandoPdf ? 'Descargando…' : 'Descargar PDF de salida del día'}
+              </Button>
+            </div>
             <span className="min-w-0 break-words text-label-sm text-on-surface-variant" aria-live="polite">
               {ultimaActualizacion
                 ? `Última actualización: ${horaLocal(ultimaActualizacion)}`
