@@ -53,7 +53,6 @@ export default function LibroCitasPage() {
     try {
       const items = filas.map((fila) => ({
         numeroExpediente: fila.numeroExpediente,
-        pacienteId: fila.pacienteId,
         nombrePaciente: fila.nombrePaciente,
         fecha: fila.fecha,
         especialidadId: fila.especialidadId,

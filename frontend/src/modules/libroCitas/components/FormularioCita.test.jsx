@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { buscarPacientePorExpedienteMock } = vi.hoisted(() => ({
@@ -21,11 +21,7 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 
 import FormularioCita from './FormularioCita.jsx'
 
-const PACIENTE = {
-  id: 'pac-1323',
-  numeroExpediente: '1323-23',
-  nombre: 'Paciente Demo Uno',
-}
+const PACIENTE = { numeroExpediente: '837871', nombre: 'Paciente Prueba' }
 
 function renderFormulario(onAgregar = vi.fn()) {
   render(<FormularioCita onAgregar={onAgregar} />)
@@ -67,39 +63,64 @@ describe('FormularioCita', () => {
     expect(opciones).toEqual(['Medicina Interna', 'Medicina General'])
   })
 
-  it('un formato inválido NO consulta el mock y muestra el error', () => {
+  it('rechaza el formato con guion sin consultar', () => {
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '1234' } })
+    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
 
     expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
-    expect(screen.getByText(/formato inválido/i)).toBeInTheDocument()
+    expect(screen.getByText(/solo números/i)).toBeInTheDocument()
+  })
+
+  it('rechaza letras sin consultar', () => {
+    renderFormulario()
+
+    fireEvent.change(campoExpediente(), { target: { value: 'ABC123' } })
+
+    expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
+    expect(screen.getByText(/solo números/i)).toBeInTheDocument()
   })
 
   it('muestra el nombre cuando el expediente existe', async () => {
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
 
-    expect(await screen.findByTestId('nombre-paciente')).toHaveTextContent(
-      'Paciente Demo Uno',
-    )
-    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledWith('1323-23')
+    expect(await screen.findByTestId('nombre-paciente')).toHaveTextContent('Paciente Prueba')
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledWith('837871')
   })
 
-  it('muestra "Expediente no encontrado" cuando no existe', async () => {
+  it('muestra "Expediente no encontrado" ante 404 (null)', async () => {
     buscarPacientePorExpedienteMock.mockResolvedValue(null)
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '9999-99' } })
+    fireEvent.change(campoExpediente(), { target: { value: '999999' } })
 
     expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
     expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
   })
 
+  it('distingue un error de integración (502) de un 404', async () => {
+    buscarPacientePorExpedienteMock.mockRejectedValue(
+      Object.assign(
+        new Error('No fue posible consultar el sistema hospitalario. Intente de nuevo.'),
+        { status: 502, tipo: 'INTEGRACION' },
+      ),
+    )
+    renderFormulario()
+
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent(
+      'No fue posible consultar el sistema hospitalario. Intente de nuevo.',
+    )
+    expect(screen.queryByText('Expediente no encontrado')).not.toBeInTheDocument()
+  })
+
   it('al cambiar el expediente limpia el paciente anterior y muestra "Buscando…"', async () => {
     renderFormulario()
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     let resolver
@@ -109,7 +130,7 @@ describe('FormularioCita', () => {
           resolver = resolve
         }),
     )
-    fireEvent.change(campoExpediente(), { target: { value: '1401-24' } })
+    fireEvent.change(campoExpediente(), { target: { value: '999999' } })
 
     expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
     expect(screen.getByText('Buscando…')).toBeInTheDocument()
@@ -118,20 +139,42 @@ describe('FormularioCita', () => {
     expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
   })
 
+  it('una respuesta async obsoleta no pisa la búsqueda nueva', async () => {
+    const pendientes = []
+    buscarPacientePorExpedienteMock.mockImplementation(
+      () => new Promise((resolve) => pendientes.push(resolve)),
+    )
+    renderFormulario()
+
+    fireEvent.change(campoExpediente(), { target: { value: '111111' } })
+    fireEvent.change(campoExpediente(), { target: { value: '222222' } })
+    expect(buscarPacientePorExpedienteMock).toHaveBeenCalledTimes(2)
+
+    act(() => pendientes[1]({ numeroExpediente: '222222', nombre: 'Paciente Nuevo' }))
+    await screen.findByText('Paciente Nuevo')
+
+    await act(async () => {
+      pendientes[0]({ numeroExpediente: '111111', nombre: 'Paciente Viejo' })
+    })
+
+    expect(screen.queryByText('Paciente Viejo')).not.toBeInTheDocument()
+    expect(screen.getByTestId('nombre-paciente')).toHaveTextContent('Paciente Nuevo')
+  })
+
   it('el nombre del paciente es solo lectura (no es un input editable)', async () => {
     renderFormulario()
 
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     const nombre = await screen.findByTestId('nombre-paciente')
 
     expect(nombre.tagName).not.toBe('INPUT')
-    expect(screen.queryByDisplayValue('Paciente Demo Uno')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Paciente Prueba')).not.toBeInTheDocument()
   })
 
   it('el botón permanece deshabilitado sin fecha', async () => {
     renderFormulario()
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     expect(botonAgregar()).toBeDisabled()
@@ -140,7 +183,7 @@ describe('FormularioCita', () => {
   it('el botón permanece deshabilitado sin especialidad', async () => {
     renderFormulario()
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     expect(botonAgregar()).toBeDisabled()
@@ -154,11 +197,11 @@ describe('FormularioCita', () => {
     expect(botonAgregar()).toBeDisabled()
   })
 
-  it('habilita el botón y entrega el payload correcto en onAgregar', async () => {
+  it('habilita el botón y entrega el payload correcto (sin pacienteId)', async () => {
     const onAgregar = renderFormulario()
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     await waitFor(() => expect(botonAgregar()).toBeEnabled())
@@ -166,24 +209,13 @@ describe('FormularioCita', () => {
 
     expect(onAgregar).toHaveBeenCalledTimes(1)
     expect(onAgregar).toHaveBeenCalledWith({
-      numeroExpediente: '1323-23',
-      pacienteId: 'pac-1323',
-      nombrePaciente: 'Paciente Demo Uno',
+      numeroExpediente: '837871',
+      nombrePaciente: 'Paciente Prueba',
       fecha: '2026-10-06',
       especialidadId: 1,
       especialidadNombre: 'Medicina Interna',
     })
-  })
-
-  it('no renderiza datos sensibles del paciente', async () => {
-    renderFormulario()
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
-    await screen.findByTestId('nombre-paciente')
-
-    expect(screen.queryByText(/DPI/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/tel[eé]fono/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/direcci[oó]n/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/diagn[oó]stico/i)).not.toBeInTheDocument()
+    expect(onAgregar.mock.calls[0][0]).not.toHaveProperty('pacienteId')
   })
 
   it('si onAgregar devuelve true, limpia expediente y paciente y conserva fecha y especialidad', async () => {
@@ -192,12 +224,11 @@ describe('FormularioCita', () => {
 
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     await userEvent.click(botonAgregar())
 
-    expect(onAgregar).toHaveBeenCalledTimes(1)
     expect(campoExpediente()).toHaveValue('')
     expect(screen.queryByTestId('nombre-paciente')).not.toBeInTheDocument()
     expect(campoFecha()).toHaveValue('2026-10-06')
@@ -211,12 +242,23 @@ describe('FormularioCita', () => {
 
     fireEvent.change(campoFecha(), { target: { value: '2026-10-06' } })
     await elegirEspecialidad('Medicina Interna')
-    fireEvent.change(campoExpediente(), { target: { value: '1323-23' } })
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
     await screen.findByTestId('nombre-paciente')
 
     await userEvent.click(botonAgregar())
 
-    expect(campoExpediente()).toHaveValue('1323-23')
+    expect(campoExpediente()).toHaveValue('837871')
     expect(screen.getByTestId('nombre-paciente')).toBeInTheDocument()
+  })
+
+  it('no renderiza datos sensibles del paciente', async () => {
+    renderFormulario()
+    fireEvent.change(campoExpediente(), { target: { value: '837871' } })
+    await screen.findByTestId('nombre-paciente')
+
+    expect(screen.queryByText(/DPI/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tel[eé]fono/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/direcci[oó]n/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/diagn[oó]stico/i)).not.toBeInTheDocument()
   })
 })
