@@ -77,7 +77,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '10:20:00',
     estado: 'pendiente_localizar',
     expedienteNuevo: false,
@@ -96,7 +96,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 11,
     medicoNombre: 'Dra. Elena Marroquín',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '09:00:00',
     estado: 'en_busqueda',
     expedienteNuevo: false,
@@ -123,7 +123,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '11:40:00',
     estado: 'localizado',
     expedienteNuevo: false,
@@ -151,7 +151,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '08:30:00',
     estado: 'en_transito_entrega',
     expedienteNuevo: false,
@@ -185,7 +185,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '14:00:00',
     estado: 'entregado',
     expedienteNuevo: false,
@@ -220,7 +220,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '15:20:00',
     estado: 'no_localizado',
     expedienteNuevo: false,
@@ -248,11 +248,73 @@ export const expedientesMock = [
     subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '16:10:00',
     estado: 'pendiente_localizar',
     expedienteNuevo: true,
     historial: [],
+  },
+  // Fixture 8: expediente físico SIN ciclo. Demuestra el check-in desde la UI.
+  {
+    id: 8,
+    citaId: 108,
+    pacienteId: 8,
+    pacienteNombre: 'Pedro Antonio Gutiérrez Solís',
+    pacienteDpi: '2544332210101',
+    numeroExpediente: 'EXP-2024-099',
+    codigo: 'EXP-2024-099',
+    ubicacion: 'Estante B · Fila 2 · Caja 07',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
+    medicoId: 10,
+    medicoNombre: 'Dr. Jorge Castillo',
+    fechaCita: fechaRelativa(0),
+    horaEstimada: '12:30:00',
+    estado: 'pendiente_localizar',
+    expedienteNuevo: false,
+    historial: [],
+  },
+  // Fixture 9: ciclo en en_transito_retorno. Demuestra archivar desde la UI.
+  {
+    id: 9,
+    citaId: 109,
+    pacienteId: 9,
+    pacienteNombre: 'Marta Lidia Hernández Ruiz',
+    pacienteDpi: '2998877660101',
+    numeroExpediente: 'EXP-2024-077',
+    codigo: 'EXP-2024-077',
+    ubicacion: 'Estante C · Fila 1 · Caja 03',
+    subespecialidadId: 2,
+    subespecialidadNombre: 'Pediatría General',
+    medicoId: 12,
+    medicoNombre: 'Dr. Ricardo Salazar',
+    fechaCita: fechaRelativa(0),
+    horaEstimada: '13:15:00',
+    estado: 'en_transito_retorno',
+    expedienteNuevo: false,
+    historial: [
+      {
+        id: 1,
+        estado: 'pendiente_localizar',
+        fechaHora: marcaTiempo(7),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+      { id: 2, estado: 'en_busqueda', fechaHora: marcaTiempo(6), usuario: USUARIO_ARCHIVO_MOCK },
+      { id: 3, estado: 'localizado', fechaHora: marcaTiempo(5), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 4,
+        estado: 'en_transito_entrega',
+        fechaHora: marcaTiempo(4),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+      { id: 5, estado: 'entregado', fechaHora: marcaTiempo(3), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 6,
+        estado: 'en_transito_retorno',
+        fechaHora: marcaTiempo(1),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+    ],
   },
 ]
 
@@ -561,28 +623,9 @@ function errorMock(mensaje, status) {
   return error
 }
 
-// Fixtures del ciclo: los mismos expedientes de la jornada más dos fixtures
-// dedicados que NO entran en la vista diaria (8: sin ciclo, para ejercitar el
-// check-in; 9: en_transito_retorno, para ejercitar archivar).
-const CICLOS_FIXTURES_MOCK = [
-  ...expedientesMock,
-  {
-    id: 8,
-    citaId: 108,
-    pacienteId: 8,
-    pacienteNombre: 'Pedro Antonio Gutiérrez Solís',
-    pacienteDpi: '2544332210101',
-    numeroExpediente: 'EXP-2024-099',
-  },
-  {
-    id: 9,
-    citaId: 109,
-    pacienteId: 9,
-    pacienteNombre: 'Marta Lidia Hernández Ruiz',
-    pacienteDpi: '2998877660101',
-    numeroExpediente: 'EXP-2024-077',
-  },
-]
+// Fixtures del ciclo: los mismos expedientes de la jornada (8 sin ciclo y 9 en
+// retorno permiten recorrer todo el flujo desde la UI).
+const CICLOS_FIXTURES_MOCK = expedientesMock
 
 function fixturePorExpedienteId(expedienteId) {
   return CICLOS_FIXTURES_MOCK.find(

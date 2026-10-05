@@ -3,130 +3,86 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ExpedienteDetalle from './ExpedienteDetalle.jsx'
 
-const PACIENTE_NUEVO = {
-  id: 7,
-  pacienteNombre: 'Diana Carolina Xicará Tuy',
-  numeroExpediente: null,
-  expedienteNuevo: true,
-  estado: 'pendiente_localizar',
-  clinicaNombre: 'Clínica 04 - Cardiología',
-  medicoNombre: 'Dra. Patricia Núñez',
-  fechaCita: '2026-09-21',
-  horaEstimada: '16:10:00',
-  ubicacion: null,
-  historial: [],
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
 }
 
-const EXPEDIENTE_EXISTENTE = {
-  id: 1,
-  pacienteNombre: 'María Fernanda López García',
+const FILA = {
+  id: 'e1',
+  expedienteId: 'e1',
+  citaId: 101,
+  cicloId: 'c1',
   numeroExpediente: 'EXP-2024-035',
-  expedienteNuevo: false,
-  estado: 'pendiente_localizar',
-  clinicaNombre: 'Clínica 01 - Medicina General',
-  medicoNombre: 'Dr. Jorge Castillo',
-  fechaCita: '2026-09-21',
+  pacienteNombre: 'María Fernanda López García',
+  estadoActual: 'en_busqueda',
   horaEstimada: '10:20:00',
-  ubicacion: 'Estante A · Fila 3 · Caja 12',
-  historial: [
+  ubicacion: 'Pasillo A · Estante 3',
+  subespecialidadNombre: 'Medicina General',
+}
+
+const CICLO = {
+  cicloId: 'c1',
+  citaId: 101,
+  estadoActual: 'en_busqueda',
+  movimientos: [
     {
       id: 1,
-      estado: 'pendiente_localizar',
-      fechaHora: '2026-09-20T13:00:00.000Z',
-      usuario: 'Archivo Central',
+      estadoAnterior: 'pendiente_localizar',
+      estadoNuevo: 'en_busqueda',
+      usuarioNombre: 'Operador Archivo',
+      observacion: 'Búsqueda iniciada',
+      fechaMovimiento: '2026-10-06T08:05:00',
     },
   ],
 }
 
-function renderDetalle(expediente, props = {}) {
-  return render(
-    <ExpedienteDetalle
-      expediente={expediente}
-      abierto
-      onCerrar={() => {}}
-      onAvanzar={() => {}}
-      onNoLocalizado={() => {}}
-      onCrear={() => {}}
-      {...props}
-    />,
-  )
+function renderDetalle(props = {}) {
+  return render(<ExpedienteDetalle fila={FILA} abierto onCerrar={() => {}} {...props} />)
 }
 
-describe('ExpedienteDetalle — paciente nuevo', () => {
-  it('no muestra el stepper normal ni acciones de trazabilidad', () => {
-    renderDetalle(PACIENTE_NUEVO)
+describe('ExpedienteDetalle', () => {
+  it('muestra datos de la fila, estado, cicloId y trazabilidad', () => {
+    renderDetalle()
 
-    expect(screen.queryByLabelText('Trazabilidad del expediente')).not.toBeInTheDocument()
-    expect(screen.queryByText('Pendiente de localizar')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('muestra el aviso de expediente nuevo y la acción de crearlo', async () => {
-    const onCrear = vi.fn()
-    renderDetalle(PACIENTE_NUEVO, { onCrear })
-
-    expect(screen.getByText('Expediente nuevo')).toBeInTheDocument()
-    expect(
-      screen.getByText('Este paciente todavía no cuenta con expediente físico.'),
-    ).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: /crear expediente físico/i }))
-
-    expect(onCrear).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('ExpedienteDetalle — expediente existente', () => {
-  it('conserva la trazabilidad y sus acciones', () => {
-    renderDetalle(EXPEDIENTE_EXISTENTE)
-
+    expect(screen.getByText('María Fernanda López García')).toBeInTheDocument()
+    expect(screen.getByText('Expediente EXP-2024-035')).toBeInTheDocument()
+    expect(screen.getByText('ciclo c1')).toBeInTheDocument()
     expect(screen.getByLabelText('Trazabilidad del expediente')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /avanzar al siguiente estado/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /marcar no localizado/i })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /crear expediente físico/i }),
-    ).not.toBeInTheDocument()
   })
 
-  it('trata "entregado" como estado terminal', () => {
-    renderDetalle({ ...EXPEDIENTE_EXISTENTE, estado: 'entregado' })
+  it('lista los movimientos del ciclo cuando el backend los devuelve', () => {
+    renderDetalle({ ciclo: CICLO })
 
-    expect(
-      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/no hay más acciones en esta fase/i)).toBeInTheDocument()
+    expect(screen.getByText('Búsqueda iniciada')).toBeInTheDocument()
+    expect(screen.getByText(/operador archivo/i)).toBeInTheDocument()
   })
 
-  it('no permite avanzar ni volver a marcar cuando está no localizado', () => {
-    renderDetalle({ ...EXPEDIENTE_EXISTENTE, estado: 'no_localizado' })
+  it('sin ciclo informa que el tracking no ha iniciado', () => {
+    renderDetalle({ fila: { ...FILA, cicloId: null, estadoActual: 'sin_ciclo' }, ciclo: null })
 
-    expect(
-      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /marcar no localizado/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/requiere búsqueda por otro medio/i)).toBeInTheDocument()
+    expect(screen.getByText(/aún no ha iniciado/i)).toBeInTheDocument()
   })
 
-  it('deshabilita las acciones mientras procesa', () => {
-    renderDetalle(EXPEDIENTE_EXISTENTE, { procesando: true })
-
-    expect(screen.getByRole('button', { name: /avanzar al siguiente estado/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /marcar no localizado/i })).toBeDisabled()
+  it('muestra carga mientras se obtienen movimientos', () => {
+    renderDetalle({ cargandoDatos: true })
+    expect(screen.getByText(/cargando movimientos/i)).toBeInTheDocument()
   })
-})
 
-describe('ExpedienteDetalle — criterio consistente de paciente nuevo', () => {
-  it('considera nuevo un expediente sin número aunque el flag sea falso', () => {
-    renderDetalle({ ...EXPEDIENTE_EXISTENTE, expedienteNuevo: false, numeroExpediente: null })
+  it('cierra con el botón', async () => {
+    const onCerrar = vi.fn()
+    const user = userEvent.setup()
+    renderDetalle({ onCerrar })
 
-    expect(screen.getByRole('button', { name: /crear expediente físico/i })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Trazabilidad del expediente')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /avanzar al siguiente estado/i }),
-    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /cerrar/i }))
+    expect(onCerrar).toHaveBeenCalledTimes(1)
+  })
+
+  it('no renderiza nada sin fila', () => {
+    const { container } = render(<ExpedienteDetalle fila={null} abierto onCerrar={() => {}} />)
+    expect(container).toBeEmptyDOMElement()
   })
 })

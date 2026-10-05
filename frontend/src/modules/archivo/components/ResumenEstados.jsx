@@ -1,11 +1,12 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 
-// Resumen operativo del día adaptado al flujo Pendientes ↔ Localizados.
-//
-// No representa los estados históricos del expediente (pendiente_localizar,
-// en_busqueda, etc.): esos metadatos siguen en `estadosExpediente.js` para la
-// integración futura, pero esta interfaz solo distingue lo que el operador ya
-// marcó como localizado durante la sesión.
+// Resumen operativo del día derivado de la JORNADA REAL (no de un checklist
+// local). Definiciones explícitas:
+//   - Total: expedientes operativos de la jornada (con expedienteId).
+//   - Pendientes: estadoActual en { sin_ciclo, pendiente_localizar, en_busqueda,
+//     no_localizado } (aún no localizados).
+//   - Localizados: estadoActual === 'localizado'.
+// No se cuenta `en_transito_entrega` como localizado.
 
 const INDICADORES = [
   {

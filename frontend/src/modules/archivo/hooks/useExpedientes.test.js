@@ -1,20 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import {
-  avanzarEstado,
-  crearExpediente,
-  listarJornadaArchivo,
-  listarSubespecialidades,
-  marcarNoLocalizado,
-} from '../api/archivoApi'
+import { listarJornadaArchivo, listarSubespecialidades } from '../api/archivoApi'
 import { useExpedientes } from './useExpedientes'
 
 vi.mock('../api/archivoApi', () => ({
   listarSubespecialidades: vi.fn(),
   listarJornadaArchivo: vi.fn(),
-  avanzarEstado: vi.fn(),
-  marcarNoLocalizado: vi.fn(),
-  crearExpediente: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -23,7 +14,25 @@ beforeEach(() => {
   listarJornadaArchivo.mockResolvedValue([])
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('useExpedientes', () => {
+  it('usa la fecha de HOY en horario local (YYYY-MM-DD)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 9, 6, 15, 30, 0))
+
+    renderHook(() => useExpedientes())
+
+    await waitFor(() =>
+      expect(listarJornadaArchivo).toHaveBeenCalledWith({
+        fecha: '2026-10-06',
+        subespecialidadId: '',
+      }),
+    )
+  })
+
   it('inicia en carga y la desactiva al resolver', async () => {
     let resolver
     listarJornadaArchivo.mockReturnValueOnce(
@@ -81,69 +90,15 @@ describe('useExpedientes', () => {
     expect(result.current.subespecialidades[0]).toMatchObject({ id: 1 })
   })
 
-  it('calcula el resumen por estado incluida la excepción', async () => {
-    listarJornadaArchivo.mockResolvedValue([
-      { id: 1, estado: 'pendiente_localizar' },
-      { id: 2, estado: 'entregado' },
-      { id: 3, estado: 'no_localizado' },
-    ])
-
+  it('permite recargar la jornada manualmente', async () => {
     const { result } = renderHook(() => useExpedientes())
-    await waitFor(() => expect(result.current.total).toBe(3))
+    await waitFor(() => expect(result.current.cargando).toBe(false))
 
-    expect(result.current.resumen.pendiente_localizar).toBe(1)
-    expect(result.current.resumen.entregado).toBe(1)
-    expect(result.current.resumen.no_localizado).toBe(1)
-  })
-
-  it('actualiza el expediente en la lista tras avanzar', async () => {
-    listarJornadaArchivo.mockResolvedValue([{ id: 1, estado: 'pendiente_localizar' }])
-    avanzarEstado.mockResolvedValue({ id: 1, estado: 'en_busqueda' })
-
-    const { result } = renderHook(() => useExpedientes())
-    await waitFor(() => expect(result.current.total).toBe(1))
-
+    listarJornadaArchivo.mockClear()
     await act(async () => {
-      await result.current.avanzar(1)
+      await result.current.recargar()
     })
 
-    expect(result.current.expedientes[0].estado).toBe('en_busqueda')
-  })
-
-  it('reemplaza el expediente nuevo tras crearlo', async () => {
-    listarJornadaArchivo.mockResolvedValue([
-      { id: 7, pacienteId: 7, estado: 'pendiente_localizar', expedienteNuevo: true },
-    ])
-    crearExpediente.mockResolvedValue({
-      id: 7,
-      pacienteId: 7,
-      estado: 'pendiente_localizar',
-      expedienteNuevo: false,
-      numeroExpediente: 'EXP-2024-035',
-    })
-
-    const { result } = renderHook(() => useExpedientes())
-    await waitFor(() => expect(result.current.total).toBe(1))
-
-    await act(async () => {
-      await result.current.crear(7)
-    })
-
-    expect(result.current.expedientes[0].numeroExpediente).toBe('EXP-2024-035')
-    expect(result.current.expedientes[0].expedienteNuevo).toBe(false)
-  })
-
-  it('marca no localizado y reemplaza el expediente', async () => {
-    listarJornadaArchivo.mockResolvedValue([{ id: 3, estado: 'pendiente_localizar' }])
-    marcarNoLocalizado.mockResolvedValue({ id: 3, estado: 'no_localizado' })
-
-    const { result } = renderHook(() => useExpedientes())
-    await waitFor(() => expect(result.current.total).toBe(1))
-
-    await act(async () => {
-      await result.current.marcarNoLocalizado(3)
-    })
-
-    expect(result.current.expedientes[0].estado).toBe('no_localizado')
+    expect(listarJornadaArchivo).toHaveBeenCalledTimes(1)
   })
 })
