@@ -98,6 +98,16 @@ const enUso = (n) =>
     }),
   )
 
+// La página usa "hoy" por defecto; para probar que respeta la fecha seleccionada
+// se elige una fecha distinta a la de hoy (evita depender del día real de la máquina).
+function fechaDistintaAHoy() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
 async function abrirYConfirmar(user, nombreBoton = 'Recibir') {
   await user.click(screen.getByRole('button', { name: /Recibir seleccionados/ }))
   await screen.findByRole('dialog')
@@ -1183,20 +1193,19 @@ describe('MesaCoexPage - Fase 7 (PDF de salida)', () => {
 
   it('42. usa la fecha seleccionada al pedir el PDF', async () => {
     const user = userEvent.setup()
+    const fecha = fechaDistintaAHoy()
     cargarLoteEstacion.mockResolvedValue(lote([fila()]))
     obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
 
     renderPagina()
     fireEvent.change(await screen.findByLabelText('Fecha de trabajo'), {
-      target: { value: '2026-10-05' },
+      target: { value: fecha },
     })
     await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
 
     await user.click(screen.getByRole('button', { name: PDF_BOTON }))
 
-    await waitFor(() =>
-      expect(obtenerSalidaPdfCoex).toHaveBeenCalledWith({ fecha: '2026-10-05' }),
-    )
+    await waitFor(() => expect(obtenerSalidaPdfCoex).toHaveBeenCalledWith({ fecha }))
   })
 
   it('43. llama a obtenerSalidaPdfCoex al pulsar', async () => {
@@ -1226,12 +1235,13 @@ describe('MesaCoexPage - Fase 7 (PDF de salida)', () => {
 
   it('45. usa el nombre determinista salida-expedientes-YYYY-MM-DD.pdf', async () => {
     const user = userEvent.setup()
+    const fecha = fechaDistintaAHoy()
     cargarLoteEstacion.mockResolvedValue(lote([fila()]))
     obtenerSalidaPdfCoex.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
 
     renderPagina()
     fireEvent.change(await screen.findByLabelText('Fecha de trabajo'), {
-      target: { value: '2026-10-05' },
+      target: { value: fecha },
     })
     await waitFor(() => expect(cargarLoteEstacion).toHaveBeenCalledTimes(2))
 
@@ -1240,7 +1250,7 @@ describe('MesaCoexPage - Fase 7 (PDF de salida)', () => {
     await waitFor(() =>
       expect(descargarBlobCoex).toHaveBeenCalledWith(
         expect.anything(),
-        nombreArchivoSalidaCoex('2026-10-05'),
+        nombreArchivoSalidaCoex(fecha),
       ),
     )
     expect(nombreArchivoSalidaCoex('2026-10-05')).toBe('salida-expedientes-2026-10-05.pdf')
