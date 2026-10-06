@@ -1,26 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
-import { buscarExpedientePorCodigo } from '../api/archivoApi'
+import { USANDO_DATOS_MOCK, buscarExpedientePorCodigo } from '../api/archivoApi'
 import { useExpedientes } from '../hooks/useExpedientes'
+import { useCicloExpediente } from '../hooks/useCicloExpediente'
 import { useAccionesArchivo } from '../hooks/useAccionesArchivo'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import FiltrosArchivo from '../components/FiltrosArchivo.jsx'
 import ResumenEstados from '../components/ResumenEstados.jsx'
 import ListadoCompactoExpediente from '../components/ListadoCompactoExpediente.jsx'
 import ScannerExpediente from '../components/ScannerExpediente.jsx'
+import ExpedienteDetalle from '../components/ExpedienteDetalle.jsx'
+import ModalObservacion from '../components/ModalObservacion.jsx'
+import { accionArchivo } from '../accionesArchivo'
 
-// Orden estable por hora de cita ascendente. Los expedientes sin hora quedan al
-// final para no alterar el orden original de forma arbitraria.
+// Estados que cuentan como "pendiente" (aún no localizado) para el resumen.
+const ESTADOS_PENDIENTES = new Set([
+  'sin_ciclo',
+  'pendiente_localizar',
+  'en_busqueda',
+  'no_localizado',
+])
+
+// Orden estable por hora de cita ascendente.
 function ordenarPorHora(expedientes) {
   return [...expedientes].sort((a, b) =>
     (a.horaEstimada ?? '99:99:99').localeCompare(b.horaEstimada ?? '99:99:99'),
   )
 }
 
+// Hora local de la última consulta del resumen (marca del frontend, no backend).
+function horaCorta(fecha) {
+  if (!fecha) return ''
+  return fecha.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
+}
+
 // Relaciona un resultado de búsqueda con una fila de la jornada usando el
-// contrato real: expedienteId (UUID) si ambos lo tienen; si no, el número de
-// expediente. No compara por índices ni por código artificial.
+// contrato real: expedienteId (UUID) si ambos lo tienen; si no, el número.
 function coincideConFila(fila, encontrado) {
   if (!fila || !encontrado) return false
   if (fila.expedienteId && encontrado.expedienteId) {
@@ -28,53 +44,6 @@ function coincideConFila(fila, encontrado) {
   }
   const referencia = encontrado.numeroExpediente ?? encontrado.codigo
   return Boolean(referencia) && fila.numeroExpediente === referencia
-}
-
-// Sección de checklist reutilizada para "Pendientes de localizar" y
-// "Expedientes localizados". El marcado es puramente visual: el estado real del
-// expediente no cambia. `resultadoBusqueda` solo resalta la fila encontrada por
-// el buscador, sin moverla de grupo ni marcarla.
-function SeccionChecklist({
-  titulo,
-  icono,
-  expedientes,
-  localizados,
-  resultadoBusqueda,
-  onToggle,
-  vacio,
-}) {
-  return (
-    <section
-      aria-label={titulo}
-      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-sm"
-    >
-      <div className="mb-2 flex items-center justify-between gap-2 px-2 pt-1">
-        <h2 className="flex items-center gap-2 text-title-md text-on-surface">
-          <Icon name={icono} className="text-[20px] text-primary" />
-          {titulo}
-        </h2>
-        <span className="rounded bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
-          {expedientes.length}
-        </span>
-      </div>
-
-      {expedientes.length === 0 ? (
-        <p className="px-2 pb-2 text-body-sm text-on-surface-variant">{vacio}</p>
-      ) : (
-        <ul className="space-y-2">
-          {expedientes.map((expediente) => (
-            <ListadoCompactoExpediente
-              key={expediente.id}
-              expediente={expediente}
-              seleccionado={localizados.has(expediente.id)}
-              resaltado={expediente.id === resultadoBusqueda}
-              onToggle={onToggle}
-            />
-          ))}
-        </ul>
-      )}
-    </section>
-  )
 }
 
 export default function ArchivoPage() {
@@ -88,75 +57,143 @@ export default function ArchivoPage() {
     expedientes,
     cargando,
     error,
+    recargar,
   } = useExpedientes()
+
+  const cicloAcciones = useCicloExpediente()
+  const cicloDetalle = useCicloExpediente()
+
   const {
     resumen: resumenServidor,
+    resumenActualizadoEn,
     cargandoResumen,
     cargandoResumenPdf,
     consultarResumen,
     descargarResumenPdf,
   } = useAccionesArchivo()
 
-  // Estado LOCAL del checklist: conjunto de ids marcados como localizados
-  // durante la sesión. No se persiste, no toca mockData y no llama a la API.
-  const [localizados, setLocalizados] = useState(() => new Set())
-  // Id del expediente encontrado por el buscador. Solo resalta la fila; no la
-  // marca ni la cambia de grupo.
-  const [resultadoBusqueda, setResultadoBusqueda] = useState(null)
   const [codigo, setCodigo] = useState('')
+  const [resaltado, setResaltado] = useState(null)
+  const [filaEnProceso, setFilaEnProceso] = useState(null)
+  const [observacionPara, setObservacionPara] = useState(null)
+  const [observacion, setObservacion] = useState('')
+  const [enviandoObservacion, setEnviandoObservacion] = useState(false)
+  const [detalleFila, setDetalleFila] = useState(null)
 
-  // Guarda inmediata contra doble envío del formulario de búsqueda.
+  // Guardas inmediatas contra doble ejecución (búsqueda y mutaciones).
   const busquedaEnCurso = useRef(false)
+  const mutacionEnCurso = useRef(false)
 
-  // Al cambiar cualquier filtro, el conjunto de resultados cambia: se reinicia
-  // el checklist y se limpia el resaltado para no arrastrar datos fuera del
-  // listado actual.
+  const filas = useMemo(() => ordenarPorHora(expedientes), [expedientes])
+
+  const resumen = useMemo(() => {
+    const operativas = filas.filter((fila) => Boolean(fila.expedienteId))
+    return {
+      total: operativas.length,
+      pendientes: operativas.filter((fila) => ESTADOS_PENDIENTES.has(fila.estadoActual)).length,
+      localizados: operativas.filter((fila) => fila.estadoActual === 'localizado').length,
+    }
+  }, [filas])
+
+  const sinExpediente = filas.length - filas.filter((fila) => Boolean(fila.expedienteId)).length
+
+  // Al cambiar un filtro se reinicia el resaltado del buscador.
   useEffect(() => {
-    setResultadoBusqueda(null)
-    setLocalizados(new Set())
+    setResaltado(null)
   }, [fecha, subespecialidadId])
 
-  // Filas con expediente físico real (expedienteId). Las citas sin expedienteId
-  // no entran al checklist operativo, pero no se descartan en silencio: se
-  // informan más abajo (no se inventa número ni UUID).
-  const filasOperativas = useMemo(
-    () => expedientes.filter((expediente) => Boolean(expediente.expedienteId)),
-    [expedientes],
-  )
-  const sinExpediente = expedientes.length - filasOperativas.length
-
-  const { pendientes, localizadosLista } = useMemo(() => {
-    const pend = []
-    const loc = []
-    for (const expediente of filasOperativas) {
-      if (localizados.has(expediente.id)) {
-        loc.push(expediente)
-      } else {
-        pend.push(expediente)
-      }
-    }
-    return { pendientes: ordenarPorHora(pend), localizadosLista: ordenarPorHora(loc) }
-  }, [filasOperativas, localizados])
-
-  // Lleva el foco/scroll a la fila encontrada por el buscador. `scrollIntoView`
-  // no existe en jsdom, por eso se invoca de forma opcional.
+  // Lleva el foco/scroll a la fila encontrada por el buscador.
   useEffect(() => {
-    if (resultadoBusqueda == null) return
-    const fila = document.querySelector(`[data-expediente-id="${resultadoBusqueda}"]`)
+    if (resaltado == null) return
+    const fila = document.querySelector(`[data-expediente-id="${resaltado}"]`)
     fila?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-    fila?.querySelector('input[type="checkbox"]')?.focus()
-  }, [resultadoBusqueda])
+    fila?.querySelector('button')?.focus()
+  }, [resaltado])
 
-  function alternarLocalizado(id) {
-    setLocalizados((anterior) => {
-      const siguiente = new Set(anterior)
-      if (siguiente.has(id)) {
-        siguiente.delete(id)
-      } else {
-        siguiente.add(id)
+  async function ejecutarAccion(fila, accion, datos = {}) {
+    if (mutacionEnCurso.current) return false
+    mutacionEnCurso.current = true
+    setFilaEnProceso(fila.id)
+    try {
+      if (accion.id === 'check_in') {
+        await cicloAcciones.checkIn(fila.expedienteId, { citaId: fila.citaId })
+      } else if (accion.id === 'iniciar_busqueda') {
+        await cicloAcciones.iniciarBusqueda(fila.cicloId)
+      } else if (accion.id === 'localizar') {
+        await cicloAcciones.localizar(fila.cicloId)
+      } else if (accion.id === 'despachar') {
+        await cicloAcciones.despachar(fila.cicloId)
+      } else if (accion.id === 'archivar') {
+        await cicloAcciones.archivar(fila.cicloId)
+      } else if (accion.id === 'no_localizado') {
+        await cicloAcciones.marcarNoLocalizado(fila.cicloId, { observacion: datos.observacion })
+      } else if (accion.id === 'reintentar_busqueda') {
+        await cicloAcciones.reintentarBusqueda(fila.cicloId)
       }
-      return siguiente
-    })
+
+      await recargar()
+      mostrarToast({
+        tone: 'success',
+        title: 'Acción realizada',
+        message: fila.numeroExpediente
+          ? `${accion.etiqueta} · ${fila.numeroExpediente}`
+          : accion.etiqueta,
+      })
+      return true
+    } catch (fallo) {
+      // No hay cambio optimista: el estado anterior se conserva.
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo completar la acción',
+        message: fallo.message,
+      })
+      return false
+    } finally {
+      mutacionEnCurso.current = false
+      setFilaEnProceso(null)
+    }
+  }
+
+  function manejarAccion(accion, fila) {
+    if (accion.requiereObservacion) {
+      setObservacionPara(fila)
+      setObservacion('')
+      return
+    }
+    ejecutarAccion(fila, accion)
+  }
+
+  async function confirmarObservacion() {
+    const texto = observacion.trim()
+    if (!texto || enviandoObservacion || !observacionPara) return
+    setEnviandoObservacion(true)
+    try {
+      const exito = await ejecutarAccion(observacionPara, accionArchivo('no_localizado'), {
+        observacion: texto,
+      })
+      if (exito) {
+        setObservacionPara(null)
+        setObservacion('')
+      }
+    } finally {
+      setEnviandoObservacion(false)
+    }
+  }
+
+  function cancelarObservacion() {
+    setObservacionPara(null)
+    setObservacion('')
+  }
+
+  function abrirDetalle(fila) {
+    setDetalleFila(fila)
+    if (fila.cicloId) {
+      cicloDetalle.obtenerCiclo(fila.citaId).catch(() => {})
+    }
+  }
+
+  function cerrarDetalle() {
+    setDetalleFila(null)
   }
 
   async function ejecutarBusqueda(valor) {
@@ -166,7 +203,7 @@ export default function ArchivoPage() {
     try {
       const encontrado = await buscarExpedientePorCodigo(buscado)
       if (!encontrado) {
-        setResultadoBusqueda(null)
+        setResaltado(null)
         mostrarToast({
           tone: 'error',
           title: 'Expediente no encontrado',
@@ -175,9 +212,9 @@ export default function ArchivoPage() {
         return
       }
 
-      const fila = filasOperativas.find((expediente) => coincideConFila(expediente, encontrado))
+      const fila = filas.find((registro) => coincideConFila(registro, encontrado))
       if (!fila) {
-        setResultadoBusqueda(null)
+        setResaltado(null)
         mostrarToast({
           tone: 'warning',
           title: 'Expediente fuera del listado',
@@ -186,10 +223,15 @@ export default function ArchivoPage() {
         return
       }
 
-      // Solo se resalta la fila. El checkbox permanece intacto y el usuario
-      // decide manualmente si la marca como localizada.
-      setResultadoBusqueda(fila.id)
+      setResaltado(fila.id)
       setCodigo('')
+
+      // SCRUM-179: si la fila tiene expediente físico y aún no tiene ciclo, el
+      // escaneo inicia el tracking con el endpoint atómico de check-in (una sola
+      // vez). NO se dispara localizar automáticamente.
+      if (fila.expedienteId && fila.estadoActual === 'sin_ciclo') {
+        await ejecutarAccion(fila, accionArchivo('check_in'))
+      }
     } catch (fallo) {
       mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: fallo.message })
     } finally {
@@ -202,9 +244,6 @@ export default function ArchivoPage() {
     ejecutarBusqueda(codigo)
   }
 
-  // La lectura de cámara reutiliza exactamente el mismo flujo que la búsqueda
-  // manual: normalizar/trim, guarda anti doble búsqueda, resaltar, scroll y
-  // foco del checkbox. No marca el expediente automáticamente.
   function manejarCodigoEscaneado(valor) {
     setCodigo(valor)
     ejecutarBusqueda(valor)
@@ -246,6 +285,9 @@ export default function ArchivoPage() {
     }
   }
 
+  const cicloDetalleActual =
+    detalleFila && cicloDetalle.ciclo?.citaId === detalleFila.citaId ? cicloDetalle.ciclo : null
+
   return (
     <ArchivoLayout>
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
@@ -265,19 +307,19 @@ export default function ArchivoPage() {
         />
 
         <ResumenEstados
-          total={filasOperativas.length}
-          pendientes={pendientes.length}
-          localizados={localizadosLista.length}
+          total={resumen.total}
+          pendientes={resumen.pendientes}
+          localizados={resumen.localizados}
         />
 
-        <section aria-label="Preparación de expedientes" aria-busy={cargando} className="space-y-4">
+        <section aria-label="Jornada de expedientes" aria-busy={cargando} className="space-y-3">
           {cargando ? (
             <Spinner label="Cargando expedientes..." />
           ) : error ? (
             <Alert tone="error" title="No se pudieron cargar los expedientes">
               {error.message}
             </Alert>
-          ) : filasOperativas.length === 0 ? (
+          ) : filas.length === 0 ? (
             <EmptyState
               title="Sin expedientes para esta fecha"
               description="Pruebe con otra fecha o subespecialidad."
@@ -287,27 +329,21 @@ export default function ArchivoPage() {
               {sinExpediente > 0 && (
                 <Alert tone="warning" title="Citas sin expediente físico">
                   {sinExpediente} cita(s) de la jornada no tienen expediente físico registrado y no
-                  se incluyen en el checklist.
+                  se pueden operar.
                 </Alert>
               )}
-              <SeccionChecklist
-                titulo="Pendientes de localizar"
-                icono="pending_actions"
-                expedientes={pendientes}
-                localizados={localizados}
-                resultadoBusqueda={resultadoBusqueda}
-                onToggle={alternarLocalizado}
-                vacio="No quedan expedientes pendientes."
-              />
-              <SeccionChecklist
-                titulo="Expedientes localizados"
-                icono="check_circle"
-                expedientes={localizadosLista}
-                localizados={localizados}
-                resultadoBusqueda={resultadoBusqueda}
-                onToggle={alternarLocalizado}
-                vacio="Todavía no se ha localizado ningún expediente."
-              />
+              <ul className="space-y-2">
+                {filas.map((fila) => (
+                  <ListadoCompactoExpediente
+                    key={fila.id}
+                    expediente={fila}
+                    resaltado={fila.id === resaltado}
+                    procesando={filaEnProceso === fila.id}
+                    onAccion={manejarAccion}
+                    onVerDetalle={abrirDetalle}
+                  />
+                ))}
+              </ul>
             </>
           )}
         </section>
@@ -352,27 +388,58 @@ export default function ArchivoPage() {
           </div>
 
           {resumenServidor && (
-            <dl
-              aria-label="Resumen del servidor"
-              className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl bg-surface-container-low p-3 text-body-sm sm:grid-cols-3"
-            >
-              {[
-                ['Total de ciclos', resumenServidor.totalCiclos],
-                ['Pendientes', resumenServidor.pendienteLocalizar],
-                ['Localizados', resumenServidor.localizado],
-                ['Entregados', resumenServidor.entregado],
-                ['No localizados', resumenServidor.noLocalizado],
-                ['Expedientes nuevos', resumenServidor.expedientesNuevos],
-              ].map(([etiqueta, valor]) => (
-                <div key={etiqueta} className="flex items-center justify-between gap-2">
-                  <dt className="text-on-surface-variant">{etiqueta}</dt>
-                  <dd className="font-semibold text-on-surface">{valor}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="mt-4 space-y-3 rounded-xl bg-surface-container-low p-3">
+              <div className="flex flex-wrap items-center gap-2 text-body-sm">
+                {resumenActualizadoEn && (
+                  <span className="text-on-surface-variant">
+                    Actualizado: {horaCorta(resumenActualizadoEn)}
+                  </span>
+                )}
+                {USANDO_DATOS_MOCK && (
+                  <span className="rounded bg-amber-100 px-2 py-0.5 text-label-sm font-semibold text-amber-800">
+                    Datos simulados
+                  </span>
+                )}
+              </div>
+              <dl
+                aria-label="Resumen del servidor"
+                className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm sm:grid-cols-3"
+              >
+                {[
+                  ['Total de ciclos', resumenServidor.totalCiclos],
+                  ['Pendientes', resumenServidor.pendienteLocalizar],
+                  ['Localizados', resumenServidor.localizado],
+                  ['Entregados', resumenServidor.entregado],
+                  ['No localizados', resumenServidor.noLocalizado],
+                  ['Expedientes nuevos', resumenServidor.expedientesNuevos],
+                ].map(([etiqueta, valor]) => (
+                  <div key={etiqueta} className="flex items-center justify-between gap-2">
+                    <dt className="text-on-surface-variant">{etiqueta}</dt>
+                    <dd className="font-semibold text-on-surface">{valor}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           )}
         </section>
       </main>
+
+      <ExpedienteDetalle
+        fila={detalleFila}
+        ciclo={cicloDetalleActual}
+        cargandoDatos={cicloDetalle.cargando}
+        abierto={Boolean(detalleFila)}
+        onCerrar={cerrarDetalle}
+      />
+
+      <ModalObservacion
+        abierto={Boolean(observacionPara)}
+        observacion={observacion}
+        onObservacion={setObservacion}
+        onConfirmar={confirmarObservacion}
+        onCancelar={cancelarObservacion}
+        procesando={enviandoObservacion}
+      />
     </ArchivoLayout>
   )
 }

@@ -16,40 +16,49 @@ export default function ExpedienteStepper({ estado }) {
     )
   }
 
+  const sinCiclo = estado === 'sin_ciclo'
   const indiceActual = ORDEN_ESTADOS.indexOf(estado)
 
   return (
-    <ol
-      aria-label="Trazabilidad del expediente"
-      className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-1"
-    >
-      {ORDEN_ESTADOS.map((paso, indice) => {
-        const meta = metadatosEstado(paso)
-        const alcanzado = indice <= indiceActual
-        const actual = indice === indiceActual
-        return (
-          <li
-            key={paso}
-            aria-current={actual ? 'step' : undefined}
-            className="flex flex-1 items-center gap-2 sm:flex-col sm:items-center sm:gap-1 sm:text-center"
-          >
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${
-                alcanzado ? meta.punto : 'bg-slate-200'
-              }`}
+    <div className="space-y-2">
+      {sinCiclo && (
+        <p className="flex items-center gap-1 text-body-sm text-on-surface-variant">
+          <Icon name="pending_actions" className="text-[16px]" />
+          Sin ciclo: el tracking aún no ha iniciado.
+        </p>
+      )}
+      <ol
+        aria-label="Trazabilidad del expediente"
+        className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-1"
+      >
+        {ORDEN_ESTADOS.map((paso, indice) => {
+          const meta = metadatosEstado(paso)
+          const alcanzado = indice <= indiceActual
+          const actual = indice === indiceActual
+          return (
+            <li
+              key={paso}
+              aria-current={actual ? 'step' : undefined}
+              className="flex flex-1 items-center gap-2 sm:flex-col sm:items-center sm:gap-1 sm:text-center"
             >
-              <Icon name={alcanzado ? 'check' : meta.icono} className="text-[16px]" />
-            </span>
-            <span
-              className={`text-body-sm ${
-                actual ? 'font-semibold text-on-surface' : 'text-on-surface-variant'
-              }`}
-            >
-              {meta.etiqueta}
-            </span>
-          </li>
-        )
-      })}
-    </ol>
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${
+                  alcanzado ? meta.punto : 'bg-slate-200'
+                }`}
+              >
+                <Icon name={alcanzado ? 'check' : meta.icono} className="text-[16px]" />
+              </span>
+              <span
+                className={`text-body-sm ${
+                  actual ? 'font-semibold text-on-surface' : 'text-on-surface-variant'
+                }`}
+              >
+                {meta.etiqueta}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }

@@ -42,8 +42,10 @@ const SECUENCIA_ESTADOS = [
   'pendiente_localizar',
   'en_busqueda',
   'localizado',
-  'en_transito',
+  'en_transito_entrega',
   'entregado',
+  'en_transito_retorno',
+  'archivado',
 ]
 
 function historialBase(estado, horasAtras = 3) {
@@ -75,7 +77,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '10:20:00',
     estado: 'pendiente_localizar',
     expedienteNuevo: false,
@@ -94,7 +96,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 11,
     medicoNombre: 'Dra. Elena Marroquín',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '09:00:00',
     estado: 'en_busqueda',
     expedienteNuevo: false,
@@ -121,7 +123,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '11:40:00',
     estado: 'localizado',
     expedienteNuevo: false,
@@ -149,9 +151,9 @@ export const expedientesMock = [
     subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '08:30:00',
-    estado: 'en_transito',
+    estado: 'en_transito_entrega',
     expedienteNuevo: false,
     historial: [
       {
@@ -162,7 +164,12 @@ export const expedientesMock = [
       },
       { id: 2, estado: 'en_busqueda', fechaHora: marcaTiempo(5), usuario: USUARIO_ARCHIVO_MOCK },
       { id: 3, estado: 'localizado', fechaHora: marcaTiempo(3), usuario: USUARIO_ARCHIVO_MOCK },
-      { id: 4, estado: 'en_transito', fechaHora: marcaTiempo(1), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 4,
+        estado: 'en_transito_entrega',
+        fechaHora: marcaTiempo(1),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
     ],
   },
   {
@@ -178,7 +185,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Medicina General',
     medicoId: 10,
     medicoNombre: 'Dr. Jorge Castillo',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '14:00:00',
     estado: 'entregado',
     expedienteNuevo: false,
@@ -191,7 +198,12 @@ export const expedientesMock = [
       },
       { id: 2, estado: 'en_busqueda', fechaHora: marcaTiempo(7), usuario: USUARIO_ARCHIVO_MOCK },
       { id: 3, estado: 'localizado', fechaHora: marcaTiempo(5), usuario: USUARIO_ARCHIVO_MOCK },
-      { id: 4, estado: 'en_transito', fechaHora: marcaTiempo(3), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 4,
+        estado: 'en_transito_entrega',
+        fechaHora: marcaTiempo(3),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
       { id: 5, estado: 'entregado', fechaHora: marcaTiempo(1), usuario: USUARIO_ARCHIVO_MOCK },
     ],
   },
@@ -208,7 +220,7 @@ export const expedientesMock = [
     subespecialidadNombre: 'Pediatría General',
     medicoId: 12,
     medicoNombre: 'Dr. Ricardo Salazar',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '15:20:00',
     estado: 'no_localizado',
     expedienteNuevo: false,
@@ -236,11 +248,73 @@ export const expedientesMock = [
     subespecialidadNombre: 'Cardiología Clínica',
     medicoId: 13,
     medicoNombre: 'Dra. Patricia Núñez',
-    fechaCita: fechaRelativa(1),
+    fechaCita: fechaRelativa(0),
     horaEstimada: '16:10:00',
     estado: 'pendiente_localizar',
     expedienteNuevo: true,
     historial: [],
+  },
+  // Fixture 8: expediente físico SIN ciclo. Demuestra el check-in desde la UI.
+  {
+    id: 8,
+    citaId: 108,
+    pacienteId: 8,
+    pacienteNombre: 'Pedro Antonio Gutiérrez Solís',
+    pacienteDpi: '2544332210101',
+    numeroExpediente: 'EXP-2024-099',
+    codigo: 'EXP-2024-099',
+    ubicacion: 'Estante B · Fila 2 · Caja 07',
+    subespecialidadId: 1,
+    subespecialidadNombre: 'Medicina General',
+    medicoId: 10,
+    medicoNombre: 'Dr. Jorge Castillo',
+    fechaCita: fechaRelativa(0),
+    horaEstimada: '12:30:00',
+    estado: 'pendiente_localizar',
+    expedienteNuevo: false,
+    historial: [],
+  },
+  // Fixture 9: ciclo en en_transito_retorno. Demuestra archivar desde la UI.
+  {
+    id: 9,
+    citaId: 109,
+    pacienteId: 9,
+    pacienteNombre: 'Marta Lidia Hernández Ruiz',
+    pacienteDpi: '2998877660101',
+    numeroExpediente: 'EXP-2024-077',
+    codigo: 'EXP-2024-077',
+    ubicacion: 'Estante C · Fila 1 · Caja 03',
+    subespecialidadId: 2,
+    subespecialidadNombre: 'Pediatría General',
+    medicoId: 12,
+    medicoNombre: 'Dr. Ricardo Salazar',
+    fechaCita: fechaRelativa(0),
+    horaEstimada: '13:15:00',
+    estado: 'en_transito_retorno',
+    expedienteNuevo: false,
+    historial: [
+      {
+        id: 1,
+        estado: 'pendiente_localizar',
+        fechaHora: marcaTiempo(7),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+      { id: 2, estado: 'en_busqueda', fechaHora: marcaTiempo(6), usuario: USUARIO_ARCHIVO_MOCK },
+      { id: 3, estado: 'localizado', fechaHora: marcaTiempo(5), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 4,
+        estado: 'en_transito_entrega',
+        fechaHora: marcaTiempo(4),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+      { id: 5, estado: 'entregado', fechaHora: marcaTiempo(3), usuario: USUARIO_ARCHIVO_MOCK },
+      {
+        id: 6,
+        estado: 'en_transito_retorno',
+        fechaHora: marcaTiempo(1),
+        usuario: USUARIO_ARCHIVO_MOCK,
+      },
+    ],
   },
 ]
 
@@ -376,23 +450,48 @@ export function crearExpedienteMock(pacienteId) {
 }
 
 // ---------------------------------------------------------------------------
-// Resumen operativo diario (contrato ResumenArchivoDTO). Valores en cero para
-// no inventar métricas; el backend real calcula los conteos.
+// Resumen operativo diario (contrato ResumenArchivoDTO). En modo mock se
+// derivan los conteos de la jornada simulada actual para que no aparezcan solo
+// ceros; el backend real es la fuente de verdad.
 // ---------------------------------------------------------------------------
 export function resumenArchivoMock(fecha) {
-  return {
-    fecha: fecha ?? null,
-    totalCiclos: 0,
-    pendienteLocalizar: 0,
-    enBusqueda: 0,
+  const filas = expedientesMock.filter((expediente) => !fecha || expediente.fechaCita === fecha)
+  const conteo = {
+    pendiente_localizar: 0,
+    en_busqueda: 0,
     localizado: 0,
-    enTransitoEntrega: 0,
-    enTransitoRetorno: 0,
+    en_transito_entrega: 0,
+    en_transito_retorno: 0,
     entregado: 0,
     archivado: 0,
-    noLocalizado: 0,
-    enTransito: 0,
-    expedientesNuevos: 0,
+    no_localizado: 0,
+  }
+  let expedientesNuevos = 0
+
+  for (const expediente of filas) {
+    if (!expediente.numeroExpediente) {
+      expedientesNuevos += 1
+      continue
+    }
+    const estado = estadoCicloMock[expediente.id] ?? 'pendiente_localizar'
+    if (estado in conteo) conteo[estado] += 1
+  }
+
+  const totalCiclos = Object.values(conteo).reduce((total, valor) => total + valor, 0)
+
+  return {
+    fecha: fecha ?? null,
+    totalCiclos,
+    pendienteLocalizar: conteo.pendiente_localizar,
+    enBusqueda: conteo.en_busqueda,
+    localizado: conteo.localizado,
+    enTransitoEntrega: conteo.en_transito_entrega,
+    enTransitoRetorno: conteo.en_transito_retorno,
+    entregado: conteo.entregado,
+    archivado: conteo.archivado,
+    noLocalizado: conteo.no_localizado,
+    enTransito: conteo.en_transito_entrega + conteo.en_transito_retorno,
+    expedientesNuevos,
   }
 }
 
@@ -441,13 +540,17 @@ export function obtenerActaRecepcionMock(id) {
 // el DTO real: una fila por cita con expedienteId/cicloId/estadoActual
 // (o null/sin_ciclo cuando corresponde) y ubicacionBase.
 // ---------------------------------------------------------------------------
-const ESTADO_JORNADA_MOCK = {
+// Estado mutable del ciclo por fixture. Lo comparten la jornada, el check-in y
+// las transiciones para que el mock sea coherente. No incluye a los fixtures
+// sin ciclo (7 sin expediente; 8 pendiente de check-in).
+const estadoCicloMock = {
   1: 'pendiente_localizar',
   2: 'en_busqueda',
   3: 'localizado',
   4: 'en_transito_entrega',
   5: 'entregado',
   6: 'no_localizado',
+  9: 'en_transito_retorno',
 }
 
 const UBICACIONES_MOCK = {
@@ -472,6 +575,7 @@ export function jornadaArchivoMock({ fecha, subespecialidadId } = {}) {
     )
     .map((expediente) => {
       const tieneExpediente = Boolean(expediente.numeroExpediente)
+      const estadoCiclo = estadoCicloMock[expediente.id] ?? null
       return {
         citaId: expediente.citaId,
         horaEstimada: expediente.horaEstimada,
@@ -482,11 +586,166 @@ export function jornadaArchivoMock({ fecha, subespecialidadId } = {}) {
         expedienteId: tieneExpediente ? uuidMock('10000000', expediente.id) : null,
         subespecialidadId: expediente.subespecialidadId,
         subespecialidadNombre: expediente.subespecialidadNombre,
-        cicloId: tieneExpediente ? uuidMock('20000000', expediente.id) : null,
-        estadoActual: tieneExpediente
-          ? (ESTADO_JORNADA_MOCK[expediente.id] ?? 'pendiente_localizar')
-          : 'sin_ciclo',
+        cicloId: tieneExpediente && estadoCiclo ? uuidMock('20000000', expediente.id) : null,
+        estadoActual: tieneExpediente && estadoCiclo ? estadoCiclo : 'sin_ciclo',
         ubicacionBase: UBICACIONES_MOCK[expediente.id] ?? null,
       }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Ciclo real del expediente (contrato ExpedienteCicloResponseDTO): check-in,
+// consulta por cita y transiciones de Archivo. El mock respeta el rol `archivo`
+// (o `administrador`), la idempotencia del check-in y las transiciones válidas.
+// ---------------------------------------------------------------------------
+const ROLES_ARCHIVO_MOCK = ['archivo', 'administrador']
+
+function rolEfectivoMock() {
+  try {
+    const usuario = JSON.parse(localStorage.getItem('hro_usuario') || 'null')
+    return usuario?.rol ?? null
+  } catch {
+    return null
+  }
+}
+
+function exigirRolArchivoMock() {
+  if (!ROLES_ARCHIVO_MOCK.includes(rolEfectivoMock())) {
+    const error = new Error('El rol no está autorizado para ejecutar la acción de Archivo')
+    error.status = 403
+    throw error
+  }
+}
+
+function errorMock(mensaje, status) {
+  const error = new Error(mensaje)
+  error.status = status
+  return error
+}
+
+// Fixtures del ciclo: los mismos expedientes de la jornada (8 sin ciclo y 9 en
+// retorno permiten recorrer todo el flujo desde la UI).
+const CICLOS_FIXTURES_MOCK = expedientesMock
+
+function fixturePorExpedienteId(expedienteId) {
+  return CICLOS_FIXTURES_MOCK.find(
+    (expediente) => uuidMock('10000000', expediente.id) === expedienteId,
+  )
+}
+
+function fixturePorCicloId(cicloId) {
+  return CICLOS_FIXTURES_MOCK.find((expediente) => uuidMock('20000000', expediente.id) === cicloId)
+}
+
+// cita asociada al ciclo; el check-in puede fijar otra cita explícitamente.
+const citaCicloMock = {}
+
+function dtoCicloMock(fixture) {
+  const estado = estadoCicloMock[fixture.id]
+  if (!estado) return null
+  return {
+    id: uuidMock('20000000', fixture.id),
+    expedienteId: uuidMock('10000000', fixture.id),
+    numeroExpediente: fixture.numeroExpediente,
+    paciente: {
+      id: fixture.pacienteId,
+      nombres: fixture.pacienteNombre,
+      apellidos: '',
+      dpi: fixture.pacienteDpi,
+    },
+    citaId: citaCicloMock[fixture.id] ?? fixture.citaId,
+    estadoActual: estado,
+    version: 0,
+    creadoEn: marcaTiempo(4),
+    actualizadoEn: marcaTiempo(1),
+    movimientos: [
+      {
+        id: 1,
+        estadoAnterior: null,
+        estadoNuevo: estado,
+        ubicacionOrigen: null,
+        ubicacionDestino: null,
+        usuarioId: 1,
+        usuarioNombre: USUARIO_ARCHIVO_MOCK,
+        observacion: null,
+        fechaMovimiento: marcaTiempo(4),
+      },
+    ],
+  }
+}
+
+export function checkInExpedienteMock(expedienteId, datos = {}) {
+  exigirRolArchivoMock()
+  const fixture = fixturePorExpedienteId(expedienteId)
+  if (!fixture) throw errorMock('Expediente no encontrado', 404)
+
+  if (datos.citaId != null) citaCicloMock[fixture.id] = datos.citaId
+
+  // Idempotente: si la cita ya tiene ciclo, se devuelve sin duplicarlo.
+  if (estadoCicloMock[fixture.id]) return dtoCicloMock(fixture)
+
+  estadoCicloMock[fixture.id] = 'en_busqueda'
+  return dtoCicloMock(fixture)
+}
+
+export function obtenerCicloPorCitaMock(citaId) {
+  const fixture = CICLOS_FIXTURES_MOCK.find(
+    (expediente) => (citaCicloMock[expediente.id] ?? expediente.citaId) === Number(citaId),
+  )
+  const dto = fixture ? dtoCicloMock(fixture) : null
+  if (!dto) throw errorMock('La cita no tiene ciclo de expediente asociado', 404)
+  return dto
+}
+
+const ORIGEN_TRANSICION_MOCK = {
+  'iniciar-busqueda': 'pendiente_localizar',
+  localizar: 'en_busqueda',
+  despachar: 'localizado',
+  archivar: 'en_transito_retorno',
+  'reintentar-busqueda': 'no_localizado',
+}
+
+const DESTINO_TRANSICION_MOCK = {
+  'iniciar-busqueda': 'en_busqueda',
+  localizar: 'localizado',
+  despachar: 'en_transito_entrega',
+  archivar: 'archivado',
+  'reintentar-busqueda': 'en_busqueda',
+}
+
+export function transicionCicloMock(cicloId, accion, datos = {}) {
+  exigirRolArchivoMock()
+  const fixture = fixturePorCicloId(cicloId)
+  if (!fixture || !estadoCicloMock[fixture.id])
+    throw errorMock('Ciclo de expediente no encontrado', 404)
+
+  const estadoActual = estadoCicloMock[fixture.id]
+
+  if (accion === 'no-localizado') {
+    if (estadoActual === 'archivado' || estadoActual === 'no_localizado') {
+      throw errorMock(
+        `No se puede marcar 'no_localizado' un ciclo en estado '${estadoActual}'`,
+        400,
+      )
+    }
+    if (!datos.observacion || !String(datos.observacion).trim()) {
+      throw errorMock(
+        "Debe indicar una observación al marcar el expediente como 'no_localizado'",
+        400,
+      )
+    }
+    estadoCicloMock[fixture.id] = 'no_localizado'
+    return dtoCicloMock(fixture)
+  }
+
+  const origenEsperado = ORIGEN_TRANSICION_MOCK[accion]
+  if (!origenEsperado || origenEsperado !== estadoActual) {
+    throw errorMock(
+      `Transición inválida: no se puede ejecutar '${accion}' desde el estado '${estadoActual}'`,
+      400,
+    )
+  }
+
+  estadoCicloMock[fixture.id] = DESTINO_TRANSICION_MOCK[accion]
+  return dtoCicloMock(fixture)
 }

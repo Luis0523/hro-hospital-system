@@ -1,5 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { autenticar } from '@/shared/api/authApi.js'
+import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react'
 
 // Modo de autenticación: 'mock' (identidad simulada, dev/tests) o 'keycloak'
 // (login real contra Keycloak con formulario propio).
@@ -79,7 +78,10 @@ export function AuthProvider({ children }) {
     () => localStorage.getItem('hro_token') || (MODO_AUTH === 'mock' ? TOKEN_DEV : null),
   )
 
-  useEffect(() => {
+  // useLayoutEffect: la identidad efectiva debe quedar persistida en
+  // `hro_usuario` ANTES de que los efectos de los componentes hijos disparen
+  // peticiones (que `client.js` resuelve leyendo ese storage).
+  useLayoutEffect(() => {
     if (!autenticado) return
     localStorage.setItem('hro_usuario', JSON.stringify(usuario))
     if (token) localStorage.setItem('hro_token', token)

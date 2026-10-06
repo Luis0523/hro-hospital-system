@@ -1,22 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { aIso } from '@/shared/utils/fecha'
-import {
-  avanzarEstado,
-  crearExpediente,
-  listarJornadaArchivo,
-  listarSubespecialidades,
-  marcarNoLocalizado,
-} from '../api/archivoApi'
-import { ORDEN_ESTADOS } from '../estadosExpediente'
+import { useCallback, useEffect, useState } from 'react'
+import { hoyIso } from '@/shared/utils/fecha'
+import { listarJornadaArchivo, listarSubespecialidades } from '../api/archivoApi'
 
-function mananaIso() {
-  const fecha = new Date()
-  fecha.setDate(fecha.getDate() + 1)
-  return aIso(fecha)
-}
-
+// Jornada de archivo del Operador. La fecha por defecto es HOY (local) en
+// formato YYYY-MM-DD. El backend es la fuente de verdad del estado de cada
+// ciclo; este hook solo carga y recarga la jornada.
 export function useExpedientes() {
-  const [fecha, setFecha] = useState(mananaIso)
+  const [fecha, setFecha] = useState(hoyIso)
   const [subespecialidadId, setSubespecialidadId] = useState('')
   const [subespecialidades, setSubespecialidades] = useState([])
   const [expedientes, setExpedientes] = useState([])
@@ -47,30 +37,6 @@ export function useExpedientes() {
     cargar()
   }, [cargar])
 
-  const resumen = useMemo(() => {
-    const conteo = Object.fromEntries([...ORDEN_ESTADOS, 'no_localizado'].map((e) => [e, 0]))
-    expedientes.forEach((expediente) => {
-      if (expediente.estado in conteo) conteo[expediente.estado] += 1
-    })
-    return conteo
-  }, [expedientes])
-
-  const reemplazar = useCallback((actualizado) => {
-    setExpedientes((actual) =>
-      actual.map((expediente) => (expediente.id === actualizado.id ? actualizado : expediente)),
-    )
-    return actualizado
-  }, [])
-
-  const avanzar = useCallback(async (id) => reemplazar(await avanzarEstado(id)), [reemplazar])
-
-  const marcar = useCallback(async (id) => reemplazar(await marcarNoLocalizado(id)), [reemplazar])
-
-  const crear = useCallback(
-    async (pacienteId) => reemplazar(await crearExpediente(pacienteId)),
-    [reemplazar],
-  )
-
   return {
     fecha,
     setFecha,
@@ -80,11 +46,6 @@ export function useExpedientes() {
     expedientes,
     cargando,
     error,
-    resumen,
-    total: expedientes.length,
     recargar: cargar,
-    avanzar,
-    marcarNoLocalizado: marcar,
-    crear,
   }
 }

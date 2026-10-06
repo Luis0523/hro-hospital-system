@@ -1,6 +1,9 @@
 // Metadatos de presentación de los estados del expediente físico.
 // Solo etiquetas, colores y orden visual. No contiene reglas de negocio
 // ni valida transiciones: esa lógica es responsabilidad del backend.
+//
+// Los literales son EXACTAMENTE los del backend (snake_case) y no deben
+// traducirse ni agruparse: la UI habilita acciones según el estado real.
 
 export const ESTADOS_EXPEDIENTE = {
   pendiente_localizar: {
@@ -20,16 +23,16 @@ export const ESTADOS_EXPEDIENTE = {
     excepcion: false,
   },
   localizado: {
-    etiqueta: 'Localizado en archivo',
+    etiqueta: 'Localizado',
     descripcion: 'El expediente fue encontrado físicamente.',
     color: 'bg-sky-100 text-sky-800',
     punto: 'bg-sky-500',
     icono: 'inventory_2',
     excepcion: false,
   },
-  en_transito: {
-    etiqueta: 'En tránsito',
-    descripcion: 'El expediente va camino a la clínica correspondiente.',
+  en_transito_entrega: {
+    etiqueta: 'En tránsito a COEX',
+    descripcion: 'El expediente va camino a la consulta externa.',
     color: 'bg-blue-100 text-blue-800',
     punto: 'bg-blue-600',
     icono: 'local_shipping',
@@ -43,6 +46,22 @@ export const ESTADOS_EXPEDIENTE = {
     icono: 'check_circle',
     excepcion: false,
   },
+  en_transito_retorno: {
+    etiqueta: 'En retorno',
+    descripcion: 'El expediente regresa al archivo tras la atención.',
+    color: 'bg-indigo-100 text-indigo-800',
+    punto: 'bg-indigo-500',
+    icono: 'keyboard_return',
+    excepcion: false,
+  },
+  archivado: {
+    etiqueta: 'Archivado',
+    descripcion: 'El expediente fue guardado en su ubicación. Fin del ciclo.',
+    color: 'bg-slate-100 text-slate-800',
+    punto: 'bg-slate-600',
+    icono: 'inventory',
+    excepcion: false,
+  },
   no_localizado: {
     etiqueta: 'No localizado',
     descripcion: 'No se encontró el expediente; requiere atención inmediata.',
@@ -51,16 +70,27 @@ export const ESTADOS_EXPEDIENTE = {
     icono: 'error',
     excepcion: true,
   },
+  // No es un estado del ciclo, sino de la jornada: la cita aún no tiene ciclo.
+  sin_ciclo: {
+    etiqueta: 'Sin ciclo',
+    descripcion: 'La cita todavía no tiene un ciclo de expediente iniciado.',
+    color: 'bg-amber-100 text-amber-800',
+    punto: 'bg-amber-500',
+    icono: 'pending_actions',
+    excepcion: false,
+  },
 }
 
-// Orden visual de la secuencia normal. "no_localizado" es la excepción
-// y por eso queda fuera de esta lista.
+// Orden visual de la secuencia normal. Quedan fuera `no_localizado` (excepción)
+// y `sin_ciclo` (no es un estado del ciclo).
 export const ORDEN_ESTADOS = [
   'pendiente_localizar',
   'en_busqueda',
   'localizado',
-  'en_transito',
+  'en_transito_entrega',
   'entregado',
+  'en_transito_retorno',
+  'archivado',
 ]
 
 const METADATOS_POR_DEFECTO = {

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatearUbicacion,
+  mapearCiclo,
   mapearCita,
   mapearExpedienteBusqueda,
   mapearJornadaArchivo,
   mapearMedico,
+  mapearMovimientoCiclo,
   mapearPaciente,
   mapearSubespecialidad,
 } from './archivoMappers'
@@ -210,5 +212,73 @@ describe('archivoMappers', () => {
     expect(paciente.apellidos).toBe('')
     expect(paciente.numeroExpediente).toBeNull()
     expect(paciente.telefono).toBeNull()
+  })
+})
+
+// DTO de ejemplo de ExpedienteCicloResponseDTO (backend Archivo Fase 1).
+const CICLO_DTO = {
+  id: 'a1b2-uuid',
+  expedienteId: '3f1c-uuid',
+  numeroExpediente: 'EXP-2024-035',
+  paciente: { id: '9b2a-uuid', nombres: 'María', apellidos: 'López', dpi: '2984123450901' },
+  citaId: 4821,
+  estadoActual: 'en_busqueda',
+  version: 2,
+  creadoEn: '2026-10-06T08:00:00',
+  actualizadoEn: '2026-10-06T08:40:00',
+  movimientos: [
+    {
+      id: 91,
+      estadoAnterior: 'pendiente_localizar',
+      estadoNuevo: 'en_busqueda',
+      ubicacionOrigen: null,
+      ubicacionDestino: null,
+      usuarioId: 5,
+      usuarioNombre: 'Operador Archivo',
+      observacion: 'Búsqueda iniciada',
+      fechaMovimiento: '2026-10-06T08:05:00',
+    },
+  ],
+}
+
+describe('mapearCiclo', () => {
+  it('conserva cicloId, expedienteId, citaId y el estado real del backend', () => {
+    const ciclo = mapearCiclo(CICLO_DTO)
+
+    expect(ciclo).toMatchObject({
+      id: 'a1b2-uuid',
+      cicloId: 'a1b2-uuid',
+      expedienteId: '3f1c-uuid',
+      numeroExpediente: 'EXP-2024-035',
+      citaId: 4821,
+      estadoActual: 'en_busqueda',
+      version: 2,
+      creadoEn: '2026-10-06T08:00:00',
+      actualizadoEn: '2026-10-06T08:40:00',
+    })
+  })
+
+  it('mapea los movimientos (checkpoints) sin inventar campos', () => {
+    const ciclo = mapearCiclo(CICLO_DTO)
+
+    expect(ciclo.movimientos).toHaveLength(1)
+    expect(ciclo.movimientos[0]).toEqual({
+      id: 91,
+      estadoAnterior: 'pendiente_localizar',
+      estadoNuevo: 'en_busqueda',
+      ubicacionOrigen: null,
+      ubicacionDestino: null,
+      usuarioId: 5,
+      usuarioNombre: 'Operador Archivo',
+      observacion: 'Búsqueda iniciada',
+      fechaMovimiento: '2026-10-06T08:05:00',
+    })
+  })
+
+  it('devuelve null ante un ciclo vacío y lista vacía si no hay movimientos', () => {
+    expect(mapearCiclo(null)).toBeNull()
+    expect(mapearCiclo(undefined)).toBeNull()
+    expect(mapearCiclo({ id: 'x' }).movimientos).toEqual([])
+    expect(mapearMovimientoCiclo(null)).toBeNull()
   })
 })
