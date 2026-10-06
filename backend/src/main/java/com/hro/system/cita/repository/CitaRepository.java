@@ -31,6 +31,17 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     List<Cita> buscarCitasParaArchivo(@Param("fecha") LocalDate fecha,
                                       @Param("subespecialidadId") Long subespecialidadId);
 
+    @Query("""
+            SELECT c FROM Cita c
+              JOIN FETCH c.cupoDiario cd
+            WHERE c.paciente.id = :pacienteId
+              AND cd.fecha = :fecha
+              AND c.estado NOT IN ('cancelada', 'reprogramada')
+            ORDER BY c.horaEstimada ASC
+            """)
+    List<Cita> buscarCitasDePacienteEnFecha(@Param("pacienteId") UUID pacienteId,
+                                            @Param("fecha") LocalDate fecha);
+
     @Query("SELECT COUNT(c) FROM Cita c JOIN c.cupoDiario cd WHERE cd.fecha = :fecha AND c.estado NOT IN ('cancelada', 'reprogramada')")
     long contarCitasActivasEnFecha(@Param("fecha") LocalDate fecha);
 

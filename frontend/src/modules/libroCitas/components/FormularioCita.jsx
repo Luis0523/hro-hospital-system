@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Button, Icon, Input, Select } from '@/shared/components/ui'
 import { buscarPacientePorExpediente } from '../api/libroCitasApi'
-import { ESPECIALIDADES } from '../api/mockData'
+import { ESPECIALIDADES } from '../api/catalogos'
 import { esExpedienteValido, normalizarExpediente } from '../utils/expediente'
 
 const OPCIONES_ESPECIALIDAD = ESPECIALIDADES.map((especialidad) => ({
@@ -9,7 +9,8 @@ const OPCIONES_ESPECIALIDAD = ESPECIALIDADES.map((especialidad) => ({
   label: especialidad.nombre,
 }))
 
-const MENSAJE_FORMATO = 'Formato inválido. Use NNNN-NN (ej. 1323-23).'
+const MENSAJE_FORMATO = 'El número de expediente debe contener solo números.'
+const MENSAJE_CONSULTA = 'No se pudo consultar el expediente. Intente de nuevo.'
 
 export default function FormularioCita({ onAgregar }) {
   const [fecha, setFecha] = useState('')
@@ -18,42 +19,55 @@ export default function FormularioCita({ onAgregar }) {
   const [paciente, setPaciente] = useState(null)
   const [buscando, setBuscando] = useState(false)
   const [noEncontrado, setNoEncontrado] = useState(false)
+  const [errorConsulta, setErrorConsulta] = useState(null)
   // Descarta respuestas de búsquedas anteriores cuando el expediente cambia.
   const secuenciaRef = useRef(0)
 
   const expedienteNormalizado = normalizarExpediente(numeroExpediente)
   const formatoValido = esExpedienteValido(expedienteNormalizado)
   const mostrarFormatoInvalido = expedienteNormalizado !== '' && !formatoValido
+  const puedeBuscar = formatoValido && !buscando
 
   async function buscarExpediente(expediente) {
     const secuencia = ++secuenciaRef.current
     setBuscando(true)
-    const encontrado = await buscarPacientePorExpediente(expediente)
-    if (secuencia !== secuenciaRef.current) return
+    setErrorConsulta(null)
 
-    setBuscando(false)
-    if (encontrado) {
-      setPaciente(encontrado)
-      setNoEncontrado(false)
-    } else {
+    try {
+      const encontrado = await buscarPacientePorExpediente(expediente)
+      if (secuencia !== secuenciaRef.current) return
+
+      setBuscando(false)
+      if (encontrado) {
+        setPaciente(encontrado)
+        setNoEncontrado(false)
+      } else {
+        setPaciente(null)
+        setNoEncontrado(true)
+      }
+    } catch (error) {
+      if (secuencia !== secuenciaRef.current) return
+      setBuscando(false)
       setPaciente(null)
-      setNoEncontrado(true)
+      setNoEncontrado(false)
+      setErrorConsulta(error?.message ?? MENSAJE_CONSULTA)
     }
   }
 
+  // Escribir NO consulta al API: solo actualiza el valor e invalida el estado.
   function manejarCambioExpediente(event) {
-    const valor = event.target.value
-    setNumeroExpediente(valor)
+    setNumeroExpediente(event.target.value)
     setPaciente(null)
     setNoEncontrado(false)
+    setErrorConsulta(null)
+    setBuscando(false)
     secuenciaRef.current += 1
+  }
 
-    const expediente = normalizarExpediente(valor)
-    if (!esExpedienteValido(expediente)) {
-      setBuscando(false)
-      return
-    }
-    buscarExpediente(expediente)
+  // Acción explícita del usuario: exactamente una consulta por click.
+  function manejarBuscar() {
+    if (!puedeBuscar) return
+    buscarExpediente(expedienteNormalizado)
   }
 
   const completo =
@@ -61,7 +75,8 @@ export default function FormularioCita({ onAgregar }) {
     Boolean(especialidadId) &&
     formatoValido &&
     Boolean(paciente) &&
-    !buscando
+    !buscando &&
+    !errorConsulta
 
   function manejarEnvio(event) {
     event.preventDefault()
@@ -73,7 +88,6 @@ export default function FormularioCita({ onAgregar }) {
 
     const agregado = onAgregar({
       numeroExpediente: expedienteNormalizado,
-      pacienteId: paciente.id,
       nombrePaciente: paciente.nombre,
       fecha,
       especialidadId: especialidad.id,
@@ -87,8 +101,35 @@ export default function FormularioCita({ onAgregar }) {
       setNumeroExpediente('')
       setPaciente(null)
       setNoEncontrado(false)
+      setErrorConsulta(null)
       setBuscando(false)
     }
+  }
+
+  function contenidoEstado() {
+    if (buscando) {
+      return <span className="text-on-surface-variant">Buscando…</span>
+    }
+    if (paciente) {
+      return (
+        <span data-testid="nombre-paciente" className="text-on-surface">
+          {paciente.nombre}
+        </span>
+      )
+    }
+    if (noEncontrado) {
+      return <span className="text-error">Expediente no encontrado</span>
+    }
+    if (errorConsulta) {
+      return (
+        <span role="alert" className="text-error">
+          {errorConsulta}
+        </span>
+      )
+    }
+    return (
+      <span className="text-on-surface-variant">Se mostrará al ingresar el expediente</span>
+    )
   }
 
   return (
@@ -111,35 +152,37 @@ export default function FormularioCita({ onAgregar }) {
           placeholder="Seleccione una especialidad"
         />
 
-        <Input
-          id="libro-citas-expediente"
-          name="numeroExpediente"
-          label="Número de expediente"
-          placeholder="1323-23"
-          hint="Formato NNNN-NN"
-          error={mostrarFormatoInvalido ? MENSAJE_FORMATO : undefined}
-          value={numeroExpediente}
-          onChange={manejarCambioExpediente}
-          autoComplete="off"
-        />
+        <div className="space-y-2">
+          <Input
+            id="libro-citas-expediente"
+            name="numeroExpediente"
+            label="Número de expediente"
+            placeholder="Ingrese el número de expediente"
+            hint="Solo números"
+            inputMode="numeric"
+            error={mostrarFormatoInvalido ? MENSAJE_FORMATO : undefined}
+            value={numeroExpediente}
+            onChange={manejarCambioExpediente}
+            autoComplete="off"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={manejarBuscar}
+            disabled={!puedeBuscar}
+          >
+            <Icon name="search" className="text-[18px]" />
+            Buscar expediente
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-1">
         <span className="block text-sm font-medium text-on-surface">Nombre del paciente</span>
         <div className="flex min-h-[2.75rem] items-center rounded-lg border border-outline-variant bg-surface-container-low px-4 py-2.5 text-sm">
-          {buscando ? (
-            <span className="text-on-surface-variant">Buscando…</span>
-          ) : paciente ? (
-            <span data-testid="nombre-paciente" className="text-on-surface">
-              {paciente.nombre}
-            </span>
-          ) : noEncontrado ? (
-            <span className="text-error">Expediente no encontrado</span>
-          ) : (
-            <span className="text-on-surface-variant">
-              Se mostrará al ingresar el expediente
-            </span>
-          )}
+          {contenidoEstado()}
         </div>
       </div>
 

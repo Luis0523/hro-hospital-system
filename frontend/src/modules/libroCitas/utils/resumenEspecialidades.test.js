@@ -4,9 +4,8 @@ import { resumirPorEspecialidad } from './resumenEspecialidades'
 function fila(idLocal, especialidadId, especialidadNombre) {
   return {
     idLocal,
-    numeroExpediente: '1323-23',
-    pacienteId: 'pac-1323',
-    nombrePaciente: 'Paciente Demo Uno',
+    numeroExpediente: '999999999999',
+    nombrePaciente: 'Paciente Prueba',
     fecha: '2026-10-04',
     especialidadId,
     especialidadNombre,

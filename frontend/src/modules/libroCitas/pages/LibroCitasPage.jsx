@@ -3,9 +3,7 @@ import { Alert, Button, Card, Icon } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import LibroCitasLayout from '../components/LibroCitasLayout.jsx'
 import FormularioCita from '../components/FormularioCita.jsx'
-import ContadoresLibro from '../components/ContadoresLibro.jsx'
 import TablaCitasCapturadas from '../components/TablaCitasCapturadas.jsx'
-import { CONTADORES_INICIALES } from '../utils/contadores'
 import { resumirPorEspecialidad } from '../utils/resumenEspecialidades'
 import { guardarLibroCitas } from '../api/libroCitasApi'
 
@@ -15,7 +13,6 @@ function claveFila({ numeroExpediente, fecha, especialidadId }) {
 }
 
 export default function LibroCitasPage() {
-  const [contadores, setContadores] = useState(CONTADORES_INICIALES)
   const [filas, setFilas] = useState([])
   const [mensajeDuplicado, setMensajeDuplicado] = useState(null)
   const [guardando, setGuardando] = useState(false)
@@ -23,10 +20,6 @@ export default function LibroCitasPage() {
 
   // Derivado de `filas`; no se almacena en estado.
   const resumen = resumirPorEspecialidad(filas)
-
-  function manejarCambioContador(clave, valor) {
-    setContadores((actuales) => ({ ...actuales, [clave]: valor }))
-  }
 
   /** @returns {boolean} true si la fila se agregó; false si era duplicada. */
   function manejarAgregar(payload) {
@@ -53,15 +46,14 @@ export default function LibroCitasPage() {
     try {
       const items = filas.map((fila) => ({
         numeroExpediente: fila.numeroExpediente,
-        pacienteId: fila.pacienteId,
         nombrePaciente: fila.nombrePaciente,
         fecha: fila.fecha,
         especialidadId: fila.especialidadId,
         especialidadNombre: fila.especialidadNombre,
       }))
-      await guardarLibroCitas({ contadores, items })
+      await guardarLibroCitas({ items })
       mostrarToast({ tone: 'success', title: 'Registro guardado correctamente.' })
-      // La guía indica limpiar la tabla; los contadores se mantienen.
+      // La guía indica limpiar la tabla.
       setFilas([])
       setMensajeDuplicado(null)
     } finally {
@@ -87,10 +79,6 @@ export default function LibroCitasPage() {
               </Alert>
             </div>
           )}
-        </Card>
-
-        <Card>
-          <ContadoresLibro valores={contadores} onChange={manejarCambioContador} />
         </Card>
 
         <Card>

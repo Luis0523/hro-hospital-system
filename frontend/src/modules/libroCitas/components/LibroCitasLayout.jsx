@@ -1,14 +1,11 @@
 import LibroCitasHeader from './LibroCitasHeader.jsx'
-import LibroCitasNavbar from './LibroCitasNavbar.jsx'
 
-// Envoltura de la vista Libro de Citas: encabezado + navegación propia.
-// Deliberadamente NO reutiliza ArchivoLayout para no acoplar el módulo a la
-// identidad ni a la navegación de la Estación de Archivo.
+// Envoltura de la vista Libro de Citas: encabezado + contenido. La navegación
+// secundaria se retiró; el cierre de sesión y el tema viven en el header.
 export default function LibroCitasLayout({ children }) {
   return (
     <div className="min-h-screen bg-surface pb-10">
       <LibroCitasHeader />
-      <LibroCitasNavbar />
       {children}
     </div>
   )

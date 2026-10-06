@@ -1,4 +1,4 @@
-import { ESPECIALIDADES } from '../api/mockData'
+import { ESPECIALIDADES } from '../api/catalogos'
 
 // Orden determinista según el catálogo de especialidades (no alfabético).
 const ORDEN = new Map(ESPECIALIDADES.map((especialidad, indice) => [String(especialidad.id), indice]))

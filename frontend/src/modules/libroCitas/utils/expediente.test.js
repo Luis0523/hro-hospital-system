@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { esExpedienteValido, normalizarExpediente, PATRON_EXPEDIENTE } from './expediente'
 
+// Valores ficticios reservados para tests. NO son expedientes reales.
+const EXPEDIENTE_FICTICIO = '987654321'
+
 describe('expediente · PATRON_EXPEDIENTE', () => {
-  it('acepta el formato NNNN-NN', () => {
-    expect(PATRON_EXPEDIENTE.test('1323-23')).toBe(true)
-    expect(PATRON_EXPEDIENTE.test('1401-24')).toBe(true)
+  it('acepta solo dígitos', () => {
+    expect(PATRON_EXPEDIENTE.test(EXPEDIENTE_FICTICIO)).toBe(true)
+    expect(PATRON_EXPEDIENTE.test('123456')).toBe(true)
+    expect(PATRON_EXPEDIENTE.test('12-34')).toBe(false)
+    expect(PATRON_EXPEDIENTE.test('ABC123')).toBe(false)
   })
 })
 
 describe('normalizarExpediente', () => {
-  it('hace trim', () => {
-    expect(normalizarExpediente('  1323-23 ')).toBe('1323-23')
+  it('hace trim sin agregar guiones ni ceros', () => {
+    expect(normalizarExpediente(` ${EXPEDIENTE_FICTICIO} `)).toBe(EXPEDIENTE_FICTICIO)
+    expect(normalizarExpediente('1')).toBe('1')
   })
 
   it('tolera null/undefined', () => {
@@ -20,24 +26,17 @@ describe('normalizarExpediente', () => {
 })
 
 describe('esExpedienteValido', () => {
-  it('acepta ejemplos válidos', () => {
-    expect(esExpedienteValido('1323-23')).toBe(true)
-    expect(esExpedienteValido('1401-24')).toBe(true)
+  it('acepta números sin longitud fija', () => {
+    expect(esExpedienteValido(EXPEDIENTE_FICTICIO)).toBe(true)
+    expect(esExpedienteValido('1')).toBe(true)
+    expect(esExpedienteValido('123456789')).toBe(true)
+    expect(esExpedienteValido(` ${EXPEDIENTE_FICTICIO} `)).toBe(true)
   })
 
-  it('acepta con espacios alrededor (trim)', () => {
-    expect(esExpedienteValido(' 1323-23 ')).toBe(true)
-  })
-
-  it('rechaza formatos incorrectos', () => {
-    expect(esExpedienteValido('1323-2')).toBe(false) // falta un dígito
-    expect(esExpedienteValido('132-23')).toBe(false) // 3 dígitos
-    expect(esExpedienteValido('13233-23')).toBe(false) // 5 dígitos
-    expect(esExpedienteValido('1323/23')).toBe(false) // separador incorrecto
-    expect(esExpedienteValido('1323-2023')).toBe(false) // año de 4 dígitos
-    expect(esExpedienteValido('1323-AA')).toBe(false) // sufijo no numérico
-    expect(esExpedienteValido('132323')).toBe(false) // sin guion
-    expect(esExpedienteValido('abcd-ef')).toBe(false) // no numérico
+  it('rechaza guiones, letras, espacios internos y vacío', () => {
+    expect(esExpedienteValido('12-34')).toBe(false)
+    expect(esExpedienteValido('ABC123')).toBe(false)
+    expect(esExpedienteValido('123 456')).toBe(false)
     expect(esExpedienteValido('')).toBe(false)
     expect(esExpedienteValido('   ')).toBe(false)
   })

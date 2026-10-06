@@ -27,6 +27,10 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 
 import LibroCitasPage from './LibroCitasPage.jsx'
 
+// Valores ficticios reservados para tests. NO son expedientes/datos reales.
+const EXPEDIENTE_A = '999999999999'
+const EXPEDIENTE_B = '888888888888'
+
 function renderPagina() {
   return render(
     <MemoryRouter>
@@ -52,21 +56,18 @@ async function elegirEspecialidad(nombre) {
 }
 
 async function agregarCita({
-  expediente = '1323-23',
-  nombre = 'Paciente Demo Uno',
+  expediente = EXPEDIENTE_A,
+  nombre = 'Paciente Prueba',
   especialidad = 'Medicina Interna',
   fecha = '2026-10-06',
 } = {}) {
-  buscarPacientePorExpedienteMock.mockResolvedValue({
-    id: `pac-${expediente}`,
-    numeroExpediente: expediente,
-    nombre,
-  })
+  buscarPacientePorExpedienteMock.mockResolvedValue({ numeroExpediente: expediente, nombre })
   fireEvent.change(screen.getByLabelText('Fecha de la cita'), { target: { value: fecha } })
   await elegirEspecialidad(especialidad)
   fireEvent.change(screen.getByLabelText(/Número de expediente/i), {
     target: { value: expediente },
   })
+  await userEvent.click(screen.getByRole('button', { name: /buscar expediente/i }))
   await screen.findByTestId('nombre-paciente')
   await userEvent.click(screen.getByRole('button', { name: /agregar a la lista/i }))
 }
@@ -95,15 +96,21 @@ describe('LibroCitasPage', () => {
     expect(screen.getByRole('button', { name: /agregar a la lista/i })).toBeDisabled()
   })
 
-  it('muestra la sección "Contadores diarios" con los 8 indicadores', () => {
+  it('no consulta al API al escribir el expediente (requiere acción explícita)', async () => {
     renderPagina()
 
-    expect(screen.getByText('Contadores diarios')).toBeInTheDocument()
-    expect(screen.getAllByRole('spinbutton')).toHaveLength(8)
-    expect(screen.getByRole('spinbutton', { name: 'Historias Archivadas' })).toBeInTheDocument()
-    expect(
-      screen.getByRole('spinbutton', { name: 'Tarjetas Índices Archivadas' }),
-    ).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Número de expediente/i), {
+      target: { value: EXPEDIENTE_A },
+    })
+
+    expect(buscarPacientePorExpedienteMock).not.toHaveBeenCalled()
+  })
+
+  it('no muestra la sección de contadores diarios', () => {
+    renderPagina()
+
+    expect(screen.queryByText('Contadores diarios')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
   })
 
   it('muestra el estado vacío de la tabla y "Guardar registro" deshabilitado', () => {
@@ -117,7 +124,7 @@ describe('LibroCitasPage', () => {
 
   it('agrega una fila y muestra el resumen y el conteo', async () => {
     renderPagina()
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
 
     expect(filas()).toHaveLength(1)
     expect(screen.getByTestId('total-expedientes')).toHaveTextContent('1')
@@ -128,8 +135,8 @@ describe('LibroCitasPage', () => {
   it('rechaza duplicados (mismo expediente + fecha + especialidad)', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
 
     expect(filas()).toHaveLength(1)
     expect(
@@ -140,8 +147,8 @@ describe('LibroCitasPage', () => {
   it('permite el mismo expediente con fecha distinta', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', fecha: '2026-10-06' })
-    await agregarCita({ expediente: '1323-23', fecha: '2026-10-07' })
+    await agregarCita({ expediente: EXPEDIENTE_A, fecha: '2026-10-06' })
+    await agregarCita({ expediente: EXPEDIENTE_A, fecha: '2026-10-07' })
 
     expect(filas()).toHaveLength(2)
   })
@@ -149,12 +156,8 @@ describe('LibroCitasPage', () => {
   it('permite el mismo expediente con especialidad distinta', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
-    await agregarCita({
-      expediente: '1323-23',
-      especialidad: 'Medicina General',
-      nombre: 'Paciente Demo Uno',
-    })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina General' })
 
     expect(filas()).toHaveLength(2)
     expect(screen.getByTestId('resumen-especialidad-1')).toHaveTextContent('1')
@@ -164,79 +167,73 @@ describe('LibroCitasPage', () => {
   it('elimina solo la fila seleccionada y recalcula el resumen', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
     await agregarCita({
-      expediente: '1401-24',
+      expediente: EXPEDIENTE_B,
       especialidad: 'Medicina General',
-      nombre: 'Paciente Demo Dos',
+      nombre: 'Paciente Dos',
     })
 
     expect(screen.getByTestId('resumen-especialidad-2')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Eliminar expediente 1401-24' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: `Eliminar expediente ${EXPEDIENTE_B}` }),
+    )
 
     expect(filas()).toHaveLength(1)
     expect(screen.queryByTestId('resumen-especialidad-2')).not.toBeInTheDocument()
     expect(screen.getByTestId('resumen-especialidad-1')).toHaveTextContent('1')
   })
 
-  it('guarda con el servicio mock, confirma, limpia filas y conserva contadores', async () => {
+  it('guarda con el servicio mock (payload solo con items) y limpia la tabla', async () => {
     renderPagina()
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
-
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Historias Archivadas' }), {
-      target: { value: '4' },
-    })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
 
     await userEvent.click(screen.getByRole('button', { name: /guardar registro/i }))
 
     expect(guardarLibroCitasMock).toHaveBeenCalledTimes(1)
     const payload = guardarLibroCitasMock.mock.calls[0][0]
-    expect(payload.contadores).toMatchObject({ ha: 4 })
+    expect(Object.keys(payload)).toEqual(['items'])
+    expect(payload).not.toHaveProperty('contadores')
     expect(payload.items).toHaveLength(1)
     expect(payload.items[0]).toMatchObject({
-      numeroExpediente: '1323-23',
+      numeroExpediente: EXPEDIENTE_A,
       especialidadId: 1,
       especialidadNombre: 'Medicina Interna',
     })
+    expect(payload.items[0]).not.toHaveProperty('pacienteId')
     expect(payload.items[0]).not.toHaveProperty('idLocal')
-    expect(payload).not.toHaveProperty('total')
-    expect(payload).not.toHaveProperty('resumenPorEspecialidad')
 
     expect(await screen.findByText('Registro guardado correctamente.')).toBeInTheDocument()
     expect(screen.getByText('No hay citas agregadas.')).toBeInTheDocument()
-    // Los contadores NO se resetean tras guardar.
-    expect(screen.getByTestId('total-contadores')).toHaveTextContent('4')
   })
 
   it('limpia el mensaje de duplicado al eliminar la fila existente', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
     expect(
       screen.getByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Eliminar expediente 1323-23' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: `Eliminar expediente ${EXPEDIENTE_A}` }),
+    )
 
     expect(
       screen.queryByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).not.toBeInTheDocument()
   })
 
-  it('limpia el mensaje de duplicado al guardar correctamente y conserva contadores', async () => {
+  it('limpia el mensaje de duplicado al guardar correctamente', async () => {
     renderPagina()
 
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
-    await agregarCita({ expediente: '1323-23', especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
+    await agregarCita({ expediente: EXPEDIENTE_A, especialidad: 'Medicina Interna' })
     expect(
       screen.getByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).toBeInTheDocument()
-
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Historias Archivadas' }), {
-      target: { value: '3' },
-    })
 
     await userEvent.click(screen.getByRole('button', { name: /guardar registro/i }))
 
@@ -245,6 +242,5 @@ describe('LibroCitasPage', () => {
     expect(
       screen.queryByText('El expediente ya fue agregado para esta fecha y especialidad.'),
     ).not.toBeInTheDocument()
-    expect(screen.getByTestId('total-contadores')).toHaveTextContent('3')
   })
 })

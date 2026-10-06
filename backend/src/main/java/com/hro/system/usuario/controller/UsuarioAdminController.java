@@ -2,14 +2,12 @@ package com.hro.system.usuario.controller;
 
 import com.hro.system.common.ApiResponse;
 import com.hro.system.common.EstadoFiltro;
-import com.hro.system.usuario.dto.AsignarRolRequestDTO;
 import com.hro.system.usuario.dto.PermisoSubespecialidadResponseDTO;
 import com.hro.system.usuario.dto.UsuarioResponseDTO;
 import com.hro.system.usuario.service.PermisoSubespecialidadService;
 import com.hro.system.usuario.service.UsuarioAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/usuarios")
 @RequiredArgsConstructor
-@Tag(name = "Usuarios (Admin)", description = "Consulta, activación/desactivación y asignación de rol de usuarios internos")
+@Tag(name = "Usuarios (Admin)", description = "Consulta y activación/desactivación de usuarios internos. Los roles se administran en Keycloak.")
 public class UsuarioAdminController {
 
     private final UsuarioAdminService usuarioAdminService;
@@ -55,15 +53,6 @@ public class UsuarioAdminController {
     @Operation(summary = "Desactivar usuario", description = "Desactiva un usuario sin eliminarlo (idempotente).")
     public ResponseEntity<ApiResponse<UsuarioResponseDTO>> desactivar(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(usuarioAdminService.desactivar(id), "Usuario desactivado"));
-    }
-
-    @PutMapping("/{id}/rol")
-    @Operation(summary = "Asignar rol", description = "Asigna un rol operativo válido al usuario.")
-    public ResponseEntity<ApiResponse<UsuarioResponseDTO>> asignarRol(
-            @PathVariable Long id,
-            @Valid @RequestBody AsignarRolRequestDTO dto) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                usuarioAdminService.asignarRol(id, dto.getRolPrincipal()), "Rol asignado"));
     }
 
     @GetMapping("/{id}/permisos")
