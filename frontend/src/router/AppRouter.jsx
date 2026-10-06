@@ -8,6 +8,7 @@ import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionP
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import LoginPage from '@/modules/login/pages/LoginPage.jsx'
 import SinAccesoPage from '@/modules/login/pages/SinAccesoPage.jsx'
+import MesaCoexPage from '@/modules/coex/pages/MesaCoexPage.jsx'
 import RutaPrivada from './RutaPrivada.jsx'
 import RutaPorRol from './RutaPorRol.jsx'
 import RequiereEstacion from './RequiereEstacion.jsx'
@@ -57,21 +58,22 @@ export default function AppRouter() {
       <Route element={<RutaPrivada />}>
         <Route path="/" element={<InicioPorRol />} />
 
+        <Route element={<RutaPorRol area="enfermeria" />}>
+          <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
+          <Route
+            path="/enfermeria"
+            element={
+              <RequiereEstacion>
+                <EnfermeriaPage />
+              </RequiereEstacion>
+            }
+          />
+        </Route>
+
       <Route path="/coex" element={<MesaCoexPage />} />
 
       {/* Mismo criterio de acceso general que /archivo: sin guard propio ni login. */}
       <Route path="/libro-citas" element={<LibroCitasPage />} />
-
-      <Route path="/administracion" element={<AdministracionLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="usuarios" element={<UsuariosPage />} />
-        <Route path="clinicas" element={<ClinicasPage />} />
-        <Route path="cupos" element={<CuposPage />} />
-        <Route path="calendario" element={<CalendarioPage />} />
-        <Route path="reportes" element={<ReportesPage />} />
-        <Route path="auditoria" element={<AuditoriaPage />} />
-        <Route path="*" element={<Navigate to="/administracion" replace />} />
-      </Route>
 
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
