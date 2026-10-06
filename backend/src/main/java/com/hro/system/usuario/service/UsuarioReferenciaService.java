@@ -22,14 +22,19 @@ public class UsuarioReferenciaService {
     private final PermisoSubespecialidadRepository permisoSubespecialidadRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    /**
+     * Aprovisiona/actualiza el usuario local a partir de la identidad externa.
+     * <p>
+     * No persiste el rol: los roles se administran en Keycloak y se resuelven desde el
+     * token en cada petición. Aquí solo se guarda la identidad (id externo y nombre).
+     */
     @Transactional
-    public UsuarioReferencia sincronizarUsuarioJIT(String idExterno, String nombreMostrar, String rolPrincipal) {
+    public UsuarioReferencia sincronizarUsuarioJIT(String idExterno, String nombreMostrar) {
         Optional<UsuarioReferencia> existente = usuarioRepository.findByIdExterno(idExterno);
 
         if (existente.isPresent()) {
             UsuarioReferencia usuario = existente.get();
             usuario.setNombreMostrar(nombreMostrar);
-            usuario.setRolPrincipal(rolPrincipal);
             usuario.setUltimoAcceso(OffsetDateTime.now());
             return usuarioRepository.save(usuario);
         }
@@ -37,7 +42,6 @@ public class UsuarioReferenciaService {
         UsuarioReferencia nuevo = UsuarioReferencia.builder()
                 .idExterno(idExterno)
                 .nombreMostrar(nombreMostrar)
-                .rolPrincipal(rolPrincipal)
                 .activo(true)
                 .ultimoAcceso(OffsetDateTime.now())
                 .creadoEn(OffsetDateTime.now())

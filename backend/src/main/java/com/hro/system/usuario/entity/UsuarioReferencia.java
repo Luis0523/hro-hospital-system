@@ -24,7 +24,8 @@ public class UsuarioReferencia {
     @Column(name = "nombre_mostrar", nullable = false, length = 200)
     private String nombreMostrar;
 
-    @Column(name = "rol_principal", nullable = false, length = 30)
+    /** Legado: los roles se administran en Keycloak y se resuelven desde el token. */
+    @Column(name = "rol_principal", nullable = true, length = 30)
     private String rolPrincipal;
 
     @Column(name = "activo", nullable = false)

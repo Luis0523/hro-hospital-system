@@ -17,6 +17,24 @@ services:
     networks:
       - hro-network
 
+  # Keycloak (autenticación simulada local hasta recibir el realm real del hospital)
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: hro-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # Keycloak 25 usa KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD
+      # (KC_BOOTSTRAP_ADMIN_* es para Keycloak 26+).
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KEYCLOAK_PORT:-8090}:8080"
+    volumes:
+      - ./docker/keycloak/realm-hro.json:/opt/keycloak/data/import/realm-hro.json:ro
+    networks:
+      - hro-network
+
   # Redis para soporte de eventos / caché
   redis:
     image: redis:7-alpine
@@ -42,6 +60,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hro21100909}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      # Autenticación: por defecto mock (cabeceras). Para Keycloak definir en el entorno:
+      #   HRO_AUTH_MODE=keycloak
+      #   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/hro
+      HRO_AUTH_MODE: ${HRO_AUTH_MODE:-mock}
     ports:
       - "${SERVER_PORT:-8081}:8081"
     depends_on:

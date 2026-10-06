@@ -74,19 +74,6 @@ public class UsuarioAdminService {
         return mapToDTO(guardado);
     }
 
-    @Transactional
-    public UsuarioResponseDTO asignarRol(Long id, String rolPrincipal) {
-        RolSistema rol = RolSistema.from(rolPrincipal);
-        UsuarioReferencia usuario = obtener(id);
-
-        usuario.setRolPrincipal(rol.getValor());
-        UsuarioReferencia guardado = usuarioRepository.save(usuario);
-        publicarAuditoria(guardado, "asignar_rol");
-
-        log.info("Rol '{}' asignado al usuario {}", rol.getValor(), guardado.getIdExterno());
-        return mapToDTO(guardado);
-    }
-
     private UsuarioReferencia obtener(Long id) {
         return usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", id));

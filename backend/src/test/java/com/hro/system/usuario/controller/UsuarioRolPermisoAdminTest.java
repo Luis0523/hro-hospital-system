@@ -184,25 +184,7 @@ class UsuarioRolPermisoAdminTest {
                 .andExpect(jsonPath("$.data", hasItems("administrador", "medico", "enfermeria", "jefe_enfermeria")));
     }
 
-    @Test
-    @DisplayName("PUT /usuarios/{id}/rol - Asigna un rol válido")
-    void asignarRol_exito() throws Exception {
-        mockMvc.perform(put("/usuarios/{id}/rol", usuario.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("rolPrincipal", "medico"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.rolPrincipal", is("medico")));
-    }
-
-    @Test
-    @DisplayName("PUT /usuarios/{id}/rol - Rechaza un rol inválido")
-    void asignarRol_invalido() throws Exception {
-        mockMvc.perform(put("/usuarios/{id}/rol", usuario.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("rolPrincipal", "superadmin"))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message", containsString("Rol no válido")));
-    }
+    // La asignación de rol se movió a Keycloak (ver SCRUM-213): el endpoint se retiró.
 
     // ---------------------------------------------------------------------
     // SCRUM-125 — Permisos por subespecialidad

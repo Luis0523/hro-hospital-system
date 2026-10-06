@@ -44,13 +44,13 @@ public class MockProveedorIdentidad implements ProveedorIdentidad {
 
         try {
             UsuarioReferencia usuario = usuarioReferenciaRepository.findByIdExterno(idExterno)
-                    .orElseGet(() -> usuarioReferenciaService.sincronizarUsuarioJIT(idExterno, nombre, rol));
+                    .orElseGet(() -> usuarioReferenciaService.sincronizarUsuarioJIT(idExterno, nombre));
 
             return Optional.of(new IdentidadUsuario(
                     usuario.getId(),
                     usuario.getIdExterno(),
                     usuario.getNombreMostrar(),
-                    usuario.getRolPrincipal()));
+                    rol));
         } catch (Exception e) {
             log.warn("No se pudo resolver ni aprovisionar el usuario simulado '{}' (rol '{}'): {}",
                     idExterno, rol, e.getMessage());
