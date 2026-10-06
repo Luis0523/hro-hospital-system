@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
+import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useDevolucionCoex } from '../hooks/useDevolucionCoex'
 import { useDescargaPdfCoex } from '../hooks/useDescargaPdfCoex'
@@ -44,7 +46,15 @@ export default function MesaCoexPage() {
     errorRefresco,
   } = useLoteCoex()
 
+  const navigate = useNavigate()
+  const { cerrarSesion, rutaLogin } = useAuth()
   const { mostrarToast } = useToast()
+
+  function salir() {
+    cerrarSesion()
+    navigate(rutaLogin)
+  }
+
   const recepcion = useRecepcionCoex({
     pendientesRecibir,
     recargar: refrescarSilencioso,
@@ -183,15 +193,29 @@ export default function MesaCoexPage() {
             </p>
             <h1 className="break-words text-headline-md text-on-surface">Mesa COEX</h1>
           </div>
-          {estacion && (
-            <div className="w-full min-w-0 leading-tight sm:ml-auto sm:w-auto sm:text-right">
-              <p className="break-words text-title-sm text-on-surface">{estacion.nombre ?? estacion.codigo}</p>
-              <p className="break-words text-label-sm uppercase text-on-surface-variant">
-                {estacion.codigo}
-                {estacion.ubicacion ? ` · ${estacion.ubicacion}` : ''}
-              </p>
-            </div>
-          )}
+          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:ml-auto sm:w-auto">
+            {estacion && (
+              <div className="min-w-0 leading-tight sm:text-right">
+                <p className="break-words text-title-sm text-on-surface">
+                  {estacion.nombre ?? estacion.codigo}
+                </p>
+                <p className="break-words text-label-sm uppercase text-on-surface-variant">
+                  {estacion.codigo}
+                  {estacion.ubicacion ? ` · ${estacion.ubicacion}` : ''}
+                </p>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={salir}
+              className="min-h-11 shrink-0"
+              aria-label="Cerrar sesión"
+            >
+              <Icon name="logout" className="text-[18px]" />
+              <span className="hidden sm:inline">Cerrar sesión</span>
+            </Button>
+          </div>
         </div>
       </header>
 

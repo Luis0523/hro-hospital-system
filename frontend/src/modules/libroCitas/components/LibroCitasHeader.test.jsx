@@ -7,7 +7,11 @@ import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 const { cerrarSesionMock } = vi.hoisted(() => ({ cerrarSesionMock: vi.fn() }))
 
 vi.mock('@/shared/context/AuthContext.jsx', () => ({
-  useAuth: () => ({ cerrarSesion: cerrarSesionMock, usuario: null }),
+  useAuth: () => ({
+    cerrarSesion: cerrarSesionMock,
+    rutaLogin: '/sesion-cerrada',
+    usuario: null,
+  }),
   AuthProvider: ({ children }) => children,
 }))
 

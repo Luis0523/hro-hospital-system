@@ -70,10 +70,13 @@ export default function AppRouter() {
           />
         </Route>
 
-      <Route path="/coex" element={<MesaCoexPage />} />
+        <Route element={<RutaPorRol area="coex" />}>
+          <Route path="/coex" element={<MesaCoexPage />} />
+        </Route>
 
-      {/* Mismo criterio de acceso general que /archivo: sin guard propio ni login. */}
-      <Route path="/libro-citas" element={<LibroCitasPage />} />
+        <Route element={<RutaPorRol area="libro_citas" />}>
+          <Route path="/libro-citas" element={<LibroCitasPage />} />
+        </Route>
 
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />

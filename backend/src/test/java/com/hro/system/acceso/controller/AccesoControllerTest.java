@@ -47,8 +47,9 @@ class AccesoControllerTest {
     void catalogo() throws Exception {
         mockMvc.perform(get("/paginas"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(4)))
-                .andExpect(jsonPath("$.data[*].clave", hasItems("archivo", "enfermeria", "administracion", "jefe_enfermeria")));
+                .andExpect(jsonPath("$.data", hasSize(6)))
+                .andExpect(jsonPath("$.data[*].clave", hasItems(
+                        "archivo", "enfermeria", "coex", "libro_citas", "administracion", "jefe_enfermeria")));
     }
 
     @Test

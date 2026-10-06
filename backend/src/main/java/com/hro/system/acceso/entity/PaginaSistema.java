@@ -11,6 +11,8 @@ public enum PaginaSistema {
 
     ARCHIVO("archivo", "Estación de Archivo"),
     ENFERMERIA("enfermeria", "Estación de Enfermería"),
+    COEX("coex", "Mesa COEX"),
+    LIBRO_CITAS("libro_citas", "Libro de Citas"),
     ADMINISTRACION("administracion", "Panel de Administración"),
     JEFE_ENFERMERIA("jefe_enfermeria", "Área Jefe de Enfermería");
 

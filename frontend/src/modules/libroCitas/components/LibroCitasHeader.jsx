@@ -7,18 +7,18 @@ const CLASE_BOTON =
   'inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1.5 text-label-md text-on-surface-variant transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue'
 
 export default function LibroCitasHeader() {
-  const { cerrarSesion } = useAuth()
+  const { cerrarSesion, rutaLogin } = useAuth()
   const { tema, alternarTema } = useTema()
   const navigate = useNavigate()
 
   const esOscuro = tema === 'oscuro'
   const etiquetaTema = esOscuro ? 'Modo claro' : 'Modo oscuro'
 
-  // Reutiliza el mecanismo de sesión existente (AuthContext) y la ruta pública
-  // /sesion-cerrada.
+  // Cierra sesión y va al destino correcto según el modo:
+  // /login (keycloak) o /sesion-cerrada (mock).
   function manejarCierreSesion() {
     cerrarSesion()
-    navigate('/sesion-cerrada')
+    navigate(rutaLogin)
   }
 
   return (
