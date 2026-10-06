@@ -59,10 +59,10 @@ function historialBase(estado, horasAtras = 3) {
   ]
 }
 
-// Fixtures de prueba. Los valores `EXP-*` son DATOS DE EJEMPLO y NO representan
-// un formato obligatorio ni un contrato: `numeroExpediente` es un identificador
-// externo opaco que el backend no genera ni valida. Por eso se mezclan
-// longitudes (EXP-2024-035 y EXP-2023-8941) para no asumir ningún patrón.
+// Fixtures de prueba. Los números son datos de ejemplo para la demostración
+// (división Activo/Pasivo) y NO representan un contrato: `numeroExpediente`
+// sigue siendo un identificador externo opaco que el backend no genera ni
+// valida. El backend real se muestra EXACTAMENTE como lo entregue.
 export const expedientesMock = [
   {
     id: 1,
@@ -70,8 +70,8 @@ export const expedientesMock = [
     pacienteId: 1,
     pacienteNombre: 'María Fernanda López García',
     pacienteDpi: '2456789010101',
-    numeroExpediente: 'EXP-2024-035',
-    codigo: 'EXP-2024-035',
+    numeroExpediente: '111010',
+    codigo: '111010',
     ubicacion: 'Estante A · Fila 3 · Caja 12',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -89,8 +89,8 @@ export const expedientesMock = [
     pacienteId: 2,
     pacienteNombre: 'Carlos Eduardo Ramírez Soto',
     pacienteDpi: '1899234560101',
-    numeroExpediente: 'EXP-2024-002',
-    codigo: 'EXP-2024-002',
+    numeroExpediente: '111015',
+    codigo: '111015',
     ubicacion: 'Estante B · Fila 1 · Caja 04',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -116,8 +116,8 @@ export const expedientesMock = [
     pacienteId: 3,
     pacienteNombre: 'Ana Lucía Pérez Morales',
     pacienteDpi: '3012456780101',
-    numeroExpediente: 'EXP-2024-016',
-    codigo: 'EXP-2024-016',
+    numeroExpediente: '111016',
+    codigo: '111016',
     ubicacion: 'Estante C · Fila 2 · Caja 08',
     subespecialidadId: 2,
     subespecialidadNombre: 'Pediatría General',
@@ -144,8 +144,8 @@ export const expedientesMock = [
     pacienteId: 4,
     pacienteNombre: 'José Manuel Ordóñez Figueroa',
     pacienteDpi: '2233445560101',
-    numeroExpediente: 'EXP-2023-8941',
-    codigo: 'EXP-2023-8941',
+    numeroExpediente: '111012',
+    codigo: '111012',
     ubicacion: 'Estante D · Fila 4 · Caja 21',
     subespecialidadId: 4,
     subespecialidadNombre: 'Cardiología Clínica',
@@ -178,8 +178,8 @@ export const expedientesMock = [
     pacienteId: 5,
     pacienteNombre: 'Rosa Amelia Chávez de León',
     pacienteDpi: '1998877660101',
-    numeroExpediente: 'EXP-2024-041',
-    codigo: 'EXP-2024-041',
+    numeroExpediente: '111018',
+    codigo: '111018',
     ubicacion: 'Estante A · Fila 1 · Caja 02',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -213,8 +213,8 @@ export const expedientesMock = [
     pacienteId: 6,
     pacienteNombre: 'Luis Fernando Barrios Méndez',
     pacienteDpi: '2112233440101',
-    numeroExpediente: 'EXP-2022-5412',
-    codigo: 'EXP-2022-5412',
+    numeroExpediente: '111017',
+    codigo: '111017',
     ubicacion: 'Estante E · Fila 2 · Caja 15',
     subespecialidadId: 2,
     subespecialidadNombre: 'Pediatría General',
@@ -254,15 +254,16 @@ export const expedientesMock = [
     expedienteNuevo: true,
     historial: [],
   },
-  // Fixture 8: expediente físico SIN ciclo. Demuestra el check-in desde la UI.
+  // Fixture 8: expediente físico SIN ciclo. El checkbox ejecuta check-in +
+  // localizar internamente.
   {
     id: 8,
     citaId: 108,
     pacienteId: 8,
     pacienteNombre: 'Pedro Antonio Gutiérrez Solís',
     pacienteDpi: '2544332210101',
-    numeroExpediente: 'EXP-2024-099',
-    codigo: 'EXP-2024-099',
+    numeroExpediente: '111020',
+    codigo: '111020',
     ubicacion: 'Estante B · Fila 2 · Caja 07',
     subespecialidadId: 1,
     subespecialidadNombre: 'Medicina General',
@@ -274,15 +275,16 @@ export const expedientesMock = [
     expedienteNuevo: false,
     historial: [],
   },
-  // Fixture 9: ciclo en en_transito_retorno. Demuestra archivar desde la UI.
+  // Fixture 9: ciclo en `en_transito_retorno` (estado posterior a localizado:
+  // aparece marcado en la UX simplificada).
   {
     id: 9,
     citaId: 109,
     pacienteId: 9,
     pacienteNombre: 'Marta Lidia Hernández Ruiz',
     pacienteDpi: '2998877660101',
-    numeroExpediente: 'EXP-2024-077',
-    codigo: 'EXP-2024-077',
+    numeroExpediente: '111025',
+    codigo: '111025',
     ubicacion: 'Estante C · Fila 1 · Caja 03',
     subespecialidadId: 2,
     subespecialidadNombre: 'Pediatría General',

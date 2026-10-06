@@ -2,6 +2,7 @@ import { Button, Modal, Spinner } from '@/shared/components/ui'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import ExpedienteStepper from './ExpedienteStepper.jsx'
 import { metadatosEstado } from '../estadosExpediente'
+import { ETIQUETAS_CLASIFICACION, clasificarExpediente } from '../clasificarExpediente'
 
 function formatearFechaHora(iso) {
   if (!iso) return ''
@@ -27,6 +28,7 @@ export default function ExpedienteDetalle({
 
   const estado = fila.estadoActual ?? fila.estado
   const meta = metadatosEstado(estado)
+  const clasificacion = clasificarExpediente(fila.numeroExpediente)
   const movimientos = ciclo?.movimientos ?? []
 
   return (
@@ -51,6 +53,11 @@ export default function ExpedienteDetalle({
           {fila.cicloId && (
             <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-label-sm text-on-surface-variant">
               ciclo {fila.cicloId}
+            </span>
+          )}
+          {clasificacion && (
+            <span className="rounded bg-surface-container px-2 py-0.5 text-label-md font-semibold text-on-surface">
+              {`Clasificación: ${ETIQUETAS_CLASIFICACION[clasificacion]}`}
             </span>
           )}
         </div>

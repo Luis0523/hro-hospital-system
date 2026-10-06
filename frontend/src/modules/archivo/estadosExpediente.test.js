@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { ESTADOS_EXPEDIENTE, ORDEN_ESTADOS, metadatosEstado } from './estadosExpediente'
+import {
+  ESTADOS_EXPEDIENTE,
+  ORDEN_ESTADOS,
+  esExpedienteLocalizado,
+  metadatosEstado,
+} from './estadosExpediente'
 
 const ESTADOS_REALES = [
   'pendiente_localizar',
@@ -38,5 +43,25 @@ describe('estadosExpediente', () => {
 
   it('metadatosEstado devuelve metadatos por defecto para un estado desconocido', () => {
     expect(metadatosEstado('inexistente').etiqueta).toBe('Estado desconocido')
+  })
+})
+
+describe('esExpedienteLocalizado (UX simplificada)', () => {
+  it('considera localizado el propio estado y los posteriores', () => {
+    for (const estado of [
+      'localizado',
+      'en_transito_entrega',
+      'entregado',
+      'en_transito_retorno',
+      'archivado',
+    ]) {
+      expect(esExpedienteLocalizado(estado)).toBe(true)
+    }
+  })
+
+  it('considera pendientes los estados previos y la incidencia', () => {
+    for (const estado of ['sin_ciclo', 'pendiente_localizar', 'en_busqueda', 'no_localizado']) {
+      expect(esExpedienteLocalizado(estado)).toBe(false)
+    }
   })
 })

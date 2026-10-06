@@ -10,17 +10,7 @@ import FiltrosArchivo from '../components/FiltrosArchivo.jsx'
 import ResumenEstados from '../components/ResumenEstados.jsx'
 import ListadoCompactoExpediente from '../components/ListadoCompactoExpediente.jsx'
 import ScannerExpediente from '../components/ScannerExpediente.jsx'
-import ExpedienteDetalle from '../components/ExpedienteDetalle.jsx'
-import ModalObservacion from '../components/ModalObservacion.jsx'
-import { accionArchivo } from '../accionesArchivo'
-
-// Estados que cuentan como "pendiente" (aún no localizado) para el resumen.
-const ESTADOS_PENDIENTES = new Set([
-  'sin_ciclo',
-  'pendiente_localizar',
-  'en_busqueda',
-  'no_localizado',
-])
+import { esExpedienteLocalizado } from '../estadosExpediente'
 
 // Orden estable por hora de cita ascendente.
 function ordenarPorHora(expedientes) {
@@ -46,6 +36,51 @@ function coincideConFila(fila, encontrado) {
   return Boolean(referencia) && fila.numeroExpediente === referencia
 }
 
+// Sección de checklist (Pendientes / Localizados). Sigue el lenguaje visual de
+// checklist; el checkbox refleja el estado real, no un Set local.
+function SeccionChecklist({
+  titulo,
+  icono,
+  expedientes,
+  resaltado,
+  filasEnProceso,
+  onToggle,
+  vacio,
+}) {
+  return (
+    <section
+      aria-label={titulo}
+      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-sm"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2 px-2 pt-1">
+        <h2 className="flex items-center gap-2 text-title-md text-on-surface">
+          <Icon name={icono} className="text-[20px] text-primary" />
+          {titulo}
+        </h2>
+        <span className="rounded bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
+          {expedientes.length}
+        </span>
+      </div>
+
+      {expedientes.length === 0 ? (
+        <p className="px-2 pb-2 text-body-sm text-on-surface-variant">{vacio}</p>
+      ) : (
+        <ul className="space-y-2">
+          {expedientes.map((expediente) => (
+            <ListadoCompactoExpediente
+              key={expediente.id}
+              expediente={expediente}
+              resaltado={expediente.id === resaltado}
+              procesando={filasEnProceso.has(expediente.id)}
+              onToggle={onToggle}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function ArchivoPage() {
   const { mostrarToast } = useToast()
   const {
@@ -61,7 +96,6 @@ export default function ArchivoPage() {
   } = useExpedientes()
 
   const cicloAcciones = useCicloExpediente()
-  const cicloDetalle = useCicloExpediente()
 
   const {
     resumen: resumenServidor,
@@ -74,28 +108,23 @@ export default function ArchivoPage() {
 
   const [codigo, setCodigo] = useState('')
   const [resaltado, setResaltado] = useState(null)
-  const [filaEnProceso, setFilaEnProceso] = useState(null)
-  const [observacionPara, setObservacionPara] = useState(null)
-  const [observacion, setObservacion] = useState('')
-  const [enviandoObservacion, setEnviandoObservacion] = useState(false)
-  const [detalleFila, setDetalleFila] = useState(null)
+  const [filasEnProceso, setFilasEnProceso] = useState(() => new Set())
 
-  // Guardas inmediatas contra doble ejecución (búsqueda y mutaciones).
+  // Guardas inmediatas: búsqueda y procesos por fila (no bloquean la jornada).
   const busquedaEnCurso = useRef(false)
-  const mutacionEnCurso = useRef(false)
+  const procesosRef = useRef(new Set())
 
   const filas = useMemo(() => ordenarPorHora(expedientes), [expedientes])
-
-  const resumen = useMemo(() => {
-    const operativas = filas.filter((fila) => Boolean(fila.expedienteId))
-    return {
-      total: operativas.length,
-      pendientes: operativas.filter((fila) => ESTADOS_PENDIENTES.has(fila.estadoActual)).length,
-      localizados: operativas.filter((fila) => fila.estadoActual === 'localizado').length,
-    }
-  }, [filas])
-
-  const sinExpediente = filas.length - filas.filter((fila) => Boolean(fila.expedienteId)).length
+  const operativas = useMemo(() => filas.filter((fila) => Boolean(fila.expedienteId)), [filas])
+  const pendientes = useMemo(
+    () => operativas.filter((fila) => !esExpedienteLocalizado(fila.estadoActual)),
+    [operativas],
+  )
+  const localizados = useMemo(
+    () => operativas.filter((fila) => esExpedienteLocalizado(fila.estadoActual)),
+    [operativas],
+  )
+  const sinExpediente = filas.length - operativas.length
 
   // Al cambiar un filtro se reinicia el resaltado del buscador.
   useEffect(() => {
@@ -107,93 +136,75 @@ export default function ArchivoPage() {
     if (resaltado == null) return
     const fila = document.querySelector(`[data-expediente-id="${resaltado}"]`)
     fila?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-    fila?.querySelector('button')?.focus()
+    fila?.querySelector('input[type="checkbox"]')?.focus()
   }, [resaltado])
 
-  async function ejecutarAccion(fila, accion, datos = {}) {
-    if (mutacionEnCurso.current) return false
-    mutacionEnCurso.current = true
-    setFilaEnProceso(fila.id)
+  function marcarEnProceso(id, activo) {
+    if (activo) procesosRef.current.add(id)
+    else procesosRef.current.delete(id)
+    setFilasEnProceso(new Set(procesosRef.current))
+  }
+
+  // Ejecuta la secuencia interna que lleva el expediente hasta `localizado`
+  // usando SOLO transiciones válidas. No hay cambio optimista: si un paso falla
+  // se detiene (sin ejecutar los siguientes) y el checkbox permanece sin marcar.
+  async function localizarExpediente(fila) {
+    if (procesosRef.current.has(fila.id)) return
+    marcarEnProceso(fila.id, true)
     try {
-      if (accion.id === 'check_in') {
-        await cicloAcciones.checkIn(fila.expedienteId, { citaId: fila.citaId })
-      } else if (accion.id === 'iniciar_busqueda') {
+      let cicloId = fila.cicloId
+
+      if (fila.estadoActual === 'sin_ciclo') {
+        const ciclo = await cicloAcciones.checkIn(fila.expedienteId, { citaId: fila.citaId })
+        cicloId = ciclo?.cicloId ?? cicloId
+      } else if (fila.estadoActual === 'pendiente_localizar') {
         await cicloAcciones.iniciarBusqueda(fila.cicloId)
-      } else if (accion.id === 'localizar') {
-        await cicloAcciones.localizar(fila.cicloId)
-      } else if (accion.id === 'despachar') {
-        await cicloAcciones.despachar(fila.cicloId)
-      } else if (accion.id === 'archivar') {
-        await cicloAcciones.archivar(fila.cicloId)
-      } else if (accion.id === 'no_localizado') {
-        await cicloAcciones.marcarNoLocalizado(fila.cicloId, { observacion: datos.observacion })
-      } else if (accion.id === 'reintentar_busqueda') {
+      } else if (fila.estadoActual === 'no_localizado') {
         await cicloAcciones.reintentarBusqueda(fila.cicloId)
       }
+
+      // `en_busqueda` (o el resultado de los pasos previos) -> localizado.
+      await cicloAcciones.localizar(cicloId)
 
       await recargar()
       mostrarToast({
         tone: 'success',
-        title: 'Acción realizada',
-        message: fila.numeroExpediente
-          ? `${accion.etiqueta} · ${fila.numeroExpediente}`
-          : accion.etiqueta,
+        title: 'Expediente localizado',
+        message: fila.numeroExpediente ?? '',
       })
-      return true
     } catch (fallo) {
-      // No hay cambio optimista: el estado anterior se conserva.
       mostrarToast({
         tone: 'error',
-        title: 'No se pudo completar la acción',
+        title: 'No se pudo localizar el expediente',
         message: fallo.message,
       })
-      return false
     } finally {
-      mutacionEnCurso.current = false
-      setFilaEnProceso(null)
+      marcarEnProceso(fila.id, false)
     }
   }
 
-  function manejarAccion(accion, fila) {
-    if (accion.requiereObservacion) {
-      setObservacionPara(fila)
-      setObservacion('')
-      return
-    }
-    ejecutarAccion(fila, accion)
+  function alternarLocalizado(fila) {
+    if (!fila.expedienteId || esExpedienteLocalizado(fila.estadoActual)) return
+    localizarExpediente(fila)
   }
 
-  async function confirmarObservacion() {
-    const texto = observacion.trim()
-    if (!texto || enviandoObservacion || !observacionPara) return
-    setEnviandoObservacion(true)
+  // Check-in interno al escanear un expediente sin ciclo. NO localiza: la fila
+  // sigue en "Pendientes de localizar" hasta que el operador marque el checkbox.
+  async function checkInSilencioso(fila) {
+    if (procesosRef.current.has(fila.id)) return
+    marcarEnProceso(fila.id, true)
     try {
-      const exito = await ejecutarAccion(observacionPara, accionArchivo('no_localizado'), {
-        observacion: texto,
+      await cicloAcciones.checkIn(fila.expedienteId, { citaId: fila.citaId })
+      await recargar()
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo iniciar el tracking',
+        message: fallo.message,
       })
-      if (exito) {
-        setObservacionPara(null)
-        setObservacion('')
-      }
     } finally {
-      setEnviandoObservacion(false)
+      marcarEnProceso(fila.id, false)
     }
-  }
-
-  function cancelarObservacion() {
-    setObservacionPara(null)
-    setObservacion('')
-  }
-
-  function abrirDetalle(fila) {
-    setDetalleFila(fila)
-    if (fila.cicloId) {
-      cicloDetalle.obtenerCiclo(fila.citaId).catch(() => {})
-    }
-  }
-
-  function cerrarDetalle() {
-    setDetalleFila(null)
   }
 
   async function ejecutarBusqueda(valor) {
@@ -226,11 +237,8 @@ export default function ArchivoPage() {
       setResaltado(fila.id)
       setCodigo('')
 
-      // SCRUM-179: si la fila tiene expediente físico y aún no tiene ciclo, el
-      // escaneo inicia el tracking con el endpoint atómico de check-in (una sola
-      // vez). NO se dispara localizar automáticamente.
       if (fila.expedienteId && fila.estadoActual === 'sin_ciclo') {
-        await ejecutarAccion(fila, accionArchivo('check_in'))
+        await checkInSilencioso(fila)
       }
     } catch (fallo) {
       mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: fallo.message })
@@ -285,9 +293,6 @@ export default function ArchivoPage() {
     }
   }
 
-  const cicloDetalleActual =
-    detalleFila && cicloDetalle.ciclo?.citaId === detalleFila.citaId ? cicloDetalle.ciclo : null
-
   return (
     <ArchivoLayout>
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
@@ -307,12 +312,12 @@ export default function ArchivoPage() {
         />
 
         <ResumenEstados
-          total={resumen.total}
-          pendientes={resumen.pendientes}
-          localizados={resumen.localizados}
+          total={operativas.length}
+          pendientes={pendientes.length}
+          localizados={localizados.length}
         />
 
-        <section aria-label="Jornada de expedientes" aria-busy={cargando} className="space-y-3">
+        <section aria-label="Preparación de expedientes" aria-busy={cargando} className="space-y-4">
           {cargando ? (
             <Spinner label="Cargando expedientes..." />
           ) : error ? (
@@ -329,21 +334,27 @@ export default function ArchivoPage() {
               {sinExpediente > 0 && (
                 <Alert tone="warning" title="Citas sin expediente físico">
                   {sinExpediente} cita(s) de la jornada no tienen expediente físico registrado y no
-                  se pueden operar.
+                  se incluyen en el checklist.
                 </Alert>
               )}
-              <ul className="space-y-2">
-                {filas.map((fila) => (
-                  <ListadoCompactoExpediente
-                    key={fila.id}
-                    expediente={fila}
-                    resaltado={fila.id === resaltado}
-                    procesando={filaEnProceso === fila.id}
-                    onAccion={manejarAccion}
-                    onVerDetalle={abrirDetalle}
-                  />
-                ))}
-              </ul>
+              <SeccionChecklist
+                titulo="Pendientes de localizar"
+                icono="pending_actions"
+                expedientes={pendientes}
+                resaltado={resaltado}
+                filasEnProceso={filasEnProceso}
+                onToggle={alternarLocalizado}
+                vacio="No quedan expedientes pendientes."
+              />
+              <SeccionChecklist
+                titulo="Expedientes localizados"
+                icono="check_circle"
+                expedientes={localizados}
+                resaltado={resaltado}
+                filasEnProceso={filasEnProceso}
+                onToggle={alternarLocalizado}
+                vacio="Todavía no se ha localizado ningún expediente."
+              />
             </>
           )}
         </section>
@@ -423,23 +434,6 @@ export default function ArchivoPage() {
           )}
         </section>
       </main>
-
-      <ExpedienteDetalle
-        fila={detalleFila}
-        ciclo={cicloDetalleActual}
-        cargandoDatos={cicloDetalle.cargando}
-        abierto={Boolean(detalleFila)}
-        onCerrar={cerrarDetalle}
-      />
-
-      <ModalObservacion
-        abierto={Boolean(observacionPara)}
-        observacion={observacion}
-        onObservacion={setObservacion}
-        onConfirmar={confirmarObservacion}
-        onCancelar={cancelarObservacion}
-        procesando={enviandoObservacion}
-      />
     </ArchivoLayout>
   )
 }

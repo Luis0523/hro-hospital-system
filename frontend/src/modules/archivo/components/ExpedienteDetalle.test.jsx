@@ -85,4 +85,14 @@ describe('ExpedienteDetalle', () => {
     const { container } = render(<ExpedienteDetalle fila={null} abierto onCerrar={() => {}} />)
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('muestra la clasificación Activo/Pasivo reutilizando el helper', () => {
+    renderDetalle({ fila: { ...FILA, numeroExpediente: '111016' } })
+    expect(screen.getByText('Clasificación: Activo')).toBeInTheDocument()
+  })
+
+  it('no muestra clasificación para números no numéricos', () => {
+    renderDetalle()
+    expect(screen.queryByText(/clasificación:/i)).not.toBeInTheDocument()
+  })
 })

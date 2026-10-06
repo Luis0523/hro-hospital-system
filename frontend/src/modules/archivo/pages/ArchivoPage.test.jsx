@@ -9,16 +9,12 @@ import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import AppRouter from '@/router/AppRouter.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import {
-  archivarCiclo,
   buscarExpedientePorCodigo,
   checkInExpediente,
-  despacharCiclo,
   iniciarBusquedaCiclo,
   listarJornadaArchivo,
   listarSubespecialidades,
   localizarCiclo,
-  noLocalizadoCiclo,
-  obtenerCicloPorCita,
   obtenerResumenArchivo,
   obtenerResumenArchivoPdf,
   reintentarBusquedaCiclo,
@@ -56,13 +52,13 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   }
 })
 
-function fila({ id, citaId, estadoActual, numeroExpediente, cicloId, expedienteId = id, ...rest }) {
+function fila({ id, numeroExpediente, estadoActual, cicloId, citaId, ...rest }) {
   return {
     id,
-    expedienteId,
+    expedienteId: id,
     citaId,
     cicloId: cicloId === undefined ? (estadoActual === 'sin_ciclo' ? null : `c-${id}`) : cicloId,
-    numeroExpediente: numeroExpediente ?? `EXP-${id}`,
+    numeroExpediente,
     pacienteNombre: `Paciente ${id}`,
     estadoActual,
     horaEstimada: '08:00:00',
@@ -75,15 +71,29 @@ function fila({ id, citaId, estadoActual, numeroExpediente, cicloId, expedienteI
 
 function jornadaBase() {
   return [
-    fila({ id: 'e1', citaId: 101, estadoActual: 'pendiente_localizar' }),
-    fila({ id: 'e2', citaId: 102, estadoActual: 'en_busqueda' }),
-    fila({ id: 'e3', citaId: 103, estadoActual: 'localizado' }),
-    fila({ id: 'e4', citaId: 104, estadoActual: 'en_transito_entrega' }),
-    fila({ id: 'e5', citaId: 105, estadoActual: 'entregado' }),
-    fila({ id: 'e6', citaId: 106, estadoActual: 'en_transito_retorno' }),
-    fila({ id: 'e7', citaId: 107, estadoActual: 'archivado' }),
-    fila({ id: 'e8', citaId: 108, estadoActual: 'sin_ciclo', cicloId: null }),
-    fila({ id: 'e9', citaId: 109, estadoActual: 'no_localizado' }),
+    fila({
+      id: 'e1',
+      citaId: 101,
+      numeroExpediente: '111010',
+      estadoActual: 'pendiente_localizar',
+    }),
+    fila({ id: 'e2', citaId: 102, numeroExpediente: '111015', estadoActual: 'en_busqueda' }),
+    fila({ id: 'e3', citaId: 103, numeroExpediente: '111016', estadoActual: 'localizado' }),
+    fila({
+      id: 'e4',
+      citaId: 104,
+      numeroExpediente: '111012',
+      estadoActual: 'en_transito_entrega',
+    }),
+    fila({ id: 'e5', citaId: 105, numeroExpediente: '111018', estadoActual: 'entregado' }),
+    fila({ id: 'e6', citaId: 106, numeroExpediente: '111017', estadoActual: 'no_localizado' }),
+    fila({
+      id: 'e8',
+      citaId: 108,
+      numeroExpediente: '111020',
+      estadoActual: 'sin_ciclo',
+      cicloId: null,
+    }),
     {
       id: 'cita-110',
       expedienteId: null,
@@ -134,10 +144,11 @@ function renderRuta(ruta) {
   )
 }
 
-const esperarJornada = () => screen.findByText('EXP-e1')
+const esperarJornada = () => screen.findByText('111010')
+const regionPendientes = () => screen.getByRole('region', { name: 'Pendientes de localizar' })
+const regionLocalizados = () => screen.getByRole('region', { name: 'Expedientes localizados' })
 const filaDe = (numero) => screen.getByText(numero).closest('li')
-const botonEn = (numero, nombre) => within(filaDe(numero)).getByRole('button', { name: nombre })
-const hayBoton = (nombre) => screen.queryByRole('button', { name: nombre })
+const checkboxDe = (numero) => within(filaDe(numero)).getByRole('checkbox')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -146,7 +157,6 @@ beforeEach(() => {
   listarSubespecialidades.mockResolvedValue([
     { id: 1, nombre: 'Medicina General' },
     { id: 2, nombre: 'Pediatría General' },
-    { id: 4, nombre: 'Cardiología Clínica' },
   ])
 
   listarJornadaArchivo.mockImplementation(({ subespecialidadId } = {}) =>
@@ -160,39 +170,28 @@ beforeEach(() => {
   buscarExpedientePorCodigo.mockResolvedValue(null)
   obtenerResumenArchivo.mockResolvedValue({ fecha: null, totalCiclos: 0 })
   obtenerResumenArchivoPdf.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
-  obtenerCicloPorCita.mockResolvedValue({ cicloId: 'c-e2', citaId: 102, movimientos: [] })
 
   const porCiclo = (cicloId, estado) => {
     const filaActual = jornadaActual.find((f) => f.cicloId === cicloId)
-    if (!filaActual) {
+    if (!filaActual)
       return Promise.reject(Object.assign(new Error('Ciclo no encontrado'), { status: 404 }))
-    }
     filaActual.estadoActual = estado
     return Promise.resolve({ ...filaActual })
   }
 
   checkInExpediente.mockImplementation((expedienteId, datos) => {
     const filaActual = jornadaActual.find((f) => f.expedienteId === expedienteId)
-    if (!filaActual) {
+    if (!filaActual)
       return Promise.reject(Object.assign(new Error('Expediente no encontrado'), { status: 404 }))
-    }
     filaActual.cicloId = filaActual.cicloId ?? `c-${filaActual.id}`
     filaActual.estadoActual = 'en_busqueda'
     if (datos?.citaId) filaActual.citaId = datos.citaId
-    return Promise.resolve({ ...filaActual })
+    return Promise.resolve({ ...filaActual, cicloId: filaActual.cicloId })
   })
 
   iniciarBusquedaCiclo.mockImplementation((cicloId) => porCiclo(cicloId, 'en_busqueda'))
   localizarCiclo.mockImplementation((cicloId) => porCiclo(cicloId, 'localizado'))
-  despacharCiclo.mockImplementation((cicloId) => porCiclo(cicloId, 'en_transito_entrega'))
-  archivarCiclo.mockImplementation((cicloId) => porCiclo(cicloId, 'archivado'))
   reintentarBusquedaCiclo.mockImplementation((cicloId) => porCiclo(cicloId, 'en_busqueda'))
-  noLocalizadoCiclo.mockImplementation((cicloId, datos) => {
-    if (!datos?.observacion) {
-      return Promise.reject(Object.assign(new Error('observación requerida'), { status: 400 }))
-    }
-    return porCiclo(cicloId, 'no_localizado')
-  })
 })
 
 describe('ArchivoPage — ruta oficial', () => {
@@ -203,7 +202,7 @@ describe('ArchivoPage — ruta oficial', () => {
       screen.getByRole('heading', { name: 'Estación de Archivo / Registro Médico' }),
     ).toBeInTheDocument()
     expect(
-      await screen.findByRole('region', { name: 'Jornada de expedientes' }),
+      await screen.findByRole('region', { name: 'Pendientes de localizar' }),
     ).toBeInTheDocument()
   })
 
@@ -211,11 +210,13 @@ describe('ArchivoPage — ruta oficial', () => {
     renderRuta('/archivo/listado-prueba')
 
     expect(screen.queryByText('Vista experimental de listado')).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Jornada de expedientes' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Pendientes de localizar' }),
+    ).not.toBeInTheDocument()
   })
 })
 
-describe('ArchivoPage — jornada real', () => {
+describe('ArchivoPage — dos secciones derivadas del backend', () => {
   it('carga con la fecha de HOY (YYYY-MM-DD local)', async () => {
     renderPagina()
     await esperarJornada()
@@ -223,219 +224,161 @@ describe('ArchivoPage — jornada real', () => {
     expect(listarJornadaArchivo).toHaveBeenCalledWith({ fecha: hoyIso(), subespecialidadId: '' })
   })
 
-  it('muestra el estado real del backend en la fila', async () => {
+  it('separa Pendientes de localizar y Expedientes localizados', async () => {
     renderPagina()
     await esperarJornada()
 
-    expect(within(filaDe('EXP-e3')).getByText('Localizado')).toBeInTheDocument()
-    expect(within(filaDe('EXP-e4')).getByText('En tránsito a COEX')).toBeInTheDocument()
-    expect(within(filaDe('EXP-e8')).getByText('Sin ciclo')).toBeInTheDocument()
+    expect(regionPendientes()).toBeInTheDocument()
+    expect(regionLocalizados()).toBeInTheDocument()
+
+    expect(within(regionPendientes()).getByText('111010')).toBeInTheDocument()
+    expect(within(regionPendientes()).getByText('111015')).toBeInTheDocument()
+    expect(within(regionPendientes()).getByText('111017')).toBeInTheDocument()
+    expect(within(regionPendientes()).getByText('111020')).toBeInTheDocument()
+
+    expect(within(regionLocalizados()).getByText('111016')).toBeInTheDocument()
+    expect(within(regionLocalizados()).getByText('111018')).toBeInTheDocument()
   })
 
-  it('ya no usa checkbox reversible', async () => {
+  it('el checkbox refleja estadoActual (no un Set local)', async () => {
     renderPagina()
     await esperarJornada()
 
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(checkboxDe('111015')).not.toBeChecked()
+    expect(checkboxDe('111016')).toBeChecked()
+    expect(checkboxDe('111020')).not.toBeChecked()
   })
 
-  it('refleja el resumen por estados reales (sin contar el checklist local)', async () => {
+  it('los estados posteriores a localizado siguen marcados', async () => {
     renderPagina()
     await esperarJornada()
 
-    expect(screen.getByText('Total del día').closest('li')).toHaveTextContent('9')
+    expect(checkboxDe('111016')).toBeChecked() // localizado
+    expect(checkboxDe('111012')).toBeChecked() // en_transito_entrega
+    expect(checkboxDe('111018')).toBeChecked() // entregado
+  })
+
+  it('el resumen deriva de los estados reales', async () => {
+    renderPagina()
+    await esperarJornada()
+
+    expect(screen.getByText('Total del día').closest('li')).toHaveTextContent('7')
     expect(screen.getByText('Pendientes').closest('li')).toHaveTextContent('4')
-    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('1')
+    expect(screen.getByText('Localizados').closest('li')).toHaveTextContent('3')
   })
 
-  it('informa las citas sin expediente físico', async () => {
+  it('informa las citas sin expediente físico (sin checkbox operativo)', async () => {
     renderPagina()
     await esperarJornada()
 
     expect(screen.getByText('Citas sin expediente físico')).toBeInTheDocument()
+    // Solo las filas operativas tienen checkbox (7 operativas en el fixture).
+    expect(screen.getAllByRole('checkbox')).toHaveLength(7)
+  })
+
+  it('no muestra estados técnicos ni botones de transición ni stepper', async () => {
+    renderPagina()
+    await esperarJornada()
+
+    for (const nombre of [
+      /^check-in$/i,
+      /iniciar búsqueda/i,
+      /^localizar$/i,
+      /no localizado/i,
+      /reintentar búsqueda/i,
+      /^despachar$/i,
+      /^archivar$/i,
+      /ver detalle/i,
+    ]) {
+      expect(screen.queryByRole('button', { name: nombre })).not.toBeInTheDocument()
+    }
+    expect(screen.queryByLabelText('Trazabilidad del expediente')).not.toBeInTheDocument()
+    expect(screen.queryByText(/en búsqueda/i)).not.toBeInTheDocument()
   })
 })
 
-describe('ArchivoPage — matriz de acciones por estado', () => {
-  it('sin_ciclo muestra Check-in; pendiente_localizar muestra Iniciar búsqueda', async () => {
-    renderPagina()
-    await esperarJornada()
-
-    expect(
-      within(filaDe('EXP-e8')).getByRole('button', { name: /^check-in$/i }),
-    ).toBeInTheDocument()
-    expect(
-      within(filaDe('EXP-e1')).getByRole('button', { name: /iniciar búsqueda/i }),
-    ).toBeInTheDocument()
-  })
-
-  it('en_busqueda muestra Localizar y No localizado; localizado muestra Despachar', async () => {
-    renderPagina()
-    await esperarJornada()
-
-    expect(
-      within(filaDe('EXP-e2')).getByRole('button', { name: /^localizar$/i }),
-    ).toBeInTheDocument()
-    expect(
-      within(filaDe('EXP-e2')).getByRole('button', { name: /^no localizado$/i }),
-    ).toBeInTheDocument()
-    expect(
-      within(filaDe('EXP-e3')).getByRole('button', { name: /^despachar$/i }),
-    ).toBeInTheDocument()
-  })
-
-  it('no_localizado muestra Reintentar; en_transito_retorno muestra Archivar', async () => {
-    renderPagina()
-    await esperarJornada()
-
-    expect(
-      within(filaDe('EXP-e9')).getByRole('button', { name: /reintentar búsqueda/i }),
-    ).toBeInTheDocument()
-    expect(
-      within(filaDe('EXP-e6')).getByRole('button', { name: /^archivar$/i }),
-    ).toBeInTheDocument()
-  })
-
-  it('en_transito_entrega y entregado no ofrecen acción de Archivo', async () => {
-    renderPagina()
-    await esperarJornada()
-
-    expect(within(filaDe('EXP-e4')).getByText(/esperando recepción en coex/i)).toBeInTheDocument()
-    expect(within(filaDe('EXP-e5')).getByText('En COEX')).toBeInTheDocument()
-    expect(within(filaDe('EXP-e7')).getByText(/ciclo cerrado/i)).toBeInTheDocument()
-  })
-
-  it('nunca muestra acciones Entregar/Retornar (Enfermería)', async () => {
-    renderPagina()
-    await esperarJornada()
-
-    expect(hayBoton(/^entregar$/i)).not.toBeInTheDocument()
-    expect(hayBoton(/^retornar$/i)).not.toBeInTheDocument()
-  })
-})
-
-describe('ArchivoPage — transiciones reales', () => {
-  it('check-in usa expedienteId + citaId y deja en_busqueda', async () => {
+describe('ArchivoPage — checkbox ejecuta la secuencia interna de localización', () => {
+  it('sin_ciclo: check-in + localizar', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await user.click(botonEn('EXP-e8', /^check-in$/i))
+    await user.click(checkboxDe('111020'))
 
     await waitFor(() => expect(checkInExpediente).toHaveBeenCalledWith('e8', { citaId: 108 }))
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e8')).getByText('En búsqueda')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(localizarCiclo).toHaveBeenCalledWith('c-e8'))
+    await waitFor(() => expect(within(regionLocalizados()).getByText('111020')).toBeInTheDocument())
   })
 
-  it('iniciar búsqueda llama al ciclo y refleja el estado', async () => {
+  it('pendiente_localizar: iniciar búsqueda + localizar', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await user.click(botonEn('EXP-e1', /iniciar búsqueda/i))
+    await user.click(checkboxDe('111010'))
 
     await waitFor(() => expect(iniciarBusquedaCiclo).toHaveBeenCalledWith('c-e1'))
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e1')).getByText('En búsqueda')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(localizarCiclo).toHaveBeenCalledWith('c-e1'))
+    await waitFor(() => expect(within(regionLocalizados()).getByText('111010')).toBeInTheDocument())
   })
 
-  it('localizar y despachar encadenan el estado real', async () => {
+  it('en_busqueda: solo localizar', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await user.click(botonEn('EXP-e2', /^localizar$/i))
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e2')).getByText('Localizado')).toBeInTheDocument(),
-    )
+    await user.click(checkboxDe('111015'))
 
-    await user.click(botonEn('EXP-e2', /^despachar$/i))
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e2')).getByText('En tránsito a COEX')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(localizarCiclo).toHaveBeenCalledWith('c-e2'))
+    expect(iniciarBusquedaCiclo).not.toHaveBeenCalled()
+    expect(checkInExpediente).not.toHaveBeenCalled()
+    await waitFor(() => expect(within(regionLocalizados()).getByText('111015')).toBeInTheDocument())
   })
 
-  it('archivar desde retorno cierra el ciclo', async () => {
+  it('no_localizado: reintentar + localizar', async () => {
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await user.click(botonEn('EXP-e6', /^archivar$/i))
+    await user.click(checkboxDe('111017'))
 
-    await waitFor(() => expect(archivarCiclo).toHaveBeenCalledWith('c-e6'))
-    await waitFor(() => expect(within(filaDe('EXP-e6')).getByText('Archivado')).toBeInTheDocument())
-  })
-
-  it('reintentar búsqueda vuelve a en_busqueda', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await user.click(botonEn('EXP-e9', /reintentar búsqueda/i))
-
-    await waitFor(() => expect(reintentarBusquedaCiclo).toHaveBeenCalledWith('c-e9'))
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e9')).getByText('En búsqueda')).toBeInTheDocument(),
-    )
-  })
-})
-
-describe('ArchivoPage — no localizado con observación', () => {
-  it('exige observación, la envía y refleja el estado', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await user.click(botonEn('EXP-e2', /^no localizado$/i))
-
-    const confirmar = await screen.findByRole('button', { name: /marcar no localizado/i })
-    expect(confirmar).toBeDisabled()
-
-    await user.type(screen.getByLabelText('Observación'), 'No estaba en la ubicación')
-    await waitFor(() => expect(confirmar).toBeEnabled())
-    await user.click(confirmar)
-
-    await waitFor(() =>
-      expect(noLocalizadoCiclo).toHaveBeenCalledWith('c-e2', {
-        observacion: 'No estaba en la ubicación',
-      }),
-    )
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e2')).getByText('No localizado')).toBeInTheDocument(),
-    )
-  })
-
-  it('cancelar no cambia el estado', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await user.click(botonEn('EXP-e2', /^no localizado$/i))
-    await user.click(await screen.findByRole('button', { name: /cancelar/i }))
-
-    expect(noLocalizadoCiclo).not.toHaveBeenCalled()
-    expect(within(filaDe('EXP-e2')).getByText('En búsqueda')).toBeInTheDocument()
+    await waitFor(() => expect(reintentarBusquedaCiclo).toHaveBeenCalledWith('c-e6'))
+    await waitFor(() => expect(localizarCiclo).toHaveBeenCalledWith('c-e6'))
+    await waitFor(() => expect(within(regionLocalizados()).getByText('111017')).toBeInTheDocument())
   })
 })
 
 describe('ArchivoPage — errores y concurrencia', () => {
-  it('un error no altera el estado anterior', async () => {
-    localizarCiclo.mockRejectedValueOnce(new Error('Transición inválida'))
+  it('si falla el primer paso, no ejecuta el segundo y no marca', async () => {
+    checkInExpediente.mockRejectedValueOnce(Object.assign(new Error('403'), { status: 403 }))
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await user.click(botonEn('EXP-e2', /^localizar$/i))
+    await user.click(checkboxDe('111020'))
 
-    expect(await screen.findByText('No se pudo completar la acción')).toBeInTheDocument()
-    expect(within(filaDe('EXP-e2')).getByText('En búsqueda')).toBeInTheDocument()
+    expect(await screen.findByText('No se pudo localizar el expediente')).toBeInTheDocument()
+    expect(localizarCiclo).not.toHaveBeenCalled()
+    expect(checkboxDe('111020')).not.toBeChecked()
+    expect(within(regionPendientes()).getByText('111020')).toBeInTheDocument()
   })
 
-  it('doble clic no ejecuta dos mutaciones', async () => {
+  it('si falla localizar, el expediente sigue pendiente', async () => {
+    localizarCiclo.mockRejectedValueOnce(Object.assign(new Error('400'), { status: 400 }))
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarJornada()
+
+    await user.click(checkboxDe('111015'))
+
+    expect(await screen.findByText('No se pudo localizar el expediente')).toBeInTheDocument()
+    expect(checkboxDe('111015')).not.toBeChecked()
+    expect(within(regionPendientes()).getByText('111015')).toBeInTheDocument()
+  })
+
+  it('doble clic no ejecuta dos veces la secuencia', async () => {
     let resolver
-    checkInExpediente.mockImplementationOnce(
+    localizarCiclo.mockImplementationOnce(
       () =>
         new Promise((res) => {
           resolver = res
@@ -445,15 +388,27 @@ describe('ArchivoPage — errores y concurrencia', () => {
     renderPagina()
     await esperarJornada()
 
-    const boton = botonEn('EXP-e8', /^check-in$/i)
-    await user.click(boton)
-    await user.click(boton)
+    const casilla = checkboxDe('111015')
+    await user.click(casilla)
+    await user.click(casilla)
 
-    expect(checkInExpediente).toHaveBeenCalledTimes(1)
+    expect(localizarCiclo).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      resolver({ id: 'e8', estadoActual: 'en_busqueda' })
+      resolver({ id: 'e2', estadoActual: 'localizado' })
     })
+  })
+
+  it('un checkbox localizado no ejecuta reversión', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+    await esperarJornada()
+
+    await user.click(checkboxDe('111016'))
+
+    expect(localizarCiclo).not.toHaveBeenCalled()
+    expect(iniciarBusquedaCiclo).not.toHaveBeenCalled()
+    expect(checkboxDe('111016')).toBeChecked()
   })
 })
 
@@ -463,35 +418,28 @@ describe('ArchivoPage — scanner / búsqueda', () => {
     await user.click(screen.getByRole('button', { name: 'Buscar' }))
   }
 
-  it('si el expediente escaneado está sin ciclo, hace check-in una vez sin localizar', async () => {
-    buscarExpedientePorCodigo.mockResolvedValue({
-      expedienteId: 'e8',
-      numeroExpediente: 'EXP-e8',
-    })
+  it('al escanear sin ciclo hace check-in pero NO localiza', async () => {
+    buscarExpedientePorCodigo.mockResolvedValue({ expedienteId: 'e8', numeroExpediente: '111020' })
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await buscar(user, 'EXP-e8')
+    await buscar(user, '111020')
 
     await waitFor(() => expect(checkInExpediente).toHaveBeenCalledTimes(1))
     expect(localizarCiclo).not.toHaveBeenCalled()
     expect(await screen.findByText('Resultado de búsqueda')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(within(filaDe('EXP-e8')).getByText('En búsqueda')).toBeInTheDocument(),
-    )
+    expect(checkboxDe('111020')).not.toBeChecked()
+    expect(within(regionPendientes()).getByText('111020')).toBeInTheDocument()
   })
 
-  it('si el expediente ya tiene ciclo, solo resalta (sin mutaciones)', async () => {
-    buscarExpedientePorCodigo.mockResolvedValue({
-      expedienteId: 'e2',
-      numeroExpediente: 'EXP-e2',
-    })
+  it('si ya tiene ciclo, solo resalta sin mutaciones', async () => {
+    buscarExpedientePorCodigo.mockResolvedValue({ expedienteId: 'e2', numeroExpediente: '111015' })
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await buscar(user, 'EXP-e2')
+    await buscar(user, '111015')
 
     expect(await screen.findByText('Resultado de búsqueda')).toBeInTheDocument()
     expect(checkInExpediente).not.toHaveBeenCalled()
@@ -506,41 +454,17 @@ describe('ArchivoPage — scanner / búsqueda', () => {
     await buscar(user, 'NO-EXISTE')
 
     expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
-    expect(screen.queryByText('Resultado de búsqueda')).not.toBeInTheDocument()
-  })
-
-  it('no busca con código vacío', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await user.click(screen.getByRole('button', { name: 'Buscar' }))
-
-    expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
   })
 })
 
-describe('ArchivoPage — fila sin expediente físico', () => {
-  it('no permite check-in ni operar', async () => {
+describe('ArchivoPage — clasificación Activo/Pasivo', () => {
+  it('muestra Pasivo (111015) y Activo (111016/111017)', async () => {
     renderPagina()
     await esperarJornada()
 
-    const filaSin = within(screen.getByText('Paciente sin expediente').closest('li'))
-    expect(filaSin.getByText(/cita sin expediente físico/i)).toBeInTheDocument()
-    expect(filaSin.queryByRole('button', { name: /^check-in$/i })).not.toBeInTheDocument()
-  })
-})
-
-describe('ArchivoPage — detalle del ciclo', () => {
-  it('abre el detalle y consulta los movimientos del ciclo', async () => {
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await user.click(botonEn('EXP-e2', /ver detalle/i))
-
-    await waitFor(() => expect(obtenerCicloPorCita).toHaveBeenCalledWith(102))
-    expect(await screen.findByText('Detalle del expediente')).toBeInTheDocument()
+    expect(within(filaDe('111015')).getByText('Pasivo')).toBeInTheDocument()
+    expect(within(filaDe('111016')).getByText('Activo')).toBeInTheDocument()
+    expect(within(filaDe('111017')).getByText('Activo')).toBeInTheDocument()
   })
 })
 
@@ -555,7 +479,7 @@ describe('ArchivoPage — estructura y acciones del día', () => {
     expect(screen.getByText('Subespecialidad')).toBeInTheDocument()
   })
 
-  it('consulta el resumen del servidor y muestra el panel', async () => {
+  it('consulta el resumen del servidor', async () => {
     obtenerResumenArchivo.mockResolvedValue({ fecha: null, totalCiclos: 3 })
     const user = userEvent.setup()
     renderPagina()
@@ -569,8 +493,7 @@ describe('ArchivoPage — estructura y acciones del día', () => {
   })
 
   it('descarga el PDF del resumen', async () => {
-    const createObjectURL = vi.fn(() => 'blob:mock')
-    URL.createObjectURL = createObjectURL
+    URL.createObjectURL = vi.fn(() => 'blob:mock')
     URL.revokeObjectURL = vi.fn()
     const user = userEvent.setup()
     renderPagina()
@@ -594,7 +517,6 @@ describe('ArchivoPage — navegación de la estación', () => {
       'href',
       '/archivo',
     )
-    expect(within(nav).getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
   })
 
   it('cerrar sesión navega a /sesion-cerrada', async () => {

@@ -9,9 +9,9 @@ function fila(overrides = {}) {
     expedienteId: 'e1',
     citaId: 101,
     cicloId: 'c1',
-    numeroExpediente: 'EXP-2024-035',
+    numeroExpediente: '111015',
     pacienteNombre: 'María Fernanda López García',
-    estadoActual: 'sin_ciclo',
+    estadoActual: 'en_busqueda',
     horaEstimada: '10:20:00',
     ubicacion: 'Pasillo A · Estante 3',
     subespecialidadNombre: 'Medicina General',
@@ -27,126 +27,92 @@ function renderFila(expediente, props = {}) {
   )
 }
 
-const boton = (nombre) => screen.queryByRole('button', { name: nombre })
+const checkbox = () => screen.getByRole('checkbox')
 
-describe('ListadoCompactoExpediente — información y estado real', () => {
-  it('muestra número, paciente, ubicación, área, hora y estado legible', () => {
-    renderFila(fila({ estadoActual: 'localizado' }))
+describe('ListadoCompactoExpediente — fila de checklist', () => {
+  it('muestra número, paciente, ubicación, área y hora', () => {
+    renderFila(fila())
 
-    expect(screen.getByText('EXP-2024-035')).toBeInTheDocument()
+    expect(screen.getByText('111015')).toBeInTheDocument()
     expect(screen.getByText('María Fernanda López García')).toBeInTheDocument()
     expect(screen.getByText('Pasillo A · Estante 3')).toBeInTheDocument()
     expect(screen.getByText('Medicina General')).toBeInTheDocument()
     expect(screen.getByText('10:20')).toBeInTheDocument()
-    expect(screen.getByText('Localizado')).toBeInTheDocument()
   })
 
-  it('no muestra checkbox reversible', () => {
-    renderFila(fila())
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  it('el checkbox refleja el estado real: pendiente = sin marcar', () => {
+    renderFila(fila({ estadoActual: 'en_busqueda' }))
+
+    expect(checkbox()).not.toBeChecked()
+    expect(checkbox()).toBeEnabled()
+    expect(screen.getByRole('listitem')).toHaveAttribute('data-localizado', 'false')
   })
 
-  it('resalta la fila encontrada por el buscador', () => {
-    renderFila(fila(), { resaltado: true })
+  it('localizado = marcado y read-only (sin reversión)', () => {
+    renderFila(fila({ estadoActual: 'localizado' }))
+
+    expect(checkbox()).toBeChecked()
+    expect(checkbox()).toBeDisabled()
+    expect(screen.getByRole('listitem')).toHaveAttribute('data-localizado', 'true')
+  })
+
+  it('un estado posterior a localizado también aparece marcado', () => {
+    renderFila(fila({ estadoActual: 'entregado' }))
+
+    expect(checkbox()).toBeChecked()
+    expect(checkbox()).toBeDisabled()
+  })
+
+  it('no muestra estados técnicos ni botones de transición', () => {
+    renderFila(fila({ estadoActual: 'en_busqueda' }))
+
+    expect(screen.queryByText(/en búsqueda/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/pendiente de localizar/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Trazabilidad del expediente')).not.toBeInTheDocument()
+  })
+
+  it('notifica el toggle con el expediente al marcar', async () => {
+    const onToggle = vi.fn()
+    const user = userEvent.setup()
+    const expediente = fila({ estadoActual: 'en_busqueda' })
+    renderFila(expediente, { onToggle })
+
+    await user.click(checkbox())
+
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggle).toHaveBeenCalledWith(expediente)
+  })
+
+  it('deshabilita el checkbox y muestra progreso mientras procesa', () => {
+    renderFila(fila({ estadoActual: 'en_busqueda' }), { procesando: true })
+
+    expect(checkbox()).toBeDisabled()
+    expect(screen.getByRole('status', { name: 'Procesando' })).toBeInTheDocument()
+  })
+
+  it('resalta la fila encontrada por el buscador sin marcarla', () => {
+    renderFila(fila({ estadoActual: 'en_busqueda' }), { resaltado: true })
+
     expect(screen.getByRole('listitem')).toHaveAttribute('data-resaltado', 'true')
     expect(screen.getByText('Resultado de búsqueda')).toBeInTheDocument()
-  })
-})
-
-describe('ListadoCompactoExpediente — acciones por estado', () => {
-  it('sin_ciclo muestra Check-in', () => {
-    renderFila(fila({ estadoActual: 'sin_ciclo', cicloId: null }))
-    expect(boton(/^check-in$/i)).toBeInTheDocument()
+    expect(checkbox()).not.toBeChecked()
   })
 
-  it('pendiente_localizar muestra Iniciar búsqueda', () => {
-    renderFila(fila({ estadoActual: 'pendiente_localizar' }))
-    expect(boton(/iniciar búsqueda/i)).toBeInTheDocument()
+  it('clasifica 111015 como Pasivo y 111016/111017 como Activo', () => {
+    renderFila(fila({ numeroExpediente: '111015' }))
+    expect(screen.getByText('Pasivo')).toBeInTheDocument()
+
+    renderFila(fila({ id: 'e2', expedienteId: 'e2', numeroExpediente: '111016' }))
+    renderFila(fila({ id: 'e3', expedienteId: 'e3', numeroExpediente: '111017' }))
+    expect(screen.getAllByText('Activo')).toHaveLength(2)
   })
 
-  it('en_busqueda muestra Localizar y No localizado', () => {
-    renderFila(fila({ estadoActual: 'en_busqueda' }))
-    expect(boton(/^localizar$/i)).toBeInTheDocument()
-    expect(boton(/^no localizado$/i)).toBeInTheDocument()
-  })
+  it('no clasifica números no numéricos', () => {
+    renderFila(fila({ numeroExpediente: '1323-23' }))
 
-  it('no_localizado muestra Reintentar búsqueda', () => {
-    renderFila(fila({ estadoActual: 'no_localizado' }))
-    expect(boton(/reintentar búsqueda/i)).toBeInTheDocument()
-  })
-
-  it('localizado muestra Despachar', () => {
-    renderFila(fila({ estadoActual: 'localizado' }))
-    expect(boton(/^despachar$/i)).toBeInTheDocument()
-  })
-
-  it('en_transito_retorno muestra Archivar', () => {
-    renderFila(fila({ estadoActual: 'en_transito_retorno' }))
-    expect(boton(/^archivar$/i)).toBeInTheDocument()
-  })
-
-  it('en_transito_entrega no ofrece acción de Archivo y muestra el aviso', () => {
-    renderFila(fila({ estadoActual: 'en_transito_entrega' }))
-    expect(screen.getByText(/esperando recepción en coex/i)).toBeInTheDocument()
-  })
-
-  it('entregado no ofrece acción de Archivo', () => {
-    renderFila(fila({ estadoActual: 'entregado' }))
-    expect(screen.getByText('En COEX')).toBeInTheDocument()
-  })
-
-  it('archivado no ofrece acción de Archivo', () => {
-    renderFila(fila({ estadoActual: 'archivado' }))
-    expect(screen.getByText(/ciclo cerrado/i)).toBeInTheDocument()
-  })
-
-  it('nunca muestra acciones de Enfermería', () => {
-    for (const estadoActual of [
-      'sin_ciclo',
-      'pendiente_localizar',
-      'en_busqueda',
-      'no_localizado',
-      'localizado',
-      'en_transito_entrega',
-      'entregado',
-      'en_transito_retorno',
-      'archivado',
-    ]) {
-      const { unmount } = renderFila(fila({ estadoActual }))
-      expect(screen.queryByRole('button', { name: /^entregar$/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /^retornar$/i })).not.toBeInTheDocument()
-      unmount()
-    }
-  })
-
-  it('notifica la acción con su id y la fila', async () => {
-    const onAccion = vi.fn()
-    const user = userEvent.setup()
-    const expediente = fila({ estadoActual: 'pendiente_localizar' })
-    renderFila(expediente, { onAccion })
-
-    await user.click(screen.getByRole('button', { name: /iniciar búsqueda/i }))
-
-    expect(onAccion).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'iniciar_busqueda' }),
-      expediente,
-    )
-  })
-
-  it('deshabilita las acciones mientras procesa', () => {
-    renderFila(fila({ estadoActual: 'en_busqueda' }), { procesando: true })
-    expect(screen.getByRole('button', { name: /^localizar$/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^no localizado$/i })).toBeDisabled()
-  })
-
-  it('permite ver el detalle', async () => {
-    const onVerDetalle = vi.fn()
-    const user = userEvent.setup()
-    const expediente = fila({ estadoActual: 'localizado' })
-    renderFila(expediente, { onVerDetalle })
-
-    await user.click(screen.getByRole('button', { name: /ver detalle/i }))
-    expect(onVerDetalle).toHaveBeenCalledWith(expediente)
+    expect(screen.queryByText('Activo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pasivo')).not.toBeInTheDocument()
   })
 })
 
@@ -159,15 +125,11 @@ describe('ListadoCompactoExpediente — cita sin expediente físico', () => {
     estadoActual: 'sin_ciclo',
   })
 
-  it('avisa y no permite check-in', () => {
+  it('no muestra checkbox operativo y avisa', () => {
     renderFila(sinExpediente)
 
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.getByText(/cita sin expediente físico/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^check-in$/i })).not.toBeInTheDocument()
-  })
-
-  it('no inventa número de expediente', () => {
-    renderFila(sinExpediente)
     expect(screen.getByText('Sin número de expediente')).toBeInTheDocument()
   })
 })

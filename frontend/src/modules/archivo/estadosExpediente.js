@@ -93,6 +93,22 @@ export const ORDEN_ESTADOS = [
   'archivado',
 ]
 
+// UX simplificada del operador: un expediente cuenta como "localizado" si ya
+// alcanzó `localizado` o cualquier estado posterior. No es un estado local: se
+// deriva SIEMPRE de `estadoActual` del backend. Pendiente = sin_ciclo,
+// pendiente_localizar, en_busqueda o no_localizado.
+export const ESTADOS_LOCALIZADOS = new Set([
+  'localizado',
+  'en_transito_entrega',
+  'entregado',
+  'en_transito_retorno',
+  'archivado',
+])
+
+export function esExpedienteLocalizado(estadoActual) {
+  return ESTADOS_LOCALIZADOS.has(estadoActual)
+}
+
 const METADATOS_POR_DEFECTO = {
   etiqueta: 'Estado desconocido',
   descripcion: '',
