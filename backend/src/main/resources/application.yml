@@ -10,6 +10,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Evita N+1 al cargar relaciones lazy (movimientos, paciente, etc.): las agrupa por lotes.
+        default_batch_fetch_size: 50
         jdbc:
           batch_size: 25
 
