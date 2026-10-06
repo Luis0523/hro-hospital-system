@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react'
+import { autenticar } from '@/shared/api/authApi'
 
 // Modo de autenticación: 'mock' (identidad simulada, dev/tests) o 'keycloak'
 // (login real contra Keycloak con formulario propio).
@@ -101,6 +102,15 @@ export function AuthProvider({ children }) {
     setAutenticado(true)
   }, [])
 
+  // Permite que una estación asuma su identidad efectiva (p. ej. rol `archivo`)
+  // de forma aditiva: solo actualiza los campos indicados y conserva el resto
+  // del usuario. No sustituye la autenticación (mock/Keycloak); el efecto de
+  // persistencia de arriba guarda el resultado en `hro_usuario`, que `client.js`
+  // usa para las cabeceras de identidad.
+  const establecerIdentidad = useCallback((parcial) => {
+    setUsuario((actual) => ({ ...actual, ...parcial }))
+  }, [])
+
   /** Login real (modo Keycloak): canjea credenciales y guarda token + identidad. */
   const iniciarSesionConCredenciales = useCallback(async (username, password) => {
     const { token: nuevoToken, usuario: identidad } = await autenticar({ username, password })
@@ -125,6 +135,7 @@ export function AuthProvider({ children }) {
     cerrarSesion,
     iniciarSesion,
     iniciarSesionConCredenciales,
+    establecerIdentidad,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

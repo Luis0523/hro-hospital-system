@@ -3,6 +3,7 @@ import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
+import MesaCoexPage from '@/modules/coex/pages/MesaCoexPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
@@ -57,21 +58,23 @@ export default function AppRouter() {
       <Route element={<RutaPrivada />}>
         <Route path="/" element={<InicioPorRol />} />
 
-      <Route path="/coex" element={<MesaCoexPage />} />
+        <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
 
-      {/* Mismo criterio de acceso general que /archivo: sin guard propio ni login. */}
-      <Route path="/libro-citas" element={<LibroCitasPage />} />
+        <Route path="/coex" element={<MesaCoexPage />} />
 
-      <Route path="/administracion" element={<AdministracionLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="usuarios" element={<UsuariosPage />} />
-        <Route path="clinicas" element={<ClinicasPage />} />
-        <Route path="cupos" element={<CuposPage />} />
-        <Route path="calendario" element={<CalendarioPage />} />
-        <Route path="reportes" element={<ReportesPage />} />
-        <Route path="auditoria" element={<AuditoriaPage />} />
-        <Route path="*" element={<Navigate to="/administracion" replace />} />
-      </Route>
+        {/* Mismo criterio de acceso general que /archivo: sin guard propio ni login. */}
+        <Route path="/libro-citas" element={<LibroCitasPage />} />
+
+        <Route element={<RutaPorRol area="enfermeria" />}>
+          <Route
+            path="/enfermeria"
+            element={
+              <RequiereEstacion>
+                <EnfermeriaPage />
+              </RequiereEstacion>
+            }
+          />
+        </Route>
 
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
