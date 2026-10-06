@@ -42,7 +42,7 @@ const USE_MOCK =
   import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
 export default function EnfermeriaPage() {
-  const { usuario, cerrarSesion } = useAuth()
+  const { usuario, cerrarSesion, rutaLogin } = useAuth()
   const { estacion } = useEstacion()
   const { mostrarToast } = useToast()
   const navigate = useNavigate()
@@ -428,7 +428,7 @@ export default function EnfermeriaPage() {
     setPerfilAbierto(false)
     cerrarSesion()
     mostrarToast({ tone: 'info', title: 'Sesión cerrada', message: 'Puede volver a ingresar.' })
-    navigate('/sesion-cerrada')
+    navigate(rutaLogin)
   }
 
   function abrirAgenda(paciente = null) {

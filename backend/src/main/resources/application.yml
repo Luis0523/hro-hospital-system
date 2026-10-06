@@ -10,6 +10,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Evita N+1 al cargar relaciones lazy (movimientos, paciente, etc.): las agrupa por lotes.
+        default_batch_fetch_size: 50
         jdbc:
           batch_size: 25
 
@@ -40,6 +42,14 @@ hro:
       default-id-externo: ${HRO_AUTH_MOCK_ID:admin-hro-01}
       default-rol: ${HRO_AUTH_MOCK_ROL:administrador}
       default-nombre: ${HRO_AUTH_MOCK_NOMBRE:Usuario de Pruebas HRO}
+
+  # Integración con el API externo del hospital (FHIR Patient)
+  integracion:
+    expedientes:
+      url: ${API_HRO_URL_EXPEDIENTES:}
+      username: ${USERNAME_API_HRO:}
+      password: ${PASSWORD_API_HRO:}
+      timeout-ms: ${API_HRO_TIMEOUT_MS:5000}
 
   # Parámetros provisionales v1 para cálculo de agenda y turnos (HRO)
   agenda:

@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * Valores válidos de {@code hro.auth.mode}:
  * <ul>
  *   <li>{@code mock}     - simulación local con cabeceras (por defecto).</li>
+ *   <li>{@code keycloak} - validación de JWT emitidos por Keycloak (realm de ejemplo).</li>
  *   <li>{@code external} - integración con el servicio real del hospital (stub, pendiente).</li>
  * </ul>
  */
@@ -23,11 +24,27 @@ import org.springframework.context.annotation.Configuration;
 public class AuthProperties {
 
     /**
-     * Modo de autenticación: "mock" (simulado) o "external" (servicio real del hospital).
+     * Modo de autenticación: "mock" (simulado), "keycloak" (JWT) o "external" (servicio real).
      */
     private String mode = "mock";
 
     private Mock mock = new Mock();
+
+    private Keycloak keycloak = new Keycloak();
+
+    @Data
+    public static class Keycloak {
+        /**
+         * URI del emisor (realm) de Keycloak. Ej.: {@code http://localhost:8080/realms/hro}.
+         * Si se define, Spring Security crea el {@code JwtDecoder} con descubrimiento OIDC.
+         */
+        private String issuerUri;
+
+        /**
+         * Rol a asignar al usuario JIT cuando el token no trae ningún rol reconocido.
+         */
+        private String rolPorDefecto = "enfermeria";
+    }
 
     @Data
     public static class Mock {

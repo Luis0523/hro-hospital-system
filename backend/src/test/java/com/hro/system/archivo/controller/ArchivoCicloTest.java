@@ -46,6 +46,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -104,6 +105,7 @@ class ArchivoCicloTest {
     private UsuarioReferencia usuario;
     private Paciente paciente;
     private Cita cita;
+    private Subespecialidad subespecialidad;
 
     @BeforeEach
     void setUp() {
@@ -140,7 +142,7 @@ class ArchivoCicloTest {
                 .activo(true)
                 .build());
 
-        Subespecialidad subespecialidad = subespecialidadRepository.save(Subespecialidad.builder()
+        subespecialidad = subespecialidadRepository.save(Subespecialidad.builder()
                 .especialidad(especialidad)
                 .nombre("Medicina General " + suffix)
                 .activo(true)
@@ -237,6 +239,17 @@ class ArchivoCicloTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.estadoActual").value(estadoEsperado));
+    }
+
+    private UUID checkIn(UUID expedienteId, Long citaId) throws Exception {
+        String body = (citaId != null) ? "{\"citaId\":" + citaId + "}" : "{}";
+        String resp = mockMvc.perform(auth(post("/expedientes/" + expedienteId + "/check-in"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andReturn().getResponse().getContentAsString();
+        return UUID.fromString(objectMapper.readTree(resp).get("data").get("id").asText());
     }
 
     @Test
@@ -342,5 +355,127 @@ class ArchivoCicloTest {
         Expediente expediente = expedienteRepository.findById(expedienteId).orElseThrow();
         assertEquals(paciente.getNumeroExpediente(), expediente.getNumeroExpediente());
         assertEquals(ubicacionId, expediente.getUbicacionBase().getId());
+    }
+
+    @Test
+    @DisplayName("Check-in crea el ciclo de la cita indicada y lo deja en búsqueda")
+    void testCheckInCreaCicloYEnBusqueda() throws Exception {
+        Long ubicacionId = crearUbicacion("G", "3", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+
+        ExpedienteCiclo ciclo = expedienteCicloRepository.findById(cicloId).orElseThrow();
+        assertEquals("en_busqueda", ciclo.getEstadoActual());
+        assertEquals(2, expedienteMovimientoRepository
+                .findByExpedienteCicloIdOrderByFechaMovimientoAscIdAsc(cicloId).size(),
+                "El check-in debe registrar la creación y el paso a en_busqueda");
+    }
+
+    @Test
+    @DisplayName("Check-in es idempotente: no duplica el ciclo de la misma cita")
+    void testCheckInIdempotente() throws Exception {
+        Long ubicacionId = crearUbicacion("H", "2", "2");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID primero = checkIn(expedienteId, cita.getId());
+        UUID segundo = checkIn(expedienteId, cita.getId());
+
+        assertEquals(primero, segundo);
+        assertEquals(1, expedienteCicloRepository.count(), "No debe crearse un ciclo duplicado");
+    }
+
+    @Test
+    @DisplayName("Check-in sin cita de hoy crea el ciclo sin cita (Fase 1, condicional)")
+    void testCheckInSinCitaDeHoyCreaCiclo() throws Exception {
+        Long ubicacionId = crearUbicacion("I", "1", "9");
+        UUID expedienteId = crearExpediente(ubicacionId);
+
+        UUID cicloId = checkIn(expedienteId, null);
+
+        ExpedienteCiclo ciclo = expedienteCicloRepository.findById(cicloId).orElseThrow();
+        assertEquals("en_busqueda", ciclo.getEstadoActual());
+        assertNull(ciclo.getCita(), "En Fase 1 el ciclo puede quedar sin cita asociada");
+    }
+
+    @Test
+    @DisplayName("Un rol no autorizado no puede ejecutar una transición de archivo (403)")
+    void testTransicionRechazadaPorRol() throws Exception {
+        Long ubicacionId = crearUbicacion("J", "4", "4");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+
+        UsuarioReferencia enfermeria = usuarioReferenciaRepository.save(UsuarioReferencia.builder()
+                .idExterno("enf-" + UUID.randomUUID().toString().substring(0, 5))
+                .nombreMostrar("Enfermería Test")
+                .rolPrincipal("enfermeria")
+                .activo(true)
+                .build());
+
+        mockMvc.perform(post("/expediente-ciclos/" + cicloId + "/localizar")
+                        .header("X-Usuario-Id", enfermeria.getIdExterno())
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", enfermeria.getNombreMostrar())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("La cola de ciclos se filtra por fecha (PostgreSQL)")
+    void testColaConFecha() throws Exception {
+        Long ubicacionId = crearUbicacion("M", "1", "2");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        checkIn(expedienteId, cita.getId());
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("fecha", "2030-01-01")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("La cola de ciclos se filtra por área (subespecialidad)")
+    void testColaFiltradaPorArea() throws Exception {
+        Long ubicacionId = crearUbicacion("K", "1", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        checkIn(expedienteId, cita.getId());
+
+        mockMvc.perform(auth(get("/expediente-ciclos")
+                        .param("subespecialidadId", subespecialidad.getId().toString())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(auth(get("/expediente-ciclos").param("subespecialidadId", "999999")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("Salida de expedientes: listado y PDF de la jornada")
+    void testSalidaExpedientes() throws Exception {
+        Long ubicacionId = crearUbicacion("L", "2", "1");
+        UUID expedienteId = crearExpediente(ubicacionId);
+        UUID cicloId = checkIn(expedienteId, cita.getId());
+        transicion(cicloId, "localizar", "{\"observacion\":\"Listo para salir\"}", "localizado");
+
+        mockMvc.perform(auth(get("/archivo/salida").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items[0].numeroExpediente").value(paciente.getNumeroExpediente()));
+
+        byte[] pdf = mockMvc.perform(auth(get("/archivo/salida/pdf").param("fecha", "2026-09-14")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertTrue(pdf.length > 500, "El PDF debe tener contenido");
+
+        mockMvc.perform(auth(get("/archivo/salida").param("fecha", "2030-01-01")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(0));
     }
 }

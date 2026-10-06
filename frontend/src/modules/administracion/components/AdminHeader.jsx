@@ -1,8 +1,15 @@
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 
 export default function AdminHeader({ onAbrirMenu, menuAbierto = false }) {
-  const { usuario } = useAuth()
+  const { usuario, cerrarSesion, rutaLogin } = useAuth()
+  const navigate = useNavigate()
+
+  function salir() {
+    cerrarSesion()
+    navigate(rutaLogin)
+  }
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6">
@@ -46,6 +53,15 @@ export default function AdminHeader({ onAbrirMenu, menuAbierto = false }) {
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-hro-blue">
           <Icon name="person" className="text-[20px]" />
         </span>
+        <button
+          type="button"
+          onClick={salir}
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 transition hover:bg-error-container hover:text-on-error-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+        >
+          <Icon name="logout" className="text-[20px]" />
+        </button>
       </div>
     </header>
   )

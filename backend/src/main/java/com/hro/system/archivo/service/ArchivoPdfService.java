@@ -3,6 +3,8 @@ package com.hro.system.archivo.service;
 import com.hro.system.archivo.entity.ActaRecepcion;
 import com.hro.system.archivo.entity.ActaRecepcionDetalle;
 import com.hro.system.archivo.dto.ResumenArchivoDTO;
+import com.hro.system.archivo.dto.SalidaExpedienteDTO;
+import com.hro.system.archivo.dto.SalidaExpedientesDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -118,6 +120,69 @@ public class ArchivoPdfService {
             log.error("Error generando PDF del resumen de archivo", e);
             throw new IllegalStateException("No se pudo generar el PDF del resumen", e);
         }
+    }
+
+    /**
+     * Documento de control de salida de expedientes (una sola hoja): columnas ENVIADO/RECIBIDO,
+     * espacio para logos y firmas. Diseño general, sin formato institucional previo.
+     */
+    public byte[] generarTraspasoPdf(SalidaExpedientesDTO salida, String usuarioGenerador) {
+        PDFont bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        PDFont regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+
+        try (PDDocument doc = new PDDocument()) {
+            Cursor cursor = nuevoCursor(doc);
+
+            cursor.escribir(bold, 10, "[ LOGO HRO ]                                                        [ LOGO ]");
+            cursor.espacio(4);
+            cursor.escribir(bold, 15, "CONTROL DE SALIDA DE EXPEDIENTES");
+            cursor.escribir(regular, 10, "Archivo / Registro Medico  ->  Consulta Externa (COEX)");
+            cursor.espacio(4);
+            cursor.escribir(regular, 11, "Fecha: " + nvl(salida.getFecha()));
+            cursor.escribir(regular, 11, "Total de expedientes: " + (salida.getTotal() != null ? salida.getTotal() : 0));
+            cursor.escribir(regular, 11, "Generado por: " + (usuarioGenerador != null ? usuarioGenerador : "-")
+                    + " - " + OffsetDateTime.now());
+            cursor.espacio(8);
+
+            cursor.escribir(bold, 9, String.format("%-4s %-16s %-28s %-20s %-6s %-9s %-9s",
+                    "#", "Expediente", "Paciente", "Area", "Hora", "ENVIADO", "RECIBIDO"));
+            cursor.escribir(regular, 9,
+                    "----------------------------------------------------------------------------------------------------");
+
+            int i = 1;
+            for (SalidaExpedienteDTO item : salida.getItems()) {
+                String linea = String.format("%-4d %-16s %-28s %-20s %-6s %-9s %-9s",
+                        i++,
+                        recortar(nvl(item.getNumeroExpediente()), 16),
+                        recortar(item.getPacienteNombre(), 28),
+                        recortar(nvl(item.getSubespecialidadNombre()), 20),
+                        recortar(horaCorta(item.getHoraEstimada()), 6),
+                        "[ ]",
+                        "[ ]");
+                cursor.escribir(regular, 9, linea);
+            }
+
+            cursor.espacio(30);
+            cursor.escribir(regular, 10, "_______________________________          _______________________________");
+            cursor.escribir(regular, 10, "Entrega - Archivo                          Recibe - COEX / Enfermeria");
+            cursor.espacio(6);
+            cursor.escribir(regular, 9, "Nombre y firma                             Nombre y firma");
+
+            cursor.cerrar();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            doc.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            log.error("Error generando PDF de salida de expedientes", e);
+            throw new IllegalStateException("No se pudo generar el PDF de salida de expedientes", e);
+        }
+    }
+
+    private static String horaCorta(String hora) {
+        if (hora == null || hora.isBlank()) {
+            return "-";
+        }
+        return hora.length() > 5 ? hora.substring(0, 5) : hora;
     }
 
     private void escribirIndicador(Cursor cursor, PDFont font, String etiqueta, long valor) {
