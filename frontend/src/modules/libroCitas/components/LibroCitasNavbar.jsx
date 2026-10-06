@@ -15,14 +15,14 @@ function claseEnlace({ isActive }) {
 }
 
 export default function LibroCitasNavbar() {
-  const { cerrarSesion } = useAuth()
+  const { cerrarSesion, rutaLogin } = useAuth()
   const navigate = useNavigate()
 
-  // Reutiliza el mecanismo de sesión existente (AuthContext) y la ruta pública
-  // /sesion-cerrada, igual que las estaciones de Archivo y Enfermería.
+  // Cierra sesión y va al destino correcto según el modo:
+  // /login (keycloak) o /sesion-cerrada (mock).
   function manejarCierreSesion() {
     cerrarSesion()
-    navigate('/sesion-cerrada')
+    navigate(rutaLogin)
   }
 
   return (
