@@ -5,11 +5,16 @@ import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 
 export default function SesionCerradaPage() {
-  const { iniciarSesion } = useAuth()
+  const { iniciarSesion, modoAuth } = useAuth()
   const { estacion } = useEstacion()
   const navigate = useNavigate()
 
   function volverAEntrar() {
+    // En modo Keycloak se vuelve al login real; no se crea una sesión simulada.
+    if (modoAuth === 'keycloak') {
+      navigate('/login')
+      return
+    }
     iniciarSesion()
     navigate(estacion ? '/enfermeria' : '/seleccion-estacion')
   }

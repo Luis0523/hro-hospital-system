@@ -1,5 +1,6 @@
 import AppRouter from '@/router/AppRouter.jsx'
 import ErrorBoundary from '@/shared/components/ErrorBoundary.jsx'
+import { AccesoProvider } from '@/shared/context/AccesoContext.jsx'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
@@ -10,11 +11,13 @@ export default function App() {
     <ThemeProvider>
       <ErrorBoundary>
         <AuthProvider>
-          <EstacionProvider>
-            <ToastProvider>
-              <AppRouter />
-            </ToastProvider>
-          </EstacionProvider>
+          <AccesoProvider>
+            <EstacionProvider>
+              <ToastProvider>
+                <AppRouter />
+              </ToastProvider>
+            </EstacionProvider>
+          </AccesoProvider>
         </AuthProvider>
       </ErrorBoundary>
     </ThemeProvider>

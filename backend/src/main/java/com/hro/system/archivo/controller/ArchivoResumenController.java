@@ -1,6 +1,7 @@
 package com.hro.system.archivo.controller;
 
 import com.hro.system.archivo.dto.ResumenArchivoDTO;
+import com.hro.system.archivo.dto.SalidaExpedientesDTO;
 import com.hro.system.archivo.service.ArchivoResumenService;
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.auth.dto.IdentidadUsuario;
@@ -45,6 +46,27 @@ public class ArchivoResumenController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"resumen-archivo.pdf\"")
+                .body(pdf);
+    }
+
+    @GetMapping("/salida")
+    @Operation(summary = "Expedientes que salen del Archivo",
+            description = "Listado de expedientes de una fecha en estado localizado o en tránsito de entrega. Fecha por defecto: hoy.")
+    public ResponseEntity<ApiResponse<SalidaExpedientesDTO>> salida(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(archivoResumenService.obtenerSalida(fecha), "Salida de expedientes obtenida"));
+    }
+
+    @GetMapping("/salida/pdf")
+    @Operation(summary = "Descargar el documento de salida de expedientes (PDF)",
+            description = "Hoja de control con columnas ENVIADO/RECIBIDO, espacio para logos y firmas.")
+    public ResponseEntity<byte[]> salidaPdf(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        String usuario = UsuarioContexto.actual().map(IdentidadUsuario::nombreMostrar).orElse("-");
+        byte[] pdf = archivoResumenService.generarSalidaPdf(fecha, usuario);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"salida-expedientes.pdf\"")
                 .body(pdf);
     }
 }

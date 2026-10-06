@@ -10,8 +10,11 @@ import com.hro.system.archivo.repository.ExpedienteMovimientoRepository;
 import com.hro.system.archivo.repository.ExpedienteRepository;
 import com.hro.system.archivo.repository.UbicacionArchivoRepository;
 import com.hro.system.auth.UsuarioContexto;
+import com.hro.system.auth.dto.IdentidadUsuario;
 import com.hro.system.cita.entity.Cita;
 import com.hro.system.cita.repository.CitaRepository;
+import com.hro.system.estacion.context.EstacionContexto;
+import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
@@ -24,12 +27,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +68,27 @@ public class ArchivoService {
     private static final String ACCION_ARCHIVAR = "archivar";
     private static final String ACCION_NO_LOCALIZADO = "no-localizado";
     private static final String ACCION_REINTENTAR_BUSQUEDA = "reintentar-busqueda";
+    private static final String ACCION_CHECK_IN = "check-in";
+
+    /**
+     * Roles autorizados por transición del ciclo. El operador de archivo gobierna la
+     * búsqueda y el despacho; la estación de enfermería gobierna la recepción y la
+     * devolución. El administrador puede ejecutar cualquiera. Se conserva {@code archivo}
+     * en la entrega/retorno para no romper el flujo operativo ya existente.
+     */
+    private static final Set<String> ROLES_ARCHIVO = Set.of("archivo", "administrador");
+    private static final Set<String> ROLES_ENTREGA = Set.of("enfermeria", "archivo", "administrador");
+
+    private static final Map<String, Set<String>> ROLES_POR_ACCION = Map.ofEntries(
+            Map.entry(ACCION_INICIAR_BUSQUEDA, ROLES_ARCHIVO),
+            Map.entry(ACCION_LOCALIZAR, ROLES_ARCHIVO),
+            Map.entry(ACCION_DESPACHAR, ROLES_ARCHIVO),
+            Map.entry(ACCION_ARCHIVAR, ROLES_ARCHIVO),
+            Map.entry(ACCION_NO_LOCALIZADO, ROLES_ARCHIVO),
+            Map.entry(ACCION_REINTENTAR_BUSQUEDA, ROLES_ARCHIVO),
+            Map.entry(ACCION_CHECK_IN, ROLES_ARCHIVO),
+            Map.entry(ACCION_ENTREGAR, ROLES_ENTREGA),
+            Map.entry(ACCION_RETORNAR, ROLES_ENTREGA));
 
     private static final Map<String, String> ESTADO_ORIGEN = Map.of(
             ACCION_INICIAR_BUSQUEDA, PENDIENTE_LOCALIZAR,
@@ -89,6 +115,7 @@ public class ArchivoService {
     private final PacienteRepository pacienteRepository;
     private final CitaRepository citaRepository;
     private final UsuarioReferenciaRepository usuarioReferenciaRepository;
+    private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
 
     // ------------------------------------------------------------------
     // Catálogo de ubicaciones
@@ -304,6 +331,77 @@ public class ArchivoService {
         return mapCiclo(ciclo);
     }
 
+    /**
+     * Check-in de un expediente físico: inicia el tracking del día.
+     * <p>
+     * Resuelve la cita (la indicada o la activa de hoy del paciente), crea el ciclo si no
+     * existe y lo deja en {@code en_busqueda}. Es idempotente: si la cita ya tiene ciclo,
+     * se devuelve sin duplicarlo.
+     */
+    @Transactional
+    public ExpedienteCicloResponseDTO checkIn(UUID expedienteId, CheckInExpedienteRequestDTO dto) {
+        Expediente expediente = buscarExpediente(expedienteId);
+        UsuarioReferencia usuario = usuarioActual();
+        validarRolParaAccion(ACCION_CHECK_IN);
+
+        Cita cita = resolverCitaParaCheckIn(expediente, dto);
+
+        Optional<ExpedienteCiclo> existente = (cita != null)
+                ? expedienteCicloRepository.findByCitaId(cita.getId())
+                : expedienteCicloRepository.buscarCiclosSinCitaActivos(expediente.getId()).stream().findFirst();
+        if (existente.isPresent()) {
+            return mapCiclo(existente.get());
+        }
+
+        ExpedienteCiclo ciclo = expedienteCicloRepository.save(ExpedienteCiclo.builder()
+                .expediente(expediente)
+                .cita(cita)
+                .estadoActual(PENDIENTE_LOCALIZAR)
+                .version(0)
+                .creadoEn(OffsetDateTime.now())
+                .actualizadoEn(OffsetDateTime.now())
+                .build());
+
+        String referenciaCita = (cita != null) ? "cita #" + cita.getId() : "sin cita asociada (Fase 1)";
+        registrarMovimiento(ciclo, null, PENDIENTE_LOCALIZAR, null, null, usuario,
+                "Check-in de expediente para la " + referenciaCita);
+
+        ciclo.setEstadoActual(EN_BUSQUEDA);
+        ciclo.setActualizadoEn(OffsetDateTime.now());
+        ExpedienteCiclo actualizado = expedienteCicloRepository.saveAndFlush(ciclo);
+
+        registrarMovimiento(actualizado, PENDIENTE_LOCALIZAR, EN_BUSQUEDA,
+                expediente.getUbicacionBase(), null, usuario,
+                dto != null ? dto.getObservacion() : null);
+
+        log.info("Check-in del expediente {} ({}) -> {}", expediente.getId(), referenciaCita, EN_BUSQUEDA);
+        return mapCiclo(actualizado);
+    }
+
+    /**
+     * Resuelve la cita a asociar al check-in de forma <b>condicional</b>.
+     * <p>
+     * Fase 1: todavía no se valida la existencia de cita. Si se indica {@code citaId}, se usa;
+     * si no, se intenta la cita activa de hoy del paciente; si no hay ninguna, se devuelve
+     * {@code null} y el ciclo se crea sin cita. La obligatoriedad se habilitará en una fase
+     * posterior.
+     */
+    private Cita resolverCitaParaCheckIn(Expediente expediente, CheckInExpedienteRequestDTO dto) {
+        if (dto != null && dto.getCitaId() != null) {
+            Cita cita = citaRepository.findById(dto.getCitaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", dto.getCitaId()));
+            if (!cita.getPaciente().getId().equals(expediente.getPaciente().getId())) {
+                throw new BusinessException("La cita indicada no pertenece al paciente del expediente");
+            }
+            return cita;
+        }
+
+        return citaRepository.buscarCitasDePacienteEnFecha(expediente.getPaciente().getId(), LocalDate.now())
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public ExpedienteCicloResponseDTO obtenerCiclo(UUID id) {
         return mapCiclo(buscarCiclo(id));
@@ -325,11 +423,41 @@ public class ArchivoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExpedienteCicloResponseDTO> listarCola(String estado, LocalDate fecha) {
+    public List<ExpedienteCicloResponseDTO> listarCola(String estado, LocalDate fecha, Long subespecialidadId) {
         String estadoNormalizado = (estado != null && !estado.isBlank()) ? estado.trim() : null;
-        return expedienteCicloRepository.buscarCola(estadoNormalizado, fecha).stream()
+        Collection<Long> areas = resolverAreas(subespecialidadId);
+        boolean conFecha = fecha != null;
+
+        List<ExpedienteCiclo> ciclos;
+        if (areas.isEmpty()) {
+            ciclos = conFecha
+                    ? expedienteCicloRepository.buscarColaConFecha(estadoNormalizado, fecha)
+                    : expedienteCicloRepository.buscarColaSinFecha(estadoNormalizado);
+        } else {
+            ciclos = conFecha
+                    ? expedienteCicloRepository.buscarColaPorAreaConFecha(estadoNormalizado, fecha, areas)
+                    : expedienteCicloRepository.buscarColaPorAreaSinFecha(estadoNormalizado, areas);
+        }
+
+        return ciclos.stream()
                 .map(this::mapCiclo)
                 .toList();
+    }
+
+    /**
+     * Áreas (subespecialidades) por las que filtrar la cola: si se indica una explícita se usa
+     * esa; si no, se toman las subespecialidades activas de la estación de la sesión
+     * ({@code X-Estacion-Id}). Sin área ni estación no se filtra.
+     */
+    private Collection<Long> resolverAreas(Long subespecialidadId) {
+        if (subespecialidadId != null) {
+            return List.of(subespecialidadId);
+        }
+        return EstacionContexto.idActual()
+                .map(estacionId -> estacionSubespecialidadRepository.findByEstacionIdAndActivoTrue(estacionId).stream()
+                        .map(estacionSub -> estacionSub.getSubespecialidad().getId())
+                        .toList())
+                .orElseGet(List::of);
     }
 
     // ------------------------------------------------------------------
@@ -379,6 +507,7 @@ public class ArchivoService {
     private ExpedienteCicloResponseDTO transicionar(UUID cicloId, String accion, TransicionCicloRequestDTO dto) {
         ExpedienteCiclo ciclo = buscarCiclo(cicloId);
         UsuarioReferencia usuario = usuarioActual();
+        validarRolParaAccion(accion);
 
         String estadoAnterior = ciclo.getEstadoActual();
         String nuevoEstado;
@@ -448,6 +577,23 @@ public class ArchivoService {
         Long usuarioId = UsuarioContexto.idActual();
         return usuarioReferenciaRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("UsuarioReferencia", "id", usuarioId));
+    }
+
+    /**
+     * Valida que el rol del usuario autenticado (resuelto desde el token/cabecera en el
+     * contexto de la petición) esté autorizado para la acción solicitada. Los roles no
+     * se leen de la base. Las acciones sin entrada en {@link #ROLES_POR_ACCION} no se restringen.
+     */
+    private void validarRolParaAccion(String accion) {
+        Set<String> permitidos = ROLES_POR_ACCION.get(accion);
+        if (permitidos == null) {
+            return;
+        }
+        String rol = UsuarioContexto.actual().map(IdentidadUsuario::rolPrincipal).orElse(null);
+        if (rol == null || !permitidos.contains(rol)) {
+            throw new AccessDeniedException(
+                    "El rol '" + rol + "' no está autorizado para ejecutar la acción '" + accion + "'");
+        }
     }
 
     private void registrarMovimiento(ExpedienteCiclo ciclo, String estadoAnterior, String estadoNuevo,
@@ -522,7 +668,7 @@ public class ArchivoService {
                         .apellidos(paciente.getApellidos())
                         .dpi(paciente.getDpi())
                         .build())
-                .citaId(ciclo.getCita().getId())
+                .citaId(ciclo.getCita() != null ? ciclo.getCita().getId() : null)
                 .estadoActual(ciclo.getEstadoActual())
                 .version(ciclo.getVersion())
                 .creadoEn(ciclo.getCreadoEn())

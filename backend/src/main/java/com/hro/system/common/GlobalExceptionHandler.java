@@ -44,6 +44,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("ACCESO_DENEGADO", "No tiene permisos para realizar esta operación."));
     }
 
+    @ExceptionHandler(com.hro.system.integracion.exception.IntegracionHroException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIntegracion(
+            com.hro.system.integracion.exception.IntegracionHroException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.error("INTEGRACION_HRO", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();

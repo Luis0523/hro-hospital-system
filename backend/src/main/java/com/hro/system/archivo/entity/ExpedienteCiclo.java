@@ -29,7 +29,7 @@ public class ExpedienteCiclo {
     private Expediente expediente;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cita_id", nullable = false, unique = true)
+    @JoinColumn(name = "cita_id", nullable = true, unique = true)
     private Cita cita;
 
     @Column(name = "estado_actual", nullable = false, length = 25)

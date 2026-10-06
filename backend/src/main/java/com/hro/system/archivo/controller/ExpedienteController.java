@@ -1,6 +1,8 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.dto.CheckInExpedienteRequestDTO;
 import com.hro.system.archivo.dto.CrearExpedienteRequestDTO;
+import com.hro.system.archivo.dto.ExpedienteCicloResponseDTO;
 import com.hro.system.archivo.dto.ExpedienteJornadaDTO;
 import com.hro.system.archivo.dto.ExpedienteResponseDTO;
 import com.hro.system.archivo.dto.ReubicarExpedienteRequestDTO;
@@ -78,6 +80,16 @@ public class ExpedienteController {
         ExpedienteResponseDTO response = archivoService.crearExpediente(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Expediente creado exitosamente"));
+    }
+
+    @PostMapping("/{id}/check-in")
+    @Operation(summary = "Check-in de expediente",
+            description = "Inicia el tracking del expediente: crea el ciclo de la cita de hoy (o la indicada) y lo deja en 'en_busqueda'. Idempotente: si la cita ya tiene ciclo, lo devuelve.")
+    public ResponseEntity<ApiResponse<ExpedienteCicloResponseDTO>> checkIn(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CheckInExpedienteRequestDTO dto) {
+        ExpedienteCicloResponseDTO response = archivoService.checkIn(id, dto);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Check-in de expediente realizado exitosamente"));
     }
 
     @PatchMapping("/{id}/ubicacion-base")
