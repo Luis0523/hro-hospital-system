@@ -1,19 +1,48 @@
-import { useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
 import { useCarnetsArchivo } from '../hooks/useCarnetsArchivo'
 import ModalObservacion from './ModalObservacion.jsx'
 
-const COLORES_ESTADO = {
-  registrado: 'bg-amber-100 text-amber-800',
-  encontrado: 'bg-emerald-100 text-emerald-800',
-  no_localizado: 'bg-red-100 text-red-700',
-  despachado: 'bg-blue-100 text-blue-800',
-  recibido_estacion: 'bg-cyan-100 text-cyan-800',
-  devuelto_estacion: 'bg-violet-100 text-violet-800',
-  recibido_archivo: 'bg-emerald-600 text-white',
+// Orden lineal del circuito. `no_localizado` es una rama, no entra en el orden.
+const ORDEN = {
+  registrado: 0,
+  encontrado: 1,
+  despachado: 2,
+  recibido_estacion: 3,
+  devuelto_estacion: 4,
+  recibido_archivo: 5,
 }
+
+// Estado siguiente del circuito (para saber cuál es el checkbox accionable).
+const SIGUIENTE = {
+  registrado: 'encontrado',
+  no_localizado: 'encontrado',
+  encontrado: 'despachado',
+  despachado: 'recibido_estacion',
+  recibido_estacion: 'devuelto_estacion',
+  devuelto_estacion: 'recibido_archivo',
+}
+
+// Estados que ejecuta ARCHIVO en esta vista (el resto son de enfermería: solo lectura).
+const ACCION_ARCHIVO = new Set(['encontrado', 'despachado', 'recibido_archivo'])
+
+const COLUMNAS_ESTADO = [
+  { key: 'encontrado', label: 'Encontré' },
+  { key: 'despachado', label: 'Despachado' },
+  { key: 'recibido_estacion', label: 'Recibido (enf.)' },
+  { key: 'devuelto_estacion', label: 'Devuelto (enf.)' },
+  { key: 'recibido_archivo', label: 'Recibido (archivo)' },
+]
+
+const ESTADOS_ENCONTRADOS = new Set([
+  'encontrado',
+  'despachado',
+  'recibido_estacion',
+  'devuelto_estacion',
+  'recibido_archivo',
+])
 
 function horaDe(instante) {
   if (!instante) return ''
@@ -22,18 +51,6 @@ function horaDe(instante) {
     minute: '2-digit',
     hour12: false,
   })
-}
-
-function EtiquetaEstado({ estado }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-label-sm font-semibold ${
-        COLORES_ESTADO[estado] ?? 'bg-surface-container text-on-surface-variant'
-      }`}
-    >
-      {ETIQUETAS_ESTADO_CARNET[estado] ?? estado}
-    </span>
-  )
 }
 
 function Historial({ movimientos }) {
@@ -47,9 +64,7 @@ function Historial({ movimientos }) {
           <span className="font-semibold text-on-surface">
             {ETIQUETAS_ESTADO_CARNET[m.estadoNuevo] ?? m.estadoNuevo}
           </span>
-          {' · '}
-          {m.usuarioNombre ?? 'Usuario'}
-          {' · '}
+          {` · ${m.usuarioNombre ?? 'Usuario'} · `}
           <span className="font-mono">{horaDe(m.fechaMovimiento)}</span>
           {m.observacion ? ` · ${m.observacion}` : ''}
         </li>
@@ -58,19 +73,33 @@ function Historial({ movimientos }) {
   )
 }
 
-// Sección de seguimiento de carnets del día, integrada en la Estación de Archivo.
-// Mantiene el diseño existente y se actualiza en tiempo real (WebSocket con
-// respaldo de polling): no requiere botón de actualizar.
-export default function SeccionCarnetsArchivo() {
+function CheckboxEstado({ alcanzado, accionable, etiqueta, onMarcar, ocupado }) {
+  return (
+    <input
+      type="checkbox"
+      checked={alcanzado}
+      disabled={!accionable || ocupado}
+      onChange={() => onMarcar?.()}
+      aria-label={etiqueta}
+      className="h-6 w-6 cursor-pointer accent-hro-blue disabled:cursor-default disabled:opacity-60"
+    />
+  )
+}
+
+function FilaHistorial({ carnet, columnas }) {
+  return (
+    <tr className="bg-surface-container-low">
+      <td colSpan={columnas} className="px-3 py-3">
+        <Historial movimientos={carnet.movimientos} />
+      </td>
+    </tr>
+  )
+}
+
+// Sección de seguimiento de carnets: tablas de estados. La fecha y la estación
+// llegan desde el único filtro de la página. Se actualiza en tiempo real.
+export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
   const {
-    fecha,
-    setFecha,
-    estacionId,
-    setEstacionId,
-    especialidadId,
-    setEspecialidadId,
-    estaciones,
-    especialidades,
     carnets,
     cargando,
     error,
@@ -80,14 +109,32 @@ export default function SeccionCarnetsArchivo() {
     despachar,
     recibirDevolucion,
     marcarNoLocalizado,
-  } = useCarnetsArchivo()
+  } = useCarnetsArchivo({ fecha, estacionId })
 
   const [expandido, setExpandido] = useState(null)
   const [observacionPara, setObservacionPara] = useState(null)
   const [observacion, setObservacion] = useState('')
 
-  // Tiempo real: recarga cuando enfermería registra o cambia un carnet.
   useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => recargar() })
+
+  const { pendientes, encontrados } = useMemo(() => {
+    const ordenados = [...carnets].sort((a, b) => a.correlativo - b.correlativo)
+    return {
+      pendientes: ordenados.filter((c) => !ESTADOS_ENCONTRADOS.has(c.estado)),
+      encontrados: ordenados.filter((c) => ESTADOS_ENCONTRADOS.has(c.estado)),
+    }
+  }, [carnets])
+
+  function alternarHistorial(id) {
+    setExpandido((actual) => (actual === id ? null : id))
+  }
+
+  function accionDe(key, carnet) {
+    if (key === 'encontrado') return () => marcarEncontrado(carnet)
+    if (key === 'despachado') return () => despachar(carnet)
+    if (key === 'recibido_archivo') return () => recibirDevolucion(carnet)
+    return undefined
+  }
 
   async function confirmarNoLocalizado() {
     const texto = observacion.trim()
@@ -112,55 +159,14 @@ export default function SeccionCarnetsArchivo() {
             Seguimiento de carnets
           </h2>
           <p className="text-body-sm text-on-surface-variant">
-            Carnets recibidos por enfermería. Se actualiza automáticamente.
+            Marque <strong>Encontré</strong> a medida que ubica los expedientes; se moverán a
+            &laquo;Encontrados&raquo;.
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-semibold text-primary">
           <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           En vivo
         </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="space-y-1 text-label-md text-on-surface-variant">
-          Fecha
-          <input
-            type="date"
-            value={fecha}
-            onChange={(event) => setFecha(event.target.value)}
-            className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-        </label>
-        <label className="space-y-1 text-label-md text-on-surface-variant">
-          Estación
-          <select
-            value={estacionId}
-            onChange={(event) => setEstacionId(event.target.value)}
-            className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="">Todas las estaciones</option>
-            {estaciones.map((estacion) => (
-              <option key={estacion.id} value={estacion.id}>
-                {estacion.nombre ?? estacion.codigo}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-label-md text-on-surface-variant">
-          Especialidad
-          <select
-            value={especialidadId}
-            onChange={(event) => setEspecialidadId(event.target.value)}
-            className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="">Todas las especialidades</option>
-            {especialidades.map((especialidad) => (
-              <option key={especialidad.id} value={especialidad.id}>
-                {especialidad.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       {cargando ? (
@@ -175,103 +181,160 @@ export default function SeccionCarnetsArchivo() {
           description="Aparecerán aquí en cuanto enfermería registre carnets."
         />
       ) : (
-        <ul className="space-y-2">
-          {carnets.map((carnet) => (
-            <li
-              key={carnet.id}
-              className="rounded-xl border border-outline-variant bg-surface-container-low p-3"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
-                    {carnet.correlativo}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-on-surface">
-                      {carnet.pacienteNombre}
-                    </p>
-                    <p className="truncate text-label-sm text-on-surface-variant">
-                      {carnet.especialidadNombre}
-                      {carnet.estacionNombre ? ` · ${carnet.estacionNombre}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-label-md text-primary">
-                    {carnet.numeroExpediente}
-                  </span>
-                  <EtiquetaEstado estado={carnet.estado} />
-                </div>
+        <>
+          <div>
+            <h3 className="mb-2 text-title-sm font-semibold text-on-surface">
+              Por encontrar ({pendientes.length})
+            </h3>
+            {pendientes.length === 0 ? (
+              <p className="text-body-sm text-on-surface-variant">No hay carnets pendientes.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-outline-variant">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="bg-surface-container-low text-label-sm uppercase text-on-surface-variant">
+                    <tr>
+                      <th className="px-3 py-2">Correlativo</th>
+                      <th className="px-3 py-2">Expediente</th>
+                      <th className="px-3 py-2">Paciente</th>
+                      <th className="px-3 py-2 text-center">Encontré</th>
+                      <th className="px-3 py-2 text-center">No localizado</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/60">
+                    {pendientes.map((carnet) => (
+                      <Fragment key={carnet.id}>
+                        <tr className="bg-surface-container-lowest">
+                          <td className="px-3 py-2">
+                            <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
+                              {carnet.correlativo}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-title-sm font-bold text-primary">
+                            {carnet.numeroExpediente}
+                          </td>
+                          <td className="px-3 py-2">
+                            <p className="font-semibold text-on-surface">{carnet.pacienteNombre}</p>
+                            <p className="text-label-sm text-on-surface-variant">
+                              {carnet.especialidadNombre}
+                              {carnet.estacionNombre ? ` · ${carnet.estacionNombre}` : ''}
+                            </p>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <CheckboxEstado
+                              alcanzado={false}
+                              accionable
+                              ocupado={enProceso === carnet.id}
+                              etiqueta={`Encontré ${carnet.numeroExpediente}`}
+                              onMarcar={() => marcarEncontrado(carnet)}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <CheckboxEstado
+                              alcanzado={carnet.estado === 'no_localizado'}
+                              accionable={carnet.estado === 'registrado'}
+                              ocupado={enProceso === carnet.id}
+                              etiqueta={`No localizado ${carnet.numeroExpediente}`}
+                              onMarcar={() => {
+                                setObservacionPara(carnet)
+                                setObservacion('')
+                              }}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button size="sm" variant="ghost" onClick={() => alternarHistorial(carnet.id)}>
+                              <Icon name="history" className="text-[18px]" />
+                            </Button>
+                          </td>
+                        </tr>
+                        {expandido === carnet.id && (
+                          <FilaHistorial carnet={carnet} columnas={6} />
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            )}
+          </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {(carnet.estado === 'registrado' || carnet.estado === 'no_localizado') && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => marcarEncontrado(carnet)}
-                      disabled={enProceso === carnet.id}
-                    >
-                      <Icon name="inventory_2" className="text-[18px]" />
-                      Encontré
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        setObservacionPara(carnet)
-                        setObservacion('')
-                      }}
-                      disabled={enProceso === carnet.id}
-                    >
-                      <Icon name="report" className="text-[18px]" />
-                      No localizado
-                    </Button>
-                  </>
-                )}
-                {carnet.estado === 'encontrado' && (
-                  <Button
-                    size="sm"
-                    onClick={() => despachar(carnet)}
-                    disabled={enProceso === carnet.id}
-                  >
-                    <Icon name="local_shipping" className="text-[18px]" />
-                    Despachar
-                  </Button>
-                )}
-                {carnet.estado === 'devuelto_estacion' && (
-                  <Button
-                    size="sm"
-                    onClick={() => recibirDevolucion(carnet)}
-                    disabled={enProceso === carnet.id}
-                  >
-                    <Icon name="assignment_turned_in" className="text-[18px]" />
-                    Recibir devolución
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setExpandido(expandido === carnet.id ? null : carnet.id)}
-                >
-                  <Icon name="history" className="text-[18px]" />
-                  Historial
-                </Button>
-                {carnet.recibidoPor && (
-                  <span className="text-label-sm text-on-surface-variant">
-                    Recibió: {carnet.recibidoPor}
-                  </span>
-                )}
+          <div>
+            <h3 className="mb-2 text-title-sm font-semibold text-on-surface">
+              Encontrados ({encontrados.length})
+            </h3>
+            {encontrados.length === 0 ? (
+              <p className="text-body-sm text-on-surface-variant">
+                Aún no hay carpetas marcadas como encontradas.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-outline-variant">
+                <table className="w-full min-w-[820px] text-left text-sm">
+                  <thead className="bg-surface-container-low text-label-sm uppercase text-on-surface-variant">
+                    <tr>
+                      <th className="px-3 py-2">Correlativo</th>
+                      <th className="px-3 py-2">Expediente</th>
+                      <th className="px-3 py-2">Paciente</th>
+                      {COLUMNAS_ESTADO.map((columna) => (
+                        <th key={columna.key} className="px-3 py-2 text-center">
+                          {columna.label}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/60">
+                    {encontrados.map((carnet) => (
+                      <Fragment key={carnet.id}>
+                        <tr className="bg-surface-container-lowest">
+                          <td className="px-3 py-2">
+                            <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
+                              {carnet.correlativo}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-title-sm font-bold text-primary">
+                            {carnet.numeroExpediente}
+                          </td>
+                          <td className="px-3 py-2">
+                            <p className="font-semibold text-on-surface">{carnet.pacienteNombre}</p>
+                            <p className="text-label-sm text-on-surface-variant">
+                              {carnet.especialidadNombre}
+                              {carnet.estacionNombre ? ` · ${carnet.estacionNombre}` : ''}
+                            </p>
+                          </td>
+                          {COLUMNAS_ESTADO.map((columna) => {
+                            const alcanzado = ORDEN[carnet.estado] >= ORDEN[columna.key]
+                            const accionable =
+                              SIGUIENTE[carnet.estado] === columna.key &&
+                              ACCION_ARCHIVO.has(columna.key)
+                            return (
+                              <td key={columna.key} className="px-3 py-2 text-center">
+                                <CheckboxEstado
+                                  alcanzado={alcanzado}
+                                  accionable={accionable}
+                                  ocupado={enProceso === carnet.id}
+                                  etiqueta={`${columna.label} ${carnet.numeroExpediente}`}
+                                  onMarcar={accionDe(columna.key, carnet)}
+                                />
+                              </td>
+                            )
+                          })}
+                          <td className="px-3 py-2 text-right">
+                            <Button size="sm" variant="ghost" onClick={() => alternarHistorial(carnet.id)}>
+                              <Icon name="history" className="text-[18px]" />
+                            </Button>
+                          </td>
+                        </tr>
+                        {expandido === carnet.id && (
+                          <FilaHistorial carnet={carnet} columnas={9} />
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              {expandido === carnet.id && (
-                <div className="mt-3 rounded-lg bg-surface-container-lowest p-3">
-                  <Historial movimientos={carnet.movimientos} />
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+            )}
+          </div>
+        </>
       )}
 
       <ModalObservacion

@@ -6,6 +6,9 @@ export default function FiltrosArchivo({
   subespecialidadId,
   onSubespecialidad,
   subespecialidades = [],
+  estacionId = '',
+  onEstacion,
+  estaciones = [],
 }) {
   const opcionesSubespecialidades = [
     { value: '', label: 'Todas las subespecialidades' },
@@ -15,12 +18,20 @@ export default function FiltrosArchivo({
     })),
   ]
 
+  const opcionesEstaciones = [
+    { value: '', label: 'Todas las estaciones' },
+    ...estaciones.map((estacion) => ({
+      value: estacion.id,
+      label: estacion.nombre ?? estacion.codigo,
+    })),
+  ]
+
   return (
     <section
       aria-label="Filtros de expedientes"
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-3 ${onEstacion ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <Input
           label="Fecha de consulta"
           name="fecha"
@@ -35,6 +46,15 @@ export default function FiltrosArchivo({
           options={opcionesSubespecialidades}
           placeholder="Todas las subespecialidades"
         />
+        {onEstacion && (
+          <Select
+            label="Estación"
+            value={estacionId}
+            onChange={onEstacion}
+            options={opcionesEstaciones}
+            placeholder="Todas las estaciones"
+          />
+        )}
       </div>
     </section>
   )

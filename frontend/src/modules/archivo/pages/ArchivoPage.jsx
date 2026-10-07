@@ -14,6 +14,7 @@ import ExpedienteDetalle from '../components/ExpedienteDetalle.jsx'
 import ModalObservacion from '../components/ModalObservacion.jsx'
 import SeccionCarnetsArchivo from '../components/SeccionCarnetsArchivo.jsx'
 import { accionArchivo } from '../accionesArchivo'
+import { listarEstaciones } from '@/modules/carnets/api/carnetsApi'
 
 // Estados que cuentan como "pendiente" (aún no localizado) para el resumen.
 const ESTADOS_PENDIENTES = new Set([
@@ -80,6 +81,8 @@ export default function ArchivoPage() {
   const [observacion, setObservacion] = useState('')
   const [enviandoObservacion, setEnviandoObservacion] = useState(false)
   const [detalleFila, setDetalleFila] = useState(null)
+  const [estacionId, setEstacionId] = useState('')
+  const [estaciones, setEstaciones] = useState([])
 
   // Guardas inmediatas contra doble ejecución (búsqueda y mutaciones).
   const busquedaEnCurso = useRef(false)
@@ -102,6 +105,12 @@ export default function ArchivoPage() {
   useEffect(() => {
     setResaltado(null)
   }, [fecha, subespecialidadId])
+
+  useEffect(() => {
+    listarEstaciones()
+      .then(setEstaciones)
+      .catch(() => setEstaciones([]))
+  }, [])
 
   // Lleva el foco/scroll a la fila encontrada por el buscador.
   useEffect(() => {
@@ -305,6 +314,9 @@ export default function ArchivoPage() {
           subespecialidadId={subespecialidadId}
           onSubespecialidad={setSubespecialidadId}
           subespecialidades={subespecialidades}
+          estacionId={estacionId}
+          onEstacion={setEstacionId}
+          estaciones={estaciones}
         />
 
         <ResumenEstados
@@ -349,7 +361,7 @@ export default function ArchivoPage() {
           )}
         </section>
 
-        <SeccionCarnetsArchivo />
+        <SeccionCarnetsArchivo fecha={fecha} estacionId={estacionId} />
 
         <section
           aria-label="Acciones del día"

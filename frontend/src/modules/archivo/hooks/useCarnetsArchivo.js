@@ -1,38 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@/shared/context/ToastContext.jsx'
-import { hoyIso } from '@/shared/utils/fecha'
 import {
   despacharCarnet,
   listarCarnets,
-  listarEspecialidades,
-  listarEstaciones,
   marcarEncontrado,
   marcarNoLocalizado as apiMarcarNoLocalizado,
   recibirDevolucionCarnet,
 } from '@/modules/carnets/api/carnetsApi'
 
-// Estado de la vista de Archivo para el seguimiento de carnets del día:
-// filtros por estación/especialidad y acciones de búsqueda y despacho.
-export function useCarnetsArchivo() {
+// Estado de la sección de seguimiento de carnets en la Estación de Archivo.
+// La fecha y la estación las controla la página (un único juego de filtros);
+// aquí solo se cargan los carnets y se ejecutan las transiciones de Archivo.
+export function useCarnetsArchivo({ fecha, estacionId } = {}) {
   const { mostrarToast } = useToast()
-  const [fecha, setFecha] = useState(hoyIso)
-  const [estacionId, setEstacionId] = useState('')
-  const [especialidadId, setEspecialidadId] = useState('')
-  const [estaciones, setEstaciones] = useState([])
-  const [especialidades, setEspecialidades] = useState([])
   const [carnets, setCarnets] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [enProceso, setEnProceso] = useState(null)
-
-  useEffect(() => {
-    listarEstaciones()
-      .then(setEstaciones)
-      .catch(() => setEstaciones([]))
-    listarEspecialidades()
-      .then(setEspecialidades)
-      .catch(() => setEspecialidades([]))
-  }, [])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -42,7 +26,6 @@ export function useCarnetsArchivo() {
         await listarCarnets({
           fecha,
           estacionId: estacionId || undefined,
-          especialidadId: especialidadId || undefined,
         }),
       )
     } catch (fallo) {
@@ -51,7 +34,7 @@ export function useCarnetsArchivo() {
     } finally {
       setCargando(false)
     }
-  }, [fecha, estacionId, especialidadId])
+  }, [fecha, estacionId])
 
   useEffect(() => {
     cargar()
@@ -84,14 +67,6 @@ export function useCarnetsArchivo() {
   )
 
   return {
-    fecha,
-    setFecha,
-    estacionId,
-    setEstacionId,
-    especialidadId,
-    setEspecialidadId,
-    estaciones,
-    especialidades,
     carnets,
     cargando,
     error,
