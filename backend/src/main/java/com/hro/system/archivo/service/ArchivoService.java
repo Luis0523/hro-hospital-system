@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,6 +117,7 @@ public class ArchivoService {
     private final CitaRepository citaRepository;
     private final UsuarioReferenciaRepository usuarioReferenciaRepository;
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // ------------------------------------------------------------------
     // Catálogo de ubicaciones
@@ -599,7 +601,7 @@ public class ArchivoService {
     private void registrarMovimiento(ExpedienteCiclo ciclo, String estadoAnterior, String estadoNuevo,
                                      UbicacionArchivo origen, UbicacionArchivo destino,
                                      UsuarioReferencia usuario, String observacion) {
-        expedienteMovimientoRepository.save(ExpedienteMovimiento.builder()
+        ExpedienteMovimiento movimiento = expedienteMovimientoRepository.save(ExpedienteMovimiento.builder()
                 .expedienteCiclo(ciclo)
                 .estadoAnterior(estadoAnterior)
                 .estadoNuevo(estadoNuevo)
@@ -609,6 +611,32 @@ public class ArchivoService {
                 .observacion(observacion)
                 .fechaMovimiento(OffsetDateTime.now())
                 .build());
+        publicarMovimiento(movimiento);
+    }
+
+    /**
+     * Publica el movimiento en {@code /topic/archivo/movimientos} para el feed en
+     * vivo del Dashboard de Archivo. Best-effort: un fallo de mensajería nunca
+     * debe afectar la transacción del ciclo.
+     */
+    private void publicarMovimiento(ExpedienteMovimiento movimiento) {
+        try {
+            Expediente expediente = movimiento.getExpedienteCiclo().getExpediente();
+            Paciente paciente = expediente.getPaciente();
+            messagingTemplate.convertAndSend("/topic/archivo/movimientos", new com.hro.system.archivo.dto.EventoMovimientoDTO(
+                    movimiento.getId(),
+                    expediente.getId(),
+                    expediente.getNumeroExpediente(),
+                    paciente.getNombres() + " " + paciente.getApellidos(),
+                    movimiento.getEstadoAnterior(),
+                    movimiento.getEstadoNuevo(),
+                    movimiento.getUsuarioReferencia() != null
+                            ? movimiento.getUsuarioReferencia().getNombreMostrar() : null,
+                    movimiento.getObservacion(),
+                    movimiento.getFechaMovimiento()));
+        } catch (Exception e) {
+            log.warn("No se pudo publicar el movimiento de archivo: {}", e.getMessage());
+        }
     }
 
     private UbicacionArchivoResponseDTO mapUbicacion(UbicacionArchivo ubicacion) {

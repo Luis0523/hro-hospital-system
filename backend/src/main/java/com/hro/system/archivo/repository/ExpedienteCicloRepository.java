@@ -121,4 +121,25 @@ public interface ExpedienteCicloRepository extends JpaRepository<ExpedienteCiclo
             GROUP BY ec.estadoActual
             """)
     List<Object[]> contarPorEstadoYFecha(@Param("fecha") LocalDate fecha);
+
+    /**
+     * Ciclos de un rango de fechas (por fecha de la cita) para el Dashboard de
+     * Archivo, opcionalmente filtrados por subespecialidad. Carga expediente,
+     * paciente y área (subespecialidad) para evitar N+1.
+     */
+    @Query("""
+            SELECT DISTINCT ec FROM ExpedienteCiclo ec
+              LEFT JOIN FETCH ec.expediente e
+              LEFT JOIN FETCH e.paciente
+              LEFT JOIN FETCH ec.cita c
+              LEFT JOIN FETCH c.cupoDiario cd
+              LEFT JOIN FETCH cd.subespecialidadHorario sh
+              LEFT JOIN FETCH sh.subespecialidad
+            WHERE c IS NOT NULL
+              AND cd.fecha BETWEEN :desde AND :hasta
+              AND (:subespecialidadId IS NULL OR sh.subespecialidad.id = :subespecialidadId)
+            """)
+    List<ExpedienteCiclo> buscarDashboard(@Param("desde") LocalDate desde,
+                                          @Param("hasta") LocalDate hasta,
+                                          @Param("subespecialidadId") Long subespecialidadId);
 }
