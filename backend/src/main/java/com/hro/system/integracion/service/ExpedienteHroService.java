@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
 @Service
 public class ExpedienteHroService {
 
+    private static final int MAX_INTENTOS = 3;
+
     private final IntegracionExpedientesProperties properties;
     private final IntegracionHroLogRepository logRepository;
     private final ObjectMapper objectMapper;
@@ -82,10 +84,7 @@ public class ExpedienteHroService {
         PacienteHroDTO resultado = null;
 
         try {
-            ResponseEntity<String> respuesta = restClient.get()
-                    .uri(expediente)
-                    .retrieve()
-                    .toEntity(String.class);
+            ResponseEntity<String> respuesta = ejecutarGet(expediente);
             estado = respuesta.getStatusCode().value();
             cuerpo = respuesta.getBody();
             exito = respuesta.getStatusCode().is2xxSuccessful();
@@ -116,6 +115,34 @@ public class ExpedienteHroService {
             throw new ResourceNotFoundException("Paciente", "numeroExpediente", expediente);
         }
         throw new IntegracionHroException(error != null ? error : "No se pudo consultar el expediente en el API del hospital");
+    }
+
+    /**
+     * GET con reintentos ante fallos de red/timeout (el API del hospital puede
+     * responder lento de forma intermitente). No reintenta respuestas HTTP no
+     * exitosas, solo {@link ResourceAccessException}.
+     */
+    private ResponseEntity<String> ejecutarGet(String expediente) {
+        ResourceAccessException ultimo = null;
+        for (int intento = 1; intento <= MAX_INTENTOS; intento++) {
+            try {
+                return restClient.get()
+                        .uri(expediente)
+                        .retrieve()
+                        .toEntity(String.class);
+            } catch (ResourceAccessException e) {
+                ultimo = e;
+                if (intento < MAX_INTENTOS) {
+                    try {
+                        Thread.sleep(400L * intento);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        throw ultimo;
     }
 
     private PacienteHroDTO parsear(String expediente, String cuerpo) {

@@ -49,7 +49,7 @@ hro:
       url: ${API_HRO_URL_EXPEDIENTES:}
       username: ${USERNAME_API_HRO:}
       password: ${PASSWORD_API_HRO:}
-      timeout-ms: ${API_HRO_TIMEOUT_MS:5000}
+      timeout-ms: ${API_HRO_TIMEOUT_MS:15000}
 
   # Circuito de carnets (Fase 1 Archivo/Enfermería)
   carnet:
