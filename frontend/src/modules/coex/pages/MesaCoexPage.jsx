@@ -18,6 +18,7 @@ import ConfirmacionDevolucionCoex from '../components/ConfirmacionDevolucionCoex
 import ConfirmacionRecepcionCoex from '../components/ConfirmacionRecepcionCoex.jsx'
 import ResumenLoteCoex from '../components/ResumenLoteCoex.jsx'
 import SeccionLoteCoex from '../components/SeccionLoteCoex.jsx'
+import SeccionCarnetsCoex from '../components/SeccionCarnetsCoex.jsx'
 
 function horaLocal(instante) {
   if (!instante) return ''
@@ -264,6 +265,8 @@ export default function MesaCoexPage() {
             onChange={(evento) => setFecha(evento.target.value)}
           />
         </div>
+
+        <SeccionCarnetsCoex fecha={fecha} estacionId={estacion?.id} />
 
         {estacion && (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
