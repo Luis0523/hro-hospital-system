@@ -12,6 +12,7 @@ import ListadoCompactoExpediente from '../components/ListadoCompactoExpediente.j
 import ScannerExpediente from '../components/ScannerExpediente.jsx'
 import ExpedienteDetalle from '../components/ExpedienteDetalle.jsx'
 import ModalObservacion from '../components/ModalObservacion.jsx'
+import SeccionCarnetsArchivo from '../components/SeccionCarnetsArchivo.jsx'
 import { accionArchivo } from '../accionesArchivo'
 
 // Estados que cuentan como "pendiente" (aún no localizado) para el resumen.
@@ -347,6 +348,8 @@ export default function ArchivoPage() {
             </>
           )}
         </section>
+
+        <SeccionCarnetsArchivo />
 
         <section
           aria-label="Acciones del día"

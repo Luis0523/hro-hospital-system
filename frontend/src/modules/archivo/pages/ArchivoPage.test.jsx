@@ -56,6 +56,29 @@ vi.mock('../api/archivoApi', async (importOriginal) => {
   }
 })
 
+vi.mock('@/modules/carnets/hooks/useCarnetsRealtime', () => ({
+  useCarnetsRealtime: () => {},
+}))
+
+vi.mock('@/modules/carnets/api/carnetsApi', () => ({
+  listarCarnets: vi.fn(() => Promise.resolve([])),
+  listarEstaciones: vi.fn(() => Promise.resolve([])),
+  listarEspecialidades: vi.fn(() => Promise.resolve([])),
+  marcarEncontrado: vi.fn(),
+  marcarNoLocalizado: vi.fn(),
+  despacharCarnet: vi.fn(),
+  recibirDevolucionCarnet: vi.fn(),
+  ETIQUETAS_ESTADO_CARNET: {
+    registrado: 'Registrado',
+    encontrado: 'Encontrado',
+    no_localizado: 'No localizado',
+    despachado: 'Despachado',
+    recibido_estacion: 'Recibido en estación',
+    devuelto_estacion: 'Devuelto a archivo',
+    recibido_archivo: 'Recibido en archivo',
+  },
+}))
+
 function fila({ id, citaId, estadoActual, numeroExpediente, cicloId, expedienteId = id, ...rest }) {
   return {
     id,
