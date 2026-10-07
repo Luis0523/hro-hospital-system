@@ -23,6 +23,7 @@ export default function TopHud({
             <Icon name="medical_services" className="text-[24px]" />
           </div>
           <div className="leading-tight">
+            <p className="text-label-sm uppercase tracking-widest text-primary">SIGHO</p>
             <h1 className="text-headline-sm uppercase tracking-tight text-on-surface">
               Estación de Enfermería
             </h1>

@@ -6,7 +6,7 @@ describe('EncabezadoTablero', () => {
   it('muestra el branding institucional', () => {
     render(<EncabezadoTablero />)
 
-    expect(screen.getByText('Hospital Regional de Occidente')).toBeInTheDocument()
+    expect(screen.getByText('SIGHO')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /consulta externa · turnos/i })).toBeInTheDocument()
   })
 
@@ -29,9 +29,7 @@ describe('EncabezadoTablero', () => {
 
     const controles = screen.getByTestId('encabezado-controles')
     expect(within(controles).getByRole('button', { name: 'Modo oscuro' })).toBeInTheDocument()
-    expect(
-      within(controles).getByRole('button', { name: 'Pantalla completa' }),
-    ).toBeInTheDocument()
+    expect(within(controles).getByRole('button', { name: 'Pantalla completa' })).toBeInTheDocument()
   })
 
   it('no rompe el render dentro de un contenedor dark', () => {
@@ -43,7 +41,7 @@ describe('EncabezadoTablero', () => {
       </div>,
     )
 
-    expect(screen.getByText('Hospital Regional de Occidente')).toBeInTheDocument()
+    expect(screen.getByText('SIGHO')).toBeInTheDocument()
     expect(screen.getByText('control')).toBeInTheDocument()
   })
 })

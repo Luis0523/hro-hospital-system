@@ -36,7 +36,7 @@ export default function AdminHeader({ onAbrirMenu, menuAbierto = false }) {
             >
               Panel de Administración
             </h1>
-            <p className="hidden text-xs text-slate-500 sm:block">Sistema Hospitalario HRO</p>
+            <p className="hidden text-xs text-slate-500 sm:block">SIGHO</p>
           </div>
         </div>
       </div>

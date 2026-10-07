@@ -200,7 +200,7 @@ describe('ArchivoPage — ruta oficial', () => {
     renderRuta('/archivo')
 
     expect(
-      screen.getByRole('heading', { name: 'Estación de Archivo / Registro Médico' }),
+      screen.getByRole('heading', { name: 'Estación de Archivo' }),
     ).toBeInTheDocument()
     expect(
       await screen.findByRole('region', { name: 'Jornada de expedientes' }),

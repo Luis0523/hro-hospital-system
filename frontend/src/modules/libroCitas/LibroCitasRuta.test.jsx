@@ -32,7 +32,7 @@ describe('AppRouter · /libro-citas', () => {
     expect(screen.getByText('Registro digital de citas')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
     expect(
-      screen.queryByRole('navigation', { name: 'Navegación de Libro de Citas' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('navigation', { name: 'Navegación de Libro de Citas' }),
+    ).toBeInTheDocument()
   })
 })

@@ -10,6 +10,7 @@ import java.util.List;
 public enum PaginaSistema {
 
     ARCHIVO("archivo", "Estación de Archivo"),
+    REGISTRO_CARNETS("registro_carnets", "Registro de carnets"),
     ENFERMERIA("enfermeria", "Estación de Enfermería"),
     COEX("coex", "Mesa COEX"),
     LIBRO_CITAS("libro_citas", "Libro de Citas"),

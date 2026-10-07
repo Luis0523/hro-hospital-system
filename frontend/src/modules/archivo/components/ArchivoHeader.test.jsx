@@ -1,42 +1,25 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import ArchivoHeader from './ArchivoHeader.jsx'
 
-function renderHeader() {
-  return render(
-    <ThemeProvider>
-      <ArchivoHeader />
-    </ThemeProvider>,
-  )
-}
+describe('ArchivoHeader', () => {
+  it('muestra la marca SIGHO y el título de la estación', () => {
+    render(<ArchivoHeader />)
 
-beforeEach(() => {
-  localStorage.clear()
-  document.documentElement.classList.remove('dark')
-})
-
-describe('ArchivoHeader — control claro/oscuro', () => {
-  it('muestra el control de tema en el encabezado', () => {
-    renderHeader()
-
-    expect(screen.getByRole('button', { name: /activar modo oscuro/i })).toBeInTheDocument()
+    expect(screen.getByText('SIGHO')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Estación de Archivo' })).toBeInTheDocument()
   })
 
-  it('alterna el tema reutilizando ThemeContext (clase dark y persistencia)', async () => {
+  it('el botón de menú muestra/oculta el menú', async () => {
     const user = userEvent.setup()
-    renderHeader()
+    const onAlternarMenu = vi.fn()
+    const { rerender } = render(<ArchivoHeader onAlternarMenu={onAlternarMenu} />)
 
-    await user.click(screen.getByRole('button', { name: /activar modo oscuro/i }))
+    await user.click(screen.getByRole('button', { name: 'Mostrar menú' }))
+    expect(onAlternarMenu).toHaveBeenCalledTimes(1)
 
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(localStorage.getItem('hro_tema')).toBe('oscuro')
-    expect(screen.getByRole('button', { name: /activar modo claro/i })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /activar modo claro/i }))
-
-    expect(document.documentElement.classList.contains('dark')).toBe(false)
-    expect(localStorage.getItem('hro_tema')).toBe('claro')
+    rerender(<ArchivoHeader menuAbierto onAlternarMenu={onAlternarMenu} />)
+    expect(screen.getByRole('button', { name: 'Ocultar menú' })).toBeInTheDocument()
   })
 })

@@ -30,6 +30,7 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
         </span>
 
         <div className="min-w-0 leading-tight">
+          <p className="text-label-sm uppercase tracking-widest text-primary">SIGHO</p>
           <h1 className="truncate text-headline-sm uppercase tracking-tight text-on-surface">
             Jefatura Operativa de Enfermería
           </h1>
@@ -44,7 +45,10 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
           <p className="truncate text-title-sm text-on-surface" title={usuario?.nombre}>
             {usuario?.nombre}
           </p>
-          <p className="truncate text-label-sm uppercase text-on-surface-variant" title={usuario?.rol}>
+          <p
+            className="truncate text-label-sm uppercase text-on-surface-variant"
+            title={usuario?.rol}
+          >
             {usuario?.rol}
           </p>
         </div>

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
@@ -22,21 +23,39 @@ function renderLayout() {
 }
 
 describe('LibroCitasLayout', () => {
-  it('renderiza el encabezado institucional con los controles', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('muestra la marca SIGHO, el título y los controles en la barra', () => {
     renderLayout()
 
-    expect(screen.getByText('Sistema Hospitalario HRO')).toBeInTheDocument()
+    expect(screen.getAllByText('SIGHO').length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: 'Libro de Citas' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /modo (oscuro|claro)/i })).toBeInTheDocument()
   })
 
-  it('no renderiza el navbar secundario', () => {
+  it('incluye la navegación lateral con la sección del libro', () => {
     renderLayout()
 
-    expect(
-      screen.queryByRole('navigation', { name: 'Navegación de Libro de Citas' }),
-    ).not.toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Navegación de Libro de Citas' })
+    expect(nav).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /libro de citas/i })).toHaveAttribute(
+      'href',
+      '/libro-citas',
+    )
+  })
+
+  it('alterna el tema desde la barra lateral', async () => {
+    const user = userEvent.setup()
+    renderLayout()
+
+    await user.click(screen.getByRole('button', { name: /modo oscuro/i }))
+
+    expect(document.documentElement).toHaveClass('dark')
+    expect(screen.getByRole('button', { name: /modo claro/i })).toBeInTheDocument()
   })
 
   it('renderiza los children', () => {

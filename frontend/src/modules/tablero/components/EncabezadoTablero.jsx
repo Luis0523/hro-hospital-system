@@ -30,9 +30,7 @@ export default function EncabezadoTablero({ children }) {
             <Icon name="local_hospital" className="text-[24px]" />
           </div>
           <div className="leading-tight">
-            <p className="text-label-sm uppercase tracking-[0.3em] text-on-primary/70">
-              Hospital Regional de Occidente
-            </p>
+            <p className="text-label-sm uppercase tracking-[0.3em] text-on-primary/70">SIGHO</p>
             <h1 className="text-headline-md uppercase">Consulta Externa · Turnos</h1>
           </div>
         </div>

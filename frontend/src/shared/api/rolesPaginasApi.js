@@ -7,6 +7,7 @@ const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 /** Catálogo de páginas/áreas del SIGHO (fallback local si el backend no responde). */
 export const PAGINAS = [
   { clave: 'archivo', nombre: 'Estación de Archivo' },
+  { clave: 'registro_carnets', nombre: 'Registro de carnets' },
   { clave: 'enfermeria', nombre: 'Estación de Enfermería' },
   { clave: 'coex', nombre: 'Mesa COEX' },
   { clave: 'libro_citas', nombre: 'Libro de Citas' },
@@ -16,13 +17,14 @@ export const PAGINAS = [
 
 /** Mapeo por defecto (coincide con el seed de las migraciones V17/V20). */
 export const MAPEO_DEFECTO = {
-  archivo: ['archivo', 'libro_citas'],
+  archivo: ['archivo', 'registro_carnets', 'libro_citas'],
   enfermeria: ['enfermeria', 'coex'],
   medico: ['enfermeria'],
   personal_citas: ['libro_citas'],
   jefe_enfermeria: ['jefe_enfermeria'],
   administrador: [
     'archivo',
+    'registro_carnets',
     'enfermeria',
     'coex',
     'libro_citas',
@@ -34,6 +36,7 @@ export const MAPEO_DEFECTO = {
 /** Ruta de cada área y prioridad para elegir la pantalla inicial de un rol. */
 export const RUTA_POR_AREA = {
   archivo: '/archivo',
+  registro_carnets: '/archivo/registro-carnets',
   enfermeria: '/enfermeria',
   coex: '/coex',
   libro_citas: '/libro-citas',
@@ -46,6 +49,7 @@ export const PRIORIDAD_AREAS = [
   'coex',
   'archivo',
   'libro_citas',
+  'registro_carnets',
   'jefe_enfermeria',
 ]
 
@@ -70,7 +74,5 @@ export async function listarRolesPaginas() {
 
 export async function actualizarRolPaginas(rol, paginas) {
   if (USE_MOCK) return { rol, paginas }
-  return desenvolver(
-    await client.put(`/roles-paginas/${encodeURIComponent(rol)}`, { paginas }),
-  )
+  return desenvolver(await client.put(`/roles-paginas/${encodeURIComponent(rol)}`, { paginas }))
 }

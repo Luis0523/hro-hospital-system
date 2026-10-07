@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
+import RegistroCarnetsPage from '@/modules/archivo/pages/RegistroCarnetsPage.jsx'
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
@@ -60,6 +61,7 @@ export default function AppRouter() {
 
         <Route element={<RutaPorRol area="enfermeria" />}>
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
+          <Route path="/enfermeria/carnets" element={<RegistroCarnetsPage />} />
           <Route
             path="/enfermeria"
             element={
