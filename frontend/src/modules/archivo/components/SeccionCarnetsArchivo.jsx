@@ -206,11 +206,11 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
                       <Fragment key={carnet.id}>
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
-                            <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
+                            <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
                               {carnet.correlativo}
                             </span>
                           </td>
-                          <td className="px-3 py-2 font-mono text-title-sm font-bold text-primary">
+                          <td className="px-3 py-3 font-mono text-[26px] font-black tracking-tight text-primary">
                             {carnet.numeroExpediente}
                           </td>
                           <td className="px-3 py-2">
@@ -287,11 +287,11 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
                       <Fragment key={carnet.id}>
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
-                            <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
+                            <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
                               {carnet.correlativo}
                             </span>
                           </td>
-                          <td className="px-3 py-2 font-mono text-title-sm font-bold text-primary">
+                          <td className="px-3 py-3 font-mono text-[26px] font-black tracking-tight text-primary">
                             {carnet.numeroExpediente}
                           </td>
                           <td className="px-3 py-2">

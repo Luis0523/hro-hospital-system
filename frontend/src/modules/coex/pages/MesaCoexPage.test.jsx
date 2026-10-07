@@ -40,6 +40,10 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   devolverCarnet: vi.fn(() => Promise.resolve({})),
 }))
 
+vi.mock('@/modules/carnets/hooks/useCarnetsRealtime', () => ({
+  useCarnetsRealtime: () => {},
+}))
+
 function activarEstacion() {
   localStorage.setItem(
     'hro_estacion',
