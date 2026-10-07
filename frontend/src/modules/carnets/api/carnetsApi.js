@@ -14,6 +14,16 @@ export async function listarEspecialidades() {
   }))
 }
 
+/** Catálogo de estaciones de enfermería (para el filtro de Archivo). */
+export async function listarEstaciones() {
+  const lista = desenvolver(await client.get('/estaciones'))
+  return (lista ?? []).map((estacion) => ({
+    id: estacion.id,
+    codigo: estacion.codigo,
+    nombre: estacion.nombre,
+  }))
+}
+
 /** Carnets del día, filtrables por estación, especialidad y estado. */
 export async function listarCarnets({ fecha, estacionId, especialidadId, estado } = {}) {
   return desenvolver(
