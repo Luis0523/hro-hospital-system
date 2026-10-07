@@ -1,0 +1,24 @@
+spring:
+  config:
+    activate:
+      on-profile: test-postgres
+
+  # Pruebas de integración que dependen de funciones/triggers de PostgreSQL
+  # (fn_siguiente_turno_fecha, triggers de cita/cupo, ON CONFLICT nativo, etc.).
+  # Usan una base DEDICADA de pruebas para no contaminar la base de desarrollo
+  # (hro_db). Debe existir la base `hro_db_test` en el PostgreSQL local/CI.
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/hro_db_test}
+    username: ${TEST_DATABASE_USERNAME:postgres}
+    password: ${TEST_DATABASE_PASSWORD:hro21100909}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
