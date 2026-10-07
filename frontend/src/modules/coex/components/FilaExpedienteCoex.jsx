@@ -7,6 +7,7 @@ import { metadatosEstadoCoex } from '../estadosCoex'
 // fila de solo lectura (p. ej. la sección "En uso").
 export default function FilaExpedienteCoex({
   fila,
+  carnet = null,
   seleccionable = false,
   seleccionada = false,
   onToggle,
@@ -26,6 +27,16 @@ export default function FilaExpedienteCoex({
           {meta.etiqueta}
         </span>
       </div>
+
+      {carnet && (
+        <div className="mt-1">
+          <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-label-sm font-semibold text-primary">
+            <Icon name="badge" className="text-[16px]" />
+            Carnet {carnet.correlativo}
+            {carnet.especialidadNombre ? ` · ${carnet.especialidadNombre}` : ''}
+          </span>
+        </div>
+      )}
 
       <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-on-surface-variant">
         {fila?.pacienteNombre && <span className="min-w-0 break-words">{fila.pacienteNombre}</span>}

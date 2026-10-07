@@ -41,6 +41,7 @@ export default function SeccionLoteCoex({
   etiquetaSeleccionarTodo = 'Seleccionar todos los expedientes pendientes de recibir',
   acciones,
   alerta,
+  carnetsPorExpediente,
 }) {
   return (
     <section
@@ -82,6 +83,7 @@ export default function SeccionLoteCoex({
             <FilaExpedienteCoex
               key={fila.cicloId ?? fila.citaId}
               fila={fila}
+              carnet={carnetsPorExpediente?.get?.(fila.numeroExpediente) ?? null}
               seleccionable={mostrarSeleccion}
               seleccionada={mostrarSeleccion ? !!estaSeleccionada?.(fila.cicloId) : false}
               onToggle={onToggleFila}

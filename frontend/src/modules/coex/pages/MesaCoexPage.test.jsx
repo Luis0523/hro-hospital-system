@@ -34,6 +34,12 @@ vi.mock('../utils/descargarBlobCoex', async (importOriginal) => {
   return { ...actual, descargarBlobCoex: vi.fn() }
 })
 
+vi.mock('@/modules/carnets/api/carnetsApi', () => ({
+  listarCarnets: vi.fn(() => Promise.resolve([])),
+  recibirCarnet: vi.fn(() => Promise.resolve({})),
+  devolverCarnet: vi.fn(() => Promise.resolve({})),
+}))
+
 function activarEstacion() {
   localStorage.setItem(
     'hro_estacion',

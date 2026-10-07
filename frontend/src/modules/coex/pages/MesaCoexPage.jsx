@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
@@ -8,6 +8,7 @@ import Spinner from '@/shared/components/ui/Spinner.jsx'
 import AppShell from '@/shared/components/AppShell.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { SECCIONES_ENFERMERIA } from '@/modules/enfermeria/seccionesEnfermeria'
+import { devolverCarnet, listarCarnets, recibirCarnet } from '@/modules/carnets/api/carnetsApi'
 import { useDevolucionCoex } from '../hooks/useDevolucionCoex'
 import { useDescargaPdfCoex } from '../hooks/useDescargaPdfCoex'
 import { useLoteCoex } from '../hooks/useLoteCoex'
@@ -68,15 +69,54 @@ export default function MesaCoexPage() {
 
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [confirmacionDevolucionAbierta, setConfirmacionDevolucionAbierta] = useState(false)
+  const [carnetsPorExpediente, setCarnetsPorExpediente] = useState(() => new Map())
+
+  const cargarCarnets = useCallback(async () => {
+    try {
+      const lista = await listarCarnets({ fecha })
+      setCarnetsPorExpediente(
+        new Map((lista ?? []).filter((c) => c.numeroExpediente).map((c) => [c.numeroExpediente, c])),
+      )
+    } catch {
+      // Best-effort: los carnets no deben romper Mesa COEX.
+    }
+  }, [fecha])
+
+  useEffect(() => {
+    cargarCarnets()
+  }, [cargarCarnets])
+
+  // Sincroniza (best-effort) el estado del carnet tras recibir/devolver.
+  const sincronizarCarnets = useCallback(
+    async (filas, transicion) => {
+      await Promise.all(
+        filas.map(async (fila) => {
+          const carnet = carnetsPorExpediente.get(fila.numeroExpediente)
+          if (!carnet) return
+          try {
+            await transicion(carnet.id)
+          } catch {
+            // El carnet pudo no estar en el estado requerido; se ignora.
+          }
+        }),
+      )
+      cargarCarnets()
+    },
+    [carnetsPorExpediente, cargarCarnets],
+  )
 
   async function confirmarRecepcion() {
+    const seleccionadas = [...recepcion.seleccionadas]
     await recepcion.recibirSeleccionados()
     setConfirmacionAbierta(false)
+    sincronizarCarnets(seleccionadas, recibirCarnet)
   }
 
   async function confirmarDevolucion() {
+    const seleccionadas = [...devolucion.seleccionadas]
     await devolucion.devolverSeleccionados()
     setConfirmacionDevolucionAbierta(false)
+    sincronizarCarnets(seleccionadas, devolverCarnet)
   }
 
   const fallidos = recepcion.ultimoResultado?.fallidos ?? []
@@ -323,6 +363,7 @@ export default function MesaCoexPage() {
               onToggleFila={recepcion.toggleFila}
               acciones={accionesRecepcion}
               alerta={alertaFallos}
+              carnetsPorExpediente={carnetsPorExpediente}
             />
             <SeccionLoteCoex
               titulo="En uso"
@@ -341,6 +382,7 @@ export default function MesaCoexPage() {
               onToggleFila={devolucion.toggleFila}
               acciones={accionesDevolucion}
               alerta={alertaFallosDevolucion}
+              carnetsPorExpediente={carnetsPorExpediente}
             />
           </>
         )}
