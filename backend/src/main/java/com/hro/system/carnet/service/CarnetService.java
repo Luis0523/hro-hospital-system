@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,14 @@ public class CarnetService {
     private static final Set<String> ROLES_ARCHIVO = Set.of("archivo", "administrador");
     private static final Set<String> ROLES_ENFERMERIA = Set.of("enfermeria", "administrador");
 
+    /**
+     * Zona horaria del hospital. La "fecha del carnet" debe ser el día operativo
+     * local (Guatemala, UTC-6), no el día UTC del servidor: de lo contrario, los
+     * carnets registrados después de las 18:00 locales caen en el día siguiente
+     * y no aparecen en el filtro del día del frontend.
+     */
+    private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Guatemala");
+
     private final CarnetRepository carnetRepository;
     private final CarnetMovimientoRepository movimientoRepository;
     private final EspecialidadRepository especialidadRepository;
@@ -85,7 +94,7 @@ public class CarnetService {
         EstacionEnfermeria estacion = resolverEstacion(dto.getEstacionId());
 
         String numero = dto.getNumeroExpediente().trim();
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(ZONA_HORARIA);
 
         Carnet existente = carnetRepository.findByFechaAndNumeroExpediente(hoy, numero).orElse(null);
         if (existente != null) {
@@ -167,7 +176,7 @@ public class CarnetService {
 
     @Transactional(readOnly = true)
     public List<CarnetResponseDTO> listar(LocalDate fecha, Long estacionId, Long especialidadId, String estado) {
-        LocalDate dia = (fecha != null) ? fecha : LocalDate.now();
+        LocalDate dia = (fecha != null) ? fecha : LocalDate.now(ZONA_HORARIA);
         String estadoNormalizado = (estado != null && !estado.isBlank()) ? estado.trim() : null;
 
         return carnetRepository.listarPorFecha(dia).stream()
