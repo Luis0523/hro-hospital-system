@@ -10,7 +10,6 @@ import AppRouter from '@/router/AppRouter.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import {
   archivarCiclo,
-  buscarExpedientePorCodigo,
   checkInExpediente,
   despacharCiclo,
   iniciarBusquedaCiclo,
@@ -23,6 +22,7 @@ import {
   obtenerResumenArchivoPdf,
   reintentarBusquedaCiclo,
 } from '../api/archivoApi'
+import { registrarCarnet } from '@/modules/carnets/api/carnetsApi'
 import ArchivoPage from './ArchivoPage.jsx'
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
@@ -63,7 +63,8 @@ vi.mock('@/modules/carnets/hooks/useCarnetsRealtime', () => ({
 vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarCarnets: vi.fn(() => Promise.resolve([])),
   listarEstaciones: vi.fn(() => Promise.resolve([])),
-  listarEspecialidades: vi.fn(() => Promise.resolve([])),
+  listarEspecialidades: vi.fn(() => Promise.resolve([{ id: 1, nombre: 'Medicina Interna' }])),
+  registrarCarnet: vi.fn(() => Promise.resolve({ correlativo: 1 })),
   marcarEncontrado: vi.fn(),
   marcarNoLocalizado: vi.fn(),
   despacharCarnet: vi.fn(),
@@ -180,7 +181,6 @@ beforeEach(() => {
     ),
   )
 
-  buscarExpedientePorCodigo.mockResolvedValue(null)
   obtenerResumenArchivo.mockResolvedValue({ fecha: null, totalCiclos: 0 })
   obtenerResumenArchivoPdf.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))
   obtenerCicloPorCita.mockResolvedValue({ cicloId: 'c-e2', citaId: 102, movimientos: [] })
@@ -486,42 +486,27 @@ describe('ArchivoPage — scanner / búsqueda', () => {
     await user.click(screen.getByRole('button', { name: 'Buscar' }))
   }
 
-  it('si el expediente escaneado está sin ciclo, hace check-in una vez sin localizar', async () => {
-    buscarExpedientePorCodigo.mockResolvedValue({
-      expedienteId: 'e8',
-      numeroExpediente: 'EXP-e8',
-    })
+  it('registra un carnet al buscar el código (en Medicina Interna)', async () => {
+    registrarCarnet.mockReset()
+    registrarCarnet.mockResolvedValue({ correlativo: 5 })
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
-    await buscar(user, 'EXP-e8')
+    await buscar(user, '837871')
 
-    await waitFor(() => expect(checkInExpediente).toHaveBeenCalledTimes(1))
-    expect(localizarCiclo).not.toHaveBeenCalled()
-    expect(await screen.findByText('Resultado de búsqueda')).toBeInTheDocument()
     await waitFor(() =>
-      expect(within(filaDe('EXP-e8')).getByText('En búsqueda')).toBeInTheDocument(),
+      expect(registrarCarnet).toHaveBeenCalledWith({
+        numeroExpediente: '837871',
+        especialidadId: 1,
+      }),
     )
+    expect(await screen.findByText('Carnet registrado')).toBeInTheDocument()
   })
 
-  it('si el expediente ya tiene ciclo, solo resalta (sin mutaciones)', async () => {
-    buscarExpedientePorCodigo.mockResolvedValue({
-      expedienteId: 'e2',
-      numeroExpediente: 'EXP-e2',
-    })
-    const user = userEvent.setup()
-    renderPagina()
-    await esperarJornada()
-
-    await buscar(user, 'EXP-e2')
-
-    expect(await screen.findByText('Resultado de búsqueda')).toBeInTheDocument()
-    expect(checkInExpediente).not.toHaveBeenCalled()
-    expect(localizarCiclo).not.toHaveBeenCalled()
-  })
-
-  it('feedback de error cuando el código no existe', async () => {
+  it('avisa cuando el expediente no existe (404)', async () => {
+    registrarCarnet.mockReset()
+    registrarCarnet.mockRejectedValue(Object.assign(new Error('no encontrado'), { status: 404 }))
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
@@ -529,17 +514,17 @@ describe('ArchivoPage — scanner / búsqueda', () => {
     await buscar(user, 'NO-EXISTE')
 
     expect(await screen.findByText('Expediente no encontrado')).toBeInTheDocument()
-    expect(screen.queryByText('Resultado de búsqueda')).not.toBeInTheDocument()
   })
 
-  it('no busca con código vacío', async () => {
+  it('no registra con código vacío', async () => {
+    registrarCarnet.mockReset()
     const user = userEvent.setup()
     renderPagina()
     await esperarJornada()
 
     await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
-    expect(buscarExpedientePorCodigo).not.toHaveBeenCalled()
+    expect(registrarCarnet).not.toHaveBeenCalled()
   })
 })
 

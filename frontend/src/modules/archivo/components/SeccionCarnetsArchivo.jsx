@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
-import { useCarnetsArchivo } from '../hooks/useCarnetsArchivo'
+import { useCarnetsArchivo, compararPorExpediente } from '../hooks/useCarnetsArchivo'
 import ModalObservacion from './ModalObservacion.jsx'
 
 // Orden lineal del circuito. `no_localizado` es una rama, no entra en el orden.
@@ -98,7 +98,7 @@ function FilaHistorial({ carnet, columnas }) {
 
 // Sección de seguimiento de carnets: tablas de estados. La fecha y la estación
 // llegan desde el único filtro de la página. Se actualiza en tiempo real.
-export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
+export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey }) {
   const {
     carnets,
     cargando,
@@ -109,7 +109,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
     despachar,
     recibirDevolucion,
     marcarNoLocalizado,
-  } = useCarnetsArchivo({ fecha, estacionId })
+  } = useCarnetsArchivo({ fecha, estacionId, recargaKey })
 
   const [expandido, setExpandido] = useState(null)
   const [observacionPara, setObservacionPara] = useState(null)
@@ -118,7 +118,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
   useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => recargar() })
 
   const { pendientes, encontrados } = useMemo(() => {
-    const ordenados = [...carnets].sort((a, b) => a.correlativo - b.correlativo)
+    const ordenados = [...carnets].sort(compararPorExpediente)
     return {
       pendientes: ordenados.filter((c) => !ESTADOS_ENCONTRADOS.has(c.estado)),
       encontrados: ordenados.filter((c) => ESTADOS_ENCONTRADOS.has(c.estado)),
@@ -163,10 +163,16 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
             &laquo;Encontrados&raquo;.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-semibold text-primary">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          En vivo
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-semibold text-primary">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+            En vivo
+          </span>
+          <Button size="sm" variant="secondary" onClick={recargar}>
+            <Icon name="refresh" className="text-[18px]" />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {cargando ? (
