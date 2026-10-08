@@ -119,7 +119,8 @@ export default function RegistroCarnetsPage() {
                 onChange={(event) => setExpediente(event.target.value)}
                 autoComplete="off"
                 autoFocus
-                inputMode="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 enterKeyHint="done"
                 placeholder="Ej. 837871"
                 aria-describedby="expediente-ayuda"

@@ -9,8 +9,13 @@ import ArchivoNavbar from './ArchivoNavbar.jsx'
 // el cierre de sesión fijado al pie de la barra. En escritorio la barra
 // empuja el contenido; en móvil se muestra como panel superpuesto.
 export default function ArchivoLayout({ children }) {
-  const { identidad, identidadLista } = useIdentidadEstacionArchivo()
-  const usuarioArchivo = resolverUsuarioArchivo(identidad)
+  const { identidad, identidadLista, suplanta } = useIdentidadEstacionArchivo()
+  const usuarioArchivo = suplanta
+    ? resolverUsuarioArchivo(identidad)
+    : {
+        nombre: identidad?.nombre ?? 'Usuario',
+        puesto: identidad?.puesto ?? identidad?.rol ?? '',
+      }
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), [])
