@@ -335,6 +335,7 @@ public class CarnetService {
                 .correlativo(carnet.getCorrelativo())
                 .especialidadId(carnet.getEspecialidad().getId())
                 .especialidadNombre(carnet.getEspecialidad().getNombre())
+                .especialidadAbreviatura(carnet.getEspecialidad().getAbreviatura())
                 .estacionId(carnet.getEstacion() != null ? carnet.getEstacion().getId() : null)
                 .estacionNombre(estacionNombre)
                 .numeroExpediente(carnet.getNumeroExpediente())

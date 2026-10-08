@@ -4,6 +4,11 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 export const ITEMS_JEFE = [
   { to: '/jefe-enfermeria', etiqueta: 'Croquis del Día', icono: 'map', exacto: true },
   {
+    to: '/jefe-enfermeria/especialidades',
+    etiqueta: 'Especialidades',
+    icono: 'medical_services',
+  },
+  {
     to: '/jefe-enfermeria/horarios',
     etiqueta: 'Horario por subespecialidad',
     icono: 'schedule',

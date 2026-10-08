@@ -32,6 +32,7 @@ public class EspecialidadService {
 
         Especialidad esp = Especialidad.builder()
                 .nombre(dto.getNombre().trim())
+                .abreviatura(normalizarAbreviatura(dto.getAbreviatura()))
                 .activo(true)
                 .creadoEn(OffsetDateTime.now())
                 .build();
@@ -59,6 +60,7 @@ public class EspecialidadService {
         }
 
         esp.setNombre(dto.getNombre().trim());
+        esp.setAbreviatura(normalizarAbreviatura(dto.getAbreviatura()));
         Especialidad actualizada = especialidadRepository.save(esp);
         return mapToDTO(actualizada);
     }
@@ -126,8 +128,18 @@ public class EspecialidadService {
         return EspecialidadResponseDTO.builder()
                 .id(esp.getId())
                 .nombre(esp.getNombre())
+                .abreviatura(esp.getAbreviatura())
                 .activo(esp.getActivo())
                 .creadoEn(esp.getCreadoEn())
                 .build();
+    }
+
+    /** Normaliza la abreviatura (mayúsculas, sin espacios) o null si viene vacía. */
+    private String normalizarAbreviatura(String abreviatura) {
+        if (abreviatura == null) {
+            return null;
+        }
+        String valor = abreviatura.trim().toUpperCase();
+        return valor.isEmpty() ? null : valor;
     }
 }

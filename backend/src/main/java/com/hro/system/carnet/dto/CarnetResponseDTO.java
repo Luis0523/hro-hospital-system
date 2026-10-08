@@ -21,6 +21,7 @@ public class CarnetResponseDTO {
     private Integer correlativo;
     private Long especialidadId;
     private String especialidadNombre;
+    private String especialidadAbreviatura;
     private Long estacionId;
     private String estacionNombre;
     private String numeroExpediente;

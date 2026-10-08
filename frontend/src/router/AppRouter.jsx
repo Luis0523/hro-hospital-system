@@ -26,6 +26,7 @@ import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
 import AuditoriaPage from '@/modules/administracion/pages/AuditoriaPage.jsx'
 import JefeEnfermeriaLayout from '@/modules/jefeEnfermeria/JefeEnfermeriaLayout.jsx'
 import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
+import EspecialidadesJefePage from '@/modules/jefeEnfermeria/pages/EspecialidadesPage.jsx'
 import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
 import EstacionesJefePage from '@/modules/jefeEnfermeria/pages/EstacionesPage.jsx'
 import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
@@ -105,6 +106,7 @@ export default function AppRouter() {
         <Route element={<RutaPorRol area="jefe_enfermeria" />}>
           <Route path="/jefe-enfermeria" element={<JefeEnfermeriaLayout />}>
             <Route index element={<CroquisPage />} />
+            <Route path="especialidades" element={<EspecialidadesJefePage />} />
             <Route path="horarios" element={<HorariosPage />} />
             <Route path="estaciones" element={<EstacionesJefePage />} />
             <Route path="reportes" element={<ReportesJefePage />} />

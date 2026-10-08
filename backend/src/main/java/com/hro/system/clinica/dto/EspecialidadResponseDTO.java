@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 public class EspecialidadResponseDTO {
     private Long id;
     private String nombre;
+    private String abreviatura;
     private Boolean activo;
     private OffsetDateTime creadoEn;
 }

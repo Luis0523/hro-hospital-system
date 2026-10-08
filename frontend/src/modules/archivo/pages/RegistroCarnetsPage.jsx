@@ -1,9 +1,18 @@
-import { Alert, Button, Icon, Table } from '@/shared/components/ui'
+import { useEffect, useState } from 'react'
+import { Alert, Button, Icon, Modal, Table } from '@/shared/components/ui'
 import { formatearFechaLarga, hoyIso } from '@/shared/utils/fecha'
 import EnfermeriaEstacionLayout from '@/modules/enfermeria/components/EnfermeriaEstacionLayout.jsx'
 import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
 import { useEscanerCodigo } from '../hooks/useEscanerCodigo'
 import { useRegistroCarnets } from '../hooks/useRegistroCarnets'
+
+// Código visible del carnet: "ABREV-correlativo" (p. ej. PED-3) usando la
+// abreviatura configurable de la especialidad; si no hay, solo el correlativo.
+function codigoCarnet(carnet) {
+  if (!carnet) return ''
+  const abreviatura = carnet.especialidadAbreviatura
+  return abreviatura ? `${abreviatura}-${carnet.correlativo}` : String(carnet.correlativo)
+}
 
 const COLUMNAS = [
   { key: 'correlativo', label: 'Correlativo' },
@@ -55,6 +64,15 @@ export default function RegistroCarnetsPage() {
     setExpediente(valor)
     registrar(valor)
   })
+
+  // Modal con el correlativo asignado: se cierra con Esc (Esc) o tras 8 s.
+  const [modalAbierto, setModalAbierto] = useState(false)
+  useEffect(() => {
+    if (!resultado) return undefined
+    setModalAbierto(true)
+    const temporizador = setTimeout(() => setModalAbierto(false), 8000)
+    return () => clearTimeout(temporizador)
+  }, [resultado])
 
   return (
     <EnfermeriaEstacionLayout>
@@ -199,49 +217,6 @@ export default function RegistroCarnetsPage() {
             </section>
 
             <section aria-live="polite" aria-atomic="true" className="space-y-3">
-              {estado === 'registrado' && resultado && (
-                <div className="rounded-xl bg-surface-container-lowest p-4 text-center shadow-md">
-                  <span className="inline-flex items-center gap-1 text-label-sm font-bold uppercase tracking-widest text-primary">
-                    <Icon name="check_circle" className="text-[16px]" />
-                    Correlativo asignado hoy
-                  </span>
-                  <p
-                    data-testid="correlativo-asignado"
-                    className="my-1 select-all text-[72px] font-black leading-[76px] tracking-tight text-primary"
-                  >
-                    {resultado.correlativo}
-                  </p>
-                  <p className="text-title-md font-semibold text-on-surface">
-                    {resultado.especialidadNombre}
-                  </p>
-                  <p className="mt-1 text-label-md text-on-surface-variant">
-                    Anotar con lápiz en el carnet físico
-                  </p>
-
-                  <dl className="mt-3 space-y-1 rounded-lg bg-surface-container-low p-3 text-left">
-                    <div className="flex items-start justify-between gap-3">
-                      <dt className="text-label-sm uppercase text-on-surface-variant">Paciente</dt>
-                      <dd
-                        className="truncate font-semibold text-on-surface"
-                        data-testid="paciente"
-                      >
-                        {resultado.pacienteNombre || 'Paciente sin nombre'}
-                      </dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="text-label-sm uppercase text-on-surface-variant">Expediente</dt>
-                      <dd className="font-mono font-bold text-primary">
-                        {resultado.numeroExpediente}
-                      </dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="text-label-sm uppercase text-on-surface-variant">Hora</dt>
-                      <dd className="font-mono text-on-surface-variant">{horaDe(resultado)}</dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-
               {(estado === 'duplicado' || estado === 'error') && mensaje && (
                 <Alert tone={estado === 'duplicado' ? 'warning' : 'error'} title={mensaje} />
               )}
@@ -269,7 +244,7 @@ export default function RegistroCarnetsPage() {
                   if (clave === 'correlativo') {
                     return (
                       <span className="inline-flex items-center justify-center rounded bg-primary px-2 py-0.5 font-mono text-[13px] font-bold text-on-primary">
-                        {fila.correlativo}
+                        {codigoCarnet(fila)}
                       </span>
                     )
                   }
@@ -299,6 +274,50 @@ export default function RegistroCarnetsPage() {
           </section>
         </div>
       </main>
+
+      <Modal
+        open={modalAbierto && Boolean(resultado)}
+        onClose={() => setModalAbierto(false)}
+        title="Correlativo asignado"
+        footer={
+          <Button size="sm" onClick={() => setModalAbierto(false)}>
+            Listo
+          </Button>
+        }
+      >
+        {resultado && (
+          <div className="text-center">
+            <p className="text-label-sm uppercase tracking-widest text-primary">
+              Anotar con lápiz en el carnet
+            </p>
+            <p
+              data-testid="correlativo-asignado"
+              className="my-2 select-all font-mono text-[72px] font-black leading-none text-primary"
+            >
+              {codigoCarnet(resultado)}
+            </p>
+            <p className="text-title-md font-semibold text-on-surface">
+              {resultado.especialidadNombre}
+            </p>
+            <dl className="mt-4 space-y-1 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-label-sm uppercase text-on-surface-variant">Paciente</dt>
+                <dd className="truncate font-semibold text-on-surface" data-testid="paciente">
+                  {resultado.pacienteNombre || 'Paciente sin nombre'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-label-sm uppercase text-on-surface-variant">Expediente</dt>
+                <dd className="font-mono font-bold text-primary">{resultado.numeroExpediente}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-label-sm uppercase text-on-surface-variant">Hora</dt>
+                <dd className="font-mono text-on-surface-variant">{horaDe(resultado)}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      </Modal>
     </EnfermeriaEstacionLayout>
   )
 }

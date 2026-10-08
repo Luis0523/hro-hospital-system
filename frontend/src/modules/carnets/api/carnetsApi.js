@@ -11,6 +11,7 @@ export async function listarEspecialidades() {
   return (lista ?? []).map((especialidad) => ({
     id: especialidad.id,
     nombre: especialidad.nombre,
+    abreviatura: especialidad.abreviatura ?? null,
   }))
 }
 
