@@ -3,6 +3,8 @@ import {
   formatearUbicacion,
   mapearCiclo,
   mapearCita,
+  mapearEstadisticasArchivo,
+  mapearEventoMovimiento,
   mapearExpedienteBusqueda,
   mapearJornadaArchivo,
   mapearMedico,
@@ -280,5 +282,61 @@ describe('mapearCiclo', () => {
     expect(mapearCiclo(undefined)).toBeNull()
     expect(mapearCiclo({ id: 'x' }).movimientos).toEqual([])
     expect(mapearMovimientoCiclo(null)).toBeNull()
+  })
+})
+
+// DTO de ejemplo de EstadisticasArchivoDTO (contrato confirmado del dashboard).
+const ESTADISTICAS_DTO = {
+  rango: { desde: '2026-10-01', hasta: '2026-10-07' },
+  totales: {
+    totalCiclos: 34,
+    expedientesNuevos: 8,
+    noLocalizado: 2,
+    archivado: 5,
+    entregado: 12,
+    enTransito: 4,
+  },
+  porEstado: [
+    { estado: 'pendiente_localizar', total: 3 },
+    { estado: 'en_busqueda', total: 5 },
+    { estado: 'no_localizado', total: 2 },
+  ],
+  serieDiaria: [{ fecha: '2026-10-07', transiciones: 34, ciclosNuevos: 8, noLocalizado: 1 }],
+  porUnidad: [{ subespecialidadId: 2, nombre: 'Pediatría General', total: 9, noLocalizado: 1 }],
+  permanencia: [{ estado: 'en_busqueda', minutosPromedio: 42 }],
+}
+
+describe('mapearEstadisticasArchivo', () => {
+  it('replica el contrato confirmado sin inventar campos', () => {
+    expect(mapearEstadisticasArchivo(ESTADISTICAS_DTO)).toEqual(ESTADISTICAS_DTO)
+  })
+
+  it('tolera totales y listas ausentes con valores neutros', () => {
+    const vacio = mapearEstadisticasArchivo({})
+
+    expect(vacio.totales.totalCiclos).toBe(0)
+    expect(vacio.porEstado).toEqual([])
+    expect(vacio.serieDiaria).toEqual([])
+    expect(mapearEstadisticasArchivo(null)).toBeNull()
+  })
+})
+
+// DTO de ejemplo de EventoMovimientoDTO.
+const EVENTO_DTO = {
+  id: 128,
+  expedienteId: '7f2c-uuid',
+  numeroExpediente: 'EXP-2024-035',
+  pacienteNombre: 'María Fernanda López García',
+  estadoAnterior: 'en_busqueda',
+  estadoNuevo: 'localizado',
+  usuarioNombre: 'Personal de Archivo',
+  observacion: null,
+  fechaMovimiento: '2026-10-07T10:20:31.123-06:00',
+}
+
+describe('mapearEventoMovimiento', () => {
+  it('incluye expediente y paciente que la tabla y el feed necesitan', () => {
+    expect(mapearEventoMovimiento(EVENTO_DTO)).toEqual(EVENTO_DTO)
+    expect(mapearEventoMovimiento(null)).toBeNull()
   })
 })

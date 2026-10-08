@@ -150,3 +150,66 @@ export function mapearCita(dto) {
     estado: dto.estado ?? null,
   }
 }
+
+// Estadísticas agregadas del dashboard (EstadisticasArchivoDTO). Replica el
+// contrato confirmado del backend; no reinventa campos ni recalcula negocio.
+export function mapearEstadisticasArchivo(dto) {
+  if (!dto) return null
+  return {
+    rango: {
+      desde: dto.rango?.desde ?? null,
+      hasta: dto.rango?.hasta ?? null,
+    },
+    totales: {
+      totalCiclos: dto.totales?.totalCiclos ?? 0,
+      expedientesNuevos: dto.totales?.expedientesNuevos ?? 0,
+      noLocalizado: dto.totales?.noLocalizado ?? 0,
+      archivado: dto.totales?.archivado ?? 0,
+      entregado: dto.totales?.entregado ?? 0,
+      enTransito: dto.totales?.enTransito ?? 0,
+    },
+    porEstado: Array.isArray(dto.porEstado)
+      ? dto.porEstado.map((item) => ({ estado: item.estado, total: item.total ?? 0 }))
+      : [],
+    serieDiaria: Array.isArray(dto.serieDiaria)
+      ? dto.serieDiaria.map((item) => ({
+          fecha: item.fecha ?? null,
+          transiciones: item.transiciones ?? 0,
+          ciclosNuevos: item.ciclosNuevos ?? 0,
+          noLocalizado: item.noLocalizado ?? 0,
+        }))
+      : [],
+    porUnidad: Array.isArray(dto.porUnidad)
+      ? dto.porUnidad.map((item) => ({
+          subespecialidadId: item.subespecialidadId ?? null,
+          nombre: item.nombre ?? '',
+          total: item.total ?? 0,
+          noLocalizado: item.noLocalizado ?? 0,
+        }))
+      : [],
+    permanencia: Array.isArray(dto.permanencia)
+      ? dto.permanencia.map((item) => ({
+          estado: item.estado,
+          minutosPromedio: item.minutosPromedio ?? 0,
+        }))
+      : [],
+  }
+}
+
+// Evento de la bitácora del dashboard (EventoMovimientoDTO). A diferencia de
+// `mapearMovimientoCiclo`, incluye el expediente y el paciente que la tabla y
+// el feed en vivo necesitan mostrar.
+export function mapearEventoMovimiento(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id ?? null,
+    expedienteId: dto.expedienteId ?? null,
+    numeroExpediente: dto.numeroExpediente ?? null,
+    pacienteNombre: dto.pacienteNombre ?? '',
+    estadoAnterior: dto.estadoAnterior ?? null,
+    estadoNuevo: dto.estadoNuevo ?? null,
+    usuarioNombre: dto.usuarioNombre ?? null,
+    observacion: dto.observacion ?? null,
+    fechaMovimiento: dto.fechaMovimiento ?? null,
+  }
+}

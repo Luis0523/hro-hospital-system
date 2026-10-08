@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
+import DashboardArchivoPage from '@/modules/archivo/pages/DashboardArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import RegistroCarnetsPage from '@/modules/archivo/pages/RegistroCarnetsPage.jsx'
@@ -82,6 +83,7 @@ export default function AppRouter() {
 
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
+          <Route path="/archivo/dashboard" element={<DashboardArchivoPage />} />
           <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
           <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
         </Route>

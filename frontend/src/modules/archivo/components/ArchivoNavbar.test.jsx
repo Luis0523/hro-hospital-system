@@ -40,6 +40,17 @@ describe('ArchivoNavbar — control claro/oscuro', () => {
   })
 })
 
+describe('ArchivoNavbar — secciones', () => {
+  it('incluye el acceso al Dashboard de Archivo', () => {
+    renderNavbar()
+
+    expect(screen.getByRole('link', { name: /dashboard de archivo/i })).toHaveAttribute(
+      'href',
+      '/archivo/dashboard',
+    )
+  })
+})
+
 describe('ArchivoNavbar — usuario y cierre de sesión', () => {
   it('muestra el usuario recibido y el botón de cerrar sesión', () => {
     renderNavbar({ usuario: { nombre: 'Ana Archivo', puesto: 'Archivo / Registro Médico' } })
