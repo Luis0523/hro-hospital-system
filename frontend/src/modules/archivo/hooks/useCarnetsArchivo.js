@@ -20,7 +20,7 @@ export function compararPorExpediente(a, b) {
 
 // Estado de la sección de seguimiento de carnets en la Estación de Archivo.
 // La fecha y la estación las controla la página (un único juego de filtros).
-export function useCarnetsArchivo({ fecha, estacionId, recargaKey } = {}) {
+export function useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion } = {}) {
   const { mostrarToast } = useToast()
   const [carnets, setCarnets] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -34,7 +34,11 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey } = {}) {
       if (!silencioso) setCargando(true)
       setError(null)
       try {
-        const lista = await listarCarnets({ fecha, estacionId: estacionId || undefined })
+        const lista = await listarCarnets({
+          fecha,
+          estacionId: estacionId || undefined,
+          clasificacion: clasificacion || undefined,
+        })
         setCarnets([...lista].sort(compararPorExpediente))
       } catch (fallo) {
         setError(fallo)
@@ -43,7 +47,7 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey } = {}) {
         if (!silencioso) setCargando(false)
       }
     },
-    [fecha, estacionId],
+    [fecha, estacionId, clasificacion],
   )
 
   useEffect(() => {

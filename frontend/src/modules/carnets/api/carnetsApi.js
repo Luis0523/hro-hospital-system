@@ -25,11 +25,22 @@ export async function listarEstaciones() {
   }))
 }
 
-/** Carnets del día, filtrables por estación, especialidad y estado. */
-export async function listarCarnets({ fecha, estacionId, especialidadId, estado } = {}) {
+/** Carnets del día, filtrables por estación, especialidad, estado y clasificación (activo/pasivo). */
+export async function listarCarnets({ fecha, estacionId, especialidadId, estado, clasificacion } = {}) {
   return desenvolver(
-    await client.get('/carnets', { params: { fecha, estacionId, especialidadId, estado } }),
+    await client.get('/carnets', {
+      params: { fecha, estacionId, especialidadId, estado, clasificacion },
+    }),
   )
+}
+
+/** Configuración de Archivo (umbral activo/pasivo). */
+export async function obtenerConfiguracionArchivo() {
+  return desenvolver(await client.get('/archivo/configuracion'))
+}
+
+export async function actualizarConfiguracionArchivo({ umbralActivo }) {
+  return desenvolver(await client.put('/archivo/configuracion', { umbralActivo }))
 }
 
 export async function obtenerCarnet(id) {

@@ -18,6 +18,7 @@ import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
+import com.hro.system.parametro.service.ParametroSistemaService;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +78,7 @@ public class CarnetService {
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ExpedienteHroService expedienteHroService;
     private final CarnetProperties properties;
+    private final ParametroSistemaService parametros;
     private final SimpMessagingTemplate messagingTemplate;
 
     // ------------------------------------------------------------------
@@ -175,15 +177,21 @@ public class CarnetService {
     // ------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public List<CarnetResponseDTO> listar(LocalDate fecha, Long estacionId, Long especialidadId, String estado) {
+    public List<CarnetResponseDTO> listar(LocalDate fecha, Long estacionId, Long especialidadId,
+                                          String estado, String clasificacion) {
         LocalDate dia = (fecha != null) ? fecha : LocalDate.now(ZONA_HORARIA);
         String estadoNormalizado = (estado != null && !estado.isBlank()) ? estado.trim() : null;
+        String clasificacionNormalizada = (clasificacion != null && !clasificacion.isBlank())
+                ? clasificacion.trim().toLowerCase() : null;
+        Long umbral = umbralActivo();
 
         return carnetRepository.listarPorFecha(dia).stream()
                 .filter(c -> estacionId == null
                         || (c.getEstacion() != null && estacionId.equals(c.getEstacion().getId())))
                 .filter(c -> especialidadId == null || especialidadId.equals(c.getEspecialidad().getId()))
                 .filter(c -> estadoNormalizado == null || estadoNormalizado.equals(c.getEstado()))
+                .filter(c -> clasificacionNormalizada == null
+                        || clasificacionNormalizada.equals(clasificar(c.getNumeroExpediente(), umbral)))
                 .map(this::mapCarnet)
                 .toList();
     }
@@ -346,6 +354,7 @@ public class CarnetService {
                 .cicloId(carnet.getCicloId())
                 .estado(carnet.getEstado())
                 .observacion(carnet.getObservacion())
+                .archivo(clasificar(carnet.getNumeroExpediente(), umbralActivo()))
                 .registradoPor(nombre(carnet.getRegistradoPor()))
                 .registradoEn(carnet.getRegistradoEn())
                 .encontradoPor(nombre(carnet.getEncontradoPor()))
@@ -366,5 +375,28 @@ public class CarnetService {
 
     private String nombre(UsuarioReferencia usuario) {
         return (usuario != null) ? usuario.getNombreMostrar() : null;
+    }
+
+    /** Umbral configurable de archivo activo (mayor al umbral = activo). */
+    private Long umbralActivo() {
+        String valor = parametros.obtener(ParametroSistemaService.UMBRAL_ARCHIVO_ACTIVO, null);
+        try {
+            return (valor != null && !valor.isBlank()) ? Long.valueOf(valor.trim()) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Clasifica un expediente como "activo"/"pasivo" según el umbral. */
+    private String clasificar(String numeroExpediente, Long umbral) {
+        if (umbral == null || numeroExpediente == null) {
+            return null;
+        }
+        try {
+            long numero = Long.parseLong(numeroExpediente.trim());
+            return numero > umbral ? "activo" : "pasivo";
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

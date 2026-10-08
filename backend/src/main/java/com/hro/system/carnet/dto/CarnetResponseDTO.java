@@ -32,6 +32,8 @@ public class CarnetResponseDTO {
     private UUID cicloId;
     private String estado;
     private String observacion;
+    /** "activo" | "pasivo" según el umbral configurable, o null si no aplica. */
+    private String archivo;
 
     private String registradoPor;
     private OffsetDateTime registradoEn;

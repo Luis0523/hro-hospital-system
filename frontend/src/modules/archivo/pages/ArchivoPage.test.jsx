@@ -65,6 +65,8 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarEstaciones: vi.fn(() => Promise.resolve([])),
   listarEspecialidades: vi.fn(() => Promise.resolve([{ id: 1, nombre: 'Medicina Interna' }])),
   registrarCarnet: vi.fn(() => Promise.resolve({ correlativo: 1 })),
+  obtenerConfiguracionArchivo: vi.fn(() => Promise.resolve({ umbralActivo: null })),
+  actualizarConfiguracionArchivo: vi.fn(() => Promise.resolve({ umbralActivo: null })),
   marcarEncontrado: vi.fn(),
   marcarNoLocalizado: vi.fn(),
   despacharCarnet: vi.fn(),
