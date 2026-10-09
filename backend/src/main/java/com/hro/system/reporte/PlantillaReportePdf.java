@@ -80,10 +80,9 @@ public class PlantillaReportePdf {
 
     public byte[] generar(Reporte r) throws IOException {
         try (PDDocument doc = new PDDocument()) {
-            List<PDPageState> estado = new ArrayList<>();
             PDPageState page = nuevaPagina(doc);
-            float y = dibujarEncabezadoCompleto(doc, page.stream, r);
-            y = dibujarTablaEncabezado(page.stream, r, y);
+            page.y = dibujarEncabezadoCompleto(doc, page.stream, r);
+            page.y = dibujarTablaEncabezado(page.stream, r, page.y);
 
             List<Float> anchos = calcularAnchos(r.columnas());
             boolean alterna = false;
@@ -92,8 +91,8 @@ public class PlantillaReportePdf {
                 if (page.y - alto < BOTTOM) {
                     page.stream.close();
                     page = nuevaPagina(doc);
-                    y = dibujarEncabezadoResumido(page.stream, r);
-                    y = dibujarTablaEncabezado(page.stream, r, y);
+                    page.y = dibujarEncabezadoResumido(page.stream, r);
+                    page.y = dibujarTablaEncabezado(page.stream, r, page.y);
                     alterna = false;
                 }
                 dibujarFila(page.stream, fila, anchos, page.y, r.columnas(), alterna, alto);
@@ -106,7 +105,7 @@ public class PlantillaReportePdf {
             if (page.y - necesario < BOTTOM) {
                 page.stream.close();
                 page = nuevaPagina(doc);
-                dibujarEncabezadoResumido(page.stream, r);
+                page.y = dibujarEncabezadoResumido(page.stream, r);
             }
             dibujarObservacionesFirmas(page.stream, r, page.y - 16);
             page.stream.close();
