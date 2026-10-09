@@ -137,6 +137,7 @@ public class PlantillaReportePdf {
 
     private PDPageState nuevaPagina(PDDocument doc) throws IOException {
         PDPage page = new PDPage(PDRectangle.A4);
+        doc.addPage(page);
         PDPageContentStream stream = new PDPageContentStream(doc, page);
         return new PDPageState(page, stream, PAGE_H - MARGEN);
     }
@@ -324,7 +325,7 @@ public class PlantillaReportePdf {
                 cs.moveTo(MARGEN, MARGEN);
                 cs.lineTo(MARGEN + CONTENT_W, MARGEN);
                 cs.stroke();
-                escribir(cs, F_NORMAL, 7.5f, TEXTO_SUAVE, "Sistema HRO — Documento generado automáticamente",
+                escribir(cs, F_NORMAL, 7.5f, TEXTO_SUAVE, "Sistema HRO - Documento generado automáticamente",
                         MARGEN, MARGEN - 11f, CONTENT_W / 2f, Alineacion.IZQUIERDA);
                 escribir(cs, F_NORMAL, 7.5f, TEXTO_SUAVE, "Página " + (i + 1) + " de " + total,
                         MARGEN + CONTENT_W / 2f, MARGEN - 11f, CONTENT_W / 2f, Alineacion.DERECHA);
@@ -351,7 +352,7 @@ public class PlantillaReportePdf {
     private void escribir(PDPageContentStream cs, PDFont font, float tamano, Color color,
                           String texto, float x, float y, float ancho, Alineacion alineacion)
             throws IOException {
-        String valor = nvl(texto);
+        String valor = sanitizar(nvl(texto));
         float anchoTexto = font.getStringWidth(valor) / 1000f * tamano;
         float drawX = x;
         if (alineacion == Alineacion.CENTRO) {
@@ -369,7 +370,7 @@ public class PlantillaReportePdf {
 
     private List<String> envolver(PDFont font, float tamano, String texto, float ancho) {
         List<String> lineas = new ArrayList<>();
-        String contenido = nvl(texto);
+        String contenido = sanitizar(nvl(texto));
         if (contenido.isEmpty() || ancho <= 0) {
             lineas.add(contenido);
             return lineas;
@@ -402,6 +403,25 @@ public class PlantillaReportePdf {
 
     private static String nvl(String valor) {
         return valor == null ? "" : valor;
+    }
+
+    /**
+     * Reemplaza caracteres fuera de Latin-1 (WinAnsiEncoding de Helvetica) por
+     * equivalentes ASCII, para que el texto siempre sea dibujable.
+     */
+    private static String sanitizar(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        return valor
+                .replace('\u2192', '-')   // →
+                .replace('\u2014', '-')   // —
+                .replace('\u2013', '-')   // –
+                .replace('\u2018', '\'')  // ‘
+                .replace('\u2019', '\'')  // ’
+                .replace('\u201c', '"')   // “
+                .replace('\u201d', '"')   // ”
+                .replace('\u2026', '.');  // …
     }
 
     private static String formatearFecha(LocalDate fecha) {

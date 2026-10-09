@@ -69,7 +69,7 @@ public class ReporteSalidaCarnetsService {
 
         PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
                 "CONTROL DE SALIDA DE EXPEDIENTES",
-                "Archivo / Registro Médico \u2192 Consulta Externa (COEX)",
+                "Archivo / Registro Médico -> Consulta Externa (COEX)",
                 "SAL-" + salida.fecha().format(DateTimeFormatter.ofPattern("yyyyMMdd")),
                 salida.fecha(),
                 OffsetDateTime.now(),
