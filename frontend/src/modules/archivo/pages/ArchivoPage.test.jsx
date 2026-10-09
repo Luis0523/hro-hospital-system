@@ -67,6 +67,8 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   registrarCarnet: vi.fn(() => Promise.resolve({ correlativo: 1 })),
   obtenerConfiguracionArchivo: vi.fn(() => Promise.resolve({ umbralActivo: null })),
   actualizarConfiguracionArchivo: vi.fn(() => Promise.resolve({ umbralActivo: null })),
+  obtenerSalidaCarnets: vi.fn(() => Promise.resolve({ fecha: null, total: 0, expedientes: [] })),
+  descargarSalidaCarnetsPdf: vi.fn(() => Promise.resolve(new Blob(['%PDF'], { type: 'application/pdf' }))),
   marcarEncontrado: vi.fn(),
   marcarNoLocalizado: vi.fn(),
   despacharCarnet: vi.fn(),

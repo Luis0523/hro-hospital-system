@@ -43,6 +43,16 @@ export async function actualizarConfiguracionArchivo({ umbralActivo }) {
   return desenvolver(await client.put('/archivo/configuracion', { umbralActivo }))
 }
 
+/** Reporte de salida (expedientes encontrados de una fecha). */
+export async function obtenerSalidaCarnets({ fecha } = {}) {
+  return desenvolver(await client.get('/carnets/salida', { params: { fecha } }))
+}
+
+/** Descarga el PDF del reporte de salida (blob). */
+export async function descargarSalidaCarnetsPdf({ fecha } = {}) {
+  return client.get('/carnets/salida/pdf', { params: { fecha }, responseType: 'blob' })
+}
+
 export async function obtenerCarnet(id) {
   return desenvolver(await client.get(`/carnets/${id}`))
 }

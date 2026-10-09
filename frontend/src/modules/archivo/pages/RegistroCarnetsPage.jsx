@@ -3,16 +3,9 @@ import { Alert, Button, Icon, Modal, Table } from '@/shared/components/ui'
 import { formatearFechaLarga, hoyIso } from '@/shared/utils/fecha'
 import EnfermeriaEstacionLayout from '@/modules/enfermeria/components/EnfermeriaEstacionLayout.jsx'
 import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
+import { codigoCarnet } from '@/modules/carnets/utils/codigoCarnet'
 import { useEscanerCodigo } from '../hooks/useEscanerCodigo'
 import { useRegistroCarnets } from '../hooks/useRegistroCarnets'
-
-// Código visible del carnet: "ABREV-correlativo" (p. ej. PED-3) usando la
-// abreviatura configurable de la especialidad; si no hay, solo el correlativo.
-function codigoCarnet(carnet) {
-  if (!carnet) return ''
-  const abreviatura = carnet.especialidadAbreviatura
-  return abreviatura ? `${abreviatura}-${carnet.correlativo}` : String(carnet.correlativo)
-}
 
 const COLUMNAS = [
   { key: 'correlativo', label: 'Correlativo' },

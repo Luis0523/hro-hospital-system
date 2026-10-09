@@ -3,8 +3,12 @@ import { Alert, Button, EmptyState, Icon, Modal, Spinner } from '@/shared/compon
 import {
   ETIQUETAS_ESTADO_CARNET,
   actualizarConfiguracionArchivo,
+  descargarSalidaCarnetsPdf,
   obtenerConfiguracionArchivo,
 } from '@/modules/carnets/api/carnetsApi'
+import { codigoCarnet } from '@/modules/carnets/utils/codigoCarnet'
+import { useToast } from '@/shared/context/ToastContext.jsx'
+import { descargarBlob } from '../utils/descargarBlob'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
 import { useCarnetsArchivo, compararPorExpediente } from '../hooks/useCarnetsArchivo'
 import ModalObservacion from './ModalObservacion.jsx'
@@ -156,6 +160,25 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
 
   useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => recargar() })
 
+  const { mostrarToast } = useToast()
+  const [generandoPdf, setGenerandoPdf] = useState(false)
+
+  async function descargarReporteSalida() {
+    setGenerandoPdf(true)
+    try {
+      const blob = await descargarSalidaCarnetsPdf({ fecha })
+      descargarBlob(blob, `reporte-salida-${fecha}.pdf`)
+    } catch (fallo) {
+      mostrarToast?.({
+        tone: 'error',
+        title: 'No se pudo generar el reporte',
+        message: fallo?.message,
+      })
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
+
   const { pendientes, encontrados } = useMemo(() => {
     const ordenados = [...carnets].sort(compararPorExpediente)
     return {
@@ -225,6 +248,16 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
           </Button>
           <Button
             size="sm"
+            variant="secondary"
+            onClick={descargarReporteSalida}
+            disabled={generandoPdf || encontrados.length === 0}
+            title="Generar el reporte de salida (PDF) de los expedientes encontrados"
+          >
+            <Icon name="picture_as_pdf" className="text-[18px]" />
+            {generandoPdf ? 'Generando…' : `Reporte de salida (${encontrados.length})`}
+          </Button>
+          <Button
+            size="sm"
             variant="ghost"
             onClick={() => setConfigAbierta(true)}
             aria-label="Configurar umbral de archivo"
@@ -273,7 +306,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
                             <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
-                              {carnet.correlativo}
+                              {codigoCarnet(carnet)}
                             </span>
                           </td>
                           <td className="px-3 py-3">
@@ -367,7 +400,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
                             <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
-                              {carnet.correlativo}
+                              {codigoCarnet(carnet)}
                             </span>
                           </td>
                           <td className="px-3 py-3">
