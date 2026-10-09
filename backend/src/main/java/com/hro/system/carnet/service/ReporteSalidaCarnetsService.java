@@ -72,7 +72,7 @@ public class ReporteSalidaCarnetsService {
                 "Archivo / Registro Médico -> Consulta Externa (COEX)",
                 "SAL-" + salida.fecha().format(DateTimeFormatter.ofPattern("yyyyMMdd")),
                 salida.fecha(),
-                OffsetDateTime.now(),
+                OffsetDateTime.now(ZONA_HORARIA),
                 nvl(usuarioGenerador),
                 "Archivo / Registro Médico",
                 "Consulta Externa (COEX)",
