@@ -196,6 +196,20 @@ export function mapearEstadisticasArchivo(dto) {
   }
 }
 
+// Registro de baja lógica de un expediente (DepuracionResponseDTO).
+export function mapearDepuracion(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id ?? null,
+    expedienteId: dto.expedienteId ?? null,
+    numeroExpediente: dto.numeroExpediente ?? null,
+    pacienteNombre: dto.pacienteNombre ?? '',
+    motivo: dto.motivo ?? null,
+    usuarioNombre: dto.usuarioNombre ?? null,
+    depuradoEn: dto.depuradoEn ?? null,
+  }
+}
+
 // Evento de la bitácora del dashboard (EventoMovimientoDTO). A diferencia de
 // `mapearMovimientoCiclo`, incluye el expediente y el paciente que la tabla y
 // el feed en vivo necesitan mostrar.

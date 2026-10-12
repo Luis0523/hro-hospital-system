@@ -4,6 +4,7 @@ import { formatearFechaLarga, hoyIso } from '@/shared/utils/fecha'
 import EnfermeriaEstacionLayout from '@/modules/enfermeria/components/EnfermeriaEstacionLayout.jsx'
 import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
 import { codigoCarnet } from '@/modules/carnets/utils/codigoCarnet'
+import ReporteCarnetsPanel from '../components/carnets/ReporteCarnetsPanel.jsx'
 import { useEscanerCodigo } from '../hooks/useEscanerCodigo'
 import { useRegistroCarnets } from '../hooks/useRegistroCarnets'
 
@@ -58,6 +59,9 @@ export default function RegistroCarnetsPage() {
     registrar(valor)
   })
 
+  // Panel lateral con el reporte de carnets por especialidad y sus límites.
+  const [reporteAbierto, setReporteAbierto] = useState(false)
+
   // Modal con el correlativo asignado: se cierra con Esc (Esc) o tras 8 s.
   const [modalAbierto, setModalAbierto] = useState(false)
   useEffect(() => {
@@ -74,10 +78,22 @@ export default function RegistroCarnetsPage() {
           {/* Columna izquierda: encabezado + formulario de registro + resultado */}
           <div className="space-y-4 lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:pr-1">
             <header className="rounded-xl bg-surface-container-lowest p-4 shadow-sm">
-              <h2 className="text-headline-sm text-on-surface">Registro de carnets</h2>
-              <p className="mt-1 text-body-md text-on-surface-variant">
-                Elija la especialidad, luego escanee o escriba el número de expediente.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-headline-sm text-on-surface">Registro de carnets</h2>
+                  <p className="mt-1 text-body-md text-on-surface-variant">
+                    Elija la especialidad, luego escanee o escriba el número de expediente.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReporteAbierto(true)}
+                  className="shrink-0"
+                >
+                  <Icon name="bar_chart" className="text-[20px]" />
+                  Reporte
+                </Button>
+              </div>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-label-md text-on-surface-variant">
                 <span className="inline-flex items-center gap-1">
                   <Icon name="calendar_today" className="text-[16px] text-secondary" />
@@ -311,6 +327,13 @@ export default function RegistroCarnetsPage() {
           </div>
         )}
       </Modal>
+
+      <ReporteCarnetsPanel
+        open={reporteAbierto}
+        onClose={() => setReporteAbierto(false)}
+        registros={registros}
+        especialidades={especialidades}
+      />
     </EnfermeriaEstacionLayout>
   )
 }

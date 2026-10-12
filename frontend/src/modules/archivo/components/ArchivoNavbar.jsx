@@ -14,6 +14,7 @@ export const SECCIONES_ARCHIVO = [
   { to: '/archivo', etiqueta: 'Expedientes para COEX', icono: 'folder_shared', exacto: true },
   { to: '/archivo/dashboard', etiqueta: 'Dashboard de Archivo', icono: 'monitoring' },
   { to: '/archivo/depuracion', etiqueta: 'Depuración de expedientes', icono: 'delete_sweep' },
+  { to: '/archivo/consolidado', etiqueta: 'Consolidado', icono: 'insights' },
   {
     to: '/archivo/salidas-externas',
     etiqueta: 'Salidas externas de expedientes',
