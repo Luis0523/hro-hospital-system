@@ -1,6 +1,7 @@
 package com.hro.system.archivo.entity;
 
 import com.hro.system.paciente.entity.Paciente;
+import com.hro.system.usuario.entity.UsuarioReferencia;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -38,6 +39,21 @@ public class Expediente {
     @Column(name = "activo", nullable = false)
     @Builder.Default
     private Boolean activo = true;
+
+    /** Baja lógica: el expediente fue depurado (ya no existe en el sistema). */
+    @Column(name = "depurado", nullable = false)
+    @Builder.Default
+    private Boolean depurado = false;
+
+    @Column(name = "depurado_en")
+    private OffsetDateTime depuradoEn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "depurado_por_id")
+    private UsuarioReferencia depuradoPor;
+
+    @Column(name = "motivo_depuracion", columnDefinition = "TEXT")
+    private String motivoDepuracion;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
     @Builder.Default

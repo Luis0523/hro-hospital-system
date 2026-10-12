@@ -18,5 +18,8 @@ public class ExpedienteResponseDTO {
     private String numeroExpediente;
     private UbicacionArchivoResponseDTO ubicacionBase;
     private Boolean activo;
+    /** TRUE si el expediente fue depurado (ya no existe en el sistema). */
+    private Boolean depurado;
+    private OffsetDateTime depuradoEn;
     private OffsetDateTime creadoEn;
 }

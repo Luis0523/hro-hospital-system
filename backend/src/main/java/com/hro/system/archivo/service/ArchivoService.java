@@ -659,6 +659,8 @@ public class ArchivoService {
                 .numeroExpediente(expediente.getNumeroExpediente())
                 .ubicacionBase(mapUbicacion(expediente.getUbicacionBase()))
                 .activo(expediente.getActivo())
+                .depurado(Boolean.TRUE.equals(expediente.getDepurado()))
+                .depuradoEn(expediente.getDepuradoEn())
                 .creadoEn(expediente.getCreadoEn())
                 .build();
     }
