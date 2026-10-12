@@ -109,9 +109,7 @@ describe('RegistroCarnetsPage', () => {
 
   it('avisa cuando el expediente no existe (404)', async () => {
     const user = userEvent.setup()
-    registrarCarnet.mockRejectedValue(
-      Object.assign(new Error('no encontrado'), { status: 404 }),
-    )
+    registrarCarnet.mockRejectedValue(Object.assign(new Error('no encontrado'), { status: 404 }))
     renderPagina()
 
     await screen.findByRole('option', { name: 'Hematología' })
@@ -120,5 +118,14 @@ describe('RegistroCarnetsPage', () => {
     await user.click(botonRegistrar())
 
     expect(await screen.findByText(/Expediente no encontrado/i)).toBeInTheDocument()
+  })
+
+  it('abre el reporte de carnets en un panel lateral', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(screen.getByRole('button', { name: /reporte/i }))
+
+    expect(await screen.findByText('Reporte de carnets por especialidad')).toBeInTheDocument()
   })
 })
