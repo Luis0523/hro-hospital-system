@@ -38,6 +38,8 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarCarnets: vi.fn(() => Promise.resolve([])),
   recibirCarnet: vi.fn(() => Promise.resolve({})),
   devolverCarnet: vi.fn(() => Promise.resolve({})),
+  descargarRecepcionCarnetsPdf: vi.fn(() => Promise.resolve(new Blob(['%PDF']))),
+  descargarDevolucionCarnetsPdf: vi.fn(() => Promise.resolve(new Blob(['%PDF']))),
 }))
 
 vi.mock('@/modules/carnets/hooks/useCarnetsRealtime', () => ({

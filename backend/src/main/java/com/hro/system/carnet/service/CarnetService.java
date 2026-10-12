@@ -2,7 +2,6 @@ package com.hro.system.carnet.service;
 
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.auth.dto.IdentidadUsuario;
-import com.hro.system.carnet.config.CarnetProperties;
 import com.hro.system.carnet.dto.*;
 import com.hro.system.carnet.entity.Carnet;
 import com.hro.system.carnet.entity.CarnetMovimiento;
@@ -28,7 +27,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -77,7 +75,6 @@ public class CarnetService {
     private final EstacionEnfermeriaRepository estacionRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ExpedienteHroService expedienteHroService;
-    private final CarnetProperties properties;
     private final ParametroSistemaService parametros;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -213,9 +210,6 @@ public class CarnetService {
             throw new BusinessException(String.format(
                     "Transición inválida: no se puede pasar a '%s' desde el estado '%s'", nuevoEstado, carnet.getEstado()));
         }
-        if (DEVUELTO_ESTACION.equals(nuevoEstado)) {
-            validarGuardDevolucion(carnet);
-        }
 
         UsuarioReferencia usuario = usuarioActual();
         String anterior = carnet.getEstado();
@@ -260,19 +254,6 @@ public class CarnetService {
                 carnet.setRecibidoArchivoEn(ahora);
             }
             default -> { /* estado sin hito específico */ }
-        }
-    }
-
-    private void validarGuardDevolucion(Carnet carnet) {
-        if (carnet.getRecibidoEn() == null) {
-            return;
-        }
-        long transcurridos = Duration.between(carnet.getRecibidoEn(), OffsetDateTime.now()).toMinutes();
-        int minimo = properties.getMinutosAntesDeDevolucion();
-        if (transcurridos < minimo) {
-            long faltan = minimo - transcurridos;
-            throw new BusinessException(String.format(
-                    "Debe esperar al menos %d min desde la recepción para devolver. Faltan %d min.", minimo, faltan));
         }
     }
 

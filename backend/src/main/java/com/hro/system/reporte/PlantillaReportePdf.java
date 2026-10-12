@@ -74,8 +74,17 @@ public class PlantillaReportePdf {
             long total,
             String responsableEntrega,
             String responsableRecibe,
-            String observaciones
+            String observaciones,
+            boolean incluirFirmas
     ) {
+        /** Reporte con el bloque de firmas (comportamiento histórico). */
+        public Reporte(String titulo, String subtitulo, String idDocumento, LocalDate fecha,
+                       OffsetDateTime generadoEn, String generadoPor, String origen, String destino,
+                       List<Columna> columnas, List<List<String>> filas, long total,
+                       String responsableEntrega, String responsableRecibe, String observaciones) {
+            this(titulo, subtitulo, idDocumento, fecha, generadoEn, generadoPor, origen, destino,
+                    columnas, filas, total, responsableEntrega, responsableRecibe, observaciones, true);
+        }
     }
 
     public byte[] generar(Reporte r) throws IOException {
@@ -100,14 +109,14 @@ public class PlantillaReportePdf {
                 alterna = !alterna;
             }
 
-            // Observaciones + firmas (con salto de página si hace falta).
-            float necesario = 70 + 60;
+            // Observaciones + firmas opcionales (con salto de página si hace falta).
+            float necesario = 70 + (r.incluirFirmas() ? 60 : 0);
             if (page.y - necesario < BOTTOM) {
                 page.stream.close();
                 page = nuevaPagina(doc);
                 page.y = dibujarEncabezadoResumido(page.stream, r);
             }
-            dibujarObservacionesFirmas(page.stream, r, page.y - 16);
+            dibujarObservacionesFirmas(page.stream, r, page.y - 16, r.incluirFirmas());
             page.stream.close();
 
             // Pie de página con numeración en todas las páginas.
@@ -281,8 +290,8 @@ public class PlantillaReportePdf {
     // ------------------------------------------------------------------
     // Observaciones y firmas
     // ------------------------------------------------------------------
-    private void dibujarObservacionesFirmas(PDPageContentStream cs, Reporte r, float y)
-            throws IOException {
+    private void dibujarObservacionesFirmas(PDPageContentStream cs, Reporte r, float y,
+                                            boolean incluirFirmas) throws IOException {
         escribir(cs, F_BOLD, 9f, TEXTO, "Observaciones:", MARGEN, y, CONTENT_W, Alineacion.IZQUIERDA);
         y -= 12f;
         String obs = nvl(r.observaciones());
@@ -290,6 +299,10 @@ public class PlantillaReportePdf {
         for (String linea : lineas) {
             escribir(cs, F_NORMAL, 8.5f, TEXTO_SUAVE, linea, MARGEN, y, CONTENT_W, Alineacion.IZQUIERDA);
             y -= LINE_H;
+        }
+
+        if (!incluirFirmas) {
+            return;
         }
         y -= 22f;
 

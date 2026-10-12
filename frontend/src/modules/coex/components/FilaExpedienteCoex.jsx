@@ -32,7 +32,7 @@ export default function FilaExpedienteCoex({
         <div className="mt-1">
           <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-label-sm font-semibold text-primary">
             <Icon name="badge" className="text-[16px]" />
-            Carnet {carnet.correlativo}
+            Correlativo {carnet.correlativo}
             {carnet.especialidadNombre ? ` · ${carnet.especialidadNombre}` : ''}
           </span>
         </div>

@@ -38,7 +38,7 @@ function TablaCarnets({
       </div>
 
       {filas.length === 0 ? (
-        <EmptyState title={`Sin carnets ${etiquetaAccion.toLowerCase()}`} />
+        <EmptyState title={`Sin expedientes ${etiquetaAccion.toLowerCase()}`} />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-outline-variant">
           <table className="w-full min-w-[620px] text-left text-sm">
@@ -109,7 +109,7 @@ export default function SeccionCarnetsCoex({ fecha, estacionId }) {
   return (
     <div className="flex flex-col gap-4">
       <TablaCarnets
-        titulo="Carnets por recibir"
+        titulo="Expedientes por recibir"
         descripcion="Expedientes despachados por Archivo, pendientes de recibir en la estación."
         filas={porRecibir}
         accion="recibir"
@@ -122,7 +122,7 @@ export default function SeccionCarnetsCoex({ fecha, estacionId }) {
         procesandoTodos={procesandoTodos}
       />
       <TablaCarnets
-        titulo="Carnets en uso"
+        titulo="Expedientes en uso"
         descripcion="Expedientes recibidos en la estación, listos para devolver a Archivo."
         filas={enUso}
         accion="devolver"

@@ -53,6 +53,26 @@ export async function descargarSalidaCarnetsPdf({ fecha } = {}) {
   return client.get('/carnets/salida/pdf', { params: { fecha }, responseType: 'blob' })
 }
 
+/** Reporte general de expedientes recibidos en la estación (COEX). */
+export async function obtenerRecepcionCarnets({ fecha } = {}) {
+  return desenvolver(await client.get('/carnets/recepcion', { params: { fecha } }))
+}
+
+/** Descarga el PDF del reporte de recepción de expedientes (sin firmas). */
+export async function descargarRecepcionCarnetsPdf({ fecha } = {}) {
+  return client.get('/carnets/recepcion/pdf', { params: { fecha }, responseType: 'blob' })
+}
+
+/** Reporte general de expedientes devueltos a Archivo (COEX). */
+export async function obtenerDevolucionCarnets({ fecha } = {}) {
+  return desenvolver(await client.get('/carnets/devolucion', { params: { fecha } }))
+}
+
+/** Descarga el PDF del reporte de devolución de expedientes (sin firmas). */
+export async function descargarDevolucionCarnetsPdf({ fecha } = {}) {
+  return client.get('/carnets/devolucion/pdf', { params: { fecha }, responseType: 'blob' })
+}
+
 export async function obtenerCarnet(id) {
   return desenvolver(await client.get(`/carnets/${id}`))
 }

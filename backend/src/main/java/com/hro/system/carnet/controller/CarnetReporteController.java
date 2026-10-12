@@ -39,11 +39,48 @@ public class CarnetReporteController {
     @Operation(summary = "Descargar el reporte de salida en PDF")
     public ResponseEntity<byte[]> pdf(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        String usuario = UsuarioContexto.actual().map(IdentidadUsuario::nombreMostrar).orElse("-");
-        byte[] pdf = servicio.generarPdf(fecha, usuario);
+        byte[] pdf = servicio.generarPdf(fecha, usuarioActual());
+        return pdfResponse(pdf, "reporte-salida.pdf");
+    }
+
+    @GetMapping("/recepcion")
+    @Operation(summary = "Listar expedientes recibidos en la estación (COEX) de una fecha")
+    public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listarRecepcion(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(servicio.listarRecepcion(fecha), "Recepción de expedientes obtenida"));
+    }
+
+    @GetMapping("/recepcion/pdf")
+    @Operation(summary = "Descargar el reporte de recepción de expedientes en PDF (sin firmas)")
+    public ResponseEntity<byte[]> recepcionPdf(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        byte[] pdf = servicio.generarRecepcionPdf(fecha, usuarioActual());
+        return pdfResponse(pdf, "reporte-recepcion.pdf");
+    }
+
+    @GetMapping("/devolucion")
+    @Operation(summary = "Listar expedientes devueltos a Archivo (COEX) de una fecha")
+    public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listarDevolucion(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(servicio.listarDevolucion(fecha), "Devolución de expedientes obtenida"));
+    }
+
+    @GetMapping("/devolucion/pdf")
+    @Operation(summary = "Descargar el reporte de devolución de expedientes en PDF (sin firmas)")
+    public ResponseEntity<byte[]> devolucionPdf(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        byte[] pdf = servicio.generarDevolucionPdf(fecha, usuarioActual());
+        return pdfResponse(pdf, "reporte-devolucion.pdf");
+    }
+
+    private static String usuarioActual() {
+        return UsuarioContexto.actual().map(IdentidadUsuario::nombreMostrar).orElse("-");
+    }
+
+    private static ResponseEntity<byte[]> pdfResponse(byte[] pdf, String nombre) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"reporte-salida.pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nombre + "\"")
                 .body(pdf);
     }
 }

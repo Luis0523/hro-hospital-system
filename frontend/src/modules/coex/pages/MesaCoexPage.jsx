@@ -14,6 +14,7 @@ import { useDescargaPdfCoex } from '../hooks/useDescargaPdfCoex'
 import { useLoteCoex } from '../hooks/useLoteCoex'
 import { useRecepcionCoex } from '../hooks/useRecepcionCoex'
 import { useRefrescoAutomaticoCoex } from '../hooks/useRefrescoAutomaticoCoex'
+import { useReportesCoex } from '../hooks/useReportesCoex'
 import ConfirmacionDevolucionCoex from '../components/ConfirmacionDevolucionCoex.jsx'
 import ConfirmacionRecepcionCoex from '../components/ConfirmacionRecepcionCoex.jsx'
 import ResumenLoteCoex from '../components/ResumenLoteCoex.jsx'
@@ -64,6 +65,15 @@ export default function MesaCoexPage() {
   // Descarga del PDF de salida: acción manual independiente (no acoplada a
   // Recibir/Devolver). Ver `useDescargaPdfCoex` para el motivo.
   const { descargandoPdf, descargarSalidaPdf } = useDescargaPdfCoex({ fecha, mostrarToast })
+
+  // Reportes generales de expedientes recibidos y devueltos (mismo estándar que
+  // /archivo, sin firmas).
+  const {
+    descargandoRecepcion,
+    descargandoDevolucion,
+    descargarRecepcion,
+    descargarDevolucion,
+  } = useReportesCoex({ fecha, mostrarToast })
 
   const mutando = recepcion.enviando || devolucion.enviando
   useRefrescoAutomaticoCoex({ refrescar: refrescarSilencioso, pausado: mutando })
@@ -291,6 +301,28 @@ export default function MesaCoexPage() {
               >
                 <Icon name="picture_as_pdf" className="text-[18px]" />
                 {descargandoPdf ? 'Descargando…' : 'Descargar PDF de salida del día'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 w-full text-center sm:w-auto"
+                onClick={descargarRecepcion}
+                disabled={descargandoRecepcion || descargandoDevolucion}
+                aria-busy={descargandoRecepcion || undefined}
+              >
+                <Icon name="picture_as_pdf" className="text-[18px]" />
+                {descargandoRecepcion ? 'Generando…' : 'Reporte de recepción (PDF)'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 w-full text-center sm:w-auto"
+                onClick={descargarDevolucion}
+                disabled={descargandoRecepcion || descargandoDevolucion}
+                aria-busy={descargandoDevolucion || undefined}
+              >
+                <Icon name="picture_as_pdf" className="text-[18px]" />
+                {descargandoDevolucion ? 'Generando…' : 'Reporte de devolución (PDF)'}
               </Button>
             </div>
             <span
