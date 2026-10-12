@@ -28,7 +28,7 @@ public class AuditoriaGeneral {
     private String entidadId;
 
     @Column(name = "accion", nullable = false, length = 15)
-    private String accion; // crear, actualizar, eliminar
+    private String accion; // crear, actualizar, eliminar, reactivar, desactivar, activar
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_referencia_id")

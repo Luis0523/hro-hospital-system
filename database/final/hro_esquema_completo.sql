@@ -358,7 +358,7 @@ CREATE TABLE auditoria_general (
     id                     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tabla_afectada         VARCHAR(100) NOT NULL,
     entidad_id             VARCHAR(64)  NOT NULL,
-    accion                 VARCHAR(15) NOT NULL CHECK (accion IN ('crear','actualizar','eliminar')),
+    accion                 VARCHAR(15) NOT NULL CHECK (accion IN ('crear','actualizar','eliminar','reactivar','desactivar','activar')),
     usuario_referencia_id  BIGINT REFERENCES usuario_referencia(id) ON DELETE SET NULL,
     valores_anteriores     JSONB,
     valores_nuevos         JSONB,

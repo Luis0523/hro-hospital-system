@@ -19,6 +19,14 @@ public class AuditoriaEventListener {
     @EventListener
     public void manejarEventoAuditoria(AuditoriaEvent event) {
         log.debug("Procesando evento de auditoría asíncrono para entidad: {}", event.getTablaAfectada());
-        auditoriaService.registrarBitacora(event);
+        try {
+            auditoriaService.registrarBitacora(event);
+        } catch (Exception ex) {
+            // La auditoría nunca debe tumbar la operación de negocio: si la bitácora
+            // falla (p. ej. la transacción REQUIRES_NEW queda rollback-only), se
+            // registra el problema y se continúa.
+            log.error("No se pudo registrar la bitácora para la tabla {} (acción '{}')",
+                    event.getTablaAfectada(), event.getAccion(), ex);
+        }
     }
 }
