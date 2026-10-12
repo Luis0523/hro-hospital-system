@@ -64,21 +64,24 @@ export function usuarioDesdeToken(token) {
   }
 }
 
-/**
- * Autentica con usuario/contraseña y devuelve `{ token, usuario }`.
- * Lanza un Error con `status` cuando las credenciales son inválidas.
- */
-export async function autenticar({ username, password }) {
-  const url = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`
-  const cuerpo = new URLSearchParams({
-    grant_type: 'password',
-    client_id: KEYCLOAK_CLIENT_ID,
-    username,
-    password,
-    scope: 'openid',
-  })
+/** Epoch (ms) en que expira un access token, o null si no se puede determinar. */
+export function expiracionDeToken(token) {
+  if (!token) return null
+  try {
+    const claims = decodificarJwt(token)
+    return typeof claims?.exp === 'number' ? claims.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
 
-  const respuesta = await fetch(url, {
+function urlToken() {
+  return `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`
+}
+
+/** POST al endpoint de token de Keycloak. Devuelve el cuerpo crudo o lanza con `status`. */
+async function pedirToken(cuerpo) {
+  const respuesta = await fetch(urlToken(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: cuerpo,
@@ -92,6 +95,58 @@ export async function autenticar({ username, password }) {
     error.status = respuesta.status
     throw error
   }
+  return datos
+}
 
-  return { token: datos.access_token, usuario: usuarioDesdeToken(datos.access_token) }
+/** Normaliza la respuesta de Keycloak a la forma interna de la app. */
+function normalizarSesion(datos) {
+  const expiraEn =
+    typeof datos.expires_in === 'number'
+      ? Date.now() + datos.expires_in * 1000
+      : expiracionDeToken(datos.access_token)
+  return {
+    token: datos.access_token,
+    refreshToken: datos.refresh_token ?? null,
+    expiraEn,
+    usuario: usuarioDesdeToken(datos.access_token),
+  }
+}
+
+/**
+ * Autentica con usuario/contraseña y devuelve
+ * `{ token, refreshToken, expiraEn, usuario }`.
+ * Lanza un Error con `status` cuando las credenciales son inválidas.
+ */
+export async function autenticar({ username, password }) {
+  const datos = await pedirToken(
+    new URLSearchParams({
+      grant_type: 'password',
+      client_id: KEYCLOAK_CLIENT_ID,
+      username,
+      password,
+      scope: 'openid',
+    }),
+  )
+  return normalizarSesion(datos)
+}
+
+/**
+ * Renueva el access token con `grant_type=refresh_token` (cliente público, sin
+ * secret). Devuelve la misma forma que `autenticar`. Lanza con `status` si el
+ * refresh token es inválido/expiró.
+ */
+export async function refrescarToken(refreshToken) {
+  if (!refreshToken) {
+    const error = new Error('No hay token de renovación')
+    error.status = 401
+    throw error
+  }
+  const datos = await pedirToken(
+    new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: KEYCLOAK_CLIENT_ID,
+      refresh_token: refreshToken,
+    }),
+  )
+  return normalizarSesion(datos)
 }

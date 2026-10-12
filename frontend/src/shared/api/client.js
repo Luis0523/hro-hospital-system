@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { expirarSesion, leerRefreshToken, leerToken, renovarSesion } from './sesion.js'
 
 const IDENTIDAD_POR_DEFECTO = {
   idExterno: 'enfermeria-01',
@@ -37,7 +38,7 @@ client.interceptors.request.use((config) => {
     config.headers['X-Usuario-Nombre'] = identidad.nombre
   }
 
-  const token = localStorage.getItem('hro_token')
+  const token = leerToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -51,29 +52,28 @@ client.interceptors.request.use((config) => {
 
 client.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
     const status = error.response?.status
+    const config = error.config || {}
+    const esEndpointToken =
+      typeof config.url === 'string' && config.url.includes('/protocol/openid-connect/token')
 
-    // Sesión expirada/inválida: limpiar credenciales y volver al login. Se
-    // evita en las rutas públicas y en tests (jsdom no implementa location.assign).
-    if (status === 401) {
+    // 401 en un endpoint normal: intentar renovar el access token una sola vez
+    // y reintentar la petición original. El refresh se deduplica en `sesion.js`.
+    if (status === 401 && !esEndpointToken && !config._reintentado && leerRefreshToken()) {
+      config._reintentado = true
       try {
-        localStorage.removeItem('hro_token')
-        localStorage.removeItem('hro_usuario')
+        const nuevoToken = await renovarSesion()
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${nuevoToken}`
+        return client.request(config)
       } catch {
-        // sin storage: se ignora
+        // El refresh token también expiró/es inválido: cerrar sesión.
+        expirarSesion()
       }
-      try {
-        if (
-          typeof window !== 'undefined' &&
-          window.location &&
-          !window.location.pathname.startsWith('/login')
-        ) {
-          window.location.assign('/login')
-        }
-      } catch {
-        // location no disponible (tests): se ignora
-      }
+    } else if (status === 401 && !esEndpointToken) {
+      // Sin refresh disponible: sesión expirada.
+      expirarSesion()
     }
 
     const mensaje =

@@ -1,5 +1,20 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react'
-import { autenticar } from '@/shared/api/authApi.js'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react'
+import { autenticar, expiracionDeToken } from '@/shared/api/authApi.js'
+import {
+  EVENTO_SESION_EXPIRADA,
+  EVENTO_TOKEN_RENOVADO,
+  guardarSesion,
+  leerExpiracion,
+  limpiarSesion,
+  renovarSesion,
+} from '@/shared/api/sesion.js'
 
 // Modo de autenticación: 'mock' (identidad simulada, dev/tests) o 'keycloak'
 // (login real contra Keycloak con formulario propio).
@@ -89,9 +104,12 @@ export function AuthProvider({ children }) {
   }, [usuario, token, autenticado])
 
   const cerrarSesion = useCallback(() => {
-    localStorage.removeItem('hro_usuario')
-    localStorage.removeItem('hro_token')
-    localStorage.setItem(CLAVE_SESION, 'cerrada')
+    limpiarSesion()
+    try {
+      localStorage.setItem(CLAVE_SESION, 'cerrada')
+    } catch {
+      // sin storage: se ignora
+    }
     setAutenticado(false)
   }, [])
 
@@ -109,17 +127,67 @@ export function AuthProvider({ children }) {
     setUsuario((actual) => ({ ...actual, ...parcial }))
   }, [])
 
-  /** Login real (modo Keycloak): canjea credenciales y guarda token + identidad. */
+  /** Login real (modo Keycloak): canjea credenciales y guarda token, refresh e identidad. */
   const iniciarSesionConCredenciales = useCallback(async (username, password) => {
-    const { token: nuevoToken, usuario: identidad } = await autenticar({ username, password })
+    const {
+      token: nuevoToken,
+      refreshToken,
+      expiraEn,
+      usuario: identidad,
+    } = await autenticar({ username, password })
     const usuarioFinal = { ...USUARIO_BASE, ...identidad }
     localStorage.setItem(CLAVE_SESION, 'activa')
-    localStorage.setItem('hro_token', nuevoToken)
+    guardarSesion({ token: nuevoToken, refreshToken, expiraEn })
     localStorage.setItem('hro_usuario', JSON.stringify(usuarioFinal))
     setUsuario(usuarioFinal)
     setToken(nuevoToken)
     setAutenticado(true)
     return usuarioFinal
+  }, [])
+
+  // Refresco silencioso: programa la renovación ~60 s antes de que expíe el
+  // access token. Si el refresh falla, se cierra la sesión. En modo mock no aplica.
+  useEffect(() => {
+    if (MODO_AUTH !== 'keycloak' || !autenticado || !token) return undefined
+    const expiraEn = leerExpiracion() ?? expiracionDeToken(token)
+    if (!expiraEn) return undefined
+
+    const ADELANTO_MS = 60_000
+    const espera = Math.max(0, expiraEn - Date.now() - ADELANTO_MS)
+    const id = setTimeout(async () => {
+      try {
+        setToken(await renovarSesion())
+      } catch {
+        cerrarSesion()
+      }
+    }, espera)
+    return () => clearTimeout(id)
+  }, [autenticado, token, cerrarSesion])
+
+  // Sincroniza el estado React con los cambios de token/expiración que ocurren
+  // fuera de React (el interceptor HTTP renueva o expira la sesión).
+  useEffect(() => {
+    function alRenovar(evento) {
+      const nuevo = evento?.detail?.token
+      if (nuevo) setToken(nuevo)
+    }
+    function alExpirar() {
+      setAutenticado(false)
+    }
+    try {
+      window.addEventListener(EVENTO_TOKEN_RENOVADO, alRenovar)
+      window.addEventListener(EVENTO_SESION_EXPIRADA, alExpirar)
+    } catch {
+      return undefined
+    }
+    return () => {
+      try {
+        window.removeEventListener(EVENTO_TOKEN_RENOVADO, alRenovar)
+        window.removeEventListener(EVENTO_SESION_EXPIRADA, alExpirar)
+      } catch {
+        // sin window: se ignora
+      }
+    }
   }, [])
 
   const value = {

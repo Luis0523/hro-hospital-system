@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { inicioPorRol, usuarioDesdeToken } from './authApi'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  autenticar,
+  expiracionDeToken,
+  inicioPorRol,
+  refrescarToken,
+  usuarioDesdeToken,
+} from './authApi'
 
 function tokenCon(claims) {
   const base64 = btoa(JSON.stringify(claims))
@@ -55,5 +61,81 @@ describe('inicioPorRol', () => {
     expect(inicioPorRol('administrador')).toBe('/administracion')
     expect(inicioPorRol('jefe_enfermeria')).toBe('/jefe-enfermeria')
     expect(inicioPorRol(undefined)).toBe('/enfermeria')
+  })
+})
+
+describe('expiracionDeToken', () => {
+  it('devuelve el exp del JWT en milisegundos', () => {
+    expect(expiracionDeToken(tokenCon({ exp: 1_700_000_000 }))).toBe(1_700_000_000_000)
+  })
+
+  it('devuelve null si no hay exp o el token es inválido', () => {
+    expect(expiracionDeToken(tokenCon({ sub: 'x' }))).toBeNull()
+    expect(expiracionDeToken(null)).toBeNull()
+    expect(expiracionDeToken('no-es-un-jwt')).toBeNull()
+  })
+})
+
+function respuestaToken(datos, { ok = true, status = 200 } = {}) {
+  return { ok, status, json: async () => datos }
+}
+
+describe('autenticar', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('devuelve token, refresh y expiración desde la respuesta de Keycloak', async () => {
+    const access_token = tokenCon({
+      preferred_username: 'archivo01',
+      realm_access: { roles: ['archivo'] },
+    })
+    const fetchMock = vi.fn(async () =>
+      respuestaToken({ access_token, refresh_token: 'refresh-1', expires_in: 1800 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const sesion = await autenticar({ username: 'archivo01', password: 'archivo' })
+
+    expect(sesion.token).toBe(access_token)
+    expect(sesion.refreshToken).toBe('refresh-1')
+    expect(sesion.usuario.rol).toBe('archivo')
+    expect(sesion.expiraEn).toBeGreaterThan(Date.now())
+
+    const cuerpo = String(fetchMock.mock.calls[0][1].body)
+    expect(cuerpo).toContain('grant_type=password')
+    expect(cuerpo).toContain('username=archivo01')
+  })
+
+  it('lanza con status cuando las credenciales son inválidas', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => respuestaToken({ error: 'invalid_grant' }, { ok: false, status: 401 })),
+    )
+    await expect(autenticar({ username: 'x', password: 'y' })).rejects.toMatchObject({
+      status: 401,
+    })
+  })
+})
+
+describe('refrescarToken', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('usa grant_type=refresh_token y devuelve la nueva sesión', async () => {
+    const access_token = tokenCon({ preferred_username: 'x', realm_access: { roles: ['archivo'] } })
+    const fetchMock = vi.fn(async () =>
+      respuestaToken({ access_token, refresh_token: 'refresh-2', expires_in: 1800 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const sesion = await refrescarToken('refresh-1')
+
+    expect(sesion.token).toBe(access_token)
+    expect(sesion.refreshToken).toBe('refresh-2')
+    const cuerpo = String(fetchMock.mock.calls[0][1].body)
+    expect(cuerpo).toContain('grant_type=refresh_token')
+    expect(cuerpo).toContain('refresh_token=refresh-1')
+  })
+
+  it('rechaza sin refresh token', async () => {
+    await expect(refrescarToken(null)).rejects.toMatchObject({ status: 401 })
   })
 })
