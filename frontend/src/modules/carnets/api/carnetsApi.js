@@ -11,6 +11,7 @@ export async function listarEspecialidades() {
   return (lista ?? []).map((especialidad) => ({
     id: especialidad.id,
     nombre: especialidad.nombre,
+    abreviatura: especialidad.abreviatura ?? null,
   }))
 }
 
@@ -24,11 +25,32 @@ export async function listarEstaciones() {
   }))
 }
 
-/** Carnets del día, filtrables por estación, especialidad y estado. */
-export async function listarCarnets({ fecha, estacionId, especialidadId, estado } = {}) {
+/** Carnets del día, filtrables por estación, especialidad, estado y clasificación (activo/pasivo). */
+export async function listarCarnets({ fecha, estacionId, especialidadId, estado, clasificacion } = {}) {
   return desenvolver(
-    await client.get('/carnets', { params: { fecha, estacionId, especialidadId, estado } }),
+    await client.get('/carnets', {
+      params: { fecha, estacionId, especialidadId, estado, clasificacion },
+    }),
   )
+}
+
+/** Configuración de Archivo (umbral activo/pasivo). */
+export async function obtenerConfiguracionArchivo() {
+  return desenvolver(await client.get('/archivo/configuracion'))
+}
+
+export async function actualizarConfiguracionArchivo({ umbralActivo }) {
+  return desenvolver(await client.put('/archivo/configuracion', { umbralActivo }))
+}
+
+/** Reporte de salida (expedientes encontrados de una fecha). */
+export async function obtenerSalidaCarnets({ fecha } = {}) {
+  return desenvolver(await client.get('/carnets/salida', { params: { fecha } }))
+}
+
+/** Descarga el PDF del reporte de salida (blob). */
+export async function descargarSalidaCarnetsPdf({ fecha } = {}) {
+  return client.get('/carnets/salida/pdf', { params: { fecha }, responseType: 'blob' })
 }
 
 export async function obtenerCarnet(id) {

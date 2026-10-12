@@ -16,4 +16,7 @@ public class CrearEspecialidadRequestDTO {
     @NotBlank(message = "El nombre de la especialidad es obligatorio")
     @Size(max = 150, message = "El nombre no puede exceder 150 caracteres")
     private String nombre;
+
+    @Size(max = 20, message = "La abreviatura no puede exceder 20 caracteres")
+    private String abreviatura;
 }

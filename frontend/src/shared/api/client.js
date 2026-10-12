@@ -53,6 +53,29 @@ client.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error.response?.status
+
+    // Sesión expirada/inválida: limpiar credenciales y volver al login. Se
+    // evita en las rutas públicas y en tests (jsdom no implementa location.assign).
+    if (status === 401) {
+      try {
+        localStorage.removeItem('hro_token')
+        localStorage.removeItem('hro_usuario')
+      } catch {
+        // sin storage: se ignora
+      }
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.location &&
+          !window.location.pathname.startsWith('/login')
+        ) {
+          window.location.assign('/login')
+        }
+      } catch {
+        // location no disponible (tests): se ignora
+      }
+    }
+
     const mensaje =
       error.response?.data?.message || error.message || 'Error de comunicación con el servidor'
     const normalizado = new Error(mensaje)

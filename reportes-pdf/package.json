@@ -1,0 +1,27 @@
+{
+  "name": "reportes-pdf",
+  "version": "1.0.0",
+  "description": "Generador de reportes PDF de salida y devolución de expedientes médicos (HRO).",
+  "main": "src/index.js",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test",
+    "example": "node examples/generarEjemplos.js"
+  },
+  "keywords": [
+    "hro",
+    "pdf",
+    "expedientes",
+    "reportes",
+    "pdfkit"
+  ],
+  "author": "Hospital Regional de Occidente - Sistema HRO",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "pdfkit": "^0.20.2"
+  }
+}

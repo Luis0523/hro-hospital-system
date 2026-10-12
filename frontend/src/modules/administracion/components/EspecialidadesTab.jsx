@@ -15,6 +15,7 @@ import TablaCatalogo from './TablaCatalogo.jsx'
 
 const COLUMNAS = [
   { key: 'nombre', label: 'Especialidad' },
+  { key: 'abreviatura', label: 'Abreviatura' },
   { key: 'activo', label: 'Estado' },
 ]
 

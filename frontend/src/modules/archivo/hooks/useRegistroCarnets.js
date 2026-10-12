@@ -34,7 +34,11 @@ export function useRegistroCarnets() {
 
   const cargarRegistros = useCallback(async () => {
     try {
-      setRegistros(await listarCarnets())
+      const lista = await listarCarnets()
+      // Más reciente primero.
+      setRegistros(
+        [...lista].sort((a, b) => new Date(b.registradoEn ?? 0) - new Date(a.registradoEn ?? 0)),
+      )
     } catch {
       // Silencioso: la tabla se reintenta en el próximo registro/recarga.
     }

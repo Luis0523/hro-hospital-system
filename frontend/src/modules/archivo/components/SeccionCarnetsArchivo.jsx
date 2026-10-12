@@ -1,8 +1,16 @@
-import { Fragment, useMemo, useState } from 'react'
-import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
-import { ETIQUETAS_ESTADO_CARNET } from '@/modules/carnets/api/carnetsApi'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Alert, Button, EmptyState, Icon, Modal, Spinner } from '@/shared/components/ui'
+import {
+  ETIQUETAS_ESTADO_CARNET,
+  actualizarConfiguracionArchivo,
+  descargarSalidaCarnetsPdf,
+  obtenerConfiguracionArchivo,
+} from '@/modules/carnets/api/carnetsApi'
+import { codigoCarnet } from '@/modules/carnets/utils/codigoCarnet'
+import { useToast } from '@/shared/context/ToastContext.jsx'
+import { descargarBlob } from '../utils/descargarBlob'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
-import { useCarnetsArchivo } from '../hooks/useCarnetsArchivo'
+import { useCarnetsArchivo, compararPorExpediente } from '../hooks/useCarnetsArchivo'
 import ModalObservacion from './ModalObservacion.jsx'
 
 // Orden lineal del circuito. `no_localizado` es una rama, no entra en el orden.
@@ -98,7 +106,8 @@ function FilaHistorial({ carnet, columnas }) {
 
 // Sección de seguimiento de carnets: tablas de estados. La fecha y la estación
 // llegan desde el único filtro de la página. Se actualiza en tiempo real.
-export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
+export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey }) {
+  const [clasificacion, setClasificacion] = useState('')
   const {
     carnets,
     cargando,
@@ -109,16 +118,69 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
     despachar,
     recibirDevolucion,
     marcarNoLocalizado,
-  } = useCarnetsArchivo({ fecha, estacionId })
+  } = useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion })
 
   const [expandido, setExpandido] = useState(null)
   const [observacionPara, setObservacionPara] = useState(null)
   const [observacion, setObservacion] = useState('')
 
+  // Configuración del umbral activo/pasivo.
+  const [configAbierta, setConfigAbierta] = useState(false)
+  const [umbral, setUmbral] = useState(null)
+  const [umbralInput, setUmbralInput] = useState('')
+  const [guardandoConfig, setGuardandoConfig] = useState(false)
+
+  useEffect(() => {
+    obtenerConfiguracionArchivo()
+      .then((cfg) => {
+        setUmbral(cfg?.umbralActivo ?? null)
+        setUmbralInput(cfg?.umbralActivo != null ? String(cfg.umbralActivo) : '')
+      })
+      .catch(() => {
+        // Sin configuración disponible: se ignora.
+      })
+  }, [])
+
+  async function guardarConfig() {
+    const valor = umbralInput.trim()
+    setGuardandoConfig(true)
+    try {
+      const cfg = await actualizarConfiguracionArchivo({
+        umbralActivo: valor ? Number(valor) : null,
+      })
+      setUmbral(cfg?.umbralActivo ?? null)
+      setConfigAbierta(false)
+      recargar()
+    } catch {
+      // Se ignora: el usuario puede reintentar.
+    } finally {
+      setGuardandoConfig(false)
+    }
+  }
+
   useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => recargar() })
 
+  const { mostrarToast } = useToast()
+  const [generandoPdf, setGenerandoPdf] = useState(false)
+
+  async function descargarReporteSalida() {
+    setGenerandoPdf(true)
+    try {
+      const blob = await descargarSalidaCarnetsPdf({ fecha })
+      descargarBlob(blob, `reporte-salida-${fecha}.pdf`)
+    } catch (fallo) {
+      mostrarToast?.({
+        tone: 'error',
+        title: 'No se pudo generar el reporte',
+        message: fallo?.message,
+      })
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
+
   const { pendientes, encontrados } = useMemo(() => {
-    const ordenados = [...carnets].sort((a, b) => a.correlativo - b.correlativo)
+    const ordenados = [...carnets].sort(compararPorExpediente)
     return {
       pendientes: ordenados.filter((c) => !ESTADOS_ENCONTRADOS.has(c.estado)),
       encontrados: ordenados.filter((c) => ESTADOS_ENCONTRADOS.has(c.estado)),
@@ -163,10 +225,47 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
             &laquo;Encontrados&raquo;.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-semibold text-primary">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          En vivo
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-semibold text-primary">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+            En vivo
+          </span>
+          <label className="flex items-center gap-1 text-label-sm text-on-surface-variant">
+            Archivo
+            <select
+              value={clasificacion}
+              onChange={(evento) => setClasificacion(evento.target.value)}
+              className="h-9 rounded-lg border border-outline-variant bg-surface-container-low px-2 text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">Todo</option>
+              <option value="activo">Activo</option>
+              <option value="pasivo">Pasivo</option>
+            </select>
+          </label>
+          <Button size="sm" variant="secondary" onClick={recargar}>
+            <Icon name="refresh" className="text-[18px]" />
+            Actualizar
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={descargarReporteSalida}
+            disabled={generandoPdf || encontrados.length === 0}
+            title="Generar el reporte de salida (PDF) de los expedientes encontrados"
+          >
+            <Icon name="picture_as_pdf" className="text-[18px]" />
+            {generandoPdf ? 'Generando…' : `Reporte de salida (${encontrados.length})`}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setConfigAbierta(true)}
+            aria-label="Configurar umbral de archivo"
+            title={umbral != null ? `Umbral activo: ${umbral}` : 'Configurar umbral activo/pasivo'}
+          >
+            <Icon name="settings" className="text-[18px]" />
+          </Button>
+        </div>
       </div>
 
       {cargando ? (
@@ -207,11 +306,24 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
                             <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
-                              {carnet.correlativo}
+                              {codigoCarnet(carnet)}
                             </span>
                           </td>
-                          <td className="px-3 py-3 font-mono text-[26px] font-black tracking-tight text-primary">
-                            {carnet.numeroExpediente}
+                          <td className="px-3 py-3">
+                            <span className="font-mono text-[26px] font-black tracking-tight text-primary">
+                              {carnet.numeroExpediente}
+                            </span>
+                            {carnet.archivo && (
+                              <span
+                                className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 align-middle text-label-sm font-semibold ${
+                                  carnet.archivo === 'activo'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {carnet.archivo === 'activo' ? 'Activo' : 'Pasivo'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <p className="font-semibold text-on-surface">{carnet.pacienteNombre}</p>
@@ -288,11 +400,24 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
                             <span className="inline-flex min-w-[3rem] items-center justify-center rounded-lg bg-primary px-3 py-1 font-mono text-[24px] font-black leading-none text-on-primary">
-                              {carnet.correlativo}
+                              {codigoCarnet(carnet)}
                             </span>
                           </td>
-                          <td className="px-3 py-3 font-mono text-[26px] font-black tracking-tight text-primary">
-                            {carnet.numeroExpediente}
+                          <td className="px-3 py-3">
+                            <span className="font-mono text-[26px] font-black tracking-tight text-primary">
+                              {carnet.numeroExpediente}
+                            </span>
+                            {carnet.archivo && (
+                              <span
+                                className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 align-middle text-label-sm font-semibold ${
+                                  carnet.archivo === 'activo'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {carnet.archivo === 'activo' ? 'Activo' : 'Pasivo'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <p className="font-semibold text-on-surface">{carnet.pacienteNombre}</p>
@@ -347,6 +472,42 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId }) {
           setObservacion('')
         }}
       />
+      <Modal
+        open={configAbierta}
+        onClose={() => setConfigAbierta(false)}
+        title="Configuración de archivo"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfigAbierta(false)}
+              disabled={guardandoConfig}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={guardarConfig} disabled={guardandoConfig}>
+              {guardandoConfig ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3">
+          Número de expediente <strong>umbral</strong>: los expedientes con número{' '}
+          <strong>mayor</strong> al umbral son <strong>archivo activo</strong>; los{' '}
+          <strong>menores o iguales</strong> son <strong>archivo pasivo</strong>.
+        </p>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-on-surface">Umbral</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={umbralInput}
+            onChange={(evento) => setUmbralInput(evento.target.value)}
+            placeholder="Ej. 939819"
+            className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-secondary-fixed-dim"
+          />
+        </label>
+      </Modal>
     </section>
   )
 }

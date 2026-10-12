@@ -41,9 +41,10 @@ public class CarnetController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
             @RequestParam(required = false) Long estacionId,
             @RequestParam(required = false) Long especialidadId,
-            @RequestParam(required = false) String estado) {
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String clasificacion) {
         return ResponseEntity.ok(ApiResponse.ok(
-                carnetService.listar(fecha, estacionId, especialidadId, estado), "Carnets obtenidos"));
+                carnetService.listar(fecha, estacionId, especialidadId, estado, clasificacion), "Carnets obtenidos"));
     }
 
     @GetMapping("/{id}")

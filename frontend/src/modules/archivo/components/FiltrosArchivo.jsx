@@ -1,4 +1,4 @@
-import { Input, Select } from '@/shared/components/ui'
+import { InputFecha, Select } from '@/shared/components/ui'
 
 export default function FiltrosArchivo({
   fecha,
@@ -32,12 +32,11 @@ export default function FiltrosArchivo({
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
       <div className={`grid grid-cols-1 gap-3 ${onEstacion ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-        <Input
+        <InputFecha
           label="Fecha de consulta"
           name="fecha"
-          type="date"
           value={fecha}
-          onChange={(event) => onFecha(event.target.value)}
+          onChange={(valor) => onFecha(valor)}
         />
         <Select
           label="Subespecialidad"

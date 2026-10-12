@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, EmptyState, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
-import { USANDO_DATOS_MOCK, buscarExpedientePorCodigo } from '../api/archivoApi'
+import { USANDO_DATOS_MOCK } from '../api/archivoApi'
 import { useExpedientes } from '../hooks/useExpedientes'
 import { useCicloExpediente } from '../hooks/useCicloExpediente'
 import { useAccionesArchivo } from '../hooks/useAccionesArchivo'
@@ -14,7 +14,7 @@ import ExpedienteDetalle from '../components/ExpedienteDetalle.jsx'
 import ModalObservacion from '../components/ModalObservacion.jsx'
 import SeccionCarnetsArchivo from '../components/SeccionCarnetsArchivo.jsx'
 import { accionArchivo } from '../accionesArchivo'
-import { listarEstaciones } from '@/modules/carnets/api/carnetsApi'
+import { listarEspecialidades, listarEstaciones, registrarCarnet } from '@/modules/carnets/api/carnetsApi'
 
 // Estados que cuentan como "pendiente" (aún no localizado) para el resumen.
 const ESTADOS_PENDIENTES = new Set([
@@ -35,17 +35,6 @@ function ordenarPorHora(expedientes) {
 function horaCorta(fecha) {
   if (!fecha) return ''
   return fecha.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
-}
-
-// Relaciona un resultado de búsqueda con una fila de la jornada usando el
-// contrato real: expedienteId (UUID) si ambos lo tienen; si no, el número.
-function coincideConFila(fila, encontrado) {
-  if (!fila || !encontrado) return false
-  if (fila.expedienteId && encontrado.expedienteId) {
-    return fila.expedienteId === encontrado.expedienteId
-  }
-  const referencia = encontrado.numeroExpediente ?? encontrado.codigo
-  return Boolean(referencia) && fila.numeroExpediente === referencia
 }
 
 export default function ArchivoPage() {
@@ -83,6 +72,8 @@ export default function ArchivoPage() {
   const [detalleFila, setDetalleFila] = useState(null)
   const [estacionId, setEstacionId] = useState('')
   const [estaciones, setEstaciones] = useState([])
+  const [especialidadesCarnet, setEspecialidadesCarnet] = useState([])
+  const [recargaCarnetsKey, setRecargaCarnetsKey] = useState(0)
 
   // Guardas inmediatas contra doble ejecución (búsqueda y mutaciones).
   const busquedaEnCurso = useRef(false)
@@ -110,6 +101,9 @@ export default function ArchivoPage() {
     listarEstaciones()
       .then(setEstaciones)
       .catch(() => setEstaciones([]))
+    listarEspecialidades()
+      .then(setEspecialidadesCarnet)
+      .catch(() => setEspecialidadesCarnet([]))
   }, [])
 
   // Lleva el foco/scroll a la fila encontrada por el buscador.
@@ -206,44 +200,52 @@ export default function ArchivoPage() {
     setDetalleFila(null)
   }
 
-  async function ejecutarBusqueda(valor) {
-    const buscado = valor.trim()
-    if (!buscado || busquedaEnCurso.current) return
+  // El buscador de la Estación de Archivo registra el carnet igual que la
+  // pantalla de enfermería: consulta el API del hospital y lo agrega al
+  // seguimiento (por defecto en Medicina Interna).
+  function especialidadMedicinaInterna() {
+    return (
+      especialidadesCarnet.find((especialidad) => /medicina\s*interna/i.test(especialidad.nombre)) ??
+      especialidadesCarnet[0] ??
+      null
+    )
+  }
+
+  async function registrarCarnetDesdeCodigo(valor) {
+    const numero = String(valor ?? '').trim()
+    if (!numero || busquedaEnCurso.current) return
+    const especialidad = especialidadMedicinaInterna()
+    if (!especialidad) {
+      mostrarToast({
+        tone: 'error',
+        title: 'Sin especialidades',
+        message: 'No se pudieron cargar las especialidades.',
+      })
+      return
+    }
     busquedaEnCurso.current = true
     try {
-      const encontrado = await buscarExpedientePorCodigo(buscado)
-      if (!encontrado) {
-        setResaltado(null)
-        mostrarToast({
-          tone: 'error',
-          title: 'Expediente no encontrado',
-          message: 'Verifique el código escaneado.',
-        })
-        return
-      }
-
-      const fila = filas.find((registro) => coincideConFila(registro, encontrado))
-      if (!fila) {
-        setResaltado(null)
+      await registrarCarnet({ numeroExpediente: numero, especialidadId: especialidad.id })
+      setCodigo('')
+      setRecargaCarnetsKey((clave) => clave + 1)
+      mostrarToast({
+        tone: 'success',
+        title: 'Carnet registrado',
+        message: `${especialidad.nombre} · ${numero}`,
+      })
+    } catch (fallo) {
+      const status = fallo?.status
+      if (status === 404) {
         mostrarToast({
           tone: 'warning',
-          title: 'Expediente fuera del listado',
-          message: 'El código existe, pero no aparece con los filtros actuales.',
+          title: 'Expediente no encontrado',
+          message: 'Verifique el número o consulte por DPI.',
         })
-        return
+      } else if (status === 409) {
+        mostrarToast({ tone: 'warning', title: 'Ya registrado hoy', message: fallo.message })
+      } else {
+        mostrarToast({ tone: 'error', title: 'No se pudo registrar', message: fallo.message })
       }
-
-      setResaltado(fila.id)
-      setCodigo('')
-
-      // SCRUM-179: si la fila tiene expediente físico y aún no tiene ciclo, el
-      // escaneo inicia el tracking con el endpoint atómico de check-in (una sola
-      // vez). NO se dispara localizar automáticamente.
-      if (fila.expedienteId && fila.estadoActual === 'sin_ciclo') {
-        await ejecutarAccion(fila, accionArchivo('check_in'))
-      }
-    } catch (fallo) {
-      mostrarToast({ tone: 'error', title: 'Error de búsqueda', message: fallo.message })
     } finally {
       busquedaEnCurso.current = false
     }
@@ -251,12 +253,12 @@ export default function ArchivoPage() {
 
   function manejarBusqueda(event) {
     event.preventDefault()
-    ejecutarBusqueda(codigo)
+    registrarCarnetDesdeCodigo(codigo)
   }
 
   function manejarCodigoEscaneado(valor) {
     setCodigo(valor)
-    ejecutarBusqueda(valor)
+    registrarCarnetDesdeCodigo(valor)
   }
 
   async function manejarConsultarResumen() {
@@ -361,7 +363,7 @@ export default function ArchivoPage() {
           )}
         </section>
 
-        <SeccionCarnetsArchivo fecha={fecha} estacionId={estacionId} />
+        <SeccionCarnetsArchivo fecha={fecha} estacionId={estacionId} recargaKey={recargaCarnetsKey} />
 
         <section
           aria-label="Acciones del día"

@@ -21,6 +21,7 @@ public class CarnetResponseDTO {
     private Integer correlativo;
     private Long especialidadId;
     private String especialidadNombre;
+    private String especialidadAbreviatura;
     private Long estacionId;
     private String estacionNombre;
     private String numeroExpediente;
@@ -31,6 +32,8 @@ public class CarnetResponseDTO {
     private UUID cicloId;
     private String estado;
     private String observacion;
+    /** "activo" | "pasivo" según el umbral configurable, o null si no aplica. */
+    private String archivo;
 
     private String registradoPor;
     private OffsetDateTime registradoEn;

@@ -21,6 +21,10 @@ public class Especialidad {
     @Column(name = "nombre", nullable = false, unique = true, length = 150)
     private String nombre;
 
+    /** Sigla visible del carnet (p. ej. MI, PED). Configurable. */
+    @Column(name = "abreviatura", length = 20)
+    private String abreviatura;
+
     @Column(name = "activo", nullable = false)
     @Builder.Default
     private Boolean activo = true;

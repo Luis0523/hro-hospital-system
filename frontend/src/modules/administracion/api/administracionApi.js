@@ -45,14 +45,14 @@ export async function listarEspecialidades() {
   return desenvolver(await client.get('/especialidades'))
 }
 
-export async function crearEspecialidad({ nombre }) {
-  if (USE_MOCK) return crearEspecialidadMock({ nombre })
-  return desenvolver(await client.post('/especialidades', { nombre }))
+export async function crearEspecialidad({ nombre, abreviatura }) {
+  if (USE_MOCK) return crearEspecialidadMock({ nombre, abreviatura })
+  return desenvolver(await client.post('/especialidades', { nombre, abreviatura }))
 }
 
-export async function actualizarEspecialidad(id, { nombre }) {
-  if (USE_MOCK) return actualizarEspecialidadMock(id, { nombre })
-  return desenvolver(await client.put(`/especialidades/${id}`, { nombre }))
+export async function actualizarEspecialidad(id, { nombre, abreviatura }) {
+  if (USE_MOCK) return actualizarEspecialidadMock(id, { nombre, abreviatura })
+  return desenvolver(await client.put(`/especialidades/${id}`, { nombre, abreviatura }))
 }
 
 export async function desactivarEspecialidad(id) {

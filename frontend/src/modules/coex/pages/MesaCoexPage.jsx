@@ -3,7 +3,7 @@ import Alert from '@/shared/components/ui/Alert.jsx'
 import Button from '@/shared/components/ui/Button.jsx'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
-import Input from '@/shared/components/ui/Input.jsx'
+import InputFecha from '@/shared/components/ui/InputFecha.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import AppShell from '@/shared/components/AppShell.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
@@ -257,12 +257,11 @@ export default function MesaCoexPage() {
     >
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
         <div className="w-full max-w-xs">
-          <Input
+          <InputFecha
             label="Fecha de trabajo"
-            type="date"
             name="fecha"
             value={fecha}
-            onChange={(evento) => setFecha(evento.target.value)}
+            onChange={(valor) => setFecha(valor)}
           />
         </div>
 
