@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
+import CuadernoRojoPage from '@/modules/archivo/pages/CuadernoRojoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
@@ -80,6 +81,7 @@ export default function AppRouter() {
           <Route path="/archivo" element={<ArchivoPage />} />
           <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
           <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
+          <Route path="/rojo" element={<CuadernoRojoPage />} />
         </Route>
 
         <Route element={<RutaPorRol area="administracion" />}>
