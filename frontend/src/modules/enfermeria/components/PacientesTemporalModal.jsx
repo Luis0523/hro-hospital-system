@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import Icon from '@/shared/components/ui/Icon.jsx'
@@ -92,7 +93,7 @@ export default function PacientesTemporalModal({
                             {paciente.nombres} {paciente.apellidos}
                           </span>
                           <span className="block text-label-sm text-on-surface-variant">
-                            DPI {paciente.dpi} • {paciente.numeroExpediente}
+                            DPI {paciente.dpi} • {formatearExpediente(paciente.numeroExpediente)}
                           </span>
                         </span>
                         <Icon name="arrow_forward" className="text-[18px] text-primary" />

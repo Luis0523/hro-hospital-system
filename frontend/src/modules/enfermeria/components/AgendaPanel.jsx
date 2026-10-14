@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import Icon from '@/shared/components/ui/Icon.jsx'
@@ -150,7 +151,8 @@ export default function AgendaPanel({
                                   {resultado.nombres} {resultado.apellidos}
                                 </p>
                                 <p className="text-label-sm text-on-surface-variant">
-                                  DPI {resultado.dpi} • {resultado.numeroExpediente}
+                                  DPI {resultado.dpi} •{' '}
+                                  {formatearExpediente(resultado.numeroExpediente)}
                                 </p>
                               </button>
                             </li>

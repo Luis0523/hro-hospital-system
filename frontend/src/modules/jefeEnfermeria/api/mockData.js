@@ -64,6 +64,39 @@ export function listarSubespecialidadesMock() {
   return subespecialidadesMock.map((sub) => ({ ...sub, activo: true }))
 }
 
+// Catálogo de especialidades (unidad visible del horario). El "área" interna
+// sigue siendo la subespecialidad; aquí se resuelve a la primera de la especialidad.
+const ESPECIALIDADES_BASE = [
+  { id: 1, nombre: 'Medicina Interna', abreviatura: 'MI' },
+  { id: 6, nombre: 'Cardiología', abreviatura: 'CAR' },
+  { id: 2, nombre: 'Pediatría', abreviatura: 'PED' },
+  { id: 3, nombre: 'Ginecología y Obstetricia', abreviatura: null },
+  { id: 4, nombre: 'Cirugía General', abreviatura: null },
+  { id: 5, nombre: 'Traumatología y Ortopedia', abreviatura: 'TRAUMA' },
+]
+
+export function listarEspecialidadesMock() {
+  return ESPECIALIDADES_BASE.map((esp) => ({ ...esp, activo: true }))
+}
+
+// Devuelve el área (subespecialidad) de la especialidad; si no existe, la crea.
+export function asegurarAreaEspecialidadMock(especialidadId) {
+  const id = Number(especialidadId)
+  const existente = subespecialidadesMock.find((sub) => sub.especialidadId === id)
+  if (existente) return { ...existente, activo: true }
+
+  const esp = ESPECIALIDADES_BASE.find((e) => e.id === id)
+  if (!esp) return null
+  const nueva = {
+    id: subespecialidadesMock.length + 1,
+    nombre: esp.nombre,
+    especialidadId: id,
+    especialidadNombre: esp.nombre,
+  }
+  subespecialidadesMock.push(nueva)
+  return { ...nueva, activo: true }
+}
+
 export function vistaAsignacionMock(fecha, nivel) {
   const fila = listaDe(fecha)
   return espaciosMock
@@ -156,7 +189,11 @@ export function duplicarAsignacionMock(fechaOrigen, fechaDestino) {
       (d) => d.espacioFisicoId === a.espacioFisicoId && d.subespecialidadId === a.subespecialidadId,
     )
     if (yaEsta) continue
-    destino.push({ id: contadorAsignacion++, espacioFisicoId: a.espacioFisicoId, subespecialidadId: a.subespecialidadId })
+    destino.push({
+      id: contadorAsignacion++,
+      espacioFisicoId: a.espacioFisicoId,
+      subespecialidadId: a.subespecialidadId,
+    })
     copiadas++
   }
   return copiadas
@@ -199,16 +236,7 @@ export function reasignarEnCalienteMock(id, nuevoEspacioFisicoId, motivo) {
 // Horario por subespecialidad (/subespecialidad-horarios)
 // ---------------------------------------------------------------------------
 
-const NOMBRES_DIA = [
-  '',
-  'Lunes',
-  'Martes',
-  'Miércoles',
-  'Jueves',
-  'Viernes',
-  'Sábado',
-  'Domingo',
-]
+const NOMBRES_DIA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 const horariosMockData = []
 let contadorHorario = 1
@@ -252,7 +280,9 @@ export function listarHorariosMock(subespecialidadId) {
 export function crearHorarioMock(datos) {
   const subespecialidadId = Number(datos.subespecialidadId)
   const dia = Number(datos.diaSemana)
-  if (horariosMockData.some((h) => h.subespecialidadId === subespecialidadId && h.diaSemana === dia)) {
+  if (
+    horariosMockData.some((h) => h.subespecialidadId === subespecialidadId && h.diaSemana === dia)
+  ) {
     const error = new Error('Esa subespecialidad ya tiene un horario para ese día.')
     error.status = 409
     throw error
@@ -309,22 +339,95 @@ const isoDeHoy = (hora, minuto) =>
   new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), hora, minuto).toISOString()
 
 const ESTACIONES_BASE = [
-  { id: 1, codigo: 'EST-01', nombre: 'Medicina y Cardiología', ubicacion: 'Nivel 1', activo: true, subespecialidadIds: [1, 2] },
-  { id: 2, codigo: 'EST-02', nombre: 'Pediatría', ubicacion: 'Nivel 2', activo: true, subespecialidadIds: [3, 4, 5] },
-  { id: 3, codigo: 'EST-03', nombre: 'Ginecología y Obstetricia', ubicacion: 'Nivel 3', activo: true, subespecialidadIds: [6] },
-  { id: 4, codigo: 'EST-04', nombre: 'Cirugía y Traumatología', ubicacion: 'Nivel 4', activo: true, subespecialidadIds: [7, 8] },
+  {
+    id: 1,
+    codigo: 'EST-01',
+    nombre: 'Medicina y Cardiología',
+    ubicacion: 'Nivel 1',
+    activo: true,
+    subespecialidadIds: [1, 2],
+  },
+  {
+    id: 2,
+    codigo: 'EST-02',
+    nombre: 'Pediatría',
+    ubicacion: 'Nivel 2',
+    activo: true,
+    subespecialidadIds: [3, 4, 5],
+  },
+  {
+    id: 3,
+    codigo: 'EST-03',
+    nombre: 'Ginecología y Obstetricia',
+    ubicacion: 'Nivel 3',
+    activo: true,
+    subespecialidadIds: [6],
+  },
+  {
+    id: 4,
+    codigo: 'EST-04',
+    nombre: 'Cirugía y Traumatología',
+    ubicacion: 'Nivel 4',
+    activo: true,
+    subespecialidadIds: [7, 8],
+  },
 ]
 
 const ACCESOS_BASE = [
-  { id: 1, estacionId: 1, usuarioReferenciaId: 10, usuarioNombre: 'Licda. Sofía Carrillo', entradoEn: isoDeHoy(7, 0), salidoEn: null },
-  { id: 2, estacionId: 1, usuarioReferenciaId: 11, usuarioNombre: 'Téc. Raúl Barrios', entradoEn: isoDeHoy(7, 30), salidoEn: null },
-  { id: 3, estacionId: 2, usuarioReferenciaId: 12, usuarioNombre: 'Enf. María Xicay', entradoEn: isoDeHoy(7, 15), salidoEn: null },
-  { id: 4, estacionId: 3, usuarioReferenciaId: 13, usuarioNombre: 'Enf. Ana Puac', entradoEn: isoDeHoy(6, 45), salidoEn: isoDeHoy(11, 0) },
-  { id: 5, estacionId: 3, usuarioReferenciaId: 14, usuarioNombre: 'Enf. Luis Ixcot', entradoEn: isoDeHoy(8, 0), salidoEn: null },
-  { id: 6, estacionId: 4, usuarioReferenciaId: 15, usuarioNombre: 'Enf. Diego Saloj', entradoEn: isoDeHoy(9, 10), salidoEn: isoDeHoy(12, 30) },
+  {
+    id: 1,
+    estacionId: 1,
+    usuarioReferenciaId: 10,
+    usuarioNombre: 'Licda. Sofía Carrillo',
+    entradoEn: isoDeHoy(7, 0),
+    salidoEn: null,
+  },
+  {
+    id: 2,
+    estacionId: 1,
+    usuarioReferenciaId: 11,
+    usuarioNombre: 'Téc. Raúl Barrios',
+    entradoEn: isoDeHoy(7, 30),
+    salidoEn: null,
+  },
+  {
+    id: 3,
+    estacionId: 2,
+    usuarioReferenciaId: 12,
+    usuarioNombre: 'Enf. María Xicay',
+    entradoEn: isoDeHoy(7, 15),
+    salidoEn: null,
+  },
+  {
+    id: 4,
+    estacionId: 3,
+    usuarioReferenciaId: 13,
+    usuarioNombre: 'Enf. Ana Puac',
+    entradoEn: isoDeHoy(6, 45),
+    salidoEn: isoDeHoy(11, 0),
+  },
+  {
+    id: 5,
+    estacionId: 3,
+    usuarioReferenciaId: 14,
+    usuarioNombre: 'Enf. Luis Ixcot',
+    entradoEn: isoDeHoy(8, 0),
+    salidoEn: null,
+  },
+  {
+    id: 6,
+    estacionId: 4,
+    usuarioReferenciaId: 15,
+    usuarioNombre: 'Enf. Diego Saloj',
+    entradoEn: isoDeHoy(9, 10),
+    salidoEn: isoDeHoy(12, 30),
+  },
 ]
 
-const estacionesMockData = ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] }))
+const estacionesMockData = ESTACIONES_BASE.map((e) => ({
+  ...e,
+  subespecialidadIds: [...e.subespecialidadIds],
+}))
 const accesosMockData = ACCESOS_BASE.map((a) => ({ ...a }))
 let contadorEstacion = ESTACIONES_BASE.length + 1
 
@@ -387,6 +490,14 @@ export function asignarSubespecialidadesEstacionMock(id, subespecialidadIds) {
   return toEstacionDTO(estacion)
 }
 
+// Asigna especialidades: cada una se resuelve a su área (subespecialidad).
+export function asignarEspecialidadesEstacionMock(id, especialidadIds) {
+  const subIds = especialidadIds
+    .map((espId) => asegurarAreaEspecialidadMock(espId)?.id)
+    .filter(Boolean)
+  return asignarSubespecialidadesEstacionMock(id, subIds)
+}
+
 export function listarAccesosMock(estacionId, abiertos = false) {
   return accesosMockData
     .filter((a) => a.estacionId === Number(estacionId))
@@ -414,17 +525,58 @@ export function reporteCitasPorEstadoMock(fechaInicio, fechaFin) {
 
 export function reporteDemandaPorEspecialidadMock(fechaInicio, fechaFin) {
   const base = [
-    { especialidadId: 1, especialidadNombre: 'Medicina Interna', totalCitas: 62, atendidas: 54, inasistencias: 8 },
-    { especialidadId: 2, especialidadNombre: 'Pediatría', totalCitas: 48, atendidas: 43, inasistencias: 5 },
-    { especialidadId: 3, especialidadNombre: 'Ginecología y Obstetricia', totalCitas: 33, atendidas: 30, inasistencias: 3 },
-    { especialidadId: 4, especialidadNombre: 'Cirugía General', totalCitas: 21, atendidas: 18, inasistencias: 3 },
-    { especialidadId: 5, especialidadNombre: 'Traumatología y Ortopedia', totalCitas: 18, atendidas: 16, inasistencias: 2 },
-    { especialidadId: 6, especialidadNombre: 'Cardiología', totalCitas: 15, atendidas: 13, inasistencias: 2 },
+    {
+      especialidadId: 1,
+      especialidadNombre: 'Medicina Interna',
+      totalCitas: 62,
+      atendidas: 54,
+      inasistencias: 8,
+    },
+    {
+      especialidadId: 2,
+      especialidadNombre: 'Pediatría',
+      totalCitas: 48,
+      atendidas: 43,
+      inasistencias: 5,
+    },
+    {
+      especialidadId: 3,
+      especialidadNombre: 'Ginecología y Obstetricia',
+      totalCitas: 33,
+      atendidas: 30,
+      inasistencias: 3,
+    },
+    {
+      especialidadId: 4,
+      especialidadNombre: 'Cirugía General',
+      totalCitas: 21,
+      atendidas: 18,
+      inasistencias: 3,
+    },
+    {
+      especialidadId: 5,
+      especialidadNombre: 'Traumatología y Ortopedia',
+      totalCitas: 18,
+      atendidas: 16,
+      inasistencias: 2,
+    },
+    {
+      especialidadId: 6,
+      especialidadNombre: 'Cardiología',
+      totalCitas: 15,
+      atendidas: 13,
+      inasistencias: 2,
+    },
   ]
   return { fechaInicio, fechaFin, items: base }
 }
 
-export function reporteUtilizacionCuposMock(fechaInicio, fechaFin, subespecialidadId, especialidadId) {
+export function reporteUtilizacionCuposMock(
+  fechaInicio,
+  fechaFin,
+  subespecialidadId,
+  especialidadId,
+) {
   const capacidadTotal = 400
   const cuposOcupados = 368
   const cuposDisponibles = Math.max(0, capacidadTotal - cuposOcupados)
@@ -444,7 +596,11 @@ export function reiniciarJefeMock() {
   asignacionesPorFecha.clear()
   diasCerrados.clear()
   horariosMockData.length = 0
-  estacionesMockData.splice(0, estacionesMockData.length, ...ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] })))
+  estacionesMockData.splice(
+    0,
+    estacionesMockData.length,
+    ...ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] })),
+  )
   accesosMockData.splice(0, accesosMockData.length, ...ACCESOS_BASE.map((a) => ({ ...a })))
   contadorAsignacion = 1
   contadorHorario = 1

@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import Button from '@/shared/components/ui/Button.jsx'
 import EmptyState from '@/shared/components/ui/EmptyState.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
@@ -90,7 +91,9 @@ export default function TablaMovimientos({
                     <td className="whitespace-nowrap px-3 py-2 text-on-surface-variant">
                       {formatearFechaHora(evento.fechaMovimiento)}
                     </td>
-                    <td className="px-3 py-2 text-on-surface">{evento.numeroExpediente ?? '—'}</td>
+                    <td className="px-3 py-2 text-on-surface">
+                      {evento.numeroExpediente ? formatearExpediente(evento.numeroExpediente) : '—'}
+                    </td>
                     <td className="px-3 py-2 text-on-surface">{evento.pacienteNombre ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Transicion evento={evento} />
@@ -119,7 +122,7 @@ export default function TablaMovimientos({
               >
                 <div className="flex items-center justify-between gap-2 text-body-sm">
                   <span className="font-semibold text-on-surface">
-                    {evento.numeroExpediente ?? '—'}
+                    {evento.numeroExpediente ? formatearExpediente(evento.numeroExpediente) : '—'}
                   </span>
                   <span className="text-on-surface-variant">
                     {formatearFechaHora(evento.fechaMovimiento)}

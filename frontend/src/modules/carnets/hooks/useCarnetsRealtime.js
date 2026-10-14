@@ -32,7 +32,11 @@ export function useCarnetsRealtime({ topics = [], onEvento, intervaloRespaldoMs 
 
   useEffect(() => {
     if (!intervaloRespaldoMs) return undefined
-    const id = setInterval(() => onEventoRef.current?.(null), intervaloRespaldoMs)
+    const id = setInterval(() => {
+      // Con la pestaña oculta no tiene sentido refrescar (el WS sigue vivo).
+      if (typeof document !== 'undefined' && document.hidden) return
+      onEventoRef.current?.(null)
+    }, intervaloRespaldoMs)
     return () => clearInterval(id)
   }, [intervaloRespaldoMs])
 }

@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { calcularEdad, formatearFechaLarga } from '@/shared/utils/fecha'
 
@@ -27,7 +28,7 @@ export default function FichaPaciente({ paciente, cita, onQuitar }) {
           </p>
           <p className="flex items-center gap-1 text-title-sm text-primary">
             <Icon name="badge" className="text-[16px]" />
-            Expediente {paciente.numeroExpediente}
+            Expediente {formatearExpediente(paciente.numeroExpediente)}
           </p>
         </div>
         {onQuitar && (

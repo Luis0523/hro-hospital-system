@@ -2,12 +2,15 @@ import client from '@/shared/api/client'
 import {
   actualizarEstacionMock,
   actualizarHorarioMock,
+  asignarEspecialidadesEstacionMock,
   asignarSubespecialidadesEstacionMock,
   cerrarDiaMock,
   crearEstacionMock,
   crearHorarioMock,
+  asegurarAreaEspecialidadMock,
   desactivarEstacionMock,
   desactivarHorarioMock,
+  listarEspecialidadesMock,
   duplicarAsignacionMock,
   eliminarAsignacionMock,
   guardarAsignacionMock,
@@ -70,6 +73,18 @@ export async function listarEspaciosFisicos(nivel) {
 export async function listarSubespecialidades() {
   if (USE_MOCK) return listarSubespecialidadesMock()
   return desenvolver(await client.get('/subespecialidades'))
+}
+
+/** Catálogo de especialidades (unidad con la que ahora se configuran los horarios). */
+export async function listarEspecialidades() {
+  if (USE_MOCK) return listarEspecialidadesMock()
+  return desenvolver(await client.get('/especialidades'))
+}
+
+/** Área (subespecialidad) asociada a la especialidad para configurar horarios. Crea si no existe. */
+export async function asegurarAreaEspecialidad(especialidadId) {
+  if (USE_MOCK) return asegurarAreaEspecialidadMock(especialidadId)
+  return desenvolver(await client.post(`/especialidades/${especialidadId}/area`))
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +181,12 @@ export async function asignarSubespecialidadesEstacion(id, subespecialidadIds) {
   return desenvolver(
     await client.put(`/estaciones/${id}/subespecialidades`, { subespecialidadIds }),
   )
+}
+
+/** Asigna especialidades a la estación (el backend las resuelve a su área interna). */
+export async function asignarEspecialidadesEstacion(id, especialidadIds) {
+  if (USE_MOCK) return asignarEspecialidadesEstacionMock(id, especialidadIds)
+  return desenvolver(await client.put(`/estaciones/${id}/especialidades`, { especialidadIds }))
 }
 
 /** Bitácora de rotación de una estación (todos o solo los accesos abiertos). */

@@ -17,12 +17,12 @@ primary_region = "dfw"
   processes = ["app"]
 
   [[http_service.checks]]
-    grace_period = "45s"
+    grace_period = "60s"
     interval = "30s"
     method = "GET"
-    timeout = "5s"
+    timeout = "10s"
     path = "/api/v1/health"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  memory = "2048mb"

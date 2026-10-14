@@ -142,6 +142,44 @@ public class SubespecialidadService {
         return mapToDTO(sub);
     }
 
+    /**
+     * Devuelve el "área de horario" (subespecialidad) de una especialidad,
+     * creándola con el mismo nombre si aún no existe. Lo usa el horario por
+     * especialidad: la especialidad es la unidad visible y el área el soporte
+     * interno (sin borrar datos existentes).
+     */
+    @Transactional
+    public SubespecialidadResponseDTO asegurarArea(Long especialidadId) {
+        Especialidad esp = especialidadRepository.findById(especialidadId)
+                .orElseThrow(() -> new ResourceNotFoundException("Especialidad", "id", especialidadId));
+
+        List<Subespecialidad> existentes = subespecialidadRepository.findByEspecialidadId(especialidadId);
+        if (!existentes.isEmpty()) {
+            Subespecialidad elegida = existentes.stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getActivo()))
+                    .findFirst()
+                    .orElse(existentes.get(0));
+            return mapToDTO(elegida);
+        }
+
+        Subespecialidad sub = subespecialidadRepository.save(Subespecialidad.builder()
+                .especialidad(esp)
+                .nombre(esp.getNombre())
+                .activo(true)
+                .creadoEn(OffsetDateTime.now())
+                .build());
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("subespecialidad")
+                .entidadId(sub.getId())
+                .accion("crear")
+                .valoresNuevos(sub)
+                .build());
+
+        log.info("Área de horario creada para la especialidad '{}' (sub {})", esp.getNombre(), sub.getId());
+        return mapToDTO(sub);
+    }
+
     private SubespecialidadResponseDTO mapToDTO(Subespecialidad sub) {
         return SubespecialidadResponseDTO.builder()
                 .id(sub.getId())

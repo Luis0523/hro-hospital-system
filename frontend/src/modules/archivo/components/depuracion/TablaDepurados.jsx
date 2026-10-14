@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { Icon, Table } from '@/shared/components/ui'
 
 const COLUMNAS = [
@@ -40,7 +41,9 @@ export default function TablaDepurados({ depurados = [] }) {
           }
           if (clave === 'numeroExpediente') {
             return (
-              <span className="font-mono font-semibold text-primary">{fila.numeroExpediente}</span>
+              <span className="font-mono font-semibold text-primary">
+                {formatearExpediente(fila.numeroExpediente)}
+              </span>
             )
           }
           if (clave === 'motivo') {

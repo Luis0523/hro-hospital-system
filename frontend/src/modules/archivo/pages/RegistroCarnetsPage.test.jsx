@@ -3,24 +3,30 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 
 vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarEspecialidades: vi.fn(),
+  listarEspecialidadesActivasEstacion: vi.fn(),
+  listarEstaciones: vi.fn(() => Promise.resolve([])),
   listarCarnets: vi.fn(),
   registrarCarnet: vi.fn(),
+  corregirEspecialidadCarnet: vi.fn(),
+  obtenerCarnet: vi.fn(),
   ETIQUETAS_ESTADO_CARNET: {
     registrado: 'Registrado',
-    encontrado: 'Encontrado',
   },
 }))
 
 import {
+  corregirEspecialidadCarnet,
   listarCarnets,
   listarEspecialidades,
   registrarCarnet,
 } from '@/modules/carnets/api/carnetsApi'
+import { hoyIso } from '@/shared/utils/fecha'
 import RegistroCarnetsPage from './RegistroCarnetsPage.jsx'
 
 function renderPagina() {
@@ -28,9 +34,11 @@ function renderPagina() {
     <MemoryRouter initialEntries={['/enfermeria/carnets']}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <RegistroCarnetsPage />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <RegistroCarnetsPage />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -39,10 +47,8 @@ function renderPagina() {
 
 const campo = () => screen.getByPlaceholderText('Ej. 837871')
 const botonRegistrar = () => screen.getByRole('button', { name: /registrar carnet/i })
-const selectEspecialidad = () => screen.getByLabelText(/especialidad/i)
-
 async function seleccionarEspecialidad() {
-  await userEvent.selectOptions(selectEspecialidad(), '1')
+  await userEvent.click(await screen.findByRole('radio', { name: 'Hematología' }))
 }
 
 const carnetRegistrado = {
@@ -62,13 +68,14 @@ describe('RegistroCarnetsPage', () => {
     listarEspecialidades.mockReset().mockResolvedValue([{ id: 1, nombre: 'Hematología' }])
     listarCarnets.mockReset().mockResolvedValue([])
     registrarCarnet.mockReset()
+    corregirEspecialidadCarnet.mockReset()
   })
 
-  it('muestra la vista en estado inicial sin registros', async () => {
+  it('muestra la vista en estado inicial sin registros recientes', async () => {
     renderPagina()
 
-    expect(screen.getByRole('heading', { name: 'Registro de carnets' })).toBeInTheDocument()
-    expect(await screen.findByText('Aún no hay carnets registrados hoy')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Especialidad' })).toBeInTheDocument()
+    expect(await screen.findByText('Aún no hay registros para corregir')).toBeInTheDocument()
   })
 
   it('registra un carnet y muestra correlativo + especialidad', async () => {
@@ -76,7 +83,6 @@ describe('RegistroCarnetsPage', () => {
     registrarCarnet.mockResolvedValue(carnetRegistrado)
     renderPagina()
 
-    await screen.findByRole('option', { name: 'Hematología' })
     await seleccionarEspecialidad()
     await user.type(campo(), '837871')
     await user.click(botonRegistrar())
@@ -90,6 +96,36 @@ describe('RegistroCarnetsPage', () => {
     })
   })
 
+  it('permite corregir la especialidad de los últimos registros', async () => {
+    const user = userEvent.setup()
+    const reciente = { ...carnetRegistrado, fecha: hoyIso() }
+    localStorage.setItem(
+      'hro_cache_carnets_recientes',
+      JSON.stringify({ valor: [reciente], expira: 0 }),
+    )
+    listarEspecialidades.mockResolvedValue([
+      { id: 1, nombre: 'Hematología' },
+      { id: 2, nombre: 'Pediatría' },
+    ])
+    corregirEspecialidadCarnet.mockResolvedValue({
+      ...reciente,
+      especialidadId: 2,
+      especialidadNombre: 'Pediatría',
+      correlativo: 1,
+    })
+    renderPagina()
+
+    await user.click(await screen.findByRole('button', { name: /corregir especialidad/i }))
+    await user.selectOptions(screen.getByLabelText(/nueva especialidad/i), '2')
+    await user.type(screen.getByLabelText(/motivo/i), 'Especialidad equivocada')
+    await user.click(screen.getByRole('button', { name: /^corregir$/i }))
+
+    expect(corregirEspecialidadCarnet).toHaveBeenCalledWith('c-1', {
+      especialidadId: 2,
+      motivo: 'Especialidad equivocada',
+    })
+  })
+
   it('avisa cuando el expediente ya fue registrado hoy (409)', async () => {
     const user = userEvent.setup()
     registrarCarnet.mockRejectedValue(
@@ -99,7 +135,6 @@ describe('RegistroCarnetsPage', () => {
     )
     renderPagina()
 
-    await screen.findByRole('option', { name: 'Hematología' })
     await seleccionarEspecialidad()
     await user.type(campo(), '837871')
     await user.click(botonRegistrar())
@@ -112,7 +147,6 @@ describe('RegistroCarnetsPage', () => {
     registrarCarnet.mockRejectedValue(Object.assign(new Error('no encontrado'), { status: 404 }))
     renderPagina()
 
-    await screen.findByRole('option', { name: 'Hematología' })
     await seleccionarEspecialidad()
     await user.type(campo(), '000000')
     await user.click(botonRegistrar())

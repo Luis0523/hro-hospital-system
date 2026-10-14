@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { Alert, Button, Icon, Input } from '@/shared/components/ui'
 
 // Confirmación de baja lógica: muestra el paciente encontrado y permite
@@ -27,7 +28,9 @@ export default function TarjetaConfirmacionDepurar({
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="text-label-sm uppercase text-on-surface-variant">Expediente</dt>
-            <dd className="font-mono font-bold text-primary">{expediente.numeroExpediente}</dd>
+            <dd className="font-mono font-bold text-primary">
+              {formatearExpediente(expediente.numeroExpediente)}
+            </dd>
           </div>
         </dl>
       </div>

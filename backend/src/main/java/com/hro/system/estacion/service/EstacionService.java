@@ -6,12 +6,14 @@ import com.hro.system.auth.dto.IdentidadUsuario;
 import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
+import com.hro.system.clinica.service.SubespecialidadService;
 import com.hro.system.common.BusinessException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.estacion.dto.ActualizarEstacionRequestDTO;
 import com.hro.system.estacion.dto.CrearEstacionRequestDTO;
 import com.hro.system.estacion.dto.EstacionAccesoResponseDTO;
 import com.hro.system.estacion.dto.EstacionResponseDTO;
+import com.hro.system.estacion.dto.EspecialidadActivaDTO;
 import com.hro.system.estacion.dto.SubespecialidadAsignadaDTO;
 import com.hro.system.estacion.entity.EstacionAcceso;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
@@ -51,6 +53,7 @@ public class EstacionService {
     private final EstacionAccesoRepository accesoRepository;
     private final SubespecialidadRepository subespecialidadRepository;
     private final SubespecialidadHorarioRepository horarioRepository;
+    private final SubespecialidadService subespecialidadService;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -163,6 +166,55 @@ public class EstacionService {
     }
 
     /**
+     * Especialidades con atención activa en la estación para la fecha indicada,
+     * derivadas de sus subespecialidades con horario activo ese día de la semana.
+     * Si {@code fecha} es nula, devuelve todas las especialidades de la estación.
+     */
+    @Transactional(readOnly = true)
+    public List<EspecialidadActivaDTO> listarEspecialidadesActivas(Long id, LocalDate fecha) {
+        EstacionEnfermeria estacion = buscarEntidad(id);
+        List<EstacionSubespecialidad> asignadas = estacionSubRepository.findByEstacionIdAndActivoTrue(estacion.getId());
+
+        List<EstacionSubespecialidad> vigentes = asignadas;
+        if (fecha != null && !asignadas.isEmpty()) {
+            short diaSemana = (short) fecha.getDayOfWeek().getValue();
+            List<Long> ids = asignadas.stream().map(a -> a.getSubespecialidad().getId()).toList();
+            Set<Long> activasHoy = horarioRepository
+                    .findBySubespecialidadIdInAndDiaSemanaAndActivoTrue(ids, diaSemana).stream()
+                    .map(h -> h.getSubespecialidad().getId())
+                    .collect(Collectors.toSet());
+            vigentes = asignadas.stream()
+                    .filter(a -> activasHoy.contains(a.getSubespecialidad().getId()))
+                    .toList();
+        }
+
+        Map<Long, EspecialidadActivaDTO> porEspecialidad = new LinkedHashMap<>();
+        for (EstacionSubespecialidad asignacion : vigentes) {
+            var esp = asignacion.getSubespecialidad().getEspecialidad();
+            porEspecialidad.putIfAbsent(esp.getId(), EspecialidadActivaDTO.builder()
+                    .id(esp.getId())
+                    .nombre(esp.getNombre())
+                    .abreviatura(esp.getAbreviatura())
+                    .build());
+        }
+        return new java.util.ArrayList<>(porEspecialidad.values());
+    }
+
+    /**
+     * Reemplaza el conjunto de especialidades de la estación. Cada especialidad se
+     * resuelve a su área interna (subespecialidad, creada si no existe) y se delega
+     * en {@link #asignarSubespecialidades}. La especialidad es la unidad visible.
+     */
+    @Transactional
+    public EstacionResponseDTO asignarEspecialidades(Long id, List<Long> especialidadIds) {
+        List<Long> subIds = new java.util.ArrayList<>();
+        for (Long espId : especialidadIds.stream().filter(Objects::nonNull).distinct().toList()) {
+            subIds.add(subespecialidadService.asegurarArea(espId).getId());
+        }
+        return asignarSubespecialidades(id, subIds);
+    }
+
+    /**
      * Reemplaza el conjunto de subespecialidades de la estación.
      * Valida pertenencia única: ninguna subespecialidad puede estar en otra estación.
      */
@@ -174,9 +226,6 @@ public class EstacionService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        if (ids.isEmpty()) {
-            throw new BusinessException("Debe indicar al menos una subespecialidad.");
-        }
 
         Map<Long, Subespecialidad> seleccionadas = new LinkedHashMap<>();
         for (Long subId : ids) {

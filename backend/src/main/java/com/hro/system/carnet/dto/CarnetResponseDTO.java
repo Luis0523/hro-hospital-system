@@ -37,18 +37,14 @@ public class CarnetResponseDTO {
 
     private String registradoPor;
     private OffsetDateTime registradoEn;
-    private String encontradoPor;
-    private OffsetDateTime encontradoEn;
     private String noLocalizadoPor;
     private OffsetDateTime noLocalizadoEn;
-    private String despachadoPor;
-    private OffsetDateTime despachadoEn;
-    private String recibidoPor;
-    private OffsetDateTime recibidoEn;
-    private String devueltoPor;
-    private OffsetDateTime devueltoEn;
-    private String recibidoArchivoPor;
-    private OffsetDateTime recibidoArchivoEn;
+    private String salidaArchivoPor;
+    private OffsetDateTime salidaArchivoEn;
+    private String salidaEnfermeriaPor;
+    private OffsetDateTime salidaEnfermeriaEn;
+    private String resguardadoPor;
+    private OffsetDateTime resguardadoEn;
 
     private List<CarnetMovimientoResponseDTO> movimientos;
 }

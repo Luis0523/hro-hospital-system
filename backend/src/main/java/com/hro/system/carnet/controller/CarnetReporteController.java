@@ -13,64 +13,60 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
-/** Reporte de salida de expedientes (carnets encontrados) para la Estación de Archivo. */
+/** Reporte de salida de expedientes (carnets con salida de archivo) para la Estación de Archivo. */
 @RestController
-@RequestMapping("/carnets/salida")
+@RequestMapping("/carnets")
 @RequiredArgsConstructor
-@Tag(name = "Carnets - Reporte de salida", description = "Listado y PDF de los expedientes encontrados (salida del archivo)")
+@Tag(name = "Carnets - Reportes", description = "Listados y PDF de salida de archivo y salida de enfermería")
 public class CarnetReporteController {
 
     private final ReporteSalidaCarnetsService servicio;
 
-    @GetMapping
-    @Operation(summary = "Listar expedientes de salida (encontrados) de una fecha")
+    @GetMapping("/salida")
+    @Operation(summary = "Listar expedientes con salida de archivo de una fecha")
     public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return ResponseEntity.ok(ApiResponse.ok(servicio.listar(fecha), "Salida de expedientes obtenida"));
+        return ResponseEntity.ok(ApiResponse.ok(servicio.listar(fecha), "Salida de archivo obtenida"));
     }
 
-    @GetMapping("/pdf")
-    @Operation(summary = "Descargar el reporte de salida en PDF")
+    @GetMapping("/salida/pdf")
+    @Operation(summary = "Descargar el reporte de salida de archivo en PDF")
     public ResponseEntity<byte[]> pdf(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         byte[] pdf = servicio.generarPdf(fecha, usuarioActual());
-        return pdfResponse(pdf, "reporte-salida.pdf");
+        return pdfResponse(pdf, "reporte-salida-archivo.pdf");
     }
 
-    @GetMapping("/recepcion")
-    @Operation(summary = "Listar expedientes recibidos en la estación (COEX) de una fecha")
-    public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listarRecepcion(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return ResponseEntity.ok(ApiResponse.ok(servicio.listarRecepcion(fecha), "Recepción de expedientes obtenida"));
+    @PostMapping("/salida/pdf")
+    @Operation(summary = "Descargar el reporte de salida de archivo en PDF para carnets específicos (lote de la sesión)")
+    public ResponseEntity<byte[]> pdfPorIds(@RequestBody(required = false) List<UUID> ids) {
+        byte[] pdf = servicio.generarPdfPorIds(ids, usuarioActual());
+        return pdfResponse(pdf, "reporte-salida-archivo.pdf");
     }
 
-    @GetMapping("/recepcion/pdf")
-    @Operation(summary = "Descargar el reporte de recepción de expedientes en PDF (sin firmas)")
-    public ResponseEntity<byte[]> recepcionPdf(
+    @GetMapping("/salida-enfermeria")
+    @Operation(summary = "Listar expedientes con salida de enfermería de una fecha")
+    public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listarSalidaEnfermeria(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        byte[] pdf = servicio.generarRecepcionPdf(fecha, usuarioActual());
-        return pdfResponse(pdf, "reporte-recepcion.pdf");
+        return ResponseEntity.ok(ApiResponse.ok(servicio.listarSalidaEnfermeria(fecha), "Salida de enfermería obtenida"));
     }
 
-    @GetMapping("/devolucion")
-    @Operation(summary = "Listar expedientes devueltos a Archivo (COEX) de una fecha")
-    public ResponseEntity<ApiResponse<SalidaCarnetDTO.Reporte>> listarDevolucion(
+    @GetMapping("/salida-enfermeria/pdf")
+    @Operation(summary = "Descargar el reporte de salida de enfermería en PDF (sin firmas)")
+    public ResponseEntity<byte[]> salidaEnfermeriaPdf(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return ResponseEntity.ok(ApiResponse.ok(servicio.listarDevolucion(fecha), "Devolución de expedientes obtenida"));
-    }
-
-    @GetMapping("/devolucion/pdf")
-    @Operation(summary = "Descargar el reporte de devolución de expedientes en PDF (sin firmas)")
-    public ResponseEntity<byte[]> devolucionPdf(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        byte[] pdf = servicio.generarDevolucionPdf(fecha, usuarioActual());
-        return pdfResponse(pdf, "reporte-devolucion.pdf");
+        byte[] pdf = servicio.generarSalidaEnfermeriaPdf(fecha, usuarioActual());
+        return pdfResponse(pdf, "reporte-salida-enfermeria.pdf");
     }
 
     private static String usuarioActual() {

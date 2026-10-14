@@ -26,25 +26,31 @@ export default function FiltrosArchivo({
     })),
   ]
 
+  // La subespecialidad solo aplica a la jornada de expedientes; el circuito de
+  // carnets filtra por fecha y estación.
+  const mostrarSubespecialidad = Boolean(onSubespecialidad)
+
   return (
     <section
       aria-label="Filtros de expedientes"
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
     >
-      <div className={`grid grid-cols-1 gap-3 ${onEstacion ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <InputFecha
           label="Fecha de consulta"
           name="fecha"
           value={fecha}
           onChange={(valor) => onFecha(valor)}
         />
-        <Select
-          label="Subespecialidad"
-          value={subespecialidadId}
-          onChange={onSubespecialidad}
-          options={opcionesSubespecialidades}
-          placeholder="Todas las subespecialidades"
-        />
+        {mostrarSubespecialidad && (
+          <Select
+            label="Subespecialidad"
+            value={subespecialidadId}
+            onChange={onSubespecialidad}
+            options={opcionesSubespecialidades}
+            placeholder="Todas las subespecialidades"
+          />
+        )}
         {onEstacion && (
           <Select
             label="Estación"

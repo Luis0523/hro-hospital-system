@@ -95,3 +95,55 @@ body {
 .dashboard-feed-enter {
   animation: hro-fade-in 0.25s ease-out;
 }
+
+/* Confirmación visual de salida de archivo (fila verde + tachado). */
+@keyframes hro-salida-ok {
+  0% {
+    background-color: rgba(16, 185, 129, 0.35);
+    transform: translateY(-2px);
+  }
+  100% {
+    background-color: rgba(16, 185, 129, 0);
+    transform: translateY(0);
+  }
+}
+
+.hro-salida-ok {
+  animation: hro-salida-ok 0.6s ease-out;
+}
+
+.hro-salida-tachado {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+/* Sacudida ante una coincidencia fallida del lector. */
+@keyframes hro-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.hro-shake {
+  animation: hro-shake 0.35s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hro-salida-ok,
+  .hro-shake {
+    animation: none;
+  }
+}

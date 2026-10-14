@@ -4,9 +4,11 @@ import {
   ETIQUETAS_ESTADO_CARNET,
   actualizarConfiguracionArchivo,
   descargarSalidaCarnetsPdf,
+  obtenerCarnet,
   obtenerConfiguracionArchivo,
 } from '@/modules/carnets/api/carnetsApi'
 import { codigoCarnet } from '@/modules/carnets/utils/codigoCarnet'
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { descargarBlob } from '../utils/descargarBlob'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
@@ -16,41 +18,29 @@ import ModalObservacion from './ModalObservacion.jsx'
 // Orden lineal del circuito. `no_localizado` es una rama, no entra en el orden.
 const ORDEN = {
   registrado: 0,
-  encontrado: 1,
-  despachado: 2,
-  recibido_estacion: 3,
-  devuelto_estacion: 4,
-  recibido_archivo: 5,
+  salida_archivo: 1,
+  salida_enfermeria: 2,
+  resguardado: 3,
 }
 
 // Estado siguiente del circuito (para saber cuál es el checkbox accionable).
 const SIGUIENTE = {
-  registrado: 'encontrado',
-  no_localizado: 'encontrado',
-  encontrado: 'despachado',
-  despachado: 'recibido_estacion',
-  recibido_estacion: 'devuelto_estacion',
-  devuelto_estacion: 'recibido_archivo',
+  registrado: 'salida_archivo',
+  no_localizado: 'salida_archivo',
+  salida_archivo: 'salida_enfermeria',
+  salida_enfermeria: 'resguardado',
 }
 
-// Estados que ejecuta ARCHIVO en esta vista (el resto son de enfermería: solo lectura).
-const ACCION_ARCHIVO = new Set(['encontrado', 'despachado', 'recibido_archivo'])
+// Estados que ejecuta ARCHIVO en esta vista (salida de enfermería la marca COEX).
+const ACCION_ARCHIVO = new Set(['salida_archivo', 'resguardado'])
 
 const COLUMNAS_ESTADO = [
-  { key: 'encontrado', label: 'Encontré' },
-  { key: 'despachado', label: 'Despachado' },
-  { key: 'recibido_estacion', label: 'Recibido (enf.)' },
-  { key: 'devuelto_estacion', label: 'Devuelto (enf.)' },
-  { key: 'recibido_archivo', label: 'Recibido (archivo)' },
+  { key: 'salida_archivo', label: 'Salida archivo' },
+  { key: 'salida_enfermeria', label: 'Salida enfermería' },
+  { key: 'resguardado', label: 'Resguardado' },
 ]
 
-const ESTADOS_ENCONTRADOS = new Set([
-  'encontrado',
-  'despachado',
-  'recibido_estacion',
-  'devuelto_estacion',
-  'recibido_archivo',
-])
+const ESTADOS_SALIDA = new Set(['salida_archivo', 'salida_enfermeria', 'resguardado'])
 
 function horaDe(instante) {
   if (!instante) return ''
@@ -89,16 +79,20 @@ function CheckboxEstado({ alcanzado, accionable, etiqueta, onMarcar, ocupado }) 
       disabled={!accionable || ocupado}
       onChange={() => onMarcar?.()}
       aria-label={etiqueta}
-      className="h-6 w-6 cursor-pointer accent-hro-blue disabled:cursor-default disabled:opacity-60"
+      className="h-6 w-6 cursor-pointer accent-amber-500 checked:accent-emerald-500 dark:accent-amber-400 dark:checked:accent-emerald-400 disabled:cursor-default disabled:opacity-50"
     />
   )
 }
 
-function FilaHistorial({ carnet, columnas }) {
+function FilaHistorial({ movimientos, cargando, columnas }) {
   return (
     <tr className="bg-surface-container-low">
       <td colSpan={columnas} className="px-3 py-3">
-        <Historial movimientos={carnet.movimientos} />
+        {cargando ? (
+          <p className="text-label-sm text-on-surface-variant">Cargando historial…</p>
+        ) : (
+          <Historial movimientos={movimientos} />
+        )}
       </td>
     </tr>
   )
@@ -106,7 +100,7 @@ function FilaHistorial({ carnet, columnas }) {
 
 // Sección de seguimiento de carnets: tablas de estados. La fecha y la estación
 // llegan desde el único filtro de la página. Se actualiza en tiempo real.
-export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey }) {
+export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey, onResumen }) {
   const [clasificacion, setClasificacion] = useState('')
   const {
     carnets,
@@ -114,13 +108,16 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
     error,
     enProceso,
     recargar,
-    marcarEncontrado,
-    despachar,
-    recibirDevolucion,
+    aplicarEvento,
+    salidaArchivo,
+    resguardar,
     marcarNoLocalizado,
   } = useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion })
 
   const [expandido, setExpandido] = useState(null)
+  // Historial cargado bajo demanda (el listado ya no incluye los movimientos).
+  const [historiales, setHistoriales] = useState({})
+  const [cargandoHistorial, setCargandoHistorial] = useState(null)
   const [observacionPara, setObservacionPara] = useState(null)
   const [observacion, setObservacion] = useState('')
 
@@ -158,7 +155,12 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
     }
   }
 
-  useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => recargar() })
+  // Tiempo real: aplica el carnet recibido sin recargar todo el listado. El
+  // evento nulo es el polling de respaldo, que sí refresca por completo.
+  useCarnetsRealtime({
+    topics: ['/topic/archivo'],
+    onEvento: (carnet) => (carnet?.id ? aplicarEvento(carnet) : recargar()),
+  })
 
   const { mostrarToast } = useToast()
   const [generandoPdf, setGenerandoPdf] = useState(false)
@@ -167,7 +169,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
     setGenerandoPdf(true)
     try {
       const blob = await descargarSalidaCarnetsPdf({ fecha })
-      descargarBlob(blob, `reporte-salida-${fecha}.pdf`)
+      descargarBlob(blob, `reporte-salida-archivo-${fecha}.pdf`)
     } catch (fallo) {
       mostrarToast?.({
         tone: 'error',
@@ -179,22 +181,43 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
     }
   }
 
-  const { pendientes, encontrados } = useMemo(() => {
+  const { pendientes, salidos, conSalidaArchivo } = useMemo(() => {
     const ordenados = [...carnets].sort(compararPorExpediente)
     return {
-      pendientes: ordenados.filter((c) => !ESTADOS_ENCONTRADOS.has(c.estado)),
-      encontrados: ordenados.filter((c) => ESTADOS_ENCONTRADOS.has(c.estado)),
+      pendientes: ordenados.filter((c) => !ESTADOS_SALIDA.has(c.estado)),
+      salidos: ordenados.filter((c) => ESTADOS_SALIDA.has(c.estado)),
+      conSalidaArchivo: ordenados.filter((c) => c.estado === 'salida_archivo').length,
     }
   }, [carnets])
 
-  function alternarHistorial(id) {
-    setExpandido((actual) => (actual === id ? null : id))
+  // Publica el resumen del día (derivado de los carnets) hacia la página.
+  useEffect(() => {
+    onResumen?.({
+      total: carnets.length,
+      pendientes: carnets.filter((c) => c.estado === 'registrado' || c.estado === 'no_localizado')
+        .length,
+      conSalida: carnets.filter((c) => ESTADOS_SALIDA.has(c.estado)).length,
+    })
+  }, [carnets, onResumen])
+
+  async function alternarHistorial(carnet) {
+    const abriendo = expandido !== carnet.id
+    setExpandido(abriendo ? carnet.id : null)
+    if (!abriendo || historiales[carnet.id]) return
+    setCargandoHistorial(carnet.id)
+    try {
+      const detalle = await obtenerCarnet(carnet.id)
+      setHistoriales((actual) => ({ ...actual, [carnet.id]: detalle?.movimientos ?? [] }))
+    } catch {
+      setHistoriales((actual) => ({ ...actual, [carnet.id]: [] }))
+    } finally {
+      setCargandoHistorial(null)
+    }
   }
 
   function accionDe(key, carnet) {
-    if (key === 'encontrado') return () => marcarEncontrado(carnet)
-    if (key === 'despachado') return () => despachar(carnet)
-    if (key === 'recibido_archivo') return () => recibirDevolucion(carnet)
+    if (key === 'salida_archivo') return () => salidaArchivo(carnet)
+    if (key === 'resguardado') return () => resguardar(carnet)
     return undefined
   }
 
@@ -206,6 +229,10 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
       setObservacionPara(null)
       setObservacion('')
     }
+  }
+
+  function etiquetaExpediente(carnet) {
+    return formatearExpediente(carnet.numeroExpediente)
   }
 
   return (
@@ -221,8 +248,8 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
             Seguimiento de carnets
           </h2>
           <p className="text-body-sm text-on-surface-variant">
-            Marque <strong>Encontré</strong> a medida que ubica los expedientes; se moverán a
-            &laquo;Encontrados&raquo;.
+            Registre la <strong>salida de archivo</strong> a medida que los expedientes salen;
+            luego se confirma la salida de enfermería y el resguardo.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -250,11 +277,11 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
             size="sm"
             variant="secondary"
             onClick={descargarReporteSalida}
-            disabled={generandoPdf || encontrados.length === 0}
-            title="Generar el reporte de salida (PDF) de los expedientes encontrados"
+            disabled={generandoPdf || conSalidaArchivo === 0}
+            title="Generar el reporte de salida de archivo (PDF)"
           >
             <Icon name="picture_as_pdf" className="text-[18px]" />
-            {generandoPdf ? 'Generando…' : `Reporte de salida (${encontrados.length})`}
+            {generandoPdf ? 'Generando…' : `Reporte de salida (${conSalidaArchivo})`}
           </Button>
           <Button
             size="sm"
@@ -283,7 +310,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
         <>
           <div>
             <h3 className="mb-2 text-title-sm font-semibold text-on-surface">
-              Por encontrar ({pendientes.length})
+              Pendientes ({pendientes.length})
             </h3>
             {pendientes.length === 0 ? (
               <p className="text-body-sm text-on-surface-variant">No hay carnets pendientes.</p>
@@ -295,7 +322,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                       <th className="px-3 py-2">Correlativo</th>
                       <th className="px-3 py-2">Expediente</th>
                       <th className="px-3 py-2">Paciente</th>
-                      <th className="px-3 py-2 text-center">Encontré</th>
+                      <th className="px-3 py-2 text-center">Salida archivo</th>
                       <th className="px-3 py-2 text-center">No localizado</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -311,7 +338,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                           </td>
                           <td className="px-3 py-3">
                             <span className="font-mono text-[26px] font-black tracking-tight text-primary">
-                              {carnet.numeroExpediente}
+                              {etiquetaExpediente(carnet)}
                             </span>
                             {carnet.archivo && (
                               <span
@@ -337,8 +364,8 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                               alcanzado={false}
                               accionable
                               ocupado={enProceso === carnet.id}
-                              etiqueta={`Encontré ${carnet.numeroExpediente}`}
-                              onMarcar={() => marcarEncontrado(carnet)}
+                              etiqueta={`Salida de archivo ${carnet.numeroExpediente}`}
+                              onMarcar={() => salidaArchivo(carnet)}
                             />
                           </td>
                           <td className="px-3 py-2 text-center">
@@ -354,13 +381,21 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                             />
                           </td>
                           <td className="px-3 py-2 text-right">
-                            <Button size="sm" variant="ghost" onClick={() => alternarHistorial(carnet.id)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => alternarHistorial(carnet)}
+                            >
                               <Icon name="history" className="text-[18px]" />
                             </Button>
                           </td>
                         </tr>
                         {expandido === carnet.id && (
-                          <FilaHistorial carnet={carnet} columnas={6} />
+                          <FilaHistorial
+                            movimientos={historiales[carnet.id]}
+                            cargando={cargandoHistorial === carnet.id}
+                            columnas={6}
+                          />
                         )}
                       </Fragment>
                     ))}
@@ -372,15 +407,15 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
 
           <div>
             <h3 className="mb-2 text-title-sm font-semibold text-on-surface">
-              Encontrados ({encontrados.length})
+              Salidos ({salidos.length})
             </h3>
-            {encontrados.length === 0 ? (
+            {salidos.length === 0 ? (
               <p className="text-body-sm text-on-surface-variant">
-                Aún no hay carpetas marcadas como encontradas.
+                Aún no hay expedientes con salida de archivo.
               </p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-outline-variant">
-                <table className="w-full min-w-[820px] text-left text-sm">
+                <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-surface-container-low text-label-sm uppercase text-on-surface-variant">
                     <tr>
                       <th className="px-3 py-2">Correlativo</th>
@@ -395,7 +430,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/60">
-                    {encontrados.map((carnet) => (
+                    {salidos.map((carnet) => (
                       <Fragment key={carnet.id}>
                         <tr className="bg-surface-container-lowest">
                           <td className="px-3 py-2">
@@ -405,7 +440,7 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                           </td>
                           <td className="px-3 py-3">
                             <span className="font-mono text-[26px] font-black tracking-tight text-primary">
-                              {carnet.numeroExpediente}
+                              {etiquetaExpediente(carnet)}
                             </span>
                             {carnet.archivo && (
                               <span
@@ -428,9 +463,10 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                           </td>
                           {COLUMNAS_ESTADO.map((columna) => {
                             const alcanzado = ORDEN[carnet.estado] >= ORDEN[columna.key]
-                            const accionable =
+                            const esSiguiente =
                               SIGUIENTE[carnet.estado] === columna.key &&
                               ACCION_ARCHIVO.has(columna.key)
+                            const accionable = esSiguiente
                             return (
                               <td key={columna.key} className="px-3 py-2 text-center">
                                 <CheckboxEstado
@@ -444,13 +480,21 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey })
                             )
                           })}
                           <td className="px-3 py-2 text-right">
-                            <Button size="sm" variant="ghost" onClick={() => alternarHistorial(carnet.id)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => alternarHistorial(carnet)}
+                            >
                               <Icon name="history" className="text-[18px]" />
                             </Button>
                           </td>
                         </tr>
                         {expandido === carnet.id && (
-                          <FilaHistorial carnet={carnet} columnas={9} />
+                          <FilaHistorial
+                            movimientos={historiales[carnet.id]}
+                            cargando={cargandoHistorial === carnet.id}
+                            columnas={7}
+                          />
                         )}
                       </Fragment>
                     ))}

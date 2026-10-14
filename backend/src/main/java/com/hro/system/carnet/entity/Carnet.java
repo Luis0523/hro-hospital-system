@@ -75,13 +75,6 @@ public class Carnet {
     private OffsetDateTime registradoEn;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "encontrado_por_id")
-    private UsuarioReferencia encontradoPor;
-
-    @Column(name = "encontrado_en")
-    private OffsetDateTime encontradoEn;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "no_localizado_por_id")
     private UsuarioReferencia noLocalizadoPor;
 
@@ -89,32 +82,25 @@ public class Carnet {
     private OffsetDateTime noLocalizadoEn;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "despachado_por_id")
-    private UsuarioReferencia despachadoPor;
+    @JoinColumn(name = "salida_archivo_por_id")
+    private UsuarioReferencia salidaArchivoPor;
 
-    @Column(name = "despachado_en")
-    private OffsetDateTime despachadoEn;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recibido_por_id")
-    private UsuarioReferencia recibidoPor;
-
-    @Column(name = "recibido_en")
-    private OffsetDateTime recibidoEn;
+    @Column(name = "salida_archivo_en")
+    private OffsetDateTime salidaArchivoEn;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "devuelto_por_id")
-    private UsuarioReferencia devueltoPor;
+    @JoinColumn(name = "salida_enfermeria_por_id")
+    private UsuarioReferencia salidaEnfermeriaPor;
 
-    @Column(name = "devuelto_en")
-    private OffsetDateTime devueltoEn;
+    @Column(name = "salida_enfermeria_en")
+    private OffsetDateTime salidaEnfermeriaEn;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recibido_archivo_por_id")
-    private UsuarioReferencia recibidoArchivoPor;
+    @JoinColumn(name = "resguardado_por_id")
+    private UsuarioReferencia resguardadoPor;
 
-    @Column(name = "recibido_archivo_en")
-    private OffsetDateTime recibidoArchivoEn;
+    @Column(name = "resguardado_en")
+    private OffsetDateTime resguardadoEn;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
     @Builder.Default

@@ -2,7 +2,7 @@ package com.hro.system.carnet.dto;
 
 import java.time.LocalDate;
 
-/** Fila del reporte de salida de expedientes (carnets encontrados). */
+/** Fila del reporte de salida de expedientes (carnets con salida de archivo). */
 public record SalidaCarnetDTO(
         String numeroExpediente,
         String especialidadNombre,

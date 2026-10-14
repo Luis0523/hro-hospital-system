@@ -4,7 +4,9 @@ import com.hro.system.common.ApiResponse;
 import com.hro.system.common.EstadoFiltro;
 import com.hro.system.clinica.dto.CrearEspecialidadRequestDTO;
 import com.hro.system.clinica.dto.EspecialidadResponseDTO;
+import com.hro.system.clinica.dto.SubespecialidadResponseDTO;
 import com.hro.system.clinica.service.EspecialidadService;
+import com.hro.system.clinica.service.SubespecialidadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,6 +24,7 @@ import java.util.List;
 public class EspecialidadController {
 
     private final EspecialidadService especialidadService;
+    private final SubespecialidadService subespecialidadService;
 
     @PostMapping
     @Operation(summary = "Crear nueva especialidad", description = "Registra una especialidad médica validando nombre único.")
@@ -29,6 +32,14 @@ public class EspecialidadController {
         EspecialidadResponseDTO response = especialidadService.crearEspecialidad(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Especialidad creada exitosamente"));
+    }
+
+    @PostMapping("/{id}/area")
+    @Operation(summary = "Área de horario de la especialidad",
+            description = "Devuelve el área (subespecialidad) asociada a la especialidad para configurar horarios, creándola si no existe. Idempotente.")
+    public ResponseEntity<ApiResponse<SubespecialidadResponseDTO>> asegurarArea(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                subespecialidadService.asegurarArea(id), "Área de la especialidad"));
     }
 
     @PutMapping("/{id}")

@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 
@@ -26,8 +27,12 @@ vi.mock('../hooks/useEscanerCodigo', () => ({
 
 vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarEspecialidades: vi.fn(() => Promise.resolve([{ id: 1, nombre: 'Hematología' }])),
+  listarEspecialidadesActivasEstacion: vi.fn(() => Promise.resolve([])),
+  listarEstaciones: vi.fn(() => Promise.resolve([])),
   listarCarnets: vi.fn(() => Promise.resolve([])),
   registrarCarnet: vi.fn(),
+  corregirEspecialidadCarnet: vi.fn(),
+  obtenerCarnet: vi.fn(),
   ETIQUETAS_ESTADO_CARNET: { registrado: 'Registrado' },
 }))
 
@@ -39,9 +44,11 @@ function renderPagina() {
     <MemoryRouter initialEntries={['/enfermeria/carnets']}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <RegistroCarnetsPage />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <RegistroCarnetsPage />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -65,8 +72,8 @@ describe('RegistroCarnetsPage — escaneo con cámara', () => {
     })
     renderPagina()
 
-    await screen.findByRole('option', { name: 'Hematología' })
-    await userEvent.selectOptions(screen.getByLabelText(/especialidad/i), '1')
+    await screen.findByRole('radio', { name: 'Hematología' })
+    await userEvent.click(screen.getByRole('radio', { name: 'Hematología' }))
 
     await act(async () => {
       await callbackRef.actual('837871')

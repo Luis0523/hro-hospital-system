@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { metadatosEstado } from '../../estadosExpediente'
 
@@ -53,7 +54,7 @@ export default function FeedTiempoReal({ eventos = [] }) {
               >
                 <div className="flex items-center justify-between gap-2 text-label-sm text-on-surface-variant">
                   <span className="font-semibold text-on-surface">
-                    {evento.numeroExpediente ?? '—'}
+                    {evento.numeroExpediente ? formatearExpediente(evento.numeroExpediente) : '—'}
                   </span>
                   <span className="tabular-nums">{formatearHora(evento.fechaMovimiento)}</span>
                 </div>

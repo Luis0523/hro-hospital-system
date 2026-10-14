@@ -3,10 +3,12 @@ package com.hro.system.estacion.controller;
 import com.hro.system.common.ApiResponse;
 import com.hro.system.common.EstadoFiltro;
 import com.hro.system.estacion.dto.ActualizarEstacionRequestDTO;
+import com.hro.system.estacion.dto.AsignarEspecialidadesRequestDTO;
 import com.hro.system.estacion.dto.AsignarSubespecialidadesRequestDTO;
 import com.hro.system.estacion.dto.CrearEstacionRequestDTO;
 import com.hro.system.estacion.dto.EstacionAccesoResponseDTO;
 import com.hro.system.estacion.dto.EstacionResponseDTO;
+import com.hro.system.estacion.dto.EspecialidadActivaDTO;
 import com.hro.system.estacion.dto.SubespecialidadAsignadaDTO;
 import com.hro.system.estacion.service.EstacionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,6 +67,17 @@ public class EstacionController {
                 "Subespecialidades activas de la estación"));
     }
 
+    @GetMapping("/{id}/especialidades-activas")
+    @Operation(summary = "Especialidades con atención activa en la fecha",
+            description = "Deriva las especialidades (sin duplicar) de las subespecialidades de la estación con horario activo ese día. Sin 'fecha', todas las de la estación.")
+    public ResponseEntity<ApiResponse<List<EspecialidadActivaDTO>>> listarEspecialidadesActivas(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                estacionService.listarEspecialidadesActivas(id, fecha),
+                "Especialidades activas de la estación"));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('jefe_enfermeria', 'administrador')")
     @Operation(summary = "Crear estación de enfermería")
@@ -79,6 +92,17 @@ public class EstacionController {
     public ResponseEntity<ApiResponse<EstacionResponseDTO>> actualizar(
             @PathVariable Long id, @Valid @RequestBody ActualizarEstacionRequestDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok(estacionService.actualizar(id, dto), "Estación actualizada"));
+    }
+
+    @PutMapping("/{id}/especialidades")
+    @PreAuthorize("hasAnyRole('jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Asignar especialidades a la estación",
+            description = "Reemplaza el conjunto. Cada especialidad se resuelve a su área interna (creada si no existe).")
+    public ResponseEntity<ApiResponse<EstacionResponseDTO>> asignarEspecialidades(
+            @PathVariable Long id, @Valid @RequestBody AsignarEspecialidadesRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                estacionService.asignarEspecialidades(id, dto.getEspecialidadIds()),
+                "Especialidades de la estación actualizadas"));
     }
 
     @PutMapping("/{id}/subespecialidades")

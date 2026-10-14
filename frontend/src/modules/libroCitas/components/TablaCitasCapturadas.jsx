@@ -1,3 +1,4 @@
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { EmptyState, Icon } from '@/shared/components/ui'
 
 /**
@@ -45,7 +46,9 @@ export default function TablaCitasCapturadas({ filas = [], onEliminar }) {
               data-testid={`fila-cita-${fila.idLocal}`}
               className="border-b border-outline-variant/60"
             >
-              <td className="px-3 py-2 tabular-nums text-on-surface">{fila.numeroExpediente}</td>
+              <td className="px-3 py-2 tabular-nums text-on-surface">
+                {formatearExpediente(fila.numeroExpediente)}
+              </td>
               <td className="px-3 py-2 text-on-surface">{fila.nombrePaciente}</td>
               <td className="px-3 py-2 tabular-nums text-on-surface-variant">{fila.fecha}</td>
               <td className="px-3 py-2 text-on-surface-variant">{fila.especialidadNombre}</td>

@@ -7,12 +7,12 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
   actualizarEstacion,
-  asignarSubespecialidadesEstacion,
+  asignarEspecialidadesEstacion,
   crearEstacion,
   desactivarEstacion,
   listarAccesosEstacion,
+  listarEspecialidades,
   listarEstaciones,
-  listarSubespecialidades,
 } from '../api/jefeEnfermeriaApi'
 
 const claseCampo =
@@ -33,7 +33,7 @@ export default function EstacionesPage() {
 
   const [estaciones, setEstaciones] = useState([])
   const [accesos, setAccesos] = useState({})
-  const [subespecialidades, setSubespecialidades] = useState([])
+  const [especialidades, setEspecialidades] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -50,10 +50,10 @@ export default function EstacionesPage() {
     setCargando(true)
     setError(null)
     try {
-      const [lista, subs] = await Promise.all([listarEstaciones(), listarSubespecialidades()])
+      const [lista, esp] = await Promise.all([listarEstaciones(), listarEspecialidades()])
       const estacionesLista = Array.isArray(lista) ? lista : []
       setEstaciones(estacionesLista)
-      setSubespecialidades(Array.isArray(subs) ? subs : [])
+      setEspecialidades(Array.isArray(esp) ? esp : [])
 
       const pares = await Promise.all(
         estacionesLista.map(async (e) => [e.id, await listarAccesosEstacion(e.id)]),
@@ -141,32 +141,35 @@ export default function EstacionesPage() {
     }
   }
 
-  function abrirGestion(estacion) {
-    setGestionando(estacion)
-    setSeleccionadas((estacion.subespecialidades ?? []).map((s) => s.id))
+  function especialidadIdsDe(estacion) {
+    const ids = (estacion?.subespecialidades ?? [])
+      .map((s) => s.especialidadId)
+      .filter((id) => id != null)
+    return [...new Set(ids)]
   }
 
-  function alternarSub(id) {
+  function abrirGestion(estacion) {
+    setGestionando(estacion)
+    setSeleccionadas(especialidadIdsDe(estacion))
+  }
+
+  function alternarEsp(id) {
     setSeleccionadas((actual) =>
       actual.includes(id) ? actual.filter((v) => v !== id) : [...actual, id],
     )
   }
 
-  async function guardarSubespecialidades(evento) {
+  async function guardarEspecialidades(evento) {
     evento.preventDefault()
     if (!gestionando) return
-    if (seleccionadas.length === 0) {
-      setError('Seleccione al menos una subespecialidad.')
-      return
-    }
     setGuardando(true)
     try {
-      await asignarSubespecialidadesEstacion(gestionando.id, seleccionadas)
+      await asignarEspecialidadesEstacion(gestionando.id, seleccionadas)
       setGestionando(null)
       await cargar()
-      mostrarToast({ tone: 'success', title: 'Subespecialidades actualizadas' })
+      mostrarToast({ tone: 'success', title: 'Especialidades actualizadas' })
     } catch (fallo) {
-      setError(fallo?.message || 'No se pudieron asignar las subespecialidades.')
+      setError(fallo?.message || 'No se pudieron asignar las especialidades.')
     } finally {
       setGuardando(false)
     }
@@ -182,7 +185,7 @@ export default function EstacionesPage() {
         <div>
           <h2 className="text-headline-lg text-on-surface">Estaciones de Enfermería</h2>
           <p className="text-body-md text-on-surface-variant">
-            Subespecialidades a cargo de cada estación y cobertura del personal.
+            Especialidades a cargo de cada estación y cobertura del personal.
           </p>
         </div>
         <Button onClick={abrirCrear}>
@@ -243,7 +246,7 @@ export default function EstacionesPage() {
                   <p className="text-body-md font-semibold text-on-surface">{estacion.nombre}</p>
 
                   <p className="text-body-sm text-on-surface-variant">
-                    {estacion.subespecialidades?.length ?? 0} subespecialidad(es)
+                    {especialidadIdsDe(estacion).length} especialidad(es)
                   </p>
 
                   <div className="mt-auto flex flex-wrap gap-2">
@@ -251,7 +254,7 @@ export default function EstacionesPage() {
                       Editar
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => abrirGestion(estacion)}>
-                      Subespecialidades
+                      Especialidades
                     </Button>
                     {estacion.activo && (
                       <Button size="sm" variant="danger" onClick={() => setPorDesactivar(estacion)}>
@@ -373,7 +376,7 @@ export default function EstacionesPage() {
       <Modal
         open={Boolean(gestionando)}
         onClose={() => setGestionando(null)}
-        title={`Subespecialidades — ${gestionando?.codigo ?? ''}`}
+        title={`Especialidades — ${gestionando?.codigo ?? ''}`}
         footer={
           <>
             <Button variant="secondary" onClick={() => setGestionando(null)} disabled={guardando}>
@@ -388,26 +391,28 @@ export default function EstacionesPage() {
           </>
         }
       >
-        <form id="form-estacion-subs" onSubmit={guardarSubespecialidades} className="space-y-2">
+        <form id="form-estacion-subs" onSubmit={guardarEspecialidades} className="space-y-2">
           <p className="text-body-sm text-on-surface-variant">
-            La subespecialidad pertenece a una sola estación (pertenencia única).
+            La especialidad se asigna a una sola estación (pertenencia única). Deje todo desmarcado
+            para limpiar la estación.
           </p>
-          {subespecialidades.map((sub) => (
-            <label
-              key={sub.id}
-              className="flex items-center gap-2 rounded border border-outline-variant p-2 text-body-sm text-on-surface"
-            >
-              <input
-                type="checkbox"
-                checked={seleccionadas.includes(sub.id)}
-                onChange={() => alternarSub(sub.id)}
-              />
-              <span>{sub.nombre}</span>
-              <span className="ml-auto text-label-sm text-on-surface-variant">
-                {sub.especialidadNombre}
-              </span>
-            </label>
-          ))}
+          {especialidades.length === 0 ? (
+            <p className="text-body-sm text-on-surface-variant">No hay especialidades.</p>
+          ) : (
+            especialidades.map((esp) => (
+              <label
+                key={esp.id}
+                className="flex items-center gap-2 rounded border border-outline-variant p-2 text-body-sm text-on-surface"
+              >
+                <input
+                  type="checkbox"
+                  checked={seleccionadas.includes(esp.id)}
+                  onChange={() => alternarEsp(esp.id)}
+                />
+                <span>{esp.nombre}</span>
+              </label>
+            ))
+          )}
         </form>
       </Modal>
 

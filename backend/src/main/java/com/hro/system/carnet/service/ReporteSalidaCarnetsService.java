@@ -17,18 +17,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
  * Reportes del circuito de expedientes (carnets) reutilizando la plantilla
  * institucional {@link PlantillaReportePdf} (A4 vertical):
  * <ul>
- *   <li><b>Salida</b> (Archivo): expedientes encontrados, ordenados por
- *       especialidad y número de expediente.</li>
- *   <li><b>Recepción</b> (Mesa COEX): expedientes recibidos en la estación.</li>
- *   <li><b>Devolución</b> (Mesa COEX): expedientes devueltos a Archivo.</li>
+ *   <li><b>Salida de archivo</b> (Archivo): expedientes con salida de archivo registrada,
+ *       ordenados por especialidad y número de expediente.</li>
+ *   <li><b>Salida de enfermería</b> (Mesa COEX): expedientes que salen de enfermería
+ *       de regreso a archivo.</li>
  * </ul>
- * Los reportes de COEX se emiten sin el bloque de firmas.
+ * El reporte de enfermería se emite sin el bloque de firmas.
  */
 @Slf4j
 @Service
@@ -37,15 +38,11 @@ public class ReporteSalidaCarnetsService {
 
     private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Guatemala");
 
-    // "Encontrados": ya salieron o están en tránsito; se excluyen registrado y no_localizado.
-    private static final Set<String> ESTADOS_ENCONTRADOS = Set.of(
-            "encontrado", "despachado", "recibido_estacion", "devuelto_estacion", "recibido_archivo");
+    // Expedientes con salida de archivo registrada (salieron del archivo).
+    private static final Set<String> ESTADOS_SALIDA_ARCHIVO = Set.of("salida_archivo");
 
-    // Recibidos en la estación (aún en uso por COEX/Enfermería).
-    private static final Set<String> ESTADOS_RECIBIDOS = Set.of("recibido_estacion");
-
-    // Devueltos a Archivo (en tránsito o ya recibidos por Archivo).
-    private static final Set<String> ESTADOS_DEVUELTOS = Set.of("devuelto_estacion", "recibido_archivo");
+    // Expedientes con salida de enfermería registrada (regresan a archivo).
+    private static final Set<String> ESTADOS_SALIDA_ENFERMERIA = Set.of("salida_enfermeria");
 
     private final CarnetRepository carnetRepository;
     private final PlantillaReportePdf plantilla;
@@ -56,12 +53,35 @@ public class ReporteSalidaCarnetsService {
 
     @Transactional(readOnly = true)
     public SalidaCarnetDTO.Reporte listar(LocalDate fechaParam) {
-        return listarPorEstados(fechaParam, ESTADOS_ENCONTRADOS, Carnet::getRegistradoEn);
+        return listarPorEstados(fechaParam, ESTADOS_SALIDA_ARCHIVO, Carnet::getSalidaArchivoEn);
     }
 
     @Transactional(readOnly = true)
     public byte[] generarPdf(LocalDate fechaParam, String usuarioGenerador) {
-        SalidaCarnetDTO.Reporte salida = listar(fechaParam);
+        return generarReporteSalida(listar(fechaParam), usuarioGenerador);
+    }
+
+    /** Genera el reporte de salida para un lote concreto de carnets (esta sesión). */
+    @Transactional(readOnly = true)
+    public byte[] generarPdfPorIds(List<UUID> ids, String usuarioGenerador) {
+        List<UUID> idList = (ids != null) ? ids : List.of();
+        List<SalidaCarnetDTO> items = carnetRepository.findAllById(idList).stream()
+                .filter(carnet -> ESTADOS_SALIDA_ARCHIVO.contains(carnet.getEstado()))
+                .sorted(Comparator
+                        .comparing((Carnet c) -> c.getEspecialidad().getNombre())
+                        .thenComparing(Carnet::getNumeroExpediente))
+                .map(carnet -> new SalidaCarnetDTO(
+                        carnet.getNumeroExpediente(),
+                        carnet.getEspecialidad().getNombre(),
+                        carnet.getPacienteNombre(),
+                        formatearHora(carnet.getSalidaArchivoEn())))
+                .toList();
+        SalidaCarnetDTO.Reporte salida = new SalidaCarnetDTO.Reporte(LocalDate.now(ZONA_HORARIA),
+                items.size(), items);
+        return generarReporteSalida(salida, usuarioGenerador);
+    }
+
+    private byte[] generarReporteSalida(SalidaCarnetDTO.Reporte salida, String usuarioGenerador) {
         PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
                 "CONTROL DE SALIDA DE EXPEDIENTES",
                 "Archivo / Registro Médico -> Consulta Externa (COEX)",
@@ -81,56 +101,29 @@ public class ReporteSalidaCarnetsService {
     }
 
     // ------------------------------------------------------------------
-    // Recepción y devolución (Mesa COEX)
+    // Salida de enfermería (Mesa COEX)
     // ------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public SalidaCarnetDTO.Reporte listarRecepcion(LocalDate fechaParam) {
-        return listarPorEstados(fechaParam, ESTADOS_RECIBIDOS, Carnet::getRecibidoEn);
+    public SalidaCarnetDTO.Reporte listarSalidaEnfermeria(LocalDate fechaParam) {
+        return listarPorEstados(fechaParam, ESTADOS_SALIDA_ENFERMERIA, Carnet::getSalidaEnfermeriaEn);
     }
 
     @Transactional(readOnly = true)
-    public SalidaCarnetDTO.Reporte listarDevolucion(LocalDate fechaParam) {
-        return listarPorEstados(fechaParam, ESTADOS_DEVUELTOS, Carnet::getDevueltoEn);
-    }
-
-    @Transactional(readOnly = true)
-    public byte[] generarRecepcionPdf(LocalDate fechaParam, String usuarioGenerador) {
-        SalidaCarnetDTO.Reporte recepcion = listarRecepcion(fechaParam);
+    public byte[] generarSalidaEnfermeriaPdf(LocalDate fechaParam, String usuarioGenerador) {
+        SalidaCarnetDTO.Reporte salida = listarSalidaEnfermeria(fechaParam);
         PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
-                "CONTROL DE RECEPCIÓN DE EXPEDIENTES",
-                "Consulta Externa (COEX) -> Estación de Enfermería",
-                "REC-" + identificarFecha(recepcion.fecha()),
-                recepcion.fecha(),
-                OffsetDateTime.now(ZONA_HORARIA),
-                nvl(usuarioGenerador),
-                "Consulta Externa (COEX)",
-                "Estación de Enfermería",
-                columnasExpedientes(),
-                filasExpedientes(recepcion.expedientes()),
-                recepcion.total(),
-                "",
-                "",
-                "",
-                false);
-        return generar(reporte);
-    }
-
-    @Transactional(readOnly = true)
-    public byte[] generarDevolucionPdf(LocalDate fechaParam, String usuarioGenerador) {
-        SalidaCarnetDTO.Reporte devolucion = listarDevolucion(fechaParam);
-        PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
-                "CONTROL DE DEVOLUCIÓN DE EXPEDIENTES",
+                "CONTROL DE SALIDA DE ENFERMERÍA",
                 "Estación de Enfermería -> Archivo / Registro Médico",
-                "DEV-" + identificarFecha(devolucion.fecha()),
-                devolucion.fecha(),
+                "SE-" + identificarFecha(salida.fecha()),
+                salida.fecha(),
                 OffsetDateTime.now(ZONA_HORARIA),
                 nvl(usuarioGenerador),
                 "Estación de Enfermería",
                 "Archivo / Registro Médico",
                 columnasExpedientes(),
-                filasExpedientes(devolucion.expedientes()),
-                devolucion.total(),
+                filasExpedientes(salida.expedientes()),
+                salida.total(),
                 "",
                 "",
                 "",
@@ -161,10 +154,11 @@ public class ReporteSalidaCarnetsService {
 
     private static List<PlantillaReportePdf.Columna> columnasExpedientes() {
         return List.of(
-                new PlantillaReportePdf.Columna("#", 0.6f, PlantillaReportePdf.Alineacion.CENTRO),
-                new PlantillaReportePdf.Columna("Expediente", 1.3f, PlantillaReportePdf.Alineacion.IZQUIERDA),
-                new PlantillaReportePdf.Columna("Especialidad", 1.7f, PlantillaReportePdf.Alineacion.IZQUIERDA),
-                new PlantillaReportePdf.Columna("Paciente", 2.6f, PlantillaReportePdf.Alineacion.IZQUIERDA));
+                new PlantillaReportePdf.Columna("No.", 0.6f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Expediente", 1.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Paciente", 2.4f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Especialidad", 1.6f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Hora de marcado", 0.9f, PlantillaReportePdf.Alineacion.CENTRO));
     }
 
     private static List<List<String>> filasExpedientes(List<SalidaCarnetDTO> items) {
@@ -174,8 +168,9 @@ public class ReporteSalidaCarnetsService {
             filas.add(List.of(
                     String.valueOf(indice++),
                     nvl(item.numeroExpediente()),
+                    nvl(item.pacienteNombre()),
                     nvl(item.especialidadNombre()),
-                    nvl(item.pacienteNombre())));
+                    nvl(item.hora())));
         }
         return filas;
     }
@@ -196,7 +191,7 @@ public class ReporteSalidaCarnetsService {
         if (instante == null) {
             return "";
         }
-        return instante.format(DateTimeFormatter.ofPattern("HH:mm"));
+        return instante.atZoneSameInstant(ZONA_HORARIA).format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
     private static String nvl(String valor) {

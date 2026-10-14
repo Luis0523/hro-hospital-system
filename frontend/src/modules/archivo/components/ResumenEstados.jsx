@@ -1,12 +1,9 @@
 import Icon from '@/shared/components/ui/Icon.jsx'
 
-// Resumen operativo del día derivado de la JORNADA REAL (no de un checklist
-// local). Definiciones explícitas:
-//   - Total: expedientes operativos de la jornada (con expedienteId).
-//   - Pendientes: estadoActual en { sin_ciclo, pendiente_localizar, en_busqueda,
-//     no_localizado } (aún no localizados).
-//   - Localizados: estadoActual === 'localizado'.
-// No se cuenta `en_transito_entrega` como localizado.
+// Resumen operativo del día derivado de los carnets (no de un checklist local):
+//   - Total: carnets del día.
+//   - Pendientes: aún sin salida de archivo (registrado / no_localizado).
+//   - Con salida: ya salieron de archivo (salida_archivo / salida_enfermeria / resguardado).
 
 const INDICADORES = [
   {
@@ -22,15 +19,15 @@ const INDICADORES = [
     color: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200',
   },
   {
-    clave: 'localizados',
-    etiqueta: 'Localizados',
+    clave: 'conSalida',
+    etiqueta: 'Con salida',
     icono: 'check_circle',
     color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
   },
 ]
 
-export default function ResumenEstados({ total = 0, pendientes = 0, localizados = 0 }) {
-  const valores = { total, pendientes, localizados }
+export default function ResumenEstados({ total = 0, pendientes = 0, conSalida = 0 }) {
+  const valores = { total, pendientes, conSalida }
 
   return (
     <section

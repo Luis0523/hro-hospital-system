@@ -21,8 +21,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EspecialidadService {
 
+    /** TTL de la caché del catálogo activo (catálogo pequeño y de lectura muy frecuente). */
+    private static final long CATALOGO_TTL_MS = 60_000;
+
     private final EspecialidadRepository especialidadRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    private volatile List<EspecialidadResponseDTO> cacheActivas;
+    private volatile long cacheActivasExpiraEn;
+
+    /** Invalida la caché del catálogo activo (se llama en toda mutación). */
+    private void invalidarCache() {
+        cacheActivas = null;
+        cacheActivasExpiraEn = 0L;
+    }
 
     @Transactional
     public EspecialidadResponseDTO crearEspecialidad(CrearEspecialidadRequestDTO dto) {
@@ -38,6 +50,7 @@ public class EspecialidadService {
                 .build();
 
         Especialidad guardada = especialidadRepository.save(esp);
+        invalidarCache();
 
         eventPublisher.publishEvent(AuditoriaEvent.builder()
                 .tablaAfectada("especialidad")
@@ -62,6 +75,7 @@ public class EspecialidadService {
         esp.setNombre(dto.getNombre().trim());
         esp.setAbreviatura(normalizarAbreviatura(dto.getAbreviatura()));
         Especialidad actualizada = especialidadRepository.save(esp);
+        invalidarCache();
         return mapToDTO(actualizada);
     }
 
@@ -76,6 +90,7 @@ public class EspecialidadService {
 
         esp.setActivo(activo);
         Especialidad guardada = especialidadRepository.save(esp);
+        invalidarCache();
 
         eventPublisher.publishEvent(AuditoriaEvent.builder()
                 .tablaAfectada("especialidad")
@@ -95,9 +110,17 @@ public class EspecialidadService {
 
     @Transactional(readOnly = true)
     public List<EspecialidadResponseDTO> listarActivas() {
-        return especialidadRepository.findByActivoTrue().stream()
+        long ahora = System.currentTimeMillis();
+        List<EspecialidadResponseDTO> cacheado = cacheActivas;
+        if (cacheado != null && cacheActivasExpiraEn > ahora) {
+            return cacheado;
+        }
+        List<EspecialidadResponseDTO> lista = especialidadRepository.findByActivoTrue().stream()
                 .map(this::mapToDTO)
                 .toList();
+        cacheActivas = lista;
+        cacheActivasExpiraEn = ahora + CATALOGO_TTL_MS;
+        return lista;
     }
 
     @Transactional(readOnly = true)

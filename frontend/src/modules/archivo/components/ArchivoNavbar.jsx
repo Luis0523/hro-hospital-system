@@ -12,6 +12,7 @@ import { USUARIO_ARCHIVO_POR_DEFECTO } from '../identidadArchivo'
 // registro rápido de carnets.
 export const SECCIONES_ARCHIVO = [
   { to: '/archivo', etiqueta: 'Expedientes para COEX', icono: 'folder_shared', exacto: true },
+  { to: '/archivo/salida', etiqueta: 'Salida de archivo', icono: 'outbound' },
   { to: '/archivo/dashboard', etiqueta: 'Dashboard de Archivo', icono: 'monitoring' },
   { to: '/archivo/depuracion', etiqueta: 'Depuración de expedientes', icono: 'delete_sweep' },
   { to: '/archivo/consolidado', etiqueta: 'Consolidado', icono: 'insights' },

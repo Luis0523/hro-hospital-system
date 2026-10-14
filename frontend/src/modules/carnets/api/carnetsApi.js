@@ -15,6 +15,13 @@ export async function listarEspecialidades() {
   }))
 }
 
+/** Especialidades con atención activa en la estación para una fecha (día de la semana). */
+export async function listarEspecialidadesActivasEstacion(estacionId, { fecha } = {}) {
+  return desenvolver(
+    await client.get(`/estaciones/${estacionId}/especialidades-activas`, { params: { fecha } }),
+  )
+}
+
 /** Catálogo de estaciones de enfermería (para el filtro de Archivo). */
 export async function listarEstaciones() {
   const lista = desenvolver(await client.get('/estaciones'))
@@ -26,7 +33,13 @@ export async function listarEstaciones() {
 }
 
 /** Carnets del día, filtrables por estación, especialidad, estado y clasificación (activo/pasivo). */
-export async function listarCarnets({ fecha, estacionId, especialidadId, estado, clasificacion } = {}) {
+export async function listarCarnets({
+  fecha,
+  estacionId,
+  especialidadId,
+  estado,
+  clasificacion,
+} = {}) {
   return desenvolver(
     await client.get('/carnets', {
       params: { fecha, estacionId, especialidadId, estado, clasificacion },
@@ -43,38 +56,45 @@ export async function actualizarConfiguracionArchivo({ umbralActivo }) {
   return desenvolver(await client.put('/archivo/configuracion', { umbralActivo }))
 }
 
-/** Reporte de salida (expedientes encontrados de una fecha). */
+/** Reporte de salida de archivo (expedientes con salida de archivo de una fecha). */
 export async function obtenerSalidaCarnets({ fecha } = {}) {
   return desenvolver(await client.get('/carnets/salida', { params: { fecha } }))
 }
 
-/** Descarga el PDF del reporte de salida (blob). */
+/** Descarga el PDF del reporte de salida de archivo (blob). */
 export async function descargarSalidaCarnetsPdf({ fecha } = {}) {
   return client.get('/carnets/salida/pdf', { params: { fecha }, responseType: 'blob' })
 }
 
-/** Reporte general de expedientes recibidos en la estación (COEX). */
-export async function obtenerRecepcionCarnets({ fecha } = {}) {
-  return desenvolver(await client.get('/carnets/recepcion', { params: { fecha } }))
+/** Descarga el PDF de salida para un lote concreto de carnets (esta sesión). */
+export async function descargarSalidaCarnetsPdfPorIds(ids) {
+  return client.post('/carnets/salida/pdf', ids, { responseType: 'blob' })
 }
 
-/** Descarga el PDF del reporte de recepción de expedientes (sin firmas). */
-export async function descargarRecepcionCarnetsPdf({ fecha } = {}) {
-  return client.get('/carnets/recepcion/pdf', { params: { fecha }, responseType: 'blob' })
+/** Reporte general de expedientes con salida de enfermería (Mesa COEX). */
+export async function obtenerSalidaEnfermeriaCarnets({ fecha } = {}) {
+  return desenvolver(await client.get('/carnets/salida-enfermeria', { params: { fecha } }))
 }
 
-/** Reporte general de expedientes devueltos a Archivo (COEX). */
-export async function obtenerDevolucionCarnets({ fecha } = {}) {
-  return desenvolver(await client.get('/carnets/devolucion', { params: { fecha } }))
-}
-
-/** Descarga el PDF del reporte de devolución de expedientes (sin firmas). */
-export async function descargarDevolucionCarnetsPdf({ fecha } = {}) {
-  return client.get('/carnets/devolucion/pdf', { params: { fecha }, responseType: 'blob' })
+/** Descarga el PDF del reporte de salida de enfermería (sin firmas). */
+export async function descargarSalidaEnfermeriaCarnetsPdf({ fecha } = {}) {
+  return client.get('/carnets/salida-enfermeria/pdf', { params: { fecha }, responseType: 'blob' })
 }
 
 export async function obtenerCarnet(id) {
   return desenvolver(await client.get(`/carnets/${id}`))
+}
+
+/**
+ * Busca el carnet de un expediente (por defecto hoy) para ver su trazabilidad.
+ * Lanza error con `status: 404` si el expediente no tiene carnet ese día.
+ */
+export async function buscarCarnetPorExpediente(numeroExpediente, { fecha } = {}) {
+  return desenvolver(
+    await client.get(`/carnets/expediente/${encodeURIComponent(numeroExpediente)}`, {
+      params: { fecha },
+    }),
+  )
 }
 
 /**
@@ -87,37 +107,45 @@ export async function registrarCarnet({ numeroExpediente, especialidadId, estaci
   )
 }
 
-export async function marcarEncontrado(id) {
-  return desenvolver(await client.post(`/carnets/${id}/encontrado`))
+/**
+ * Corrige la especialidad de un carnet del día (le asigna un nuevo correlativo en
+ * la especialidad destino). Lanza error con `status` (400/403/404) si no aplica.
+ */
+export async function corregirEspecialidadCarnet(id, { especialidadId, motivo }) {
+  return desenvolver(
+    await client.post(`/carnets/${id}/corregir-especialidad`, { especialidadId, motivo }),
+  )
 }
 
 export async function marcarNoLocalizado(id, observacion) {
   return desenvolver(await client.post(`/carnets/${id}/no-localizado`, { observacion }))
 }
 
-export async function despacharCarnet(id) {
-  return desenvolver(await client.post(`/carnets/${id}/despachar`))
+export async function salidaArchivoCarnet(id) {
+  return desenvolver(await client.post(`/carnets/${id}/salida-archivo`))
 }
 
-export async function recibirCarnet(id) {
-  return desenvolver(await client.post(`/carnets/${id}/recibir`))
+export async function salidaEnfermeriaCarnet(id) {
+  return desenvolver(await client.post(`/carnets/${id}/salida-enfermeria`))
 }
 
-export async function devolverCarnet(id) {
-  return desenvolver(await client.post(`/carnets/${id}/devolver`))
-}
-
-export async function recibirDevolucionCarnet(id) {
-  return desenvolver(await client.post(`/carnets/${id}/recibir-devolucion`))
+export async function resguardarCarnet(id) {
+  return desenvolver(await client.post(`/carnets/${id}/resguardar`))
 }
 
 /** Etiquetas legibles de cada estado del carnet. */
 export const ETIQUETAS_ESTADO_CARNET = {
   registrado: 'Registrado',
-  encontrado: 'Encontrado',
   no_localizado: 'No localizado',
-  despachado: 'Despachado',
-  recibido_estacion: 'Recibido en estación',
-  devuelto_estacion: 'Devuelto a archivo',
-  recibido_archivo: 'Recibido en archivo',
+  salida_archivo: 'Salida de archivo',
+  salida_enfermeria: 'Salida de enfermería',
+  resguardado: 'Resguardado en estantería',
+}
+
+/** Orden lineal del circuito (no_localizado es una rama, queda fuera). */
+export const ORDEN_ESTADO_CARNET = {
+  registrado: 0,
+  salida_archivo: 1,
+  salida_enfermeria: 2,
+  resguardado: 3,
 }

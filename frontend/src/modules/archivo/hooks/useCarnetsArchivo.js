@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
-  despacharCarnet,
-  listarCarnets,
-  marcarEncontrado,
   marcarNoLocalizado as apiMarcarNoLocalizado,
-  recibirDevolucionCarnet,
+  resguardarCarnet,
+  salidaArchivoCarnet,
+  listarCarnets,
 } from '@/modules/carnets/api/carnetsApi'
 
 // Orden por número de expediente (no por correlativo), de menor a mayor,
@@ -16,6 +15,12 @@ export function compararPorExpediente(a, b) {
     undefined,
     { numeric: true, sensitivity: 'base' },
   )
+}
+
+// Inserta o reemplaza un carnet por id y mantiene el orden por expediente.
+function upsert(lista, carnet) {
+  const sinAnterior = lista.filter((c) => c.id !== carnet.id)
+  return [...sinAnterior, carnet].sort(compararPorExpediente)
 }
 
 // Estado de la sección de seguimiento de carnets en la Estación de Archivo.
@@ -58,12 +63,28 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion
 
   const recargar = useCallback(() => cargar(true), [cargar])
 
+  // Aplica en tiempo real el DTO recibido por WebSocket sin recargar la tabla.
+  const aplicarEvento = useCallback((carnet) => {
+    if (!carnet?.id) return
+    setCarnets((actual) => upsert(actual, carnet))
+  }, [])
+
+  // `estadoOptimista`: mueve la fila de inmediato (UX); si el backend falla, se
+  // revierte al estado anterior.
   const ejecutar = useCallback(
-    async (carnet, etiqueta, fn) => {
+    async (carnet, etiqueta, fn, estadoOptimista) => {
       setEnProceso(carnet.id)
+      const estadoPrevio = carnet.estado
+      if (estadoOptimista) {
+        aplicarEvento({ ...carnet, estado: estadoOptimista })
+      }
       try {
-        await fn()
-        await cargar(true)
+        const actualizado = await fn()
+        if (actualizado?.id) {
+          aplicarEvento(actualizado)
+        } else {
+          await cargar(true)
+        }
         mostrarToast({
           tone: 'success',
           title: etiqueta,
@@ -71,6 +92,9 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion
         })
         return true
       } catch (fallo) {
+        if (estadoOptimista) {
+          aplicarEvento({ ...carnet, estado: estadoPrevio })
+        }
         mostrarToast({
           tone: 'error',
           title: 'No se pudo completar la acción',
@@ -81,7 +105,7 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion
         setEnProceso(null)
       }
     },
-    [cargar, mostrarToast],
+    [aplicarEvento, cargar, mostrarToast],
   )
 
   return {
@@ -90,14 +114,22 @@ export function useCarnetsArchivo({ fecha, estacionId, recargaKey, clasificacion
     error,
     enProceso,
     recargar,
-    marcarEncontrado: (carnet) =>
-      ejecutar(carnet, 'Marcado como encontrado', () => marcarEncontrado(carnet.id)),
-    despachar: (carnet) => ejecutar(carnet, 'Despachado', () => despacharCarnet(carnet.id)),
-    recibirDevolucion: (carnet) =>
-      ejecutar(carnet, 'Devolución recibida', () => recibirDevolucionCarnet(carnet.id)),
+    aplicarEvento,
+    salidaArchivo: (carnet) =>
+      ejecutar(carnet, 'Salida de archivo', () => salidaArchivoCarnet(carnet.id), 'salida_archivo'),
+    resguardar: (carnet) =>
+      ejecutar(
+        carnet,
+        'Resguardado en estantería',
+        () => resguardarCarnet(carnet.id),
+        'resguardado',
+      ),
     marcarNoLocalizado: (carnet, observacion) =>
-      ejecutar(carnet, 'Marcado como no localizado', () =>
-        apiMarcarNoLocalizado(carnet.id, observacion),
+      ejecutar(
+        carnet,
+        'Marcado como no localizado',
+        () => apiMarcarNoLocalizado(carnet.id, observacion),
+        'no_localizado',
       ),
   }
 }

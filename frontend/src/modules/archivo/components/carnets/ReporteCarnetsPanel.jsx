@@ -1,4 +1,4 @@
-import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
 import { Alert, EmptyState, Icon } from '@/shared/components/ui'
 import BarraUmbralCarnet from './BarraUmbralCarnet.jsx'
 import { calcularReporteCarnets } from '../../utils/limitesCarnets'
@@ -20,10 +20,16 @@ export default function ReporteCarnetsPanel({
 
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-on-surface/40" aria-hidden="true" />
+      <DialogBackdrop
+        transition
+        className="fixed inset-0 bg-on-surface/40 duration-200 ease-out data-[closed]:opacity-0"
+      />
 
       <div className="fixed inset-y-0 right-0 flex max-w-full">
-        <DialogPanel className="flex w-screen max-w-md flex-col bg-surface-container-lowest shadow-modal">
+        <DialogPanel
+          transition
+          className="flex w-screen max-w-md flex-col bg-surface-container-lowest shadow-modal duration-300 ease-out data-[closed]:translate-x-full"
+        >
           <header className="flex items-center justify-between gap-2 border-b border-outline-variant px-4 py-3">
             <DialogTitle className="text-title-md text-on-surface">
               Reporte de carnets por especialidad

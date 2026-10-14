@@ -2,11 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import { useCarnetsRealtime } from '@/modules/carnets/hooks/useCarnetsRealtime'
-import { devolverCarnet, listarCarnets, recibirCarnet } from '@/modules/carnets/api/carnetsApi'
+import { listarCarnets, salidaEnfermeriaCarnet } from '@/modules/carnets/api/carnetsApi'
 
-// Flujo de carnets en Mesa COEX (Fase 1): enfermería recibe los carnets que
-// Archivo despachó y los devuelve a Archivo. Se actualiza en tiempo real.
-export function useCarnetsCoex({ fecha = hoyIso(), estacionId } = {}) {
+function upsert(lista, carnet) {
+  const sinAnterior = lista.filter((c) => c.id !== carnet.id)
+  return [...sinAnterior, carnet]
+}
+
+// Flujo de carnets en Mesa COEX: muestra los expedientes con salida de archivo
+// (ya salieron de archivo / están en enfermería) y registra su salida de
+// enfermería (devolución a archivo). El backend es la fuente de verdad.
+export function useCarnetsCoex({ fecha = hoyIso(), estacionId, recargaKey } = {}) {
   const { mostrarToast } = useToast()
   const [carnets, setCarnets] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -25,17 +31,30 @@ export function useCarnetsCoex({ fecha = hoyIso(), estacionId } = {}) {
 
   useEffect(() => {
     cargar()
-  }, [cargar])
+  }, [cargar, recargaKey])
 
-  // Tiempo real: al despachar/enfermería cambiar un carnet, se recarga solo.
-  useCarnetsRealtime({ topics: ['/topic/archivo'], onEvento: () => cargar() })
+  const aplicarEvento = useCallback((carnet) => {
+    if (!carnet?.id) return
+    setCarnets((actual) => upsert(actual, carnet))
+  }, [])
+
+  // Tiempo real: al cambiar un carnet, se actualiza la fila (el evento nulo es
+  // el polling de respaldo, que refresca por completo).
+  useCarnetsRealtime({
+    topics: ['/topic/archivo'],
+    onEvento: (carnet) => (carnet?.id ? aplicarEvento(carnet) : cargar()),
+  })
 
   const ejecutar = useCallback(
     async (carnet, etiqueta, fn) => {
       setEnProceso(carnet.id)
       try {
-        await fn()
-        await cargar()
+        const actualizado = await fn()
+        if (actualizado?.id) {
+          aplicarEvento(actualizado)
+        } else {
+          await cargar()
+        }
         mostrarToast({
           tone: 'success',
           title: etiqueta,
@@ -51,7 +70,7 @@ export function useCarnetsCoex({ fecha = hoyIso(), estacionId } = {}) {
         setEnProceso(null)
       }
     },
-    [cargar, mostrarToast],
+    [aplicarEvento, cargar, mostrarToast],
   )
 
   const ejecutarTodos = useCallback(
@@ -62,7 +81,9 @@ export function useCarnetsCoex({ fecha = hoyIso(), estacionId } = {}) {
         const resultados = await Promise.allSettled(lista.map(fn))
         const exitosos = resultados.filter((r) => r.status === 'fulfilled').length
         const fallidos = resultados.length - exitosos
-        await cargar()
+        resultados
+          .filter((r) => r.status === 'fulfilled' && r.value?.id)
+          .forEach((r) => aplicarEvento(r.value))
         mostrarToast({
           tone: fallidos > 0 ? 'warning' : 'success',
           title: `${exitosos} ${etiqueta}`,
@@ -72,23 +93,19 @@ export function useCarnetsCoex({ fecha = hoyIso(), estacionId } = {}) {
         setEnProceso(null)
       }
     },
-    [cargar, mostrarToast],
+    [aplicarEvento, mostrarToast],
   )
 
-  const porRecibir = carnets.filter((c) => c.estado === 'despachado')
-  const enUso = carnets.filter((c) => c.estado === 'recibido_estacion')
+  const porSalida = carnets.filter((c) => c.estado === 'salida_archivo')
 
   return {
     cargando,
     enProceso,
+    porSalida,
     recargar: cargar,
-    porRecibir,
-    enUso,
-    recibir: (carnet) =>
-      ejecutar(carnet, 'Recibido en la estación', () => recibirCarnet(carnet.id)),
-    devolver: (carnet) => ejecutar(carnet, 'Devuelto a Archivo', () => devolverCarnet(carnet.id)),
-    recibirTodos: () =>
-      ejecutarTodos(porRecibir, 'recibidos en la estación', (c) => recibirCarnet(c.id)),
-    devolverTodos: () => ejecutarTodos(enUso, 'devueltos a Archivo', (c) => devolverCarnet(c.id)),
+    salidaEnfermeria: (carnet) =>
+      ejecutar(carnet, 'Salida de enfermería', () => salidaEnfermeriaCarnet(carnet.id)),
+    salidaEnfermeriaTodos: () =>
+      ejecutarTodos(porSalida, 'con salida de enfermería', (c) => salidaEnfermeriaCarnet(c.id)),
   }
 }

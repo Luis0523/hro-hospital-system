@@ -7,10 +7,11 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
   actualizarHorario,
+  asegurarAreaEspecialidad,
   crearHorario,
   desactivarHorario,
+  listarEspecialidades,
   listarHorarios,
-  listarSubespecialidades,
   reactivarHorario,
 } from '../api/jefeEnfermeriaApi'
 import HorarioForm from '../components/HorarioForm.jsx'
@@ -22,8 +23,10 @@ function hora(valor) {
 export default function HorariosPage() {
   const { mostrarToast } = useToast()
 
-  const [subespecialidades, setSubespecialidades] = useState([])
-  const [subespecialidadId, setSubespecialidadId] = useState('')
+  const [especialidades, setEspecialidades] = useState([])
+  const [especialidadId, setEspecialidadId] = useState('')
+  // Área interna (subespecialidad) sobre la que se guardan los horarios.
+  const [areaId, setAreaId] = useState(null)
   const [horarios, setHorarios] = useState([])
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
@@ -32,24 +35,24 @@ export default function HorariosPage() {
   const [porDesactivar, setPorDesactivar] = useState(null)
 
   useEffect(() => {
-    listarSubespecialidades()
+    listarEspecialidades()
       .then((lista) => {
         const items = Array.isArray(lista) ? lista : []
-        setSubespecialidades(items)
-        if (items.length > 0) setSubespecialidadId((actual) => actual || String(items[0].id))
+        setEspecialidades(items)
+        if (items.length > 0) setEspecialidadId((actual) => actual || String(items[0].id))
       })
-      .catch(() => setSubespecialidades([]))
+      .catch(() => setEspecialidades([]))
   }, [])
 
-  const cargarHorarios = useCallback(async () => {
-    if (!subespecialidadId) {
+  const cargarHorarios = useCallback(async (idArea) => {
+    if (!idArea) {
       setHorarios([])
       return
     }
     setCargando(true)
     setError(null)
     try {
-      const lista = await listarHorarios(subespecialidadId)
+      const lista = await listarHorarios(idArea)
       setHorarios(Array.isArray(lista) ? lista : [])
     } catch (fallo) {
       setError(fallo?.message || 'No se pudieron cargar los horarios.')
@@ -57,23 +60,46 @@ export default function HorariosPage() {
     } finally {
       setCargando(false)
     }
-  }, [subespecialidadId])
+  }, [])
 
+  // Al cambiar la especialidad, se resuelve su área y se cargan sus horarios.
   useEffect(() => {
-    cargarHorarios()
-  }, [cargarHorarios])
+    if (!especialidadId) {
+      setAreaId(null)
+      setHorarios([])
+      return
+    }
+    let activo = true
+    setCargando(true)
+    setError(null)
+    asegurarAreaEspecialidad(especialidadId)
+      .then((area) => {
+        if (!activo) return
+        setAreaId(area?.id ?? null)
+        return cargarHorarios(area?.id)
+      })
+      .catch((fallo) => {
+        if (!activo) return
+        setAreaId(null)
+        setHorarios([])
+        setError(fallo?.message || 'No se pudieron cargar los horarios.')
+      })
+    return () => {
+      activo = false
+    }
+  }, [especialidadId, cargarHorarios])
 
   async function guardar(valores) {
-    if (!modal) return
+    if (!modal || !areaId) return
     setGuardando(true)
     try {
       if (modal.modo === 'crear') {
-        await crearHorario({ subespecialidadId: Number(subespecialidadId), ...valores })
+        await crearHorario({ subespecialidadId: Number(areaId), ...valores })
       } else {
         await actualizarHorario(modal.registro.id, valores)
       }
       setModal(null)
-      await cargarHorarios()
+      await cargarHorarios(areaId)
       mostrarToast({
         tone: 'success',
         title: modal.modo === 'crear' ? 'Horario creado' : 'Horario actualizado',
@@ -91,7 +117,7 @@ export default function HorariosPage() {
     try {
       await desactivarHorario(porDesactivar.id)
       setPorDesactivar(null)
-      await cargarHorarios()
+      await cargarHorarios(areaId)
       mostrarToast({ tone: 'info', title: 'Horario desactivado' })
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo desactivar el horario.')
@@ -103,7 +129,7 @@ export default function HorariosPage() {
   async function reactivar(horario) {
     try {
       await reactivarHorario(horario.id)
-      await cargarHorarios()
+      await cargarHorarios(areaId)
       mostrarToast({ tone: 'success', title: 'Horario reactivado' })
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo reactivar el horario.')
@@ -115,7 +141,7 @@ export default function HorariosPage() {
     if (formulario?.requestSubmit) formulario.requestSubmit()
   }
 
-  const subActual = subespecialidades.find((s) => String(s.id) === String(subespecialidadId))
+  const espActual = especialidades.find((e) => String(e.id) === String(especialidadId))
   const tituloModal =
     modal?.modo === 'crear'
       ? 'Nuevo horario'
@@ -127,14 +153,14 @@ export default function HorariosPage() {
     <section className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-headline-lg text-on-surface">Horario por subespecialidad</h2>
+          <h2 className="text-headline-lg text-on-surface">Horario por especialidad</h2>
           <p className="text-body-md text-on-surface-variant">
-            Días, horas, capacidad y duración de consulta por subespecialidad.
+            Días, horas, capacidad y duración de consulta por especialidad.
           </p>
         </div>
         <Button
           onClick={() => setModal({ modo: 'crear', registro: null })}
-          disabled={!subespecialidadId}
+          disabled={!especialidadId}
         >
           <Icon name="add" className="text-[18px]" />
           Nuevo horario
@@ -144,22 +170,22 @@ export default function HorariosPage() {
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card">
         <label className="flex flex-col gap-1">
           <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-            Subespecialidad
+            Especialidad
           </span>
           <select
-            value={subespecialidadId}
-            onChange={(evento) => setSubespecialidadId(evento.target.value)}
+            value={especialidadId}
+            onChange={(evento) => setEspecialidadId(evento.target.value)}
             className="h-10 min-w-[16rem] rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
           >
-            {subespecialidades.length === 0 && <option value="">Sin subespecialidades</option>}
-            {subespecialidades.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.nombre} — {sub.especialidadNombre}
+            {especialidades.length === 0 && <option value="">Sin especialidades</option>}
+            {especialidades.map((esp) => (
+              <option key={esp.id} value={esp.id}>
+                {esp.nombre}
               </option>
             ))}
           </select>
         </label>
-        {subActual && (
+        {espActual && (
           <span className="rounded-lg bg-surface-container px-3 py-1.5 text-label-sm uppercase tracking-wide text-on-surface-variant">
             {horarios.length} día(s) configurado(s)
           </span>
@@ -178,7 +204,7 @@ export default function HorariosPage() {
         </div>
       ) : horarios.length === 0 ? (
         <p className="rounded-lg border border-dashed border-outline-variant bg-surface-container-low px-3 py-8 text-center text-body-md text-on-surface-variant">
-          Esta subespecialidad no tiene horarios configurados.
+          Esta especialidad no tiene horarios configurados.
         </p>
       ) : (
         <>
@@ -209,7 +235,11 @@ export default function HorariosPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => setModal({ modo: 'editar', registro: h })}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setModal({ modo: 'editar', registro: h })}
+                        >
                           Editar
                         </Button>
                         {h.activo ? (
@@ -247,7 +277,11 @@ export default function HorariosPage() {
                   {h.duracionConsultaMinutos} min
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => setModal({ modo: 'editar', registro: h })}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setModal({ modo: 'editar', registro: h })}
+                  >
                     Editar
                   </Button>
                   {h.activo ? (

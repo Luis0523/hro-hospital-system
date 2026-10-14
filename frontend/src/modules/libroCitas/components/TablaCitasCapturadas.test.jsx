@@ -2,12 +2,20 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TablaCitasCapturadas from './TablaCitasCapturadas.jsx'
+import { formatearExpediente } from '@/shared/utils/expediente'
 
 // Valores ficticios reservados para tests. NO son expedientes reales.
 const EXPEDIENTE_A = '999999999999'
 const EXPEDIENTE_B = '888888888888'
 
-function fila({ idLocal, numeroExpediente, nombrePaciente, fecha, especialidadId, especialidadNombre }) {
+function fila({
+  idLocal,
+  numeroExpediente,
+  nombrePaciente,
+  fecha,
+  especialidadId,
+  especialidadNombre,
+}) {
   return {
     idLocal,
     numeroExpediente,
@@ -48,7 +56,7 @@ describe('TablaCitasCapturadas', () => {
     render(<TablaCitasCapturadas filas={[F1]} onEliminar={vi.fn()} />)
 
     const row = screen.getByTestId(`fila-cita-${F1.idLocal}`)
-    expect(within(row).getByText(EXPEDIENTE_A)).toBeInTheDocument()
+    expect(within(row).getByText(formatearExpediente(EXPEDIENTE_A))).toBeInTheDocument()
     expect(within(row).getByText('Paciente Prueba')).toBeInTheDocument()
     expect(within(row).getByText('2026-10-04')).toBeInTheDocument()
     expect(within(row).getByText('Medicina Interna')).toBeInTheDocument()

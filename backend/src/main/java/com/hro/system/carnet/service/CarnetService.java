@@ -1,5 +1,6 @@
 package com.hro.system.carnet.service;
 
+import com.hro.system.auditoria.event.AuditoriaEvent;
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.auth.dto.IdentidadUsuario;
 import com.hro.system.carnet.dto.*;
@@ -22,6 +23,7 @@ import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -40,10 +42,9 @@ import java.util.UUID;
  * Circuito digital del carnet (Fase 1 Archivo/Enfermería).
  * <p>
  * Enfermería registra el carnet (consulta el expediente en el API del hospital y
- * asigna correlativo diario por especialidad); Archivo marca encontrado/no
- * localizado y despacha; enfermería recibe y devuelve; Archivo confirma la
- * devolución. Es agnóstico de la UI: la recepción/devolución se ejecuta desde
- * Mesa COEX, que consume estos endpoints.
+ * asigna correlativo diario por especialidad); Archivo marca la salida de archivo
+ * (o no localizado) y resguarda al final; la salida de enfermería la registra
+ * Mesa COEX, que consume estos endpoints. Es agnóstico de la UI.
  */
 @Slf4j
 @Service
@@ -51,15 +52,19 @@ import java.util.UUID;
 public class CarnetService {
 
     public static final String REGISTRADO = "registrado";
-    public static final String ENCONTRADO = "encontrado";
     public static final String NO_LOCALIZADO = "no_localizado";
-    public static final String DESPACHADO = "despachado";
-    public static final String RECIBIDO_ESTACION = "recibido_estacion";
-    public static final String DEVUELTO_ESTACION = "devuelto_estacion";
-    public static final String RECIBIDO_ARCHIVO = "recibido_archivo";
+    public static final String SALIDA_ARCHIVO = "salida_archivo";
+    public static final String SALIDA_ENFERMERIA = "salida_enfermeria";
+    public static final String RESGUARDADO = "resguardado";
 
     private static final Set<String> ROLES_ARCHIVO = Set.of("archivo", "administrador");
     private static final Set<String> ROLES_ENFERMERIA = Set.of("enfermeria", "administrador");
+    /** Roles con permiso para corregir cualquier carnet del día (sin límite de recientes). */
+    private static final Set<String> ROLES_SUPERVISOR = Set.of("archivo", "administrador", "jefe_enfermeria");
+    /** Estados en los que enfermería puede corregir (aún no despachado). */
+    private static final Set<String> ESTADOS_CORREGIBLES_ENFERMERIA = Set.of(REGISTRADO, NO_LOCALIZADO);
+    /** Máximo de carnets recientes que enfermería puede corregir por día. */
+    private static final int CUPO_CORRECCION_ENFERMERIA = 2;
 
     /**
      * Zona horaria del hospital. La "fecha del carnet" debe ser el día operativo
@@ -77,6 +82,7 @@ public class CarnetService {
     private final ExpedienteHroService expedienteHroService;
     private final ParametroSistemaService parametros;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ------------------------------------------------------------------
     // Registro
@@ -105,8 +111,11 @@ public class CarnetService {
         }
 
         // 404 si el expediente no existe en el API del hospital (y no se crea el carnet).
+        long tIntegracion = System.currentTimeMillis();
         PacienteHroDTO paciente = expedienteHroService.consultar(numero);
+        long msIntegracion = System.currentTimeMillis() - tIntegracion;
 
+        long tPersistencia = System.currentTimeMillis();
         int correlativo = carnetRepository.obtenerSiguienteCorrelativo(hoy, especialidad.getId());
         UsuarioReferencia usuario = usuarioActual();
         OffsetDateTime ahora = OffsetDateTime.now();
@@ -126,9 +135,13 @@ public class CarnetService {
                 .build());
 
         registrarMovimiento(carnet, null, REGISTRADO, usuario, null);
+        long msPersistencia = System.currentTimeMillis() - tPersistencia;
+
         publicar(carnet);
 
-        log.info("Carnet {} registrado (exp {} corr {})", carnet.getId(), numero, correlativo);
+        log.info("Carnet {} registrado (exp {} corr {}) · integración {} ms · persistencia {} ms · total {} ms",
+                carnet.getId(), numero, correlativo, msIntegracion, msPersistencia,
+                msIntegracion + msPersistencia);
         return mapCarnet(carnet);
     }
 
@@ -137,36 +150,133 @@ public class CarnetService {
     // ------------------------------------------------------------------
 
     @Transactional
-    public CarnetResponseDTO marcarEncontrado(UUID id) {
-        return transicionar(id, ENCONTRADO, Set.of(REGISTRADO, NO_LOCALIZADO), ROLES_ARCHIVO, null);
-    }
-
-    @Transactional
     public CarnetResponseDTO marcarNoLocalizado(UUID id, String observacion) {
         if (observacion == null || observacion.isBlank()) {
             throw new BusinessException("Debe indicar una observación al marcar el carnet como 'no localizado'");
         }
-        return transicionar(id, NO_LOCALIZADO, Set.of(REGISTRADO, ENCONTRADO), ROLES_ARCHIVO, observacion);
+        return transicionar(id, NO_LOCALIZADO, Set.of(REGISTRADO), ROLES_ARCHIVO, observacion);
     }
 
     @Transactional
-    public CarnetResponseDTO despachar(UUID id) {
-        return transicionar(id, DESPACHADO, Set.of(ENCONTRADO), ROLES_ARCHIVO, null);
+    public CarnetResponseDTO salidaArchivo(UUID id) {
+        return transicionar(id, SALIDA_ARCHIVO, Set.of(REGISTRADO, NO_LOCALIZADO), ROLES_ARCHIVO, null);
     }
 
     @Transactional
-    public CarnetResponseDTO recibir(UUID id) {
-        return transicionar(id, RECIBIDO_ESTACION, Set.of(DESPACHADO), ROLES_ENFERMERIA, null);
+    public CarnetResponseDTO salidaEnfermeria(UUID id) {
+        return transicionar(id, SALIDA_ENFERMERIA, Set.of(SALIDA_ARCHIVO), ROLES_ENFERMERIA, null);
     }
 
     @Transactional
-    public CarnetResponseDTO devolver(UUID id) {
-        return transicionar(id, DEVUELTO_ESTACION, Set.of(RECIBIDO_ESTACION), ROLES_ENFERMERIA, null);
+    public CarnetResponseDTO resguardar(UUID id) {
+        return transicionar(id, RESGUARDADO, Set.of(SALIDA_ENFERMERIA), ROLES_ARCHIVO, null);
     }
 
+    // ------------------------------------------------------------------
+    // Corrección de especialidad
+    // ------------------------------------------------------------------
+
+    /**
+     * Corrige la especialidad de un carnet del día. El correlativo se reasigna en la
+     * especialidad destino con el contador atómico y, en la especialidad origen, se
+     * baja el contador solo si el correlativo liberado era la cola (así no queda hueco);
+     * si no lo era, se deja el hueco sin tocar el contador.
+     * <p>
+     * Solo aplica a la fecha de hoy: el correlativo diario es temporal y nunca se corrige
+     * en días pasados.
+     */
     @Transactional
-    public CarnetResponseDTO recibirDevolucion(UUID id) {
-        return transicionar(id, RECIBIDO_ARCHIVO, Set.of(DEVUELTO_ESTACION), ROLES_ARCHIVO, null);
+    public CarnetResponseDTO corregirEspecialidad(UUID id, CorregirEspecialidadRequestDTO dto) {
+        Carnet carnet = buscar(id);
+        LocalDate hoy = LocalDate.now(ZONA_HORARIA);
+        if (!hoy.equals(carnet.getFecha())) {
+            throw new BusinessException("Solo se puede corregir la especialidad de carnets de hoy");
+        }
+
+        Especialidad destino = especialidadRepository.findById(dto.getEspecialidadId())
+                .orElseThrow(() -> new ResourceNotFoundException("Especialidad", "id", dto.getEspecialidadId()));
+        if (Boolean.FALSE.equals(destino.getActivo())) {
+            throw new BusinessException("La especialidad destino está inactiva");
+        }
+
+        Especialidad origen = carnet.getEspecialidad();
+        if (origen.getId().equals(destino.getId())) {
+            throw new BusinessException("El carnet ya pertenece a la especialidad indicada");
+        }
+
+        validarAutorizacionCorreccion(carnet, hoy);
+
+        int correlativoAnterior = carnet.getCorrelativo();
+        int nuevoCorrelativo = carnetRepository.obtenerSiguienteCorrelativo(hoy, destino.getId());
+        String estadoActual = carnet.getEstado();
+        String motivo = dto.getMotivo().trim();
+
+        carnet.setEspecialidad(destino);
+        carnet.setCorrelativo(nuevoCorrelativo);
+        carnet.setActualizadoEn(OffsetDateTime.now());
+        Carnet guardado = carnetRepository.save(carnet);
+
+        registrarMovimiento(guardado, estadoActual, estadoActual, usuarioActual(),
+                String.format("Cambio de especialidad %s→%s; correlativo %d→%d. Motivo: %s",
+                        origen.getNombre(), destino.getNombre(), correlativoAnterior, nuevoCorrelativo, motivo));
+
+        // Cierra el hueco solo si el correlativo liberado era la cola de su especialidad origen.
+        carnetRepository.liberarCorrelativoSiEsCola(hoy, origen.getId(), correlativoAnterior);
+
+        publicarAuditoriaCorreccion(guardado, origen, destino, correlativoAnterior, nuevoCorrelativo, motivo);
+        publicar(guardado);
+
+        log.info("Carnet {} corregido: especialidad {}→{}, correlativo {}→{}",
+                id, origen.getNombre(), destino.getNombre(), correlativoAnterior, nuevoCorrelativo);
+        return mapCarnet(guardado);
+    }
+
+    /**
+     * Autoriza la corrección: un rol supervisor puede corregir cualquier carnet del día;
+     * enfermería solo los {@value #CUPO_CORRECCION_ENFERMERIA} más recientes del día y
+     * mientras el carnet no haya sido despachado.
+     */
+    private void validarAutorizacionCorreccion(Carnet carnet, LocalDate hoy) {
+        String rol = UsuarioContexto.actual().map(IdentidadUsuario::rolPrincipal).orElse(null);
+        if (rol != null && ROLES_SUPERVISOR.contains(rol)) {
+            return;
+        }
+        if (!"enfermeria".equals(rol)) {
+            throw new AccessDeniedException("El rol '" + rol + "' no está autorizado para corregir carnets");
+        }
+        if (!ESTADOS_CORREGIBLES_ENFERMERIA.contains(carnet.getEstado())) {
+            throw new AccessDeniedException(
+                    "Solo se pueden corregir carnets que aún no fueron despachados");
+        }
+        boolean esReciente = carnetRepository.findTop2ByFechaOrderByRegistradoEnDescIdDesc(hoy).stream()
+                .anyMatch(c -> c.getId().equals(carnet.getId()));
+        if (!esReciente) {
+            throw new AccessDeniedException(
+                    "Solo puede corregir los " + CUPO_CORRECCION_ENFERMERIA + " carnets más recientes del día");
+        }
+    }
+
+    private void publicarAuditoriaCorreccion(Carnet carnet, Especialidad origen, Especialidad destino,
+                                             int correlativoAnterior, int nuevoCorrelativo, String motivo) {
+        Map<String, Object> anteriores = new HashMap<>();
+        anteriores.put("especialidadId", origen.getId());
+        anteriores.put("especialidadNombre", origen.getNombre());
+        anteriores.put("correlativo", correlativoAnterior);
+
+        Map<String, Object> nuevos = new HashMap<>();
+        nuevos.put("especialidadId", destino.getId());
+        nuevos.put("especialidadNombre", destino.getNombre());
+        nuevos.put("correlativo", nuevoCorrelativo);
+        nuevos.put("motivo", motivo);
+
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("carnet")
+                .entidadId(carnet.getId())
+                .accion("actualizar")
+                .usuarioReferenciaId(UsuarioContexto.actual().map(IdentidadUsuario::id).orElse(null))
+                .valoresAnteriores(anteriores)
+                .valoresNuevos(nuevos)
+                .build());
     }
 
     // ------------------------------------------------------------------
@@ -189,13 +299,29 @@ public class CarnetService {
                 .filter(c -> estadoNormalizado == null || estadoNormalizado.equals(c.getEstado()))
                 .filter(c -> clasificacionNormalizada == null
                         || clasificacionNormalizada.equals(clasificar(c.getNumeroExpediente(), umbral)))
-                .map(this::mapCarnet)
+                .map(c -> mapCarnet(c, umbral, false))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public CarnetResponseDTO obtener(UUID id) {
         return mapCarnet(buscar(id));
+    }
+
+    /**
+     * Busca el carnet de un expediente en una fecha (por defecto hoy) para ver su
+     * trazabilidad (estado + historial) desde Archivo. 404 si no existe.
+     */
+    @Transactional(readOnly = true)
+    public CarnetResponseDTO buscarPorExpediente(String numeroExpediente, LocalDate fecha) {
+        String numero = (numeroExpediente != null) ? numeroExpediente.trim() : "";
+        if (numero.isBlank()) {
+            throw new BusinessException("El número de expediente es obligatorio");
+        }
+        LocalDate dia = (fecha != null) ? fecha : LocalDate.now(ZONA_HORARIA);
+        Carnet carnet = carnetRepository.findByFechaAndNumeroExpediente(dia, numero)
+                .orElseThrow(() -> new ResourceNotFoundException("Carnet", "numeroExpediente", numero));
+        return mapCarnet(carnet);
     }
 
     // ------------------------------------------------------------------
@@ -229,29 +355,21 @@ public class CarnetService {
     private void aplicarHito(Carnet carnet, String estado, UsuarioReferencia usuario) {
         OffsetDateTime ahora = OffsetDateTime.now();
         switch (estado) {
-            case ENCONTRADO -> {
-                carnet.setEncontradoPor(usuario);
-                carnet.setEncontradoEn(ahora);
-            }
             case NO_LOCALIZADO -> {
                 carnet.setNoLocalizadoPor(usuario);
                 carnet.setNoLocalizadoEn(ahora);
             }
-            case DESPACHADO -> {
-                carnet.setDespachadoPor(usuario);
-                carnet.setDespachadoEn(ahora);
+            case SALIDA_ARCHIVO -> {
+                carnet.setSalidaArchivoPor(usuario);
+                carnet.setSalidaArchivoEn(ahora);
             }
-            case RECIBIDO_ESTACION -> {
-                carnet.setRecibidoPor(usuario);
-                carnet.setRecibidoEn(ahora);
+            case SALIDA_ENFERMERIA -> {
+                carnet.setSalidaEnfermeriaPor(usuario);
+                carnet.setSalidaEnfermeriaEn(ahora);
             }
-            case DEVUELTO_ESTACION -> {
-                carnet.setDevueltoPor(usuario);
-                carnet.setDevueltoEn(ahora);
-            }
-            case RECIBIDO_ARCHIVO -> {
-                carnet.setRecibidoArchivoPor(usuario);
-                carnet.setRecibidoArchivoEn(ahora);
+            case RESGUARDADO -> {
+                carnet.setResguardadoPor(usuario);
+                carnet.setResguardadoEn(ahora);
             }
             default -> { /* estado sin hito específico */ }
         }
@@ -305,18 +423,28 @@ public class CarnetService {
     }
 
     private CarnetResponseDTO mapCarnet(Carnet carnet) {
+        return mapCarnet(carnet, umbralActivo(), true);
+    }
+
+    /**
+     * @param umbral         umbral activo/pasivo ya resuelto (evita N lecturas del parámetro)
+     * @param conMovimientos si se incluye el historial (en listados se omite y se carga por detalle)
+     */
+    private CarnetResponseDTO mapCarnet(Carnet carnet, Long umbral, boolean conMovimientos) {
         String estacionNombre = (carnet.getEstacion() != null) ? carnet.getEstacion().getNombre() : null;
-        List<CarnetMovimientoResponseDTO> movimientos = movimientoRepository
-                .findByCarnetIdOrderByFechaMovimientoAscIdAsc(carnet.getId()).stream()
-                .map(m -> CarnetMovimientoResponseDTO.builder()
-                        .id(m.getId())
-                        .estadoAnterior(m.getEstadoAnterior())
-                        .estadoNuevo(m.getEstadoNuevo())
-                        .usuarioNombre(m.getUsuario() != null ? m.getUsuario().getNombreMostrar() : null)
-                        .observacion(m.getObservacion())
-                        .fechaMovimiento(m.getFechaMovimiento())
-                        .build())
-                .toList();
+        List<CarnetMovimientoResponseDTO> movimientos = conMovimientos
+                ? movimientoRepository
+                        .findByCarnetIdOrderByFechaMovimientoAscIdAsc(carnet.getId()).stream()
+                        .map(m -> CarnetMovimientoResponseDTO.builder()
+                                .id(m.getId())
+                                .estadoAnterior(m.getEstadoAnterior())
+                                .estadoNuevo(m.getEstadoNuevo())
+                                .usuarioNombre(m.getUsuario() != null ? m.getUsuario().getNombreMostrar() : null)
+                                .observacion(m.getObservacion())
+                                .fechaMovimiento(m.getFechaMovimiento())
+                                .build())
+                        .toList()
+                : List.of();
 
         return CarnetResponseDTO.builder()
                 .id(carnet.getId())
@@ -335,21 +463,17 @@ public class CarnetService {
                 .cicloId(carnet.getCicloId())
                 .estado(carnet.getEstado())
                 .observacion(carnet.getObservacion())
-                .archivo(clasificar(carnet.getNumeroExpediente(), umbralActivo()))
+                .archivo(clasificar(carnet.getNumeroExpediente(), umbral))
                 .registradoPor(nombre(carnet.getRegistradoPor()))
                 .registradoEn(carnet.getRegistradoEn())
-                .encontradoPor(nombre(carnet.getEncontradoPor()))
-                .encontradoEn(carnet.getEncontradoEn())
                 .noLocalizadoPor(nombre(carnet.getNoLocalizadoPor()))
                 .noLocalizadoEn(carnet.getNoLocalizadoEn())
-                .despachadoPor(nombre(carnet.getDespachadoPor()))
-                .despachadoEn(carnet.getDespachadoEn())
-                .recibidoPor(nombre(carnet.getRecibidoPor()))
-                .recibidoEn(carnet.getRecibidoEn())
-                .devueltoPor(nombre(carnet.getDevueltoPor()))
-                .devueltoEn(carnet.getDevueltoEn())
-                .recibidoArchivoPor(nombre(carnet.getRecibidoArchivoPor()))
-                .recibidoArchivoEn(carnet.getRecibidoArchivoEn())
+                .salidaArchivoPor(nombre(carnet.getSalidaArchivoPor()))
+                .salidaArchivoEn(carnet.getSalidaArchivoEn())
+                .salidaEnfermeriaPor(nombre(carnet.getSalidaEnfermeriaPor()))
+                .salidaEnfermeriaEn(carnet.getSalidaEnfermeriaEn())
+                .resguardadoPor(nombre(carnet.getResguardadoPor()))
+                .resguardadoEn(carnet.getResguardadoEn())
                 .movimientos(movimientos)
                 .build();
     }

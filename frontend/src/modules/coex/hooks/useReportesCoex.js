@@ -1,18 +1,14 @@
 import { useCallback, useRef, useState } from 'react'
 import {
-  descargarDevolucionCarnetsPdf,
-  descargarRecepcionCarnetsPdf,
+  descargarSalidaCarnetsPdf,
+  descargarSalidaEnfermeriaCarnetsPdf,
 } from '@/modules/carnets/api/carnetsApi'
 import { descargarBlobCoex } from '../utils/descargarBlobCoex'
 
-// Descarga (manual) de los reportes generales de Mesa COEX:
-//   - recepción: expedientes recibidos en la estación.
-//   - devolución: expedientes devueltos a Archivo.
-// Ambos reutilizan la plantilla institucional del backend (mismo estándar que
-// el reporte de salida de /archivo), pero SIN el bloque de firmas.
-//
-// Es una acción independiente del flujo de recibir/devolver: solo expone su
-// propio estado para deshabilitar el botón correspondiente.
+// Descarga (manual) de los reportes de Mesa COEX:
+//   - salida de archivo: expedientes que salieron de archivo.
+//   - salida de enfermería: expedientes que salen de enfermería hacia archivo.
+// Ambos reutilizan la plantilla institucional del backend (sin bloque de firmas).
 export function useReportesCoex({ fecha, mostrarToast } = {}) {
   const [tipoEnCurso, setTipoEnCurso] = useState(null)
   const enVueloRef = useRef(false)
@@ -22,14 +18,12 @@ export function useReportesCoex({ fecha, mostrarToast } = {}) {
       if (enVueloRef.current) return
       enVueloRef.current = true
       setTipoEnCurso(tipo)
-      const esRecepcion = tipo === 'recepcion'
       try {
-        const pdf = esRecepcion
-          ? await descargarRecepcionCarnetsPdf({ fecha })
-          : await descargarDevolucionCarnetsPdf({ fecha })
-        const nombre = `${esRecepcion ? 'recepcion' : 'devolucion'}-expedientes-${
-          fecha ?? 'sin-fecha'
-        }.pdf`
+        const pdf =
+          tipo === 'salida-archivo'
+            ? await descargarSalidaCarnetsPdf({ fecha })
+            : await descargarSalidaEnfermeriaCarnetsPdf({ fecha })
+        const nombre = `${tipo}-${fecha ?? 'sin-fecha'}.pdf`
         const iniciada = descargarBlobCoex(pdf, nombre)
         if (iniciada) {
           mostrarToast?.({ tone: 'success', title: 'Reporte descargado.' })
@@ -49,9 +43,9 @@ export function useReportesCoex({ fecha, mostrarToast } = {}) {
   )
 
   return {
-    descargandoRecepcion: tipoEnCurso === 'recepcion',
-    descargandoDevolucion: tipoEnCurso === 'devolucion',
-    descargarRecepcion: () => descargar('recepcion'),
-    descargarDevolucion: () => descargar('devolucion'),
+    descargandoSalidaArchivo: tipoEnCurso === 'salida-archivo',
+    descargandoSalidaEnfermeria: tipoEnCurso === 'salida-enfermeria',
+    descargarSalidaArchivo: () => descargar('salida-archivo'),
+    descargarSalidaEnfermeria: () => descargar('salida-enfermeria'),
   }
 }

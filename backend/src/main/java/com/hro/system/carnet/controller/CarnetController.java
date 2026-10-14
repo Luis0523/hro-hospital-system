@@ -1,6 +1,7 @@
 package com.hro.system.carnet.controller;
 
 import com.hro.system.carnet.dto.CarnetResponseDTO;
+import com.hro.system.carnet.dto.CorregirEspecialidadRequestDTO;
 import com.hro.system.carnet.dto.RegistrarCarnetRequestDTO;
 import com.hro.system.carnet.dto.TransicionCarnetRequestDTO;
 import com.hro.system.carnet.service.CarnetService;
@@ -47,20 +48,34 @@ public class CarnetController {
                 carnetService.listar(fecha, estacionId, especialidadId, estado, clasificacion), "Carnets obtenidos"));
     }
 
+    @GetMapping("/expediente/{numeroExpediente}")
+    @Operation(summary = "Buscar carnet por expediente",
+            description = "Devuelve el carnet de un expediente en una fecha (por defecto hoy) con su trazabilidad. 404 si no existe.")
+    public ResponseEntity<ApiResponse<CarnetResponseDTO>> buscarPorExpediente(
+            @PathVariable String numeroExpediente,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                carnetService.buscarPorExpediente(numeroExpediente, fecha), "Carnet obtenido"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Obtener carnet", description = "Detalle del carnet con su historial de movimientos.")
     public ResponseEntity<ApiResponse<CarnetResponseDTO>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(carnetService.obtener(id), "Carnet obtenido"));
     }
 
-    @PostMapping("/{id}/encontrado")
-    @Operation(summary = "Marcar encontrado (Archivo)", description = "registrado/no_localizado -> encontrado.")
-    public ResponseEntity<ApiResponse<CarnetResponseDTO>> encontrado(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(carnetService.marcarEncontrado(id), "Carnet marcado como encontrado"));
+    @PostMapping("/{id}/corregir-especialidad")
+    @Operation(summary = "Corregir especialidad de un carnet",
+            description = "Reasigna el carnet a otra especialidad del día y le da un nuevo correlativo. Enfermería solo puede corregir los 2 más recientes del día (aún no despachados); un rol supervisor, cualquiera de hoy.")
+    public ResponseEntity<ApiResponse<CarnetResponseDTO>> corregirEspecialidad(
+            @PathVariable UUID id,
+            @Valid @RequestBody CorregirEspecialidadRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                carnetService.corregirEspecialidad(id, dto), "Especialidad del carnet corregida"));
     }
 
     @PostMapping("/{id}/no-localizado")
-    @Operation(summary = "Marcar no localizado (Archivo)", description = "Requiere observación. registrado/encontrado -> no_localizado.")
+    @Operation(summary = "Marcar no localizado (Archivo)", description = "Requiere observación. registrado -> no_localizado.")
     public ResponseEntity<ApiResponse<CarnetResponseDTO>> noLocalizado(
             @PathVariable UUID id,
             @RequestBody(required = false) TransicionCarnetRequestDTO dto) {
@@ -68,27 +83,24 @@ public class CarnetController {
         return ResponseEntity.ok(ApiResponse.ok(carnetService.marcarNoLocalizado(id, observacion), "Carnet marcado como no localizado"));
     }
 
-    @PostMapping("/{id}/despachar")
-    @Operation(summary = "Despachar a la estación (Archivo)", description = "encontrado -> despachado.")
-    public ResponseEntity<ApiResponse<CarnetResponseDTO>> despachar(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(carnetService.despachar(id), "Carnet despachado"));
+    @PostMapping("/{id}/salida-archivo")
+    @Operation(summary = "Registrar salida de archivo",
+            description = "registrado/no_localizado -> salida_archivo. Un operador verifica que el expediente sale del archivo.")
+    public ResponseEntity<ApiResponse<CarnetResponseDTO>> salidaArchivo(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(carnetService.salidaArchivo(id), "Salida de archivo registrada"));
     }
 
-    @PostMapping("/{id}/recibir")
-    @Operation(summary = "Recibir en la estación (Enfermería / COEX)", description = "despachado -> recibido_estacion.")
-    public ResponseEntity<ApiResponse<CarnetResponseDTO>> recibir(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(carnetService.recibir(id), "Carnet recibido en la estación"));
+    @PostMapping("/{id}/salida-enfermeria")
+    @Operation(summary = "Registrar salida de enfermería (Mesa COEX)",
+            description = "salida_archivo -> salida_enfermeria. El expediente sale de enfermería de regreso a archivo.")
+    public ResponseEntity<ApiResponse<CarnetResponseDTO>> salidaEnfermeria(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(carnetService.salidaEnfermeria(id), "Salida de enfermería registrada"));
     }
 
-    @PostMapping("/{id}/devolver")
-    @Operation(summary = "Devolver a Archivo (Enfermería / COEX)", description = "recibido_estacion -> devuelto_estacion. Respeta el tiempo mínimo configurable.")
-    public ResponseEntity<ApiResponse<CarnetResponseDTO>> devolver(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(carnetService.devolver(id), "Carnet devuelto a Archivo"));
-    }
-
-    @PostMapping("/{id}/recibir-devolucion")
-    @Operation(summary = "Confirmar devolución (Archivo)", description = "devuelto_estacion -> recibido_archivo.")
-    public ResponseEntity<ApiResponse<CarnetResponseDTO>> recibirDevolucion(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(carnetService.recibirDevolucion(id), "Devolución recibida por Archivo"));
+    @PostMapping("/{id}/resguardar")
+    @Operation(summary = "Resguardar en estantería (Archivo)",
+            description = "salida_enfermeria -> resguardado. Archivo confirma el reingreso y guardado del expediente.")
+    public ResponseEntity<ApiResponse<CarnetResponseDTO>> resguardar(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(carnetService.resguardar(id), "Expediente resguardado en estantería"));
     }
 }

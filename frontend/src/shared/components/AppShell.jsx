@@ -31,6 +31,7 @@ export default function AppShell({
   secciones = [],
   usuario,
   contexto = null,
+  acciones = null,
   children,
 }) {
   const { usuario: usuarioSesion, cerrarSesion, rutaLogin } = useAuth()
@@ -185,6 +186,12 @@ export default function AppShell({
                 {titulo}
               </h1>
             </div>
+
+            {acciones && (
+              <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                {acciones}
+              </div>
+            )}
           </div>
         </header>
 
