@@ -399,19 +399,21 @@ export default function EstacionesPage() {
           {especialidades.length === 0 ? (
             <p className="text-body-sm text-on-surface-variant">No hay especialidades.</p>
           ) : (
-            especialidades.map((esp) => (
-              <label
-                key={esp.id}
-                className="flex items-center gap-2 rounded border border-outline-variant p-2 text-body-sm text-on-surface"
-              >
-                <input
-                  type="checkbox"
-                  checked={seleccionadas.includes(esp.id)}
-                  onChange={() => alternarEsp(esp.id)}
-                />
-                <span>{esp.nombre}</span>
-              </label>
-            ))
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+              {especialidades.map((esp) => (
+                <label
+                  key={esp.id}
+                  className="flex items-center gap-2 rounded border border-outline-variant p-2 text-body-sm text-on-surface"
+                >
+                  <input
+                    type="checkbox"
+                    checked={seleccionadas.includes(esp.id)}
+                    onChange={() => alternarEsp(esp.id)}
+                  />
+                  <span>{esp.nombre}</span>
+                </label>
+              ))}
+            </div>
           )}
         </form>
       </Modal>

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "example": "node examples/generarEjemplos.js"
+    "example": "node examples/generarEjemplos.js",
+    "example:archivados": "node examples/archivados/generarEjemplosArchivados.js"
   },
   "keywords": [
     "hro",

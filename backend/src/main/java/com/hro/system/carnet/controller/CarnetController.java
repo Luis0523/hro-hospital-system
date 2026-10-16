@@ -103,4 +103,12 @@ public class CarnetController {
     public ResponseEntity<ApiResponse<CarnetResponseDTO>> resguardar(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(carnetService.resguardar(id), "Expediente resguardado en estantería"));
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar un carnet erróneo (físico)",
+            description = "Borrado físico de un carnet del día. Enfermería solo los 2 más recientes (aún no despachados); un rol supervisor, cualquiera de hoy. Cierra el contador si era la cola.")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        carnetService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Carnet eliminado"));
+    }
 }

@@ -14,6 +14,7 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarCarnets: vi.fn(),
   registrarCarnet: vi.fn(),
   corregirEspecialidadCarnet: vi.fn(),
+  eliminarCarnet: vi.fn(() => Promise.resolve({})),
   obtenerCarnet: vi.fn(),
   ETIQUETAS_ESTADO_CARNET: {
     registrado: 'Registrado',
@@ -22,6 +23,7 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
 
 import {
   corregirEspecialidadCarnet,
+  eliminarCarnet,
   listarCarnets,
   listarEspecialidades,
   registrarCarnet,
@@ -69,6 +71,7 @@ describe('RegistroCarnetsPage', () => {
     listarCarnets.mockReset().mockResolvedValue([])
     registrarCarnet.mockReset()
     corregirEspecialidadCarnet.mockReset()
+    eliminarCarnet.mockReset().mockResolvedValue({})
   })
 
   it('muestra la vista en estado inicial sin registros recientes', async () => {
@@ -93,6 +96,8 @@ describe('RegistroCarnetsPage', () => {
     expect(registrarCarnet).toHaveBeenCalledWith({
       numeroExpediente: '837871',
       especialidadId: 1,
+      prioritario: false,
+      privadoLibertad: false,
     })
   })
 
@@ -124,6 +129,22 @@ describe('RegistroCarnetsPage', () => {
       especialidadId: 2,
       motivo: 'Especialidad equivocada',
     })
+  })
+
+  it('permite eliminar un registro reciente', async () => {
+    const user = userEvent.setup()
+    const reciente = { ...carnetRegistrado, fecha: hoyIso() }
+    localStorage.setItem(
+      'hro_cache_carnets_recientes',
+      JSON.stringify({ valor: [reciente], expira: 0 }),
+    )
+    eliminarCarnet.mockResolvedValue({})
+    renderPagina()
+
+    await user.click(await screen.findByRole('button', { name: /^eliminar$/i }))
+    await user.click(await screen.findByRole('button', { name: /sí, eliminar/i }))
+
+    expect(eliminarCarnet).toHaveBeenCalledWith('c-1')
   })
 
   it('avisa cuando el expediente ya fue registrado hoy (409)', async () => {

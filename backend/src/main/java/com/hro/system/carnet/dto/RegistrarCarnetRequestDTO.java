@@ -16,4 +16,8 @@ public class RegistrarCarnetRequestDTO {
 
     /** Opcional: si no se indica, se toma la estación de la sesión (X-Estacion-Id). */
     private Long estacionId;
+
+    /** Etiquetas opcionales marcadas antes de registrar. */
+    private Boolean prioritario;
+    private Boolean privadoLibertad;
 }

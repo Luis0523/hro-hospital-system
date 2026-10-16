@@ -67,6 +67,15 @@ public class Carnet {
     @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
+    /** Etiquetas marcadas al registrar (no alteran el flujo). */
+    @Column(name = "prioritario", nullable = false)
+    @Builder.Default
+    private Boolean prioritario = false;
+
+    @Column(name = "privado_libertad", nullable = false)
+    @Builder.Default
+    private Boolean privadoLibertad = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registrado_por_id")
     private UsuarioReferencia registradoPor;

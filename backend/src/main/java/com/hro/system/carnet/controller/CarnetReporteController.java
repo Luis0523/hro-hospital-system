@@ -69,6 +69,15 @@ public class CarnetReporteController {
         return pdfResponse(pdf, "reporte-salida-enfermeria.pdf");
     }
 
+    @GetMapping("/archivados/pdf")
+    @Operation(summary = "Descargar el PDF de expedientes archivados (pasivos) de una fecha",
+            description = "Lista todos los expedientes clasificados como pasivos (número <= umbral), ordenados de menor a mayor, con la plantilla institucional de archivados.")
+    public ResponseEntity<byte[]> archivadosPdf(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        byte[] pdf = servicio.generarArchivadosPdf(fecha, usuarioActual());
+        return pdfResponse(pdf, "expedientes-archivados.pdf");
+    }
+
     private static String usuarioActual() {
         return UsuarioContexto.actual().map(IdentidadUsuario::nombreMostrar).orElse("-");
     }

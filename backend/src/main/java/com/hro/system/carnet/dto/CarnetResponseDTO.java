@@ -35,6 +35,9 @@ public class CarnetResponseDTO {
     /** "activo" | "pasivo" según el umbral configurable, o null si no aplica. */
     private String archivo;
 
+    private Boolean prioritario;
+    private Boolean privadoLibertad;
+
     private String registradoPor;
     private OffsetDateTime registradoEn;
     private String noLocalizadoPor;

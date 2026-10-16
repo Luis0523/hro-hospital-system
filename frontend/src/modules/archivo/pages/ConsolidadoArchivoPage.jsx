@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Alert, Button, Icon, Input, Spinner } from '@/shared/components/ui'
+import { useToast } from '@/shared/context/ToastContext.jsx'
+import { descargarArchivadosPdf } from '../api/consolidadoArchivoApi'
+import { descargarBlob } from '../utils/descargarBlob'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import ConsolidadoDiario from '../components/consolidado/ConsolidadoDiario.jsx'
 import TablaInformeEstadistico from '../components/consolidado/TablaInformeEstadistico.jsx'
@@ -33,6 +36,25 @@ export default function ConsolidadoArchivoPage() {
     errorMensual,
     refrescarMensual,
   } = useConsolidadoArchivo()
+
+  const { mostrarToast } = useToast()
+  const [descargandoArchivados, setDescargandoArchivados] = useState(false)
+
+  async function descargarArchivados() {
+    setDescargandoArchivados(true)
+    try {
+      const blob = await descargarArchivadosPdf({ fecha })
+      descargarBlob(blob, `expedientes-archivados-${fecha}.pdf`)
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo generar el PDF',
+        message: fallo?.message,
+      })
+    } finally {
+      setDescargandoArchivados(false)
+    }
+  }
 
   return (
     <ArchivoLayout>
@@ -84,10 +106,16 @@ export default function ConsolidadoArchivoPage() {
                   onChange={(evento) => setFecha(evento.target.value)}
                   className="sm:max-w-xs"
                 />
-                <Button variant="secondary" onClick={refrescar} disabled={cargando}>
-                  <Icon name="refresh" className="text-[18px]" />
-                  Actualizar
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={refrescar} disabled={cargando}>
+                    <Icon name="refresh" className="text-[18px]" />
+                    Actualizar
+                  </Button>
+                  <Button onClick={descargarArchivados} disabled={descargandoArchivados}>
+                    <Icon name="picture_as_pdf" className="text-[18px]" />
+                    {descargandoArchivados ? 'Generando…' : 'Expedientes archivados (PDF)'}
+                  </Button>
+                </div>
               </div>
             </section>
 

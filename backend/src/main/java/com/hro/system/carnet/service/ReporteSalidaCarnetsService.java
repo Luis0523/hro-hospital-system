@@ -3,6 +3,7 @@ package com.hro.system.carnet.service;
 import com.hro.system.carnet.dto.SalidaCarnetDTO;
 import com.hro.system.carnet.entity.Carnet;
 import com.hro.system.carnet.repository.CarnetRepository;
+import com.hro.system.reporte.PlantillaExpedientesArchivados;
 import com.hro.system.reporte.PlantillaReportePdf;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,8 @@ public class ReporteSalidaCarnetsService {
 
     private final CarnetRepository carnetRepository;
     private final PlantillaReportePdf plantilla;
+    private final PlantillaExpedientesArchivados plantillaArchivados;
+    private final com.hro.system.parametro.service.ParametroSistemaService parametros;
 
     // ------------------------------------------------------------------
     // Salida (Archivo)
@@ -98,6 +101,71 @@ public class ReporteSalidaCarnetsService {
                 "Recibe - COEX / Enfermería",
                 "");
         return generar(reporte);
+    }
+
+    // ------------------------------------------------------------------
+    // Expedientes archivados (pasivos del día)
+    // ------------------------------------------------------------------
+
+    /**
+     * PDF "EXPEDIENTES ARCHIVADOS" con TODOS los expedientes clasificados como
+     * <b>pasivos</b> (número de expediente menor o igual al umbral de archivo) de
+     * la fecha indicada, ordenados de menor a mayor. La columna de fecha se deja
+     * en blanco por ahora. El encabezado incluye la hora y quién lo genera.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generarArchivadosPdf(LocalDate fechaParam, String usuarioGenerador) {
+        LocalDate fecha = (fechaParam != null) ? fechaParam : LocalDate.now(ZONA_HORARIA);
+        Long umbral = umbralActivo();
+
+        List<Carnet> pasivos = carnetRepository.listarPorFecha(fecha).stream()
+                .filter(carnet -> "pasivo".equals(clasificar(carnet.getNumeroExpediente(), umbral)))
+                .sorted(Comparator.comparingLong(c -> parseNumero(c.getNumeroExpediente())))
+                .toList();
+
+        List<PlantillaExpedientesArchivados.Item> items = new java.util.ArrayList<>();
+        int numero = 1;
+        for (Carnet carnet : pasivos) {
+            items.add(new PlantillaExpedientesArchivados.Item(
+                    numero++, carnet.getNumeroExpediente(), null));
+        }
+
+        try {
+            return plantillaArchivados.generar(
+                    "EXPEDIENTES ARCHIVADOS", items, null,
+                    OffsetDateTime.now(ZONA_HORARIA), nvl(usuarioGenerador));
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo generar el PDF de expedientes archivados: " + e.getMessage(), e);
+        }
+    }
+
+    private Long umbralActivo() {
+        String valor = parametros.obtener(
+                com.hro.system.parametro.service.ParametroSistemaService.UMBRAL_ARCHIVO_ACTIVO, null);
+        try {
+            return (valor != null && !valor.isBlank()) ? Long.valueOf(valor.trim()) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String clasificar(String numeroExpediente, Long umbral) {
+        if (umbral == null || numeroExpediente == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(numeroExpediente.trim()) > umbral ? "activo" : "pasivo";
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static long parseNumero(String numeroExpediente) {
+        try {
+            return Long.parseLong(numeroExpediente.trim());
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     // ------------------------------------------------------------------

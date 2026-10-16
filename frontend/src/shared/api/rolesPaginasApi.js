@@ -53,8 +53,19 @@ export const PRIORIDAD_AREAS = [
   'jefe_enfermeria',
 ]
 
+/**
+ * Pantalla inicial específica por rol (tiene prioridad sobre la prioridad de áreas).
+ * Enfermería entra directo al registro de carnets.
+ */
+export const INICIO_POR_ROL = {
+  enfermeria: '/enfermeria/carnets',
+}
+
 /** Pantalla inicial de un rol a partir de un mapeo rol → páginas dado. */
 export function inicioSegunMapa(mapa, rol) {
+  if (INICIO_POR_ROL[rol]) {
+    return INICIO_POR_ROL[rol]
+  }
   const paginas = (mapa && mapa[rol]) || []
   const area = PRIORIDAD_AREAS.find((candidata) => paginas.includes(candidata))
   return area ? RUTA_POR_AREA[area] : '/sin-acceso'

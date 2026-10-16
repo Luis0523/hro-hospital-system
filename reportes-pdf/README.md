@@ -197,3 +197,70 @@ Usa el runner nativo `node --test` (sin Jest/Mocha/Vitest).
 Es una librería pura de Node.js: puede invocarse desde un script, un job o
 un servicio backend (`main: src/index.js`). Solo necesita los datos ya
 preparados; no realiza peticiones HTTP ni accede a la base de datos.
+
+## Reporte de Expedientes Archivados (`archivados`)
+
+Documento de control **LETTER vertical** que distribuye los expedientes en
+**tres tablas iguales por página** (columnas `NO.` / `EXPEDIENTE` / `FECHA`),
+pensado para impresión y máximo aprovechamiento del papel. Las firmas (dos,
+configurables) aparecen **solo en la última página**.
+
+```js
+const { generarReporteExpedientesArchivados } = require('./src');
+
+const resultado = await generarReporteExpedientesArchivados({
+  titulo: 'EXPEDIENTES ARCHIVADOS',       // opcional (default)
+  fecha: '2026-10-13',                     // opcional
+  expedientes: [
+    { numero: 1, numeroExpediente: '837871', fecha: '2026-10-13' },
+  ],
+  firmantes: [{ nombre: 'Nombre 1' }, { nombre: 'Nombre 2' }], // opcional
+  rutaSalida: './output/expedientes-archivados.pdf',
+});
+// => { rutaArchivo, totalExpedientes, paginas, titulo }
+```
+
+Comportamiento:
+- **Numeración:** si `expedientes[].numero` viene del backend, se respeta; si no, se
+  autonumera (1..N) en el orden del arreglo.
+- **Fecha:** se recibe `YYYY-MM-DD` y se presenta `DD/MM/YYYY` (no muta el valor lógico).
+- **Título y firmantes** son configurables; no hay nombres reales hardcodeados.
+- **Lista vacía** es válida: genera el documento institucional con cero expedientes.
+- **Distribución:** en las páginas intermedias las tablas se llenan por columna
+  (Tabla 1, luego Tabla 2, luego Tabla 3); en la **última página** los registros se
+  reparten **balanceados** entre las 3 tablas (diferencia máxima 1), siempre con
+  rangos consecutivos (lectura vertical continua). La numeración continúa entre páginas.
+- **Firmas:** zona inferior exclusiva, **anclada al pie** (no depende de dónde
+  terminen las tablas). Las tablas nunca sobrepasan `Y_INICIO_FIRMAS − GAP_SEGURIDAD`.
+- El generador es puro: no consulta BD, no hace HTTP y no depende del frontend.
+
+### Medidas del layout (LETTER 612×792 pt)
+
+| Parámetro                          | Valor         |
+| ---------------------------------- | ------------- |
+| Márgenes (L/R/top/bottom)          | 24 / 24 / 22 / 24 pt |
+| Ancho útil                         | 564 pt        |
+| Ancho por tabla                    | 184 pt        |
+| Columnas (No. / Expediente / Fecha)| 28 / 96 / 60 pt |
+| Fuente de celdas / encabezado tabla| Helvetica 9 pt / 9 pt bold |
+| Institución / título / pie         | 11 / 13 / 8 pt |
+| Alto de fila                       | 15.5 pt       |
+| Encabezado de tabla                | 15 pt         |
+| Encabezado institucional           | 60 pt (logo 32 pt) |
+| Alto de firmas (anclado al pie)    | 74 pt         |
+| Gap de seguridad tabla → firmas    | 12 pt         |
+| `Y_INICIO_FIRMAS`                  | 694 pt        |
+| Límite tablas (intermedia)         | 756 pt        |
+| Límite tablas (última)             | 682 pt        |
+| **Filas por tabla (normal)**       | **43**        |
+| **Filas por tabla (última)**       | **38**        |
+| **Capacidad por página (normal)**  | **129**       |
+| **Capacidad por página (última)**  | **114**       |
+
+Las páginas **intermedias no reservan firmas** y aprovechan el alto hasta el pie
+(límite 756 pt); la **última página** reserva la zona de firmas y nunca supera
+`Y_INICIO_FIRMAS − GAP_SEGURIDAD` (682 pt). Las firmas aparecen solo en la última
+página. La capacidad se **deriva de la geometría real** (no está fija a un número).
+
+Generar ejemplos: `npm run example:archivados` (1, 10, 30, 50, 100, 200 y título alterno).
+

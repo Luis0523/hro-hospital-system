@@ -4,6 +4,7 @@ import { guardarCache, leerCache } from '@/shared/utils/cache'
 import { hoyIso } from '@/shared/utils/fecha'
 import {
   corregirEspecialidadCarnet,
+  eliminarCarnet as apiEliminarCarnet,
   listarCarnets,
   listarEspecialidades,
   listarEspecialidadesActivasEstacion,
@@ -36,6 +37,8 @@ export function useRegistroCarnets({ estacionId } = {}) {
   const { mostrarToast } = useToast()
   const [expediente, setExpediente] = useState('')
   const [especialidadId, setEspecialidadId] = useState('')
+  const [prioritario, setPrioritario] = useState(false)
+  const [privadoLibertad, setPrivadoLibertad] = useState(false)
   const [especialidades, setEspecialidades] = useState([])
   // Últimos 2 (corrección inmediata); no se recargan del backend al montar.
   const [recientes, setRecientes] = useState(recientesIniciales)
@@ -126,10 +129,15 @@ export function useRegistroCarnets({ estacionId } = {}) {
         const registro = await registrarCarnet({
           numeroExpediente: numero,
           especialidadId: Number(especialidadId),
+          prioritario,
+          privadoLibertad,
         })
         setResultado(registro)
         setEstado('registrado')
         setExpediente('')
+        // Las etiquetas son por carnet: se limpian tras registrar.
+        setPrioritario(false)
+        setPrivadoLibertad(false)
         // Actualiza la caché de recientes sin volver a pedir el listado.
         setRecientes((actual) =>
           [registro, ...actual.filter((c) => c.id !== registro.id)].slice(0, MAX_RECIENTES),
@@ -160,7 +168,7 @@ export function useRegistroCarnets({ estacionId } = {}) {
         enfocar()
       }
     },
-    [especialidadId, enfocar, mostrarToast],
+    [especialidadId, prioritario, privadoLibertad, enfocar, mostrarToast],
   )
 
   // Corrige la especialidad de un carnet reciente y parchea la caché local.
@@ -192,11 +200,51 @@ export function useRegistroCarnets({ estacionId } = {}) {
     [mostrarToast],
   )
 
+  // Recalcula los últimos 2 desde el listado del día (para que, al eliminar uno,
+  // reaparezca el anterior en la ventana de corrección).
+  const refrescarRecientes = useCallback(async () => {
+    try {
+      const lista = await listarCarnets()
+      setRecientes(ordenarPorReciente(lista).slice(0, MAX_RECIENTES))
+    } catch {
+      // Silencioso: se reintenta en el próximo registro/recarga.
+    }
+  }, [])
+
+  // Elimina un carnet erróneo y recalcula la ventana de recientes.
+  const eliminar = useCallback(
+    async (carnet) => {
+      try {
+        await apiEliminarCarnet(carnet.id)
+        setRegistros((actual) => actual.filter((c) => c.id !== carnet.id))
+        await refrescarRecientes()
+        mostrarToast({
+          tone: 'success',
+          title: 'Carnet eliminado',
+          message: `${carnet.especialidadNombre} ${carnet.correlativo} · ${carnet.numeroExpediente}`,
+        })
+        return true
+      } catch (fallo) {
+        mostrarToast({
+          tone: 'error',
+          title: 'No se pudo eliminar',
+          message: fallo?.message,
+        })
+        return false
+      }
+    },
+    [refrescarRecientes, mostrarToast],
+  )
+
   return {
     expediente,
     setExpediente,
     especialidadId,
     setEspecialidadId,
+    prioritario,
+    setPrioritario,
+    privadoLibertad,
+    setPrivadoLibertad,
     especialidades,
     recientes,
     registros,
@@ -208,6 +256,8 @@ export function useRegistroCarnets({ estacionId } = {}) {
     inputRef,
     registrar,
     corregir,
+    eliminar,
+    refrescarRecientes,
     cargarRegistros,
     enfocar,
   }

@@ -12,6 +12,7 @@ import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionP
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import LoginPage from '@/modules/login/pages/LoginPage.jsx'
 import SinAccesoPage from '@/modules/login/pages/SinAccesoPage.jsx'
+import PruebaOcrPage from '@/modules/pruebaOcr/pages/PruebaOcrPage.jsx'
 import MesaCoexPage from '@/modules/coex/pages/MesaCoexPage.jsx'
 import RutaPrivada from './RutaPrivada.jsx'
 import RutaPorRol from './RutaPorRol.jsx'
@@ -58,6 +59,7 @@ export default function AppRouter() {
       <Route path="/sesion-cerrada" element={<SesionCerradaPage />} />
       <Route path="/sin-acceso" element={<SinAccesoPage />} />
       <Route path="/tablero" element={<TableroPage />} />
+      <Route path="/prueba-ocr" element={<PruebaOcrPage />} />
 
       {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>

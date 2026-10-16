@@ -1,10 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  MAPEO_DEFECTO,
-  PRIORIDAD_AREAS,
-  RUTA_POR_AREA,
-  listarRolesPaginas,
-} from '@/shared/api/rolesPaginasApi.js'
+import { MAPEO_DEFECTO, inicioSegunMapa, listarRolesPaginas } from '@/shared/api/rolesPaginasApi.js'
 
 /**
  * Páginas/áreas permitidas por rol, cargadas desde el backend (configurables).
@@ -17,11 +12,7 @@ const DEFAULT_ACCESO = {
   paginasPorRol: MAPEO_DEFECTO,
   paginasDe: (rol) => MAPEO_DEFECTO[rol] ?? [],
   puedeAcceder: (rol, area) => (MAPEO_DEFECTO[rol] ?? []).includes(area),
-  inicioSegunRol: (rol) => {
-    const paginas = MAPEO_DEFECTO[rol] ?? []
-    const area = PRIORIDAD_AREAS.find((candidata) => paginas.includes(candidata))
-    return area ? RUTA_POR_AREA[area] : '/sin-acceso'
-  },
+  inicioSegunRol: (rol) => inicioSegunMapa(MAPEO_DEFECTO, rol),
   recargar: async () => MAPEO_DEFECTO,
   cargando: false,
 }
@@ -55,19 +46,9 @@ export function AccesoProvider({ children }) {
 
   const paginasDe = useCallback((rol) => paginasPorRol[rol] ?? [], [paginasPorRol])
 
-  const puedeAcceder = useCallback(
-    (rol, area) => paginasDe(rol).includes(area),
-    [paginasDe],
-  )
+  const puedeAcceder = useCallback((rol, area) => paginasDe(rol).includes(area), [paginasDe])
 
-  const inicioSegunRol = useCallback(
-    (rol) => {
-      const paginas = paginasDe(rol)
-      const area = PRIORIDAD_AREAS.find((candidata) => paginas.includes(candidata))
-      return area ? RUTA_POR_AREA[area] : '/sin-acceso'
-    },
-    [paginasDe],
-  )
+  const inicioSegunRol = useCallback((rol) => inicioSegunMapa(paginasPorRol, rol), [paginasPorRol])
 
   const value = useMemo(
     () => ({ paginasPorRol, paginasDe, puedeAcceder, inicioSegunRol, recargar, cargando }),

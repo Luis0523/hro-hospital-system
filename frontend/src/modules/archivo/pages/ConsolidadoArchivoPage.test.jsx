@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
+import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import { reiniciarDepuracionesMock } from '../api/depuracionMock'
 import ConsolidadoArchivoPage from './ConsolidadoArchivoPage.jsx'
 
@@ -12,7 +13,9 @@ function renderPage() {
     <ThemeProvider>
       <MemoryRouter>
         <AuthProvider>
-          <ConsolidadoArchivoPage />
+          <ToastProvider>
+            <ConsolidadoArchivoPage />
+          </ToastProvider>
         </AuthProvider>
       </MemoryRouter>
     </ThemeProvider>,

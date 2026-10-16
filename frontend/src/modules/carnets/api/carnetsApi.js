@@ -101,10 +101,27 @@ export async function buscarCarnetPorExpediente(numeroExpediente, { fecha } = {}
  * Registra un carnet. Lanza error con `status`:
  * 404 expediente inexistente · 409 duplicado del día · 502 integración hospital.
  */
-export async function registrarCarnet({ numeroExpediente, especialidadId, estacionId }) {
+export async function registrarCarnet({
+  numeroExpediente,
+  especialidadId,
+  estacionId,
+  prioritario = false,
+  privadoLibertad = false,
+}) {
   return desenvolver(
-    await client.post('/carnets', { numeroExpediente, especialidadId, estacionId }),
+    await client.post('/carnets', {
+      numeroExpediente,
+      especialidadId,
+      estacionId,
+      prioritario,
+      privadoLibertad,
+    }),
   )
+}
+
+/** Elimina (borrado físico) un carnet erróneo del día. 400/403 si no aplica. */
+export async function eliminarCarnet(id) {
+  return desenvolver(await client.delete(`/carnets/${id}`))
 }
 
 /**

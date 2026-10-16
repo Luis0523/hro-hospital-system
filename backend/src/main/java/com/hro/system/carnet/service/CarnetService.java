@@ -127,6 +127,8 @@ public class CarnetService {
                 .estacion(estacion)
                 .numeroExpediente(numero)
                 .pacienteNombre(paciente.getNombreCompleto())
+                .prioritario(Boolean.TRUE.equals(dto.getPrioritario()))
+                .privadoLibertad(Boolean.TRUE.equals(dto.getPrivadoLibertad()))
                 .estado(REGISTRADO)
                 .registradoPor(usuario)
                 .registradoEn(ahora)
@@ -277,6 +279,71 @@ public class CarnetService {
                 .valoresAnteriores(anteriores)
                 .valoresNuevos(nuevos)
                 .build());
+    }
+
+    // ------------------------------------------------------------------
+    // Eliminación (borrado físico)
+    // ------------------------------------------------------------------
+
+    /**
+     * Elimina (borrado físico) un carnet erróneo del día. Si era la cola de su
+     * especialidad, el contador baja (ej. MI-3 -> MI-2); si no, deja hueco. Deja
+     * auditoría con los datos borrados (la fila y sus movimientos se eliminan en
+     * cascada).
+     */
+    @Transactional
+    public void eliminar(UUID id) {
+        Carnet carnet = buscar(id);
+        LocalDate hoy = LocalDate.now(ZONA_HORARIA);
+        if (!hoy.equals(carnet.getFecha())) {
+            throw new BusinessException("Solo se pueden eliminar carnets de hoy");
+        }
+        validarAutorizacionEliminacion(carnet, hoy);
+
+        Long especialidadId = carnet.getEspecialidad().getId();
+        int correlativo = carnet.getCorrelativo();
+
+        Map<String, Object> datos = new HashMap<>();
+        datos.put("numeroExpediente", carnet.getNumeroExpediente());
+        datos.put("correlativo", correlativo);
+        datos.put("especialidadId", especialidadId);
+        datos.put("especialidadNombre", carnet.getEspecialidad().getNombre());
+        datos.put("estado", carnet.getEstado());
+        eventPublisher.publishEvent(AuditoriaEvent.builder()
+                .tablaAfectada("carnet")
+                .entidadId(carnet.getId())
+                .accion("eliminar")
+                .usuarioReferenciaId(UsuarioContexto.actual().map(IdentidadUsuario::id).orElse(null))
+                .valoresAnteriores(datos)
+                .valoresNuevos(null)
+                .build());
+
+        carnetRepository.delete(carnet);
+        // Cierra el hueco solo si el correlativo eliminado era la cola.
+        carnetRepository.liberarCorrelativoSiEsCola(hoy, especialidadId, correlativo);
+
+        log.info("Carnet {} eliminado (exp {} corr {} esp {})",
+                id, datos.get("numeroExpediente"), correlativo, especialidadId);
+    }
+
+    private void validarAutorizacionEliminacion(Carnet carnet, LocalDate hoy) {
+        String rol = UsuarioContexto.actual().map(IdentidadUsuario::rolPrincipal).orElse(null);
+        if (rol != null && ROLES_SUPERVISOR.contains(rol)) {
+            return;
+        }
+        if (!"enfermeria".equals(rol)) {
+            throw new AccessDeniedException("El rol '" + rol + "' no está autorizado para eliminar carnets");
+        }
+        if (!ESTADOS_CORREGIBLES_ENFERMERIA.contains(carnet.getEstado())) {
+            throw new AccessDeniedException(
+                    "Solo se pueden eliminar carnets que aún no fueron despachados");
+        }
+        boolean esReciente = carnetRepository.findTop2ByFechaOrderByRegistradoEnDescIdDesc(hoy).stream()
+                .anyMatch(c -> c.getId().equals(carnet.getId()));
+        if (!esReciente) {
+            throw new AccessDeniedException(
+                    "Solo puede eliminar los " + CUPO_CORRECCION_ENFERMERIA + " carnets más recientes del día");
+        }
     }
 
     // ------------------------------------------------------------------
@@ -463,6 +530,8 @@ public class CarnetService {
                 .cicloId(carnet.getCicloId())
                 .estado(carnet.getEstado())
                 .observacion(carnet.getObservacion())
+                .prioritario(carnet.getPrioritario())
+                .privadoLibertad(carnet.getPrivadoLibertad())
                 .archivo(clasificar(carnet.getNumeroExpediente(), umbral))
                 .registradoPor(nombre(carnet.getRegistradoPor()))
                 .registradoEn(carnet.getRegistradoEn())

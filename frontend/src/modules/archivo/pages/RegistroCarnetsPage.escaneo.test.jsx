@@ -32,6 +32,7 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarCarnets: vi.fn(() => Promise.resolve([])),
   registrarCarnet: vi.fn(),
   corregirEspecialidadCarnet: vi.fn(),
+  eliminarCarnet: vi.fn(() => Promise.resolve({})),
   obtenerCarnet: vi.fn(),
   ETIQUETAS_ESTADO_CARNET: { registrado: 'Registrado' },
 }))
@@ -84,6 +85,8 @@ describe('RegistroCarnetsPage — escaneo con cámara', () => {
     expect(registrarCarnet).toHaveBeenCalledWith({
       numeroExpediente: '837871',
       especialidadId: 1,
+      prioritario: false,
+      privadoLibertad: false,
     })
   })
 })

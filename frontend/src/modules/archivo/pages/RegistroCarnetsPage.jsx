@@ -30,6 +30,27 @@ function horaDe(carnet) {
   })
 }
 
+// Etiquetas del carnet (prioritario / privado de libertad). Nada si no tiene.
+function EtiquetasCarnet({ carnet, className = '' }) {
+  if (!carnet?.prioritario && !carnet?.privadoLibertad) return null
+  return (
+    <div className={`flex flex-wrap gap-1 ${className}`}>
+      {carnet.prioritario && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-label-sm font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+          <Icon name="priority_high" className="text-[14px]" />
+          Prioritario
+        </span>
+      )}
+      {carnet.privadoLibertad && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-label-sm font-semibold text-rose-900 dark:bg-rose-500/20 dark:text-rose-200">
+          <Icon name="lock" className="text-[14px]" />
+          Privado de libertad
+        </span>
+      )}
+    </div>
+  )
+}
+
 function celdaCarnet(fila, clave) {
   if (clave === 'correlativo') {
     return (
@@ -55,6 +76,14 @@ function celdaCarnet(fila, clave) {
   if (clave === 'hora') {
     return <span className="font-mono text-on-surface-variant">{horaDe(fila)}</span>
   }
+  if (clave === 'pacienteNombre') {
+    return (
+      <div className="space-y-1">
+        <span>{fila.pacienteNombre}</span>
+        <EtiquetasCarnet carnet={fila} />
+      </div>
+    )
+  }
   return fila[clave]
 }
 
@@ -68,6 +97,10 @@ export default function RegistroCarnetsPage() {
     setExpediente,
     especialidadId,
     setEspecialidadId,
+    prioritario,
+    setPrioritario,
+    privadoLibertad,
+    setPrivadoLibertad,
     especialidades,
     recientes,
     registros,
@@ -79,6 +112,7 @@ export default function RegistroCarnetsPage() {
     inputRef,
     registrar,
     corregir,
+    eliminar,
     cargarRegistros,
     enfocar,
   } = useRegistroCarnets({ estacionId: estacion?.id })
@@ -141,6 +175,8 @@ export default function RegistroCarnetsPage() {
   const [nuevaEspecialidadId, setNuevaEspecialidadId] = useState('')
   const [motivo, setMotivo] = useState('')
   const [corrigiendo, setCorrigiendo] = useState(false)
+  const [eliminarPara, setEliminarPara] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
 
   function abrirCorreccion(carnet) {
     setCorreccionPara(carnet)
@@ -157,6 +193,14 @@ export default function RegistroCarnetsPage() {
     })
     setCorrigiendo(false)
     if (ok) setCorreccionPara(null)
+  }
+
+  async function confirmarEliminar() {
+    if (!eliminarPara) return
+    setEliminando(true)
+    const ok = await eliminar(eliminarPara)
+    setEliminando(false)
+    if (ok) setEliminarPara(null)
   }
 
   async function abrirTabla() {
@@ -183,6 +227,20 @@ export default function RegistroCarnetsPage() {
     const temporizador = setTimeout(() => setModalAbierto(false), 8000)
     return () => clearTimeout(temporizador)
   }, [resultado])
+
+  // Enter cierra el modal de correlativo (además de Esc y el auto-cierre).
+  useEffect(() => {
+    if (!modalAbierto) return undefined
+    const manejar = (evento) => {
+      if (evento.key === 'Enter') {
+        evento.preventDefault()
+        evento.stopPropagation()
+        setModalAbierto(false)
+      }
+    }
+    document.addEventListener('keydown', manejar, true)
+    return () => document.removeEventListener('keydown', manejar, true)
+  }, [modalAbierto])
 
   // Acciones del registro: se muestran en la barra superior (marca SIGHO).
   const acciones = (
@@ -268,6 +326,7 @@ export default function RegistroCarnetsPage() {
                     ref={inputRef}
                     value={expediente}
                     onChange={(event) => setExpediente(event.target.value)}
+                    onFocus={(event) => event.target.select()}
                     autoComplete="off"
                     autoFocus
                     inputMode="numeric"
@@ -291,6 +350,42 @@ export default function RegistroCarnetsPage() {
                     </button>
                   )}
                 </div>
+
+                <fieldset className="flex flex-wrap gap-2">
+                  <legend className="sr-only">Etiquetas del carnet</legend>
+                  <label
+                    className={`inline-flex cursor-pointer select-none items-center gap-2 rounded-lg border px-3 py-2 text-title-sm font-semibold transition ${
+                      prioritario
+                        ? 'border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-600 dark:bg-amber-500/20 dark:text-amber-200'
+                        : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={prioritario}
+                      onChange={(event) => setPrioritario(event.target.checked)}
+                      className="h-5 w-5 accent-amber-500"
+                    />
+                    <Icon name="priority_high" className="text-[18px]" />
+                    Prioritario
+                  </label>
+                  <label
+                    className={`inline-flex cursor-pointer select-none items-center gap-2 rounded-lg border px-3 py-2 text-title-sm font-semibold transition ${
+                      privadoLibertad
+                        ? 'border-rose-400 bg-rose-100 text-rose-900 dark:border-rose-600 dark:bg-rose-500/20 dark:text-rose-200'
+                        : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={privadoLibertad}
+                      onChange={(event) => setPrivadoLibertad(event.target.checked)}
+                      className="h-5 w-5 accent-rose-500"
+                    />
+                    <Icon name="lock" className="text-[18px]" />
+                    Privado de libertad
+                  </label>
+                </fieldset>
 
                 <Button type="submit" size="lg" className="w-full" disabled={procesando}>
                   <Icon name="assignment_turned_in" className="text-[24px]" />
@@ -405,11 +500,22 @@ export default function RegistroCarnetsPage() {
                           {' · '}
                           {horaDe(carnet)}
                         </p>
+                        <EtiquetasCarnet carnet={carnet} className="mt-2" />
                       </div>
-                      <Button size="sm" variant="secondary" onClick={() => abrirCorreccion(carnet)}>
-                        <Icon name="edit" className="text-[18px]" />
-                        Corregir especialidad
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => abrirCorreccion(carnet)}
+                        >
+                          <Icon name="edit" className="text-[18px]" />
+                          Corregir especialidad
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => setEliminarPara(carnet)}>
+                          <Icon name="delete" className="text-[18px]" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -557,6 +663,39 @@ export default function RegistroCarnetsPage() {
             <p className="text-label-sm text-on-surface-variant">
               Se asignará un nuevo correlativo en la nueva especialidad y quedará registrado el
               cambio.
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(eliminarPara)}
+        onClose={() => {
+          if (!eliminando) setEliminarPara(null)
+        }}
+        title="Eliminar carnet"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEliminarPara(null)} disabled={eliminando}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando…' : 'Sí, eliminar'}
+            </Button>
+          </>
+        }
+      >
+        {eliminarPara && (
+          <div className="space-y-2">
+            <p>
+              ¿Eliminar el carnet{' '}
+              <strong className="font-mono text-primary">{codigoCarnet(eliminarPara)}</strong> (
+              {formatearExpediente(eliminarPara.numeroExpediente)}) de{' '}
+              <strong>{eliminarPara.especialidadNombre}</strong>?
+            </p>
+            <p className="text-label-sm text-on-surface-variant">
+              Es un borrado definitivo. Si era el último correlativo de la especialidad, se libera
+              (regresa al anterior).
             </p>
           </div>
         )}
