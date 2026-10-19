@@ -1,7 +1,7 @@
 export const asignacionesMock = [
   {
     asignacionDiariaEspacioId: 1,
-    espacioNumero: '201',
+    espacioNumero: '6A',
     nivel: 2,
     subespecialidadNombre: 'Pediatría General',
     turnoActual: 7,
@@ -11,7 +11,7 @@ export const asignacionesMock = [
   },
   {
     asignacionDiariaEspacioId: 2,
-    espacioNumero: '202',
+    espacioNumero: '6B',
     nivel: 2,
     subespecialidadNombre: 'Medicina General',
     turnoActual: 14,
@@ -21,7 +21,7 @@ export const asignacionesMock = [
   },
   {
     asignacionDiariaEspacioId: 3,
-    espacioNumero: '301',
+    espacioNumero: '6A',
     nivel: 3,
     subespecialidadNombre: 'Cardiología',
     turnoActual: 3,
@@ -31,7 +31,7 @@ export const asignacionesMock = [
   },
   {
     asignacionDiariaEspacioId: 4,
-    espacioNumero: '302',
+    espacioNumero: '6B',
     nivel: 3,
     subespecialidadNombre: 'Traumatología',
     turnoActual: 21,
