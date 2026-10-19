@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import {
   estaEnModoMock,
@@ -167,6 +167,33 @@ export default function TableroPage() {
       reproduciendoRef.current = false
     }
   }, [cargar])
+
+  /**
+   * El Tablero controla su tema con un wrapper local, pero el ThemeProvider
+   * global aplica `.dark` a <html>. Mientras /tablero está montado se aísla
+   * esa clase y se restaura el estado global al salir.
+   */
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    const root = document.documentElement
+    let teniaDarkGlobal = root.classList.contains('dark')
+
+    const quitarDark = () => {
+      if (!root.classList.contains('dark')) return
+      teniaDarkGlobal = true
+      root.classList.remove('dark')
+    }
+
+    quitarDark()
+    const observer = new MutationObserver(quitarDark)
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
+
+    return () => {
+      observer.disconnect()
+      root.classList.toggle('dark', teniaDarkGlobal)
+    }
+  }, [])
 
   // Un único timeout al vencimiento más próximo; al cambiar la lista se
   // reprograma solo. Evita setInterval/polling.

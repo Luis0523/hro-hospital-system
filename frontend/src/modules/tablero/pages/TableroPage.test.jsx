@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -1639,6 +1639,87 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 describe('TableroPage · tema claro/oscuro', () => {
   beforeEach(() => {
     configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('aísla el dark global y lo restaura al desmontar', async () => {
+    document.documentElement.classList.add('dark')
+
+    const { container, unmount } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(container.firstChild).not.toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(screen.getByRole('button', { name: 'Modo oscuro' })).toBeInTheDocument()
+
+    unmount()
+
+    expect(document.documentElement).toHaveClass('dark')
+  })
+
+  it('alterna el tema local sin tocar el dark global y lo restaura al salir', async () => {
+    document.documentElement.classList.add('dark')
+
+    const { container, unmount } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(container.firstChild).not.toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('dark')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modo oscuro' }))
+
+    expect(container.firstChild).toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(globalThis.localStorage.getItem('hro-tablero-tema')).toBe('dark')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modo claro' }))
+
+    expect(container.firstChild).not.toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(globalThis.localStorage.getItem('hro-tablero-tema')).toBe('light')
+
+    unmount()
+
+    expect(document.documentElement).toHaveClass('dark')
+  })
+
+  it('si el global inicia claro, no inventa dark al desmontar', async () => {
+    document.documentElement.classList.remove('dark')
+
+    const { container, unmount } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(container.firstChild).not.toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('dark')
+
+    unmount()
+
+    expect(document.documentElement).not.toHaveClass('dark')
+  })
+
+  it('retira el dark global si se reaplica durante el montaje', async () => {
+    document.documentElement.classList.add('dark')
+
+    const { container, unmount } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(document.documentElement).not.toHaveClass('dark')
+
+    act(() => {
+      document.documentElement.classList.add('dark')
+    })
+
+    await waitFor(() => {
+      expect(document.documentElement).not.toHaveClass('dark')
+    })
+    expect(container.firstChild).not.toHaveClass('dark')
+
+    unmount()
+
+    expect(document.documentElement).toHaveClass('dark')
   })
 
   it('por defecto usa tema claro (sin clase dark)', async () => {
