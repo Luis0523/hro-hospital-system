@@ -5,6 +5,8 @@
  */
 export const RUTA_BASE_AUDIO = '/audio/tablero/'
 
+export const MAXIMO_NUMERO_PACIENTE = 200
+
 export const RUTAS_GENERALES = Object.freeze({
   paciente: `${RUTA_BASE_AUDIO}generales/paciente.mp3`,
   pasarA: `${RUTA_BASE_AUDIO}generales/pasar_a.mp3`,
@@ -35,7 +37,7 @@ function normalizarNumero(valor) {
     return null
   }
 
-  if (!Number.isInteger(numero) || numero < 1 || numero > 150) return null
+  if (!Number.isInteger(numero) || numero < 1 || numero > MAXIMO_NUMERO_PACIENTE) return null
   return numero
 }
 
