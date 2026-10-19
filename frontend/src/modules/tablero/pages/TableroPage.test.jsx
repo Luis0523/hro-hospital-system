@@ -931,7 +931,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(screen.getByTestId('ultimo-llamado-2-15')).toBeInTheDocument()
   })
 
-  it('avanza correctamente al recibir onError sin bloquear el tablero', async () => {
+  it('aborta el anuncio si falla el audio y no repite el llamado', async () => {
     const fallos = []
     reproducirSecuenciaMock.mockImplementation(
       () => new Promise((_, reject) => fallos.push(reject)),
@@ -955,15 +955,76 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
     await act(async () => fallos[0](new Error('fallo de audio')))
-    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
 
-    await act(async () => fallos[1](new Error('fallo de audio')))
+    expect(fallos).toHaveLength(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('un fallo en A no repite A y permite procesar B', async () => {
+    const pendientes = []
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve, reject) => pendientes.push({ resolve, reject })),
+    )
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 8,
+          espacioNumero: '6A',
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 2,
+          turnoActual: 15,
+          espacioNumero: '6B',
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(pendientes).toHaveLength(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pendientes[0].reject(new Error('fallo de audio'))
+    })
+    await act(async () => {})
+
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
+    expect(construirSecuenciaPacienteMock.mock.calls[1][0]).toMatchObject({
+      numero: 15,
+      destino: '6B',
+    })
+    expect(pendientes).toHaveLength(2)
+    expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#015')
+
+    await act(async () => {
+      pendientes[1].resolve()
+    })
+    await act(async () => {})
+
+    expect(pendientes).toHaveLength(3)
+
+    await act(async () => {
+      pendientes[2].resolve()
+    })
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
-  it('usa el fallback por timeout si el audio no termina', async () => {
+  it('aborta el llamado si el audio no termina', async () => {
     construirSecuenciaPacienteMock.mockReturnValue([
       '/audio/tablero/generales/paciente.mp3',
     ])
@@ -991,8 +1052,8 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
         vi.advanceTimersByTime(40000)
       })
 
-      // El fallback no duplica: dos repeticiones y vuelve a la tabla.
-      expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
+      // El fallback no repite el anuncio roto: cierra y vuelve a la tabla.
+      expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
       expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
       expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
     } finally {

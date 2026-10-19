@@ -304,6 +304,16 @@ export default function TableroPage() {
         finalizarRepeticion()
       }
 
+      // Fail-fast: si un fragmento falla, no se inicia otra repetición del
+      // mismo llamado. Se cierra el anuncio y se avanza la FIFO.
+      const abortarPorFallo = () => {
+        if (token !== tokenRepeticion) return
+        if (atendido) return
+        atendido = true
+        limpiarTimerLlamado()
+        avanzarDeVerdad()
+      }
+
       const secuencia = construirSecuenciaPaciente({
         numero: siguiente.turnoActual,
         destino: siguiente.espacioNumero,
@@ -318,7 +328,7 @@ export default function TableroPage() {
       }
 
       timerLlamadoRef.current = setTimeout(
-        finalizarEstaRepeticion,
+        abortarPorFallo,
         estimarDuracionSecuenciaMs(secuencia, baseMs),
       )
 
@@ -326,13 +336,13 @@ export default function TableroPage() {
       try {
         reproduccion = reproducirSecuencia(secuencia)
       } catch {
-        finalizarEstaRepeticion()
+        abortarPorFallo()
         return
       }
 
       Promise.resolve(reproduccion)
-        .catch(() => {})
-        .finally(finalizarEstaRepeticion)
+        .then(finalizarEstaRepeticion)
+        .catch(abortarPorFallo)
     }
 
     if (conVoz) {

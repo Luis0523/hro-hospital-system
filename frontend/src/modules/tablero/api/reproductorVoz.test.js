@@ -81,8 +81,10 @@ describe('reproducirSecuencia', () => {
     expect(AudioFalso.instancias).toHaveLength(0)
   })
 
-  it('ignora rutas inválidas y no falla', async () => {
-    await expect(reproducirSecuencia([null, '', '   ', 42], opciones())).resolves.toBeUndefined()
+  it('rechaza una secuencia no vacía con rutas inválidas antes de crear audios', async () => {
+    await expect(
+      reproducirSecuencia([null, '', '   ', 42], opciones()),
+    ).rejects.toThrow(/ruta inválida/i)
     expect(AudioFalso.instancias).toHaveLength(0)
   })
 
@@ -132,43 +134,47 @@ describe('reproducirSecuencia', () => {
     await expect(promesa).resolves.toBeUndefined()
   })
 
-  it('continúa con el siguiente fragmento si uno emite "error"', async () => {
+  it('aborta si el segundo fragmento emite "error" y no inicia el tercero', async () => {
     const logger = crearLogger()
-    const promesa = reproducirSecuencia(['/roto.mp3', '/ok.mp3'], opciones({ logger }))
+    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3', '/3.mp3'], opciones({ logger }))
+    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
+
+    await dejarCorrer()
+    AudioFalso.instancias[0].emitir('ended')
     await dejarCorrer()
 
-    const roto = AudioFalso.instancias[0]
+    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3'])
+
+    const roto = AudioFalso.instancias[1]
     roto.emitir('error')
+
+    await rechazo
     await dejarCorrer()
 
-    expect(AudioFalso.instancias).toHaveLength(2)
-    expect(AudioFalso.instancias[1].ruta).toBe('/ok.mp3')
+    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3'])
     expect(roto.contarListeners('ended')).toBe(0)
     expect(roto.contarListeners('error')).toBe(0)
-
-    AudioFalso.instancias[1].emitir('ended')
-    await expect(promesa).resolves.toBeUndefined()
+    expect(roto.pauseCalls).toBe(1)
     expect(logger.warn).toHaveBeenCalled()
   })
 
-  it('no bloquea la secuencia si play() es rechazado', async () => {
+  it('aborta si el primer fragmento falla con play() rechazado', async () => {
     AudioFalso.implPlay = (audio) =>
       audio.ruta === '/1.mp3' ? Promise.reject(new Error('bloqueado')) : Promise.resolve()
     const logger = crearLogger()
 
     const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3'], opciones({ logger }))
+    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
+
     await dejarCorrer()
+    await rechazo
     await dejarCorrer()
 
-    expect(AudioFalso.instancias).toHaveLength(2)
-    expect(AudioFalso.instancias[1].ruta).toBe('/2.mp3')
-
-    AudioFalso.instancias[1].emitir('ended')
-    await expect(promesa).resolves.toBeUndefined()
+    expect(rutasReproducidas()).toEqual(['/1.mp3'])
     expect(logger.warn).toHaveBeenCalled()
   })
 
-  it('no queda bloqueado si el audio nunca emite "ended"', async () => {
+  it('aborta por timeout y no inicia el siguiente fragmento', async () => {
     vi.useFakeTimers()
     const logger = crearLogger()
 
@@ -177,18 +183,41 @@ describe('reproducirSecuencia', () => {
       logger,
       timeoutMs: 100,
     })
+    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
+
     await dejarCorrer()
     expect(AudioFalso.instancias).toHaveLength(1)
 
     vi.advanceTimersByTime(100)
     await dejarCorrer()
-    expect(AudioFalso.instancias).toHaveLength(2)
+    await rechazo
 
-    vi.advanceTimersByTime(100)
+    expect(rutasReproducidas()).toEqual(['/colgado.mp3'])
+    expect(vi.getTimerCount()).toBe(0)
+    expect(logger.warn).toHaveBeenCalled()
+  })
+
+  it('recupera la cola: B se reproduce después de que A falle', async () => {
+    const primera = reproducirSecuencia(['/a1.mp3', '/a2.mp3'], opciones())
+    const rechazoA = expect(primera).rejects.toThrow(/abortó|falló/i)
+
+    await dejarCorrer()
+    AudioFalso.instancias[0].emitir('ended')
+    await dejarCorrer()
+    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3'])
+
+    AudioFalso.instancias[1].emitir('error')
+    await rechazoA
     await dejarCorrer()
 
-    await expect(promesa).resolves.toBeUndefined()
-    expect(logger.warn).toHaveBeenCalled()
+    const segunda = reproducirSecuencia(['/b1.mp3'], opciones())
+    const resolucionB = expect(segunda).resolves.toBeUndefined()
+    await dejarCorrer()
+
+    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3', '/b1.mp3'])
+
+    AudioFalso.instancias[2].emitir('ended')
+    await resolucionB
   })
 
   it('serializa dos secuencias simultáneas sin superponer audio', async () => {

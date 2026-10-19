@@ -11,7 +11,7 @@ function esRutaValida(ruta) {
 }
 
 function reproducirFragmento(ruta, { timeoutMs, AudioCtor, logger }) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let terminado = false
     let audio = null
     let timer = null
@@ -50,7 +50,17 @@ function reproducirFragmento(ruta, { timeoutMs, AudioCtor, logger }) {
       if (terminado) return
       terminado = true
       limpiar()
-      resolve(resultado)
+
+      if (resultado === 'ended') {
+        resolve()
+        return
+      }
+
+      reject(
+        new Error(
+          `[reproductorVoz] Se abortó la secuencia: falló "${ruta}" (${resultado}).`,
+        ),
+      )
     }
 
     try {
@@ -94,7 +104,17 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
     logger = console,
   } = opciones
 
-  const lista = Array.isArray(rutas) ? rutas.filter(esRutaValida) : []
+  const lista = Array.isArray(rutas) ? rutas : []
+
+  if (lista.length === 0) {
+    return Promise.resolve()
+  }
+
+  if (!lista.every(esRutaValida)) {
+    return Promise.reject(
+      new Error('[reproductorVoz] La secuencia contiene una ruta inválida.'),
+    )
+  }
 
   const ejecucion = colaReproduccion.then(async () => {
     for (const ruta of lista) {
@@ -102,6 +122,8 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
     }
   })
 
+  // El catch evita que un fallo en A deje la cadena en estado rechazado y
+  // bloquee la secuencia B. El rechazo original se devuelve al caller.
   colaReproduccion = ejecucion.catch(() => {})
   return ejecucion
 }
