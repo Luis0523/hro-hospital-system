@@ -4,12 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 import SimuladorLlamado, { simuladorHabilitado } from './SimuladorLlamado.jsx'
 
 describe('simuladorHabilitado', () => {
-  it('exige DEV + mock + flag', () => {
+  it('exige DEV y mock, y se desactiva con flag false', () => {
     expect(
       simuladorHabilitado({
         DEV: false,
         VITE_USE_MOCK: 'true',
-        VITE_TABLERO_SIMULADOR_LLAMADO: 'true',
       }),
     ).toBe(false)
 
@@ -17,7 +16,6 @@ describe('simuladorHabilitado', () => {
       simuladorHabilitado({
         DEV: true,
         VITE_USE_MOCK: 'false',
-        VITE_TABLERO_SIMULADOR_LLAMADO: 'true',
       }),
     ).toBe(false)
 
@@ -25,9 +23,8 @@ describe('simuladorHabilitado', () => {
       simuladorHabilitado({
         DEV: true,
         VITE_USE_MOCK: 'true',
-        VITE_TABLERO_SIMULADOR_LLAMADO: 'false',
       }),
-    ).toBe(false)
+    ).toBe(true)
 
     expect(
       simuladorHabilitado({
@@ -36,6 +33,14 @@ describe('simuladorHabilitado', () => {
         VITE_TABLERO_SIMULADOR_LLAMADO: 'true',
       }),
     ).toBe(true)
+
+    expect(
+      simuladorHabilitado({
+        DEV: true,
+        VITE_USE_MOCK: 'true',
+        VITE_TABLERO_SIMULADOR_LLAMADO: 'false',
+      }),
+    ).toBe(false)
   })
 })
 

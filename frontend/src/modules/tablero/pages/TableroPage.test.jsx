@@ -184,6 +184,8 @@ describe('TableroPage', () => {
     expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasTabla()).toHaveLength(4)
     expect(screen.getByText('Datos de prueba')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /activar voz/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Simular llamado' })).toBeInTheDocument()
     expect(crearClienteTableroMock).not.toHaveBeenCalled()
   })
 
@@ -763,6 +765,29 @@ describe('TableroPage · tabla dinámica', () => {
 
     await screen.findByTestId('tablero-tabla')
     expect(filasTabla()).toHaveLength(2)
+  })
+
+  it('en viewport móvil usa tarjetas en lugar de la tabla', async () => {
+    const anchoOriginal = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 412,
+    })
+
+    try {
+      render(<TableroPage />)
+
+      expect(await screen.findByTestId('tablero-turnos-movil')).toBeInTheDocument()
+      expect(screen.getAllByTestId(/^tarjeta-turno-/)).toHaveLength(4)
+      expect(screen.queryAllByTestId('tablero-tabla-cuerpo')).toHaveLength(0)
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: anchoOriginal,
+      })
+    }
   })
 })
 
@@ -1714,6 +1739,16 @@ describe('TableroPage · simulador de llamado (DEV + MOCK)', () => {
     await screen.findByTestId('tablero-tabla')
 
     expect(screen.queryByRole('button', { name: 'Simular llamado' })).not.toBeInTheDocument()
+  })
+
+  it('en modo mock sin flag muestra Simular llamado', async () => {
+    vi.unstubAllEnvs()
+    estaEnModoMockMock.mockReturnValue(true)
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+
+    expect(screen.getByRole('button', { name: 'Simular llamado' })).toBeInTheDocument()
   })
 
   it('Simular llamado produce LlamadoGrande con la primera asignación visible', async () => {

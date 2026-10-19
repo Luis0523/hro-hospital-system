@@ -11,7 +11,7 @@ export default function LlamadoGrande({ asignacion }) {
     <section
       data-testid="llamado-grande"
       aria-label="Llamado de turno"
-      className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-6 text-center"
+      className="flex flex-1 flex-col items-center justify-center gap-5 px-4 py-4 text-center sm:gap-8 sm:px-6 sm:py-6"
     >
       <div className="flex flex-col items-center">
         <span className="text-label-md uppercase tracking-[0.4em] text-primary dark:text-sky-400">

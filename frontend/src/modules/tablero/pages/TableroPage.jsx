@@ -440,7 +440,7 @@ export default function TableroPage() {
           />
         </EncabezadoTablero>
 
-        <main className="flex flex-1 flex-col gap-4 px-4 py-2 md:px-6 2xl:gap-6 2xl:py-6">
+        <main className="flex flex-1 flex-col gap-4 px-3 py-2 sm:px-4 md:px-6 2xl:gap-6 2xl:py-6">
           {cargando && (
             <div className="flex flex-1 items-center justify-center">
               <Spinner label="Cargando turnos…" />

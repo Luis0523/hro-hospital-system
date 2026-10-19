@@ -24,7 +24,7 @@ export default function EncabezadoTablero({ children }) {
 
   return (
     <header className="flex flex-col gap-y-2 bg-primary px-4 py-2 text-on-primary md:px-6">
-      <div className="flex w-full items-stretch justify-between gap-x-4">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between sm:gap-x-4">
         <div data-testid="encabezado-marca" className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-on-primary/15">
             <Icon name="local_hospital" className="text-[24px]" />
@@ -37,7 +37,7 @@ export default function EncabezadoTablero({ children }) {
 
         <div
           data-testid="encabezado-reloj"
-          className="relative top-3.5 flex flex-col items-end justify-center self-stretch text-right leading-tight"
+          className="flex flex-col items-start justify-center self-stretch text-left leading-tight sm:relative sm:top-3.5 sm:items-end sm:text-right"
         >
           <p className="text-[clamp(1.4rem,1.7vw,2rem)] font-bold leading-tight tabular-nums">
             {formatearHora(ahora)}

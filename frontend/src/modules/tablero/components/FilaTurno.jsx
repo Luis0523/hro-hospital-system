@@ -1,4 +1,4 @@
-function formatearTurno(valor) {
+export function formatearTurno(valor) {
   return typeof valor === 'number' && Number.isFinite(valor) && valor > 0
     ? `#${String(valor).padStart(3, '0')}`
     : '—'

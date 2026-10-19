@@ -3,9 +3,13 @@ import FilaTurno from './FilaTurno.jsx'
 const CLASE_ENCABEZADO =
   'border-b-2 border-outline-variant/60 px-2 pb-2 text-center text-label-md uppercase tracking-[0.2em] text-on-surface-variant dark:border-slate-700 dark:text-slate-300 md:px-4'
 
-export default function SeccionTurnos({ asignaciones = [], etiqueta }) {
+export default function SeccionTurnos({ asignaciones = [], etiqueta, anchoCompleto = false }) {
   return (
-    <table className="mx-auto w-full max-w-2xl table-fixed border-collapse text-center">
+    <table
+      className={`mx-auto w-full ${
+        anchoCompleto ? 'max-w-none' : 'max-w-2xl'
+      } table-fixed border-collapse text-center`}
+    >
       <caption className="sr-only">{etiqueta ?? 'Turnos por consultorio'}</caption>
       <colgroup>
         <col style={{ width: '30%' }} />
