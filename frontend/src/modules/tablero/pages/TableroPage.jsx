@@ -10,7 +10,8 @@ import {
 import { resolverConfiguracionSala } from '../api/configuracionSala'
 import { resolverConfiguracionEstacion } from '../api/configuracionEstacion'
 import { crearClienteTablero, TOPIC_TABLERO, topicEstacion } from '../api/tableroSocket'
-import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
+import { construirSecuenciaPaciente } from '../api/segmentosVoz'
+import { reproducirSecuencia } from '../api/reproductorVoz'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
 import ControlLimpiarUltimos from '../components/ControlLimpiarUltimos.jsx'
 import ControlTema from '../components/ControlTema.jsx'
@@ -35,9 +36,12 @@ export function resolverDuracionLlamadoMs(env = import.meta.env) {
   return Number.isFinite(valor) && valor > 0 ? valor : DURACION_LLAMADO_SIN_VOZ_MS
 }
 
-function estimarDuracionVozMs(mensaje, baseMs) {
-  if (!mensaje) return baseMs
-  return Math.max(baseMs, Math.min(30000, 2000 + mensaje.length * 80))
+export function soportaAudioLocal(entorno = globalThis) {
+  return typeof entorno?.Audio === 'function'
+}
+
+export function estimarDuracionSecuenciaMs(secuencia, baseMs) {
+  return Math.max(baseMs * 2, secuencia.length * 2000)
 }
 
 /**
@@ -76,7 +80,7 @@ export default function TableroPage() {
   const [estadoConexion, setEstadoConexion] = useState(() =>
     estaEnModoMock() ? 'mock' : 'reconectando',
   )
-  const [vozDisponible] = useState(() => estaDisponibleVoz())
+  const [vozDisponible] = useState(() => soportaAudioLocal())
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
@@ -184,7 +188,6 @@ export default function TableroPage() {
   const activarVoz = useCallback(() => {
     vozActivaRef.current = true
     setVozActiva(true)
-    hablar(FRASE_ACTIVACION)
   }, [])
 
   const limpiarUltimosLlamados = useCallback(() => {
@@ -218,9 +221,10 @@ export default function TableroPage() {
     setVista('llamado')
 
     const baseMs = resolverDuracionLlamadoMs()
-    const conVoz = vozActivaRef.current && estaDisponibleVoz()
+    const conVoz = vozActivaRef.current && vozDisponible
     const totalRepeticiones = conVoz ? 2 : 0
     let repeticionActual = 0
+    let tokenRepeticion = 0
     let atendido = false
 
     const avanzarDeVerdad = () => {
@@ -265,23 +269,43 @@ export default function TableroPage() {
 
     const reproducir = () => {
       repeticionActual += 1
+      const token = ++tokenRepeticion
       atendido = false
-      const mensaje = anunciarTurno(siguiente, {
-        onEnd: finalizarRepeticion,
-        onError: finalizarRepeticion,
+
+      const finalizarEstaRepeticion = () => {
+        if (token !== tokenRepeticion) return
+        finalizarRepeticion()
+      }
+
+      const secuencia = construirSecuenciaPaciente({
+        numero: siguiente.turnoActual,
+        destino: siguiente.espacioNumero,
+        accion: 'pasara_a',
       })
 
       if (generacionLlamadoRef.current !== generacion) return
 
-      if (!mensaje) {
+      if (!secuencia) {
         programarVisual()
         return
       }
 
       timerLlamadoRef.current = setTimeout(
-        () => finalizarRepeticion(),
-        estimarDuracionVozMs(mensaje, baseMs),
+        finalizarEstaRepeticion,
+        estimarDuracionSecuenciaMs(secuencia, baseMs),
       )
+
+      let reproduccion
+      try {
+        reproduccion = reproducirSecuencia(secuencia)
+      } catch {
+        finalizarEstaRepeticion()
+        return
+      }
+
+      Promise.resolve(reproduccion)
+        .catch(() => {})
+        .finally(finalizarEstaRepeticion)
     }
 
     if (conVoz) {
@@ -289,7 +313,7 @@ export default function TableroPage() {
     } else {
       programarVisual()
     }
-  }, [limpiarTimerLlamado, avanzar])
+  }, [limpiarTimerLlamado, avanzar, vozDisponible])
 
   iniciarSiguienteRef.current = iniciarSiguiente
 

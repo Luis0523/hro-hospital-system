@@ -2,27 +2,29 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 const {
-  anunciarTurnoMock,
+  construirSecuenciaPacienteMock,
   crearClienteTableroMock,
-  estaDisponibleVozMock,
   estaEnModoMockMock,
   estaPermitidaMock,
-  hablarMock,
   obtenerEstadoInicialEstacionMock,
   obtenerEstadoInicialMock,
+  reproducirSecuenciaMock,
   resolverConfiguracionEstacionMock,
   resolverConfiguracionSalaMock,
   topicEstacionMock,
 } = vi.hoisted(() => ({
-  anunciarTurnoMock: vi.fn(),
+  construirSecuenciaPacienteMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
-  estaDisponibleVozMock: vi.fn(),
   estaEnModoMockMock: vi.fn(),
   estaPermitidaMock: vi.fn(),
-  hablarMock: vi.fn(),
   obtenerEstadoInicialEstacionMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  reproducirSecuenciaMock: vi.fn(),
   resolverConfiguracionEstacionMock: vi.fn(),
   resolverConfiguracionSalaMock: vi.fn(),
   topicEstacionMock: vi.fn(),
@@ -42,11 +44,12 @@ vi.mock('../api/configuracionEstacion', () => ({
   resolverConfiguracionEstacion: resolverConfiguracionEstacionMock,
 }))
 
-vi.mock('../api/comunicacionVoz', () => ({
-  estaDisponibleVoz: estaDisponibleVozMock,
-  hablar: hablarMock,
-  anunciarTurno: anunciarTurnoMock,
-  FRASE_ACTIVACION: 'Comunicación por voz activada.',
+vi.mock('../api/segmentosVoz', () => ({
+  construirSecuenciaPaciente: construirSecuenciaPacienteMock,
+}))
+
+vi.mock('../api/reproductorVoz', () => ({
+  reproducirSecuencia: reproducirSecuenciaMock,
 }))
 
 vi.mock('../api/tableroApi', async (importOriginal) => {
@@ -154,9 +157,10 @@ function configurarAntesDeCada({ capturarHandlers = true } = {}) {
   resolverConfiguracionEstacionMock.mockResolvedValue(null)
   obtenerEstadoInicialEstacionMock.mockResolvedValue(ASIGNACIONES_INICIALES)
   topicEstacionMock.mockImplementation((estacionId) => `/topic/estacion/${estacionId}`)
-  estaDisponibleVozMock.mockReturnValue(true)
-  hablarMock.mockReturnValue(true)
-  anunciarTurnoMock.mockReturnValue('mensaje')
+  construirSecuenciaPacienteMock.mockReturnValue([
+    '/audio/tablero/generales/paciente.mp3',
+  ])
+  reproducirSecuenciaMock.mockImplementation(() => new Promise(() => {}))
   if (capturarHandlers) {
     crearClienteTableroMock.mockImplementation((opciones) => {
       handlers = opciones
@@ -250,10 +254,7 @@ describe('TableroPage', () => {
   })
 
   it('actualiza únicamente la asignación que coincide por asignacionDiariaEspacioId', async () => {
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      opciones?.onEnd?.()
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(() => Promise.resolve())
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -408,8 +409,8 @@ describe('TableroPage', () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
-    expect(hablarMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
+    expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
   })
 
   it('el snapshot parcial con turno desconocido no abre LlamadoGrande ni anuncia', async () => {
@@ -430,10 +431,10 @@ describe('TableroPage', () => {
     const fila = await screen.findByTestId('fila-turno-7')
     expect(within(fila).getAllByText('—').length).toBeGreaterThan(0)
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
-  it('comienza con la voz desactivada y la activa con la frase de confirmación', async () => {
+  it('comienza con la voz desactivada y la activa sin reproducir audio', async () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
 
@@ -441,7 +442,7 @@ describe('TableroPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
-    expect(hablarMock).toHaveBeenCalledWith('Comunicación por voz activada.')
+    expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
     expect(screen.getByText('Voz activa')).toBeInTheDocument()
   })
 
@@ -461,14 +462,14 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('anuncia cuando cambia el turno actual tras activar la voz', async () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -476,24 +477,26 @@ describe('TableroPage', () => {
           asignacionDiariaEspacioId: 1,
           turnoActual: 8,
           turnoSiguiente: 9,
+          espacioNumero: '201',
           tipoEvento: 'LLAMADO',
           intentosLlamado: 1,
         }),
       )
     })
 
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
-    expect(anunciarTurnoMock).toHaveBeenCalledWith(
-      expect.objectContaining({ asignacionDiariaEspacioId: 1, turnoActual: 8, turnoSiguiente: 9 }),
-      expect.objectContaining({ onEnd: expect.any(Function), onError: expect.any(Function) }),
-    )
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledWith({
+      numero: 8,
+      destino: '201',
+      accion: 'pasara_a',
+    })
   })
 
   it('un evento ACTUALIZACION no anuncia aunque cambie el turno', async () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -506,14 +509,14 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('no anuncia si solo cambia el siguiente turno', async () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -521,7 +524,7 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('no anuncia asignaciones fuera del filtro aunque cambie el turno', async () => {
@@ -530,7 +533,7 @@ describe('TableroPage', () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -544,17 +547,100 @@ describe('TableroPage', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('muestra "Voz no disponible" sin romper el tablero', async () => {
-    estaDisponibleVozMock.mockReturnValue(false)
+    vi.stubGlobal('Audio', undefined)
 
     render(<TableroPage />)
 
     expect(await screen.findByTestId('tablero-tabla')).toBeInTheDocument()
     expect(screen.getByText('Voz no disponible')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /activar voz/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('TableroPage · voz local', () => {
+  beforeEach(() => {
+    configurarAntesDeCada({ capturarHandlers: true })
+  })
+
+  it('construye y reproduce la secuencia local dos veces', async () => {
+    const secuencia = ['/audio/tablero/generales/paciente.mp3']
+    construirSecuenciaPacienteMock.mockReturnValue(secuencia)
+    const terminaciones = []
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    act(() => {
+      handlers.onMensaje(
+        mensaje({
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 25,
+          espacioNumero: '6A',
+          tipoEvento: 'LLAMADO',
+          intentosLlamado: 1,
+        }),
+      )
+    })
+
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledWith({
+      numero: 25,
+      destino: '6A',
+      accion: 'pasara_a',
+    })
+    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(1)
+    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(1, secuencia)
+
+    await act(async () => terminaciones[0]())
+
+    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(2)
+    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(2, secuencia)
+
+    await act(async () => terminaciones[1]())
+
+    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+  })
+
+  it('no reproduce audio ni bloquea si la secuencia es null', async () => {
+    construirSecuenciaPacienteMock.mockReturnValue(null)
+
+    render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
+    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        handlers.onMensaje(
+          mensaje({
+            asignacionDiariaEspacioId: 1,
+            turnoActual: 200,
+            espacioNumero: '999',
+            tipoEvento: 'LLAMADO',
+            intentosLlamado: 1,
+          }),
+        )
+      })
+
+      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
+      expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(DURACION_LLAMADO_SIN_VOZ_MS)
+      })
+
+      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -616,10 +702,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('vuelve a la tabla tras las dos repeticiones de voz', async () => {
     const terminaciones = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -637,15 +722,15 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
 
-    act(() => terminaciones[0]())
+    await act(async () => terminaciones[0]())
 
     // Segunda repetición: mismo turno visible, misma asignación.
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
 
-    act(() => terminaciones[1]())
+    await act(async () => terminaciones[1]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
@@ -653,10 +738,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('procesa dos llamados FIFO con dos repeticiones cada uno sin interrumpir', async () => {
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ asignacion, onEnd: opciones.onEnd })
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => anuncios.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -689,25 +773,33 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     // Primer llamado visible (turno #008), sin interrumpir la cola.
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
     expect(anuncios).toHaveLength(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenLastCalledWith({
+      numero: 8,
+      destino: '201',
+      accion: 'pasara_a',
+    })
 
     // Pediatría, repetición 2.
-    act(() => anuncios[0].onEnd())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
-    expect(anuncios[1].asignacion).toMatchObject({ asignacionDiariaEspacioId: 1 })
+    await act(async () => anuncios[0]())
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
 
     // Avanza a Medicina.
-    act(() => anuncios[1].onEnd())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(3)
-    expect(anuncios[2].asignacion).toMatchObject({ asignacionDiariaEspacioId: 2 })
+    await act(async () => anuncios[1]())
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(3)
+    expect(construirSecuenciaPacienteMock).toHaveBeenLastCalledWith({
+      numero: 15,
+      destino: '202',
+      accion: 'pasara_a',
+    })
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#015')
 
     // Medicina, repetición 2 y fin de la cola.
-    act(() => anuncios[2].onEnd())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(4)
-    act(() => anuncios[3].onEnd())
+    await act(async () => anuncios[2]())
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(4)
+    await act(async () => anuncios[3]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
@@ -716,10 +808,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('avanza correctamente al recibir onError sin bloquear el tablero', async () => {
     const fallos = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      fallos.push(opciones.onError)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((_, reject) => fallos.push(reject)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -738,17 +829,19 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
-    act(() => fallos[0]())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    await act(async () => fallos[0](new Error('fallo de audio')))
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
 
-    act(() => fallos[1]())
+    await act(async () => fallos[1](new Error('fallo de audio')))
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
-  it('usa el fallback por timeout si onEnd no ocurre', async () => {
-    anunciarTurnoMock.mockReturnValue('mensaje')
+  it('usa el fallback por timeout si el audio no termina', async () => {
+    construirSecuenciaPacienteMock.mockReturnValue([
+      '/audio/tablero/generales/paciente.mp3',
+    ])
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -774,7 +867,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       })
 
       // El fallback no duplica: dos repeticiones y vuelve a la tabla.
-      expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+      expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
       expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
       expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
     } finally {
@@ -801,7 +894,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       })
 
       expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-      expect(anunciarTurnoMock).not.toHaveBeenCalled()
+      expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
 
       act(() => {
         vi.advanceTimersByTime(7000)
@@ -815,7 +908,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
   })
 
   it('sin SpeechSynthesis muestra el llamado y avanza por tiempo sin errores', async () => {
-    estaDisponibleVozMock.mockReturnValue(false)
+    vi.stubGlobal('Audio', undefined)
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -835,7 +928,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       })
 
       expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-      expect(anunciarTurnoMock).not.toHaveBeenCalled()
+      expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
 
       act(() => {
         vi.advanceTimersByTime(7000)
@@ -907,10 +1000,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     estaPermitidaMock.mockImplementation((id) => [1, 2].includes(Number(id)))
 
     const terminaciones = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -929,7 +1021,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
 
     act(() => {
       handlers.onMensaje(
@@ -944,10 +1036,10 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#008')
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
 
-    act(() => terminaciones[0]())
-    act(() => terminaciones[1]())
+    await act(async () => terminaciones[0]())
+    await act(async () => terminaciones[1]())
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
@@ -1018,10 +1110,12 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
   it('un callback tardío tras desmontar no rompe ni continúa la cola pendiente', async () => {
     let terminar
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminar = opciones.onEnd
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          terminar = resolve
+        }),
+    )
 
     const { unmount } = render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -1049,21 +1143,20 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
 
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
 
     unmount()
 
-    expect(() => act(() => terminar())).not.toThrow()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    await act(async () => terminar())
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
   })
 
   it('un re-llamado con distinto intento vuelve a anunciar', async () => {
     const terminaciones = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -1080,12 +1173,12 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
         }),
       )
     })
-    act(() => terminaciones[0]())
-    act(() => terminaciones[1]())
+    await act(async () => terminaciones[0]())
+    await act(async () => terminaciones[1]())
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -1100,7 +1193,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     })
 
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
   })
 
   it('un LLAMADO duplicado (misma firma) no vuelve a anunciar', async () => {
@@ -1118,13 +1211,13 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       })
 
     act(() => handlers.onMensaje(eventoLlamado()))
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => handlers.onMensaje(eventoLlamado()))
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('un ACTUALIZACION no borra la deduplicación del último llamado', async () => {
@@ -1152,9 +1245,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
         }),
       )
     })
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
 
     act(() => {
       handlers.onMensaje(
@@ -1168,7 +1261,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('arranque de TV a mitad de jornada: snapshot nulo y ACTUALIZACION no llama', async () => {
@@ -1202,7 +1295,7 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(within(screen.getByTestId('fila-turno-1')).getByText('#008')).toBeInTheDocument()
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('arranque de TV a mitad de jornada: snapshot nulo y LLAMADO real sí llama', async () => {
@@ -1352,7 +1445,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
     })
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('un WS LLAMADO dentro de sala sí llama', async () => {
@@ -1536,80 +1629,81 @@ describe('TableroPage · simulador de llamado (DEV + MOCK)', () => {
 
   it('con voz activa, Simular llamado anuncia exactamente 2 veces y vuelve a tabla', async () => {
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ asignacion, onEnd: opciones.onEnd })
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => anuncios.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
     await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
 
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
-    expect(anuncios[0].asignacion).toMatchObject({
-      turnoActual: 1,
-      intentosLlamado: 1,
-      tipoEvento: 'LLAMADO',
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenLastCalledWith({
+      numero: 1,
+      destino: '201',
+      accion: 'pasara_a',
     })
 
-    act(() => anuncios[0].onEnd())
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(2)
+    await act(async () => anuncios[0]())
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(2)
 
-    act(() => anuncios[1].onEnd())
+    await act(async () => anuncios[1]())
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
   it('Re-llamar conserva el turno y aumenta el intento', async () => {
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ asignacion, onEnd: opciones.onEnd })
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => anuncios.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
-    act(() => anuncios[0].onEnd())
-    act(() => anuncios[1].onEnd())
-    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
-      turnoActual: 1,
-      intentosLlamado: 1,
+    await act(async () => anuncios[0]())
+    await act(async () => anuncios[1]())
+    expect(construirSecuenciaPacienteMock.mock.calls.at(-1)[0]).toMatchObject({
+      numero: 1,
+      destino: '201',
+      accion: 'pasara_a',
     })
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
     await userEvent.click(screen.getByRole('button', { name: 'Re-llamar' }))
 
-    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
-      turnoActual: 1,
-      intentosLlamado: 2,
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock.mock.calls.at(-1)[0]).toMatchObject({
+      numero: 1,
+      destino: '201',
+      accion: 'pasara_a',
     })
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
   })
 
   it('un nuevo Simular llamado avanza al siguiente turno (turno 2 / intento 1)', async () => {
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ asignacion, onEnd: opciones.onEnd })
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => anuncios.push(resolve)),
+    )
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
-    act(() => anuncios[0].onEnd())
-    act(() => anuncios[1].onEnd())
-    anunciarTurnoMock.mockClear()
+    await act(async () => anuncios[0]())
+    await act(async () => anuncios[1]())
+    construirSecuenciaPacienteMock.mockClear()
 
     await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
 
-    expect(anunciarTurnoMock.mock.calls.at(-1)[0]).toMatchObject({
-      turnoActual: 2,
-      intentosLlamado: 1,
+    expect(construirSecuenciaPacienteMock.mock.calls.at(-1)[0]).toMatchObject({
+      numero: 2,
+      destino: '201',
+      accion: 'pasara_a',
     })
   })
 
@@ -1630,10 +1724,9 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
 
   function capturarTerminaciones() {
     const terminaciones = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
     return terminaciones
   }
 
@@ -1645,9 +1738,11 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
     })
   }
 
-  function completar(terminaciones, indices) {
+  async function completar(terminaciones, indices) {
     for (const indice of indices) {
-      act(() => terminaciones[indice]())
+      await act(async () => {
+        terminaciones[indice]()
+      })
     }
   }
 
@@ -1689,7 +1784,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
     expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
@@ -1708,14 +1803,14 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     act(() => {
       handlers.onMensaje(
         mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
       )
     })
-    completar(terminaciones, [2, 3])
+    await completar(terminaciones, [2, 3])
 
     expect(filasRecientes().map((fila) => fila.getAttribute('data-testid'))).toEqual([
       'ultimo-llamado-2-14',
@@ -1740,7 +1835,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         )
       })
       const base = (i - 1) * 2
-      completar(terminaciones, [base, base + 1])
+      await completar(terminaciones, [base, base + 1])
     }
 
     const filas = filasRecientes()
@@ -1770,15 +1865,15 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#005')
     expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
 
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#014')
     expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
 
-    completar(terminaciones, [2, 3])
+    await completar(terminaciones, [2, 3])
     expect(screen.getByTestId('llamado-turno')).toHaveTextContent('#021')
     expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
 
-    completar(terminaciones, [4, 5])
+    await completar(terminaciones, [4, 5])
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
     expect(filasRecientes().map((fila) => fila.getAttribute('data-testid'))).toEqual([
       'ultimo-llamado-3-21',
@@ -1944,14 +2039,14 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     act(() => {
       handlers.onMensaje(
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 6, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [2, 3])
+    await completar(terminaciones, [2, 3])
 
     expect(screen.getByTestId('ultimo-llamado-1-5')).toBeInTheDocument()
     expect(screen.getByTestId('ultimo-llamado-1-6')).toBeInTheDocument()
@@ -1968,12 +2063,12 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
       mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' })
 
     act(() => handlers.onMensaje(evento()))
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
     act(() => handlers.onMensaje(evento()))
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
     expect(filasRecientes()).toHaveLength(1)
   })
 
@@ -1988,7 +2083,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
     expect(filasRecientes()).toHaveLength(1)
 
     act(() => {
@@ -2026,7 +2121,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
 
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
   })
 
   it('una reconexión/error de conexión conserva los recientes', async () => {
@@ -2040,7 +2135,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
     expect(filasRecientes()).toHaveLength(1)
 
     act(() => handlers.onError('fallo'))
@@ -2077,7 +2172,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     expect(screen.getByTestId('ultimo-llamado-1-5')).toHaveTextContent('#005')
     expect(screen.queryByText('Juan Perez')).not.toBeInTheDocument()
@@ -2098,7 +2193,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     expect(container.firstChild).toHaveClass('dark')
     expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
@@ -2116,7 +2211,7 @@ describe('TableroPage · últimos llamados en columna derecha', () => {
       await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
       await userEvent.click(screen.getByRole('button', { name: 'Simular llamado' }))
 
-      completar(terminaciones, [0, 1])
+      await completar(terminaciones, [0, 1])
 
       expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
       expect(screen.getByTestId('ultimo-llamado-1-1')).toHaveTextContent('#001')
@@ -2133,10 +2228,9 @@ describe('TableroPage · limpieza manual de últimos llamados', () => {
 
   function capturarTerminaciones() {
     const terminaciones = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      terminaciones.push(opciones.onEnd)
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(
+      () => new Promise((resolve) => terminaciones.push(resolve)),
+    )
     return terminaciones
   }
 
@@ -2148,9 +2242,11 @@ describe('TableroPage · limpieza manual de últimos llamados', () => {
     })
   }
 
-  function completar(terminaciones, indices) {
+  async function completar(terminaciones, indices) {
     for (const indice of indices) {
-      act(() => terminaciones[indice]())
+      await act(async () => {
+        terminaciones[indice]()
+      })
     }
   }
 
@@ -2167,7 +2263,7 @@ describe('TableroPage · limpieza manual de últimos llamados', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
   }
 
   it('sin recientes no muestra el botón "Limpiar últimos"', async () => {
@@ -2227,7 +2323,7 @@ describe('TableroPage · limpieza manual de últimos llamados', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 2, turnoActual: 14, espacioNumero: '101' }),
       )
     })
-    completar(terminaciones, [2, 3])
+    await completar(terminaciones, [2, 3])
 
     expect(screen.getByTestId('tablero-ultimos-llamados')).toBeInTheDocument()
     expect(screen.getByTestId('ultimo-llamado-2-14')).toHaveTextContent('#014')
@@ -2292,7 +2388,7 @@ describe('TableroPage · limpieza manual de últimos llamados', () => {
         mensajeLlamado({ asignacionDiariaEspacioId: 1, turnoActual: 5, espacioNumero: '103' }),
       )
     })
-    completar(terminaciones, [0, 1])
+    await completar(terminaciones, [0, 1])
 
     expect(container.firstChild).toHaveClass('dark')
     expect(botonLimpiar()).toBeInTheDocument()
