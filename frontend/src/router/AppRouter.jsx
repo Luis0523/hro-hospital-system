@@ -5,6 +5,7 @@ import DashboardArchivoPage from '@/modules/archivo/pages/DashboardArchivoPage.j
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
 import SalidasExternasPage from '@/modules/archivo/pages/SalidasExternasPage.jsx'
 import SalidaArchivoPage from '@/modules/archivo/pages/SalidaArchivoPage.jsx'
+import SalidaArchivoHospitalPage from '@/modules/archivo/pages/SalidaArchivoHospitalPage.jsx'
 import RegistroCarnetsPage from '@/modules/archivo/pages/RegistroCarnetsPage.jsx'
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
@@ -89,6 +90,7 @@ export default function AppRouter() {
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
           <Route path="/archivo/salida" element={<SalidaArchivoPage />} />
+          <Route path="/archivo/salida-hospital" element={<SalidaArchivoHospitalPage />} />
           <Route path="/archivo/dashboard" element={<DashboardArchivoPage />} />
           <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
           <Route path="/archivo/consolidado" element={<ConsolidadoArchivoPage />} />

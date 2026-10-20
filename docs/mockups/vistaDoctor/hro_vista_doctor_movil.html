@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1425" />
+  <title>SIGHO · Vista del doctor | HRO</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a1220;--nav:#111b2d;--panel:#151f32;--panel2:#1a2840;--panel3:#101b2c;--line:#30415f;--faint:#23344d;--text:#eaf2ff;--muted:#a7b8d2;--blue:#0b97ee;--blue2:#60baff;--green:#54e6b6;--yellow:#ffcb64;--red:#ff687e;--violet:#c5a4ff;--shadow:0 18px 55px #02071455}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(900px 480px at 50% -160px,#193859 0%,transparent 70%),var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:14px}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,input:focus-visible{outline:2px solid var(--blue2);outline-offset:3px}.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}svg.icon.lg{width:23px;height:23px}svg.icon.sm{width:15px;height:15px}.app{max-width:1080px;margin:auto;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}.topbar{display:flex;align-items:center;gap:12px;min-height:77px;padding:12px clamp(16px,3.5vw,30px);border-bottom:1px solid #263651;background:rgba(17,27,45,.98)}.brandmark{width:43px;height:43px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(150deg,#0075c9,#049af1);color:white;box-shadow:0 5px 18px #0094fa22}.brandmark .icon{width:25px;height:25px}.hamburger{width:41px;height:41px;display:grid;place-items:center;border:1px solid #3c4d67;background:#17253a;border-radius:9px;color:#adc1df}.titlemark{display:flex;flex-direction:column;gap:3px;min-width:0}.titlemark strong{letter-spacing:2px;font-weight:800;color:#77c9ff;font-size:12px}.titlemark span{font-weight:700;font-size:17px;white-space:nowrap}.operating{margin-left:auto;border:1px solid #1a7c68;background:#0d302e;color:var(--green);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:750;white-space:nowrap;display:flex;gap:7px;align-items:center}.dot{width:8px;height:8px;background:currentColor;border-radius:50%;box-shadow:0 0 9px currentColor}.operating.is-closed{border-color:#a45d67;background:#35212c;color:#ff99a5}.main{padding:19px clamp(14px,3.5vw,30px) 32px;display:flex;flex-direction:column;gap:14px}.panel{background:linear-gradient(110deg,#16233a,#121d30);border:1px solid var(--line);border-radius:15px;box-shadow:0 8px 32px #080d1940}.doctor-card{display:flex;align-items:center;gap:16px;padding:19px 21px}.avatar{width:60px;height:60px;flex:0 0 60px;border-radius:50%;display:grid;place-items:center;border:1px solid #3f8fde;background:linear-gradient(140deg,#1c4778,#153054);color:#8bcaff}.avatar .icon{width:32px;height:32px}.doctor-name{font-size:19px;font-weight:800;line-height:1.3}.sub{color:var(--muted);line-height:1.5}.doctor-specialty{font-size:14px;margin-top:3px}.clinic-id{margin-left:auto;padding-left:25px;border-left:1px solid #405271;display:flex;align-items:center;gap:11px}.clinic-id .icon{color:var(--blue2);width:25px;height:25px}.clinic-id strong{display:block;font-size:16px}.clinic-id small{display:block;color:var(--muted);margin-top:4px;font-size:12px;line-height:1.5}.notices{display:flex;flex-direction:column;gap:10px}.notice{display:flex;gap:13px;align-items:flex-start;padding:12px 15px;border-radius:11px;background:#262722;border:1px solid #a77b28}.notice-icon{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;flex:0 0 31px;color:#1c2433;background:var(--yellow)}.notice-icon .icon{width:19px;height:19px}.notice strong{display:block;color:var(--yellow);font-size:14px;line-height:1.5}.notice p{margin:1px 0 0;color:var(--muted);font-size:12px;line-height:1.45}.notice.success{border-color:#198a70;background:#0b2a2b}.notice.success .notice-icon{background:var(--green)}.notice.success strong{color:var(--green)}.notice.info{border-color:#2279a5;background:#10283b}.notice.info .notice-icon{background:#72c4ff}.notice.info strong{color:#8bd1ff}.notice button{align-self:center;margin-left:auto;background:none;border:0;color:inherit;opacity:.7;padding:6px;display:grid;place-items:center}.notice button:hover{opacity:1}.section{padding:18px 19px}.section-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.section-title h2{margin:0;font-size:18px;letter-spacing:-.3px}.section-title>.icon{color:#86c8ff;width:22px;height:22px}.pill{border:1px solid #2f6594;background:#163657;color:#8bcaff;font-size:12px;padding:6px 10px;border-radius:999px;font-weight:700;margin-left:auto}.section-description{color:var(--muted);font-size:13px;margin:7px 0 16px;line-height:1.6}.table{border:1px solid var(--line);border-radius:12px;overflow:hidden}.table-head,.patient-row{display:grid;grid-template-columns:100px minmax(150px,1.05fr) minmax(230px,1.65fr) 135px;align-items:center;gap:13px}.table-head{background:#1c304d;color:#b7c9e7;font-size:12px;font-weight:750;padding:12px 15px}.table-head>div:last-child{text-align:center}.patient-row{padding:13px 15px;border-top:1px solid #293852;background:#121f33;transition:background .2s}.patient-row:first-of-type{border-top:none}.patient-row:hover{background:#172840}.patient-row.attended-row{background:#101b2d;color:#77859f}.turn-num{display:inline-flex;align-items:center;justify-content:center;color:#79c3ff;background:#17385c;border:1px solid #2d5783;border-radius:9px;min-height:38px;min-width:67px;padding:4px 10px;font-size:16px;font-weight:800}.row-expediente{min-width:0}.exp-field{display:flex;align-items:center;min-height:39px;background:#152b48;border:1px solid #355579;border-radius:8px;padding:0 8px;gap:7px}.exp-field .icon{color:#70bdf9;width:15px;height:15px}.exp-field input{width:100%;min-width:0;background:transparent;color:#eef6ff;border:0;outline:none;font-weight:650;font-size:13px;padding:10px 0}.exp-field input::placeholder{color:#76a9d1;font-weight:500}.exp-field:focus-within{border-color:#36a9ff;box-shadow:0 0 0 2px #0087ee20}.exp-field input:disabled{color:#8898ac}.patient-name{font-size:13px;font-weight:730;line-height:1.45;min-height:19px;overflow-wrap:anywhere}.patient-name.empty{font-weight:500;color:#9bacbf}.patient-name.invalid{color:var(--red)}.patient-status{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:6px}.status{display:inline-flex;align-items:center;gap:5px;font-weight:750;font-size:11px;white-space:nowrap;border-radius:7px;padding:5px 7px;border:1px solid}.status.pending{color:#a7bedb;border-color:#485a71;background:#1c2b40}.status.waiting{color:var(--yellow);border-color:#8c6a2d;background:#342d20}.status.retry{color:var(--violet);border-color:#8664c2;background:#27223e}.status.noanswer{color:#ff8699;border-color:#a34a63;background:#39222f}.status.attended{color:var(--green);border-color:#168767;background:#0d302e}.timer{color:#a2b5cf;font-size:11px}.attended-row .turn-num,.attended-row .exp-field{filter:grayscale(.55);opacity:.65}.attended-row .patient-name,.attended-row .exp-field input{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:#a0a8b7}.empty-state{color:#7f93ad;font-size:11px;margin-top:3px}.row-actions{display:flex;flex-direction:column;gap:7px;align-items:stretch;justify-content:center}.call-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:0;width:100%;line-height:1.2;text-align:center;background:linear-gradient(145deg,#168eff,#0089df);border:1px solid #26a7ff;color:white;font-size:13px;font-weight:800;border-radius:9px;padding:11px 11px;min-height:40px;white-space:nowrap}.call-btn:not(:disabled):hover{filter:brightness(1.14)}.call-btn:disabled{background:#223149;border-color:#34435b;color:#798ba3}.secondary-actions{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}.mini-btn{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:30px;background:#172942;border:1px solid #3a516f;border-radius:7px;color:#b9d0eb;padding:5px 7px;font-size:10.5px;font-weight:750;white-space:nowrap}.mini-btn:hover{background:#24405f}.mini-btn.no{color:#ff9dad;border-color:#773e55}.mini-btn.yes{color:#6bebc5;border-color:#25755f}.mini-btn.retry{color:#ceb5ff;border-color:#64528d}.mini-btn .icon{width:13px;height:13px}.helper{color:#8fa6c4;font-size:11px;display:flex;align-items:center;gap:7px;margin-top:14px;line-height:1.5}.helper .icon{width:15px;height:15px;color:#8bbef0}.helper code{font-family:ui-monospace,Consolas,monospace;color:#8accff}.summary-head{display:flex;align-items:center;gap:10px;margin-bottom:15px}.summary-head h2{font-size:17px;margin:0}.summary-head>.icon{color:#88c9ff;width:22px;height:22px}.summary-head small{margin-left:auto;color:var(--muted);font-size:12px}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric{min-width:0;border:1px solid #476080;border-radius:11px;padding:13px 16px;display:flex;align-items:center;gap:12px}.metric .icon{width:24px;height:24px}.metric strong{display:block;font-size:27px;font-weight:800;line-height:1.2}.metric span{display:block;font-size:13px;margin-top:2px}.metric.pending{background:#2a2927;border-color:#9b7629;color:var(--yellow)}.metric.waiting{background:#122c4b;border-color:#2765a2;color:#77bfff}.metric.attended{background:#0d3031;border-color:#188a69;color:var(--green)}.other-metrics{color:#8ca1bd;font-size:12px;margin:13px 0 0}.day-end{border:1px solid #ff7186;background:linear-gradient(145deg,#f04c61,#d82f4d);color:white;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:57px;border-radius:12px;font-size:16px;font-weight:800;box-shadow:0 11px 28px #be345022}.day-end:hover{filter:brightness(1.06)}.day-end.closed{background:#1b3141;border-color:#55718a;color:#b9d4e4;box-shadow:none}.utility-row{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:0 2px}.utility-row small{color:#677f9e;font-size:11px}.text-btn{border:0;background:none;color:#82c7ff;font-size:12px;padding:8px 3px;font-weight:650;display:flex;align-items:center;gap:6px}.text-btn:hover{text-decoration:underline}.overlay{position:fixed;inset:0;background:#020816bb;z-index:10;display:grid;place-items:center;padding:18px}.modal{max-width:420px;width:100%;padding:24px;background:#17253b;border:1px solid #46617f;border-radius:17px;box-shadow:var(--shadow)}.modal .icon.header{width:33px;height:33px;color:#ff8e9c}.modal h3{font-size:21px;margin:12px 0 8px}.modal p{color:var(--muted);line-height:1.65;margin:0}.modal-stats{background:#0e1a2b;border:1px solid #31445d;padding:12px;margin:16px 0;border-radius:10px;display:flex;gap:8px;justify-content:space-around;font-size:12px;text-align:center}.modal-stats strong{display:block;font-size:20px}.modal-actions{display:flex;gap:10px;justify-content:flex-end}.btn-ghost,.btn-confirm{border-radius:9px;padding:11px 14px;font-weight:750;border:1px solid #536581;color:white;background:#24334c}.btn-confirm{background:#d93953;border-color:#ff6f84}.menu-shade{position:fixed;inset:0;background:#030917ae;z-index:7}.menu{position:fixed;left:0;top:0;bottom:0;width:min(310px,87vw);z-index:8;padding:26px 16px;background:#152136;border-right:1px solid #405678;box-shadow:25px 0 60px #040a1b90;display:flex;flex-direction:column;gap:12px}.menu h2{font-size:17px;margin:5px 8px 15px}.menu>button{border:1px solid #354963;border-radius:9px;background:#1c2d46;color:#cbe3ff;padding:13px 12px;display:flex;align-items:center;gap:10px;text-align:left;font-weight:650}.menu>button:hover{background:#26425f}.menu .muted{margin-top:auto;padding:10px;font-size:11px;color:#96a9c2;line-height:1.5}.board-wrap{padding:23px clamp(14px,4vw,38px)}.board-header{display:flex;align-items:center;gap:15px}.board-header h1{margin:0;font-size:23px}.board-header p{color:#a6bad4;margin:5px 0 0}.board-display{border:1px solid #38577e;border-radius:22px;text-align:center;padding:clamp(25px,6vw,65px) 14px;margin-top:22px;background:linear-gradient(145deg,#173051,#0e1a2d);box-shadow:var(--shadow)}.board-display>small{color:#9ab5d3;letter-spacing:3px;font-weight:850;font-size:13px}.board-id{font-size:clamp(70px,15vw,155px);font-weight:900;color:#e8f7ff;line-height:1.3;margin:16px 0;text-shadow:0 0 50px #2589f666}.board-clinic{font-size:clamp(24px,5vw,40px);color:#6ac1ff;font-weight:850}.board-history{margin-top:18px;padding:18px}.board-history h2{font-size:18px;margin:0 0 10px}.board-history p{color:#99aeca}.board-history ul{list-style:none;margin:0;padding:0}.board-history li{padding:12px 5px;border-bottom:1px solid #31405a;display:flex;justify-content:space-between;gap:10px}.board-history li strong{color:#77caff}.board-history li span{color:#aabbd3}.view-hidden,.hidden{display:none!important}
+    @media(max-width:720px){.topbar{min-height:71px;padding:11px 15px;gap:9px}.hamburger{width:38px;height:38px}.brandmark{width:40px;height:40px}.titlemark span{font-size:15px}.operating{font-size:10px;padding:8px 9px;gap:6px}.operating .dot{width:8px;height:8px}.operating #operation-text{display:none}.operating::after{content:'ACTIVO'}.operating.is-closed::after{content:'CERRADO'}.main{padding:13px 12px 23px;gap:12px}.doctor-card{gap:10px;padding:14px}.avatar{width:45px;height:45px;flex-basis:45px}.avatar .icon{width:24px;height:24px}.doctor-name{font-size:15px}.doctor-specialty{font-size:12px}.clinic-id{padding-left:12px;gap:7px}.clinic-id .icon{width:18px;height:18px}.clinic-id strong{font-size:13px}.clinic-id small{font-size:10px}.section{padding:15px 12px}.section-title h2{font-size:16px}.section-description{font-size:12px;margin-bottom:12px}.table{border:none;display:flex;flex-direction:column;gap:9px;overflow:visible}.table-head{display:none}.patient-row{display:grid;grid-template-columns:74px minmax(0,1fr) 102px;gap:9px 10px;border:1px solid #314764;border-radius:10px;padding:12px 10px;background:#111e31;align-items:start}.patient-row:hover{background:#15263e}.turn-cell{grid-column:1;grid-row:1;display:flex;align-items:center}.turn-num{min-height:39px;min-width:62px;font-size:14px}.row-expediente{grid-column:2 / 4;grid-row:1}.row-expediente::before,.row-person::before{content:'No. de expediente';display:block;font-size:10px;color:#8298b5;margin-bottom:5px;font-weight:650}.row-person::before{content:'Nombre del paciente';margin-bottom:3px}.row-person{grid-column:1 / 3;grid-row:2}.row-actions{grid-column:3;grid-row:2;justify-content:start;min-width:0}.row-actions:has(.secondary-actions){grid-row:2;justify-content:start;align-items:stretch}.secondary-actions{max-width:96px;flex-direction:column}.mini-btn{width:100%;justify-content:flex-start}.exp-field{min-height:39px}.exp-field input{font-size:12px}.call-btn{font-size:12px;padding:9px 8px;min-height:39px}.call-btn .icon{width:15px;height:15px}.patient-name{font-size:14px}.patient-status{margin-top:5px}.timer{font-size:11px}.helper{font-size:11px;display:block}.helper .icon{vertical-align:middle}.metrics{gap:7px}.metric{padding:9px 6px;display:block;text-align:center}.metric .icon{width:20px;height:20px;margin-bottom:4px}.metric strong{font-size:23px}.metric span{font-size:11px}.summary-head h2{font-size:16px}.summary-head small{font-size:11px}.board-wrap{padding:15px}.board-header h1{font-size:18px}}
+    @media(max-width:370px){.doctor-card{flex-wrap:wrap}.clinic-id{border-left:0;margin-left:55px;padding-left:0}.patient-row{grid-template-columns:62px minmax(0,1fr) 90px;column-gap:7px;padding:10px 8px}.turn-num{min-width:55px}.call-btn{font-size:11px;gap:4px}.row-actions{min-width:0}.section{padding:12px 9px}.clinic-id{font-size:10px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <!-- Iconos SVG locales: este prototipo no necesita Internet ni dependencias externas. -->
+  <svg style="display:none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-cross" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 5V3h8v2M12 9v8M8 13h8"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0116 0v2M9 18v3M15 18v3"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M10 21v-5h4v5M8 7h2m4 0h2M8 11h2m4 0h2"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M16 3.5a4 4 0 010 8M22 20v-2a4 4 0 00-3-3.87"/><circle cx="9" cy="7" r="4"/></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 01-2.2 2A19.8 19.8 0 012 4.2 2 2 0 014 2h3a2 2 0 012 1.7l.5 3a2 2 0 01-.6 1.8L7 10.4a16 16 0 006.6 6.6l1.9-1.9a2 2 0 011.8-.6l3 .5a2 2 0 011.7 1.9z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M7 12l3 3 7-7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 7v6m0 4h.01"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a8 8 0 0113.4-3L20 7M4 17l1.1 1a8 8 0 0013.4-3"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6m0-10h.01"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V12M12 20V5M19 20V9"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8m-8 4h8"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 22V3m0 1c6-4 8 4 16 0v12c-8 4-10-4-16 0"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="15" rx="2"/><path d="M8 22h8M12 18v4"/></symbol>
+  </svg>
+  <div class="app">
+    <header class="topbar">
+      <button class="hamburger" id="open-menu" aria-label="Abrir menú"><svg class="icon lg"><use href="#i-menu"/></svg></button>
+      <div class="brandmark"><svg class="icon"><use href="#i-cross"/></svg></div>
+      <div class="titlemark"><strong>SIGHO</strong><span id="view-label">Vista del doctor</span></div>
+      <div class="operating" id="operation-indicator"><i class="dot"></i><span id="operation-text">MODO OPERATIVO</span></div>
+    </header>
+
+    <main class="main" id="doctor-view">
+      <section class="doctor-card panel" aria-label="Datos de clínica y doctor">
+        <div class="avatar"><svg class="icon"><use href="#i-user"/></svg></div>
+        <div><div class="doctor-name">Dra. Astrid González</div><div class="sub doctor-specialty">Medicina Interna</div></div>
+        <div class="clinic-id"><svg class="icon"><use href="#i-building"/></svg><div><strong>Clínica 3</strong><small>Consulta externa<br>Segundo nivel</small></div></div>
+      </section>
+      <div class="notices" id="notice-list" aria-live="polite"></div>
+      <section class="panel section" aria-labelledby="patients-heading">
+        <div class="section-title"><svg class="icon"><use href="#i-users"/></svg><h2 id="patients-heading">Pacientes asignados</h2><span class="pill">Clínica 3</span></div>
+        <p class="section-description">Ingrese el No. de expediente para obtener el nombre del paciente. Utilice «Llamar» para enviar el turno al tablero.</p>
+        <div class="table" aria-label="Pacientes de Medicina Interna">
+          <div class="table-head"><div>Correlativo</div><div>No. de expediente</div><div>Nombre del paciente</div><div>Llamar</div></div>
+          <div id="patient-list"></div>
+        </div>
+        <div class="helper"><svg class="icon"><use href="#i-info"/></svg> Datos de demostración. Para probar el autocompletado escriba <code>2026-001233</code> en MI-3.</div>
+      </section>
+      <section class="panel section" aria-labelledby="summary-heading">
+        <div class="summary-head"><svg class="icon"><use href="#i-chart"/></svg><h2 id="summary-heading">Resumen de la jornada</h2><small id="turn-total"></small></div>
+        <div class="metrics">
+          <div class="metric pending"><svg class="icon"><use href="#i-file"/></svg><div><strong id="metric-pending">0</strong><span>Pendientes</span></div></div>
+          <div class="metric waiting"><svg class="icon"><use href="#i-clock"/></svg><div><strong id="metric-waiting">0</strong><span>En espera</span></div></div>
+          <div class="metric attended"><svg class="icon"><use href="#i-check"/></svg><div><strong id="metric-attended">0</strong><span>Atendidos</span></div></div>
+        </div>
+        <div class="other-metrics" id="other-metrics"></div>
+      </section>
+      <button class="day-end" id="end-day"><svg class="icon lg"><use href="#i-flag"/></svg><span>Fin de jornada</span></button>
+      <div class="utility-row"><small>HRO · Prototipo local de SIGHO · Sin conexión a un servidor</small><button class="text-btn" id="open-board-link"><svg class="icon sm"><use href="#i-monitor"/></svg>Ver tablero demo</button></div>
+    </main>
+
+    <div class="board-wrap view-hidden" id="board-view">
+      <div class="board-header"><div><h1>Tablero de turnos · Demo</h1><p>Consulta externa · Segundo nivel</p></div><button class="btn-ghost" id="back-to-doctor">Volver</button></div>
+      <div class="board-display" aria-live="polite"><small>LLAMADO ACTUAL</small><div class="board-id" id="board-turn">—</div><div class="board-clinic" id="board-clinic">En espera del siguiente llamado</div></div>
+      <div class="board-history panel"><h2>Últimos llamados</h2><ul id="board-log"></ul><p id="board-help">Al pulsar «Llamar» en la vista del doctor, aparecerá aquí el correlativo y la clínica.</p></div>
+      <p class="sub" style="font-size:12px;margin-top:16px">Esta vista es una simulación local. No está conectada al tablero real ni notifica a pacientes.</p>
+    </div>
+  </div>
+
+  <div id="menu-shade" class="menu-shade hidden"></div>
+  <nav id="menu" class="menu hidden" aria-label="Menú principal">
+    <h2>SIGHO · Estación clínica</h2>
+    <button id="menu-doctor"><svg class="icon"><use href="#i-users"/></svg> Vista del doctor</button>
+    <button id="menu-board"><svg class="icon"><use href="#i-monitor"/></svg> Tablero de prueba</button>
+    <button id="menu-reset"><svg class="icon"><use href="#i-repeat"/></svg> Restablecer datos demo</button>
+    <div class="muted">Prototipo independiente. Todos los nombres y expedientes utilizados son ficticios.</div>
+  </nav>
+
+  <div id="confirm-overlay" class="overlay hidden" role="presentation">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <svg class="icon header"><use href="#i-flag"/></svg>
+      <h3 id="modal-title">¿Finalizar jornada?</h3>
+      <p id="modal-description">Esta acción cerrará temporalmente la jornada de prueba e impedirá nuevos llamados.</p>
+      <div class="modal-stats" id="modal-stats"></div>
+      <div class="modal-actions"><button class="btn-ghost" id="cancel-end">Cancelar</button><button class="btn-confirm" id="confirm-end">Finalizar jornada</button></div>
+    </div>
+  </div>
+
+  <script>
+    (()=>{
+      'use strict';
+      // Sustituir DEMO_PATIENTS por GET /api/expedientes/:numero cuando exista API del HRO.
+      // Sustituir el evento emitido en callPatient() por una petición autorizada al backend.
+      const DEMO_PATIENTS = Object.freeze({
+        '2026-001233':'Rosa María Hernández',
+        '2026-001234':'Juan Pérez Morales',
+        '2026-001235':'María López Ramírez',
+        '2026-001236':'Pedro Antonio García',
+        '2026-001237':'Carlos Mendoza Díaz',
+        '2026-001238':'Ana Torres Velásquez',
+        '2026-001239':'Elena Rodríguez López'
+      });
+      const KEY='sigho_hro_doctor_demo_v3', CHANNEL='sigho_hro_board_demo_v3';
+      const $=(s,root=document)=>root.querySelector(s);
+      const icon=(name, cls='')=>`<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+      const safe=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const initialState=()=>{
+        const now=Date.now();
+        return {closed:false,rows:[
+          {turn:'MI-3',exp:'',status:'pending',lastCall:null,finished:null},
+          {turn:'MI-4',exp:'2026-001234',status:'waiting',lastCall:now-6*60000,finished:null},
+          {turn:'MI-5',exp:'2026-001235',status:'retry',lastCall:now-3*60000,finished:null},
+          {turn:'MI-6',exp:'2026-001236',status:'pending',lastCall:null,finished:null},
+          {turn:'MI-7',exp:'2026-001237',status:'noanswer',lastCall:now-5*60000,finished:null},
+          {turn:'MI-8',exp:'2026-001238',status:'attended',lastCall:now-18*60000,finished:now-18*60000}
+        ], calls:[]};
+      };
+      const read=()=>{
+        try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&Array.isArray(x.rows))return x;}catch(_e){}
+        return initialState();
+      };
+      let state=read(), notices=[
+        {id:'seed-noanswer',type:'warning',title:'Paciente MI-7 no respondió',detail:'Puede volver a llamarlo más tarde.'},
+        {id:'seed-attended',type:'success',title:'Paciente MI-8 atendido correctamente',detail:'El turno fue marcado como completado.'}
+      ];
+      let channel=null;
+      try{if('BroadcastChannel' in window){channel=new BroadcastChannel(CHANNEL);channel.onmessage=()=>{state=read();render();};}}catch(_e){}
+      const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_e){}try{channel?.postMessage('update')}catch(_e){}};
+      function timeAgo(t){if(!t)return '';const d=Math.max(0,Date.now()-t);const m=Math.floor(d/60000);const sec=String(Math.floor((d%60000)/1000)).padStart(2,'0');return m>=60?`${Math.floor(m/60)} h ${m%60} min`:`${String(m).padStart(2,'0')}:${sec}`;}
+      const elapsedText=(status,t)=>{const min=Math.floor(Math.max(0,Date.now()-t)/60000);return status==='waiting'?'Espera: '+timeAgo(t):status==='attended'?`Hace ${min} min`:`Último llamado: hace ${min} min`;};
+      const labels={pending:'Sin llamar',waiting:'En espera',retry:'Volver a llamar',noanswer:'No respondió',attended:'Atendido'};
+      const labelIcon={pending:'clock',waiting:'clock',retry:'repeat',noanswer:'alert',attended:'check'};
+      function renderNotices(){
+        $('#notice-list').innerHTML=notices.map(n=>`<div class="notice ${n.type==='warning'?'':n.type}"><div class="notice-icon">${icon(n.type==='success'?'check':n.type==='info'?'info':'alert')}</div><div><strong>${safe(n.title)}</strong><p>${safe(n.detail)}</p></div><button data-dismiss="${safe(n.id)}" aria-label="Cerrar aviso">${icon('close')}</button></div>`).join('');
+      }
+      function renderRow(r){
+        const name=DEMO_PATIENTS[r.exp];const disabled=state.closed||r.status==='attended';const missing=!name;
+        const statusHtml=`<span class="status ${r.status}">${icon(labelIcon[r.status],'sm')}${labels[r.status]}</span>`;
+        const timer=r.lastCall?`<span class="timer" data-time="${r.lastCall}">${elapsedText(r.status,r.lastCall)}</span>`:'';
+        const secondary=r.status==='waiting'&&!state.closed?`<div class="secondary-actions"><button class="mini-btn retry" data-action="call" data-turn="${r.turn}" title="Volver a emitir el llamado">${icon('repeat')}Rellamar</button><button class="mini-btn no" data-action="noanswer" data-turn="${r.turn}" title="El paciente no respondió">${icon('alert')}No respondió</button><button class="mini-btn yes" data-action="attended" data-turn="${r.turn}" title="Marcar turno como atendido">${icon('check')}Atendió</button></div>`:'';
+        const buttonLabel=r.status==='attended'?'Atendido':r.status==='waiting'||r.status==='retry'||r.status==='noanswer'?'Rellamar':'Llamar';
+        const patientText=!r.exp?'Vacío':(name||'Expediente no encontrado');
+        return `<div class="patient-row ${r.status==='attended'?'attended-row':''}" data-row="${r.turn}">
+          <div class="turn-cell"><span class="turn-num">${safe(r.turn)}</span></div>
+          <div class="row-expediente"><div class="exp-field">${icon('pen','sm')}<input aria-label="Expediente de ${r.turn}" data-exp="${r.turn}" value="${safe(r.exp)}" placeholder="Escribir expediente" autocomplete="off" spellcheck="false" ${disabled?'disabled':''}/></div></div>
+          <div class="row-person"><div class="patient-name ${missing?r.exp?'invalid':'empty':''}" data-name="${r.turn}">${safe(patientText)}</div><div class="patient-status">${statusHtml}${timer}</div></div>
+          <div class="row-actions"><button class="call-btn" data-action="call" data-turn="${r.turn}" ${disabled||missing?'disabled':''} title="Enviar ${r.turn} al tablero">${icon('call','sm')}${buttonLabel}</button>${secondary}</div>
+        </div>`;
+      }
+      function counts(){return {total:state.rows.length,waiting:state.rows.filter(x=>x.status==='waiting').length,attended:state.rows.filter(x=>x.status==='attended').length,retry:state.rows.filter(x=>x.status==='retry').length,noanswer:state.rows.filter(x=>x.status==='noanswer').length,pending:state.rows.filter(x=>!['attended','waiting'].includes(x.status)).length};}
+      function renderSummary(){const c=counts();$('#turn-total').textContent=`Total: ${c.total} turnos`;$('#metric-pending').textContent=c.pending;$('#metric-waiting').textContent=c.waiting;$('#metric-attended').textContent=c.attended;$('#other-metrics').textContent=`De los pendientes: ${c.retry} por volver a llamar · ${c.noanswer} no respondieron.`;$('#operation-indicator').classList.toggle('is-closed',state.closed);$('#operation-text').textContent=state.closed?'JORNADA CERRADA':'MODO OPERATIVO';$('#end-day').classList.toggle('closed',state.closed);$('#end-day span').textContent=state.closed?'Jornada finalizada · Reabrir demo':'Fin de jornada';}
+      function renderBoard(){const calls=state.calls||[];const last=calls.at(-1);$('#board-turn').textContent=last?last.turn:'—';$('#board-clinic').textContent=last?'DIRIGIRSE A CLÍNICA 3':'En espera del siguiente llamado';$('#board-log').innerHTML=calls.slice(-6).reverse().map(c=>`<li><strong>${safe(c.turn)} → Clínica 3</strong><span>${new Date(c.at).toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'})}</span></li>`).join('');$('#board-help').classList.toggle('hidden',calls.length>0);}
+      function render(){renderNotices();$('#patient-list').innerHTML=state.rows.map(renderRow).join('');renderSummary();renderBoard();}
+      function notice(type,title,detail){notices=[{id:String(Date.now())+Math.random(),type,title,detail},...notices].slice(0,2);renderNotices();}
+      function saveExp(turn,value){const r=state.rows.find(x=>x.turn===turn);if(!r||state.closed||r.status==='attended')return;const trimmed=value.trim().toUpperCase();if(r.exp!==trimmed){r.exp=trimmed;save();}const container=$(`[data-row="${turn}"]`);if(!container)return;const name=DEMO_PATIENTS[trimmed];const field=$('[data-name]',container);field.textContent=trimmed?(name||'Expediente no encontrado'):'Vacío';field.className='patient-name'+(!name?(trimmed?' invalid':' empty'):'');const action=$('[data-action="call"]',container);if(action)action.disabled=!name||state.closed;}
+      function callPatient(turn){const r=state.rows.find(x=>x.turn===turn);if(!r||state.closed||r.status==='attended')return;
+        if(!DEMO_PATIENTS[r.exp]){notice('warning','Expediente no válido','Ingrese un número de expediente que exista en los datos de prueba.');return;}
+        r.status='waiting';r.lastCall=Date.now();state.calls??=[];state.calls.push({turn,at:r.lastCall});state.calls=state.calls.slice(-30);save();render();notice('info',`Llamado enviado: ${turn}`,'Tablero demo: dirigirse a Clínica 3. El contador de espera ha iniciado.');
+      }
+      function changeState(turn,status){const r=state.rows.find(x=>x.turn===turn);if(!r||state.closed||r.status!=='waiting')return;r.status=status;if(status==='attended')r.finished=Date.now();save();render();if(status==='attended')notice('success',`Paciente ${turn} atendido correctamente`,'El turno ha sido marcado como completado.');else notice('warning',`Paciente ${turn} no respondió`,'El turno queda pendiente para un nuevo llamado.');}
+      function switchView(){const board=location.hash==='#tablero';$('#doctor-view').classList.toggle('view-hidden',board);$('#board-view').classList.toggle('view-hidden',!board);$('#view-label').textContent=board?'Tablero de turnos':'Vista del doctor';renderBoard();window.scrollTo(0,0);}
+      function toggleMenu(open){$('#menu').classList.toggle('hidden',!open);$('#menu-shade').classList.toggle('hidden',!open);}
+      // Eventos delegados: no recrear el input mientras la persona está escribiendo.
+      $('#patient-list').addEventListener('input',e=>{const turn=e.target.dataset.exp;if(turn)saveExp(turn,e.target.value);});
+      $('#patient-list').addEventListener('change',e=>{if(e.target.dataset.exp){saveExp(e.target.dataset.exp,e.target.value);e.target.value=e.target.value.trim().toUpperCase();}});
+      $('#patient-list').addEventListener('click',e=>{const btn=e.target.closest('[data-action]');if(!btn)return;if(btn.dataset.action==='call')callPatient(btn.dataset.turn);if(btn.dataset.action==='noanswer')changeState(btn.dataset.turn,'noanswer');if(btn.dataset.action==='attended')changeState(btn.dataset.turn,'attended');});
+      $('#notice-list').addEventListener('click',e=>{const b=e.target.closest('[data-dismiss]');if(b){notices=notices.filter(n=>n.id!==b.dataset.dismiss);renderNotices();}});
+      $('#open-menu').addEventListener('click',()=>toggleMenu(true));$('#menu-shade').addEventListener('click',()=>toggleMenu(false));
+      $('#menu-doctor').addEventListener('click',()=>{toggleMenu(false);location.hash='doctor';});
+      $('#menu-board').addEventListener('click',()=>{toggleMenu(false);location.hash='tablero';});
+      $('#open-board-link').addEventListener('click',()=>location.hash='tablero');$('#back-to-doctor').addEventListener('click',()=>location.hash='doctor');
+      $('#menu-reset').addEventListener('click',()=>{if(!confirm('¿Restablecer los datos de ejemplo y eliminar los llamados de esta demostración?'))return;state=initialState();notices=[];save();render();toggleMenu(false);location.hash='doctor';notice('info','Datos de prueba restablecidos','Puede empezar una nueva demostración.');});
+      $('#end-day').addEventListener('click',()=>{if(state.closed){if(confirm('¿Reabrir la jornada de demostración?')){state.closed=false;save();render();notice('info','Jornada reabierta','Puede realizar nuevos llamados.');}return;}const c=counts();$('#modal-stats').innerHTML=`<div><strong>${c.pending}</strong>Pendientes</div><div><strong>${c.waiting}</strong>En espera</div><div><strong>${c.attended}</strong>Atendidos</div>`;$('#confirm-overlay').classList.remove('hidden');});
+      $('#cancel-end').addEventListener('click',()=>$('#confirm-overlay').classList.add('hidden'));
+      $('#confirm-end').addEventListener('click',()=>{state.closed=true;save();$('#confirm-overlay').classList.add('hidden');render();notice('success','Jornada finalizada','Las acciones quedaron bloqueadas hasta reabrir esta demostración.');window.scrollTo({top:0,behavior:'smooth'});});
+      $('#confirm-overlay').addEventListener('click',e=>{if(e.target.id==='confirm-overlay')$('#confirm-overlay').classList.add('hidden')});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggleMenu(false);$('#confirm-overlay').classList.add('hidden');}});
+      window.addEventListener('hashchange',switchView);
+      window.addEventListener('storage',e=>{if(e.key===KEY){state=read();render();}});
+      setInterval(()=>{document.querySelectorAll('[data-time]').forEach(el=>{const r=state.rows.find(x=>x.lastCall===Number(el.dataset.time));if(!r)return;el.textContent=elapsedText(r.status,r.lastCall);});},1000);
+      render();switchView();
+    })();
+  </script>
+</body>
+</html>

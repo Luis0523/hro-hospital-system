@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Alert, Icon, Spinner } from '@/shared/components/ui'
+import { useNavigate } from 'react-router-dom'
+import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import { descargarSalidaCarnetsPdfPorIds } from '@/modules/carnets/api/carnetsApi'
@@ -15,6 +16,7 @@ import ListaSalidos from '../components/salida/ListaSalidos.jsx'
 // salida de inmediato; el POST se confirma en segundo plano para no frenar el lote.
 export default function SalidaArchivoPage() {
   const { mostrarToast } = useToast()
+  const navigate = useNavigate()
   const [fecha, setFecha] = useState(hoyIso)
 
   const {
@@ -104,6 +106,17 @@ export default function SalidaArchivoPage() {
         pendientes={pendientes.length}
         confirmando={confirmandoIds.size}
         fallidos={fallidos.length}
+        accionesExtra={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/archivo/salida-hospital')}
+            title="Salida consultando al Registro Médico (hospital)"
+          >
+            <Icon name="local_hospital" className="text-[18px]" />
+            Registro Médico
+          </Button>
+        }
       />
 
       <main className="mx-auto w-full max-w-6xl space-y-4 px-4 py-4">
