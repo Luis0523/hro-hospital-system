@@ -13,6 +13,11 @@ import { USUARIO_ARCHIVO_POR_DEFECTO } from '../identidadArchivo'
 export const SECCIONES_ARCHIVO = [
   { to: '/archivo', etiqueta: 'Expedientes para COEX', icono: 'folder_shared', exacto: true },
   { to: '/archivo/salida', etiqueta: 'Salida de archivo', icono: 'outbound' },
+  {
+    to: '/archivo/salida-hospital',
+    etiqueta: 'Salida al Registro Médico',
+    icono: 'local_hospital',
+  },
   { to: '/archivo/dashboard', etiqueta: 'Dashboard de Archivo', icono: 'monitoring' },
   { to: '/archivo/depuracion', etiqueta: 'Depuración de expedientes', icono: 'delete_sweep' },
   { to: '/archivo/consolidado', etiqueta: 'Consolidado', icono: 'insights' },

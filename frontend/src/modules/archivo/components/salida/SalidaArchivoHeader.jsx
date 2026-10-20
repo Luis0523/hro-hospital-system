@@ -14,6 +14,9 @@ export default function SalidaArchivoHeader({
   pendientes,
   confirmando,
   fallidos,
+  titulo = 'Salida de archivo',
+  selectorEstacion = null,
+  accionesExtra = null,
 }) {
   const { usuario, cerrarSesion, rutaLogin } = useAuth()
   const { tema, alternarTema } = useTema()
@@ -45,11 +48,14 @@ export default function SalidaArchivoHeader({
         <div className="min-w-0">
           <p className="text-label-sm uppercase leading-none tracking-widest text-primary">SIGHO</p>
           <h1 className="truncate text-title-sm font-semibold leading-tight text-on-surface">
-            Salida de archivo
+            {titulo}
           </h1>
         </div>
 
         <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+          {selectorEstacion}
+          {accionesExtra}
+
           <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1">
             <Icon name="calendar_today" className="text-[18px] text-primary" />
             <input
@@ -74,13 +80,15 @@ export default function SalidaArchivoHeader({
             {formatearFechaLarga(fecha)}
           </span>
 
-          <span
-            className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 text-label-sm font-semibold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200"
-            title="Pendientes de marcar salida"
-          >
-            <Icon name="pending_actions" className="text-[16px]" />
-            {pendientes}
-          </span>
+          {typeof pendientes === 'number' && (
+            <span
+              className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 text-label-sm font-semibold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200"
+              title="Pendientes de marcar salida"
+            >
+              <Icon name="pending_actions" className="text-[16px]" />
+              {pendientes}
+            </span>
+          )}
 
           {confirmando > 0 && (
             <span
