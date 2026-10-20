@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CAMPOS_CUADERNO_ROJO,
   COLUMNAS_HISTORIAL,
-  ETIQUETA_SOBRES_PENDIENTE,
+  ETIQUETA_SOBRES_EMERGENCIA,
   MENSAJE_CANTIDAD_ENTERA,
   MENSAJE_CANTIDAD_NEGATIVA,
   MENSAJE_CANTIDAD_REQUERIDA,
@@ -18,19 +18,19 @@ describe('cuadernoRojoCampos · definición centralizada', () => {
     expect(CAMPOS_CUADERNO_ROJO.map((campo) => campo.etiqueta)).toEqual([
       'Fecha',
       'Egresos hospitalarios',
-      ETIQUETA_SOBRES_PENDIENTE,
+      ETIQUETA_SOBRES_EMERGENCIA,
       'Sobres sellados',
-      'T.I.A.',
+      'TIA',
     ])
   })
 
-  it('aísla la etiqueta del tercer campo como "Sobres (nombre pendiente)"', () => {
-    expect(ETIQUETA_SOBRES_PENDIENTE).toBe('Sobres (nombre pendiente)')
-    expect(CAMPOS_CUADERNO_ROJO[2].etiqueta).toBe(ETIQUETA_SOBRES_PENDIENTE)
+  it('usa la denominación definitiva "Sobres emergencia" en el tercer campo', () => {
+    expect(ETIQUETA_SOBRES_EMERGENCIA).toBe('Sobres emergencia')
+    expect(CAMPOS_CUADERNO_ROJO[2].etiqueta).toBe(ETIQUETA_SOBRES_EMERGENCIA)
   })
 
-  it('conserva literalmente la etiqueta T.I.A. sin desarrollar las siglas', () => {
-    expect(CAMPOS_CUADERNO_ROJO[4].etiqueta).toBe('T.I.A.')
+  it('conserva literalmente la etiqueta TIA sin puntos ni desarrollar las siglas', () => {
+    expect(CAMPOS_CUADERNO_ROJO[4].etiqueta).toBe('TIA')
   })
 
   it('las columnas del historial replican las columnas del formulario en orden', () => {

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -9,9 +11,9 @@ import CuadernoRojoPage from './CuadernoRojoPage.jsx'
 const ETIQUETAS_CAMPOS = [
   'Fecha',
   'Egresos hospitalarios',
-  'Sobres (nombre pendiente)',
+  'Sobres emergencia',
   'Sobres sellados',
-  'T.I.A.',
+  'TIA',
 ]
 
 function renderPagina() {
@@ -89,7 +91,7 @@ describe('CuadernoRojoPage', () => {
 
   it('valida entradas no numéricas', () => {
     renderPagina()
-    fireEvent.change(screen.getByLabelText('T.I.A.'), { target: { value: 'abc' } })
+    fireEvent.change(screen.getByLabelText('TIA'), { target: { value: 'abc' } })
     expect(screen.getByText('La cantidad debe ser un número entero.')).toBeInTheDocument()
   })
 
@@ -98,5 +100,20 @@ describe('CuadernoRojoPage', () => {
     fireEvent.change(screen.getByLabelText('Egresos hospitalarios'), { target: { value: '3' } })
     expect(screen.queryByText('La cantidad debe ser un número entero.')).not.toBeInTheDocument()
     expect(screen.queryByText('La cantidad no puede ser negativa.')).not.toBeInTheDocument()
+  })
+
+  it('ofrece un enlace de descarga que apunta a la plantilla PDF real', () => {
+    renderPagina()
+    const enlace = screen.getByRole('link', { name: /descargar plantilla pdf/i })
+
+    expect(enlace).toHaveAttribute('href', '/plantillas/cuaderno-rojo.pdf')
+    expect(enlace).toHaveAttribute('download', 'cuaderno-rojo.pdf')
+  })
+
+  it('incluye la plantilla PDF en los recursos públicos que se publican', () => {
+    const ruta = resolve(process.cwd(), 'public/plantillas/cuaderno-rojo.pdf')
+
+    expect(existsSync(ruta)).toBe(true)
+    expect(readFileSync(ruta, 'latin1').slice(0, 5)).toBe('%PDF-')
   })
 })

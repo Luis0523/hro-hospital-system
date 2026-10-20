@@ -1,22 +1,20 @@
 // Definición centralizada de los campos del Registro del Cuaderno Rojo.
 //
-// PENDIENTE DE CONFIRMACIÓN: la denominación del tercer campo ("Sobres") no está
-// confirmada. NO se deduce del backend (la tabla libro_citas_dia la nombra
-// sobres_emergencia) ni se interpreta su significado. Corregir SOLO la constante
-// ETIQUETA_SOBRES_PENDIENTE cuando el hospital confirme el nombre exacto.
-export const ETIQUETA_SOBRES_PENDIENTE = 'Sobres (nombre pendiente)'
+// Los nombres corresponden a los encabezados definitivos del cuaderno físico
+// proporcionados por el hospital. No se interpretan las abreviaturas.
+export const ETIQUETA_SOBRES_EMERGENCIA = 'Sobres emergencia'
 
 // Clave interna del tercer campo. No es un contrato de API: es solo la clave de
 // estado del formulario. Se mantiene aislada para no acoplarla al nombre visible.
-export const CLAVE_SOBRES_PENDIENTE = 'sobres'
+export const CLAVE_SOBRES_EMERGENCIA = 'sobres'
 
-// Las etiquetas de "T.I.A." se conservan literalmente, sin desarrollar las siglas.
+// La etiqueta "TIA" se muestra literalmente, sin puntos y sin desarrollar las siglas.
 export const CAMPOS_CUADERNO_ROJO = Object.freeze([
   { clave: 'fecha', etiqueta: 'Fecha', tipo: 'fecha' },
   { clave: 'egresosHospitalarios', etiqueta: 'Egresos hospitalarios', tipo: 'cantidad' },
-  { clave: CLAVE_SOBRES_PENDIENTE, etiqueta: ETIQUETA_SOBRES_PENDIENTE, tipo: 'cantidad' },
+  { clave: CLAVE_SOBRES_EMERGENCIA, etiqueta: ETIQUETA_SOBRES_EMERGENCIA, tipo: 'cantidad' },
   { clave: 'sobresSellados', etiqueta: 'Sobres sellados', tipo: 'cantidad' },
-  { clave: 'tia', etiqueta: 'T.I.A.', tipo: 'cantidad' },
+  { clave: 'tia', etiqueta: 'TIA', tipo: 'cantidad' },
 ])
 
 // Columnas del historial: mismas cinco columnas del formulario, en el mismo orden.
