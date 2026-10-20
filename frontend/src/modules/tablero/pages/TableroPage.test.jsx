@@ -9,10 +9,15 @@ afterEach(() => {
 const {
   construirSecuenciaPacienteMock,
   crearClienteTableroMock,
+  detenerAudioTableroMock,
+  estaDisponibleAudioTableroMock,
+  estaDisponibleVozTableroMock,
   estaEnModoMockMock,
   estaPermitidaMock,
   obtenerEstadoInicialEstacionMock,
   obtenerEstadoInicialMock,
+  precargarAudioTableroMock,
+  reproducirLlamadoMock,
   reproducirSecuenciaMock,
   resolverConfiguracionEstacionMock,
   resolverConfiguracionSalaMock,
@@ -20,10 +25,15 @@ const {
 } = vi.hoisted(() => ({
   construirSecuenciaPacienteMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
+  detenerAudioTableroMock: vi.fn(),
+  estaDisponibleAudioTableroMock: vi.fn(),
+  estaDisponibleVozTableroMock: vi.fn(),
   estaEnModoMockMock: vi.fn(),
   estaPermitidaMock: vi.fn(),
   obtenerEstadoInicialEstacionMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  precargarAudioTableroMock: vi.fn(),
+  reproducirLlamadoMock: vi.fn(),
   reproducirSecuenciaMock: vi.fn(),
   resolverConfiguracionEstacionMock: vi.fn(),
   resolverConfiguracionSalaMock: vi.fn(),
@@ -44,12 +54,12 @@ vi.mock('../api/configuracionEstacion', () => ({
   resolverConfiguracionEstacion: resolverConfiguracionEstacionMock,
 }))
 
-vi.mock('../api/segmentosVoz', () => ({
-  construirSecuenciaPaciente: construirSecuenciaPacienteMock,
-}))
-
-vi.mock('../api/reproductorVoz', () => ({
-  reproducirSecuencia: reproducirSecuenciaMock,
+vi.mock('../api/audioTablero', () => ({
+  detenerAudioTablero: detenerAudioTableroMock,
+  estaDisponibleAudioTablero: estaDisponibleAudioTableroMock,
+  estaDisponibleVozTablero: estaDisponibleVozTableroMock,
+  precargarAudioTablero: precargarAudioTableroMock,
+  reproducirLlamado: reproducirLlamadoMock,
 }))
 
 vi.mock('../api/tableroApi', async (importOriginal) => {
@@ -157,10 +167,32 @@ function configurarAntesDeCada({ capturarHandlers = true } = {}) {
   resolverConfiguracionEstacionMock.mockResolvedValue(null)
   obtenerEstadoInicialEstacionMock.mockResolvedValue(ASIGNACIONES_INICIALES)
   topicEstacionMock.mockImplementation((estacionId) => `/topic/estacion/${estacionId}`)
+  estaDisponibleAudioTableroMock.mockReturnValue(true)
+  estaDisponibleVozTableroMock.mockReturnValue(true)
+  precargarAudioTableroMock.mockResolvedValue(true)
+  detenerAudioTableroMock.mockImplementation(() => {})
   construirSecuenciaPacienteMock.mockReturnValue([
     '/audio/tablero/generales/paciente.mp3',
   ])
   reproducirSecuenciaMock.mockImplementation(() => new Promise(() => {}))
+  reproducirLlamadoMock.mockImplementation(({ turno, clinicaNumero, onEnd, onError }) => {
+    const secuencia = construirSecuenciaPacienteMock({
+      numero: turno,
+      destino: clinicaNumero,
+      accion: 'pasara_a',
+    })
+
+    if (!secuencia) {
+      onError?.()
+      return
+    }
+
+    try {
+      Promise.resolve(reproducirSecuenciaMock(secuencia)).then(onEnd).catch(onError)
+    } catch {
+      onError?.()
+    }
+  })
   if (capturarHandlers) {
     crearClienteTableroMock.mockImplementation((opciones) => {
       handlers = opciones
@@ -441,9 +473,11 @@ describe('TableroPage', () => {
     await screen.findByTestId('tablero-tabla')
 
     expect(screen.getByRole('button', { name: /activar voz/i })).toBeInTheDocument()
+    expect(precargarAudioTableroMock).not.toHaveBeenCalled()
 
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
+    expect(precargarAudioTableroMock).toHaveBeenCalledTimes(1)
     expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
     expect(screen.getByText('Voz activa')).toBeInTheDocument()
   })
@@ -553,7 +587,8 @@ describe('TableroPage', () => {
   })
 
   it('muestra "Voz no disponible" sin romper el tablero', async () => {
-    vi.stubGlobal('Audio', undefined)
+    estaDisponibleAudioTableroMock.mockReturnValue(false)
+    estaDisponibleVozTableroMock.mockReturnValue(false)
 
     render(<TableroPage />)
 
@@ -610,22 +645,7 @@ describe('TableroPage · voz local', () => {
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
-  it('reproduce la secuencia local para el turno 7 en 6A con el constructor real', async () => {
-    const actual = await vi.importActual('../api/segmentosVoz')
-    construirSecuenciaPacienteMock.mockImplementation(actual.construirSecuenciaPaciente)
-
-    const terminaciones = []
-    reproducirSecuenciaMock.mockImplementation(
-      () => new Promise((resolve) => terminaciones.push(resolve)),
-    )
-
-    const secuencia = [
-      '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/007.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
-      '/audio/tablero/numeros/6a.mp3',
-    ]
-
+  it('pasa turno y clinicaNumero a reproducirLlamado', async () => {
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
@@ -642,39 +662,22 @@ describe('TableroPage · voz local', () => {
       )
     })
 
-    expect(construirSecuenciaPacienteMock).toHaveBeenCalledWith({
-      numero: 7,
-      destino: '6A',
-      accion: 'pasara_a',
-    })
-    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(1)
-    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(1, secuencia)
-
-    await act(async () => terminaciones[0]())
-
-    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(2)
-    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(2, secuencia)
-
-    await act(async () => terminaciones[1]())
-
-    expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
+    expect(reproducirLlamadoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ turno: 7, clinicaNumero: '6A' }),
+    )
   })
 
-  it('reproduce la secuencia local para el turno 14 en 6B con el constructor real', async () => {
-    const actual = await vi.importActual('../api/segmentosVoz')
-    construirSecuenciaPacienteMock.mockImplementation(actual.construirSecuenciaPaciente)
+  it('detiene el audio al desmontar el tablero', async () => {
+    const { unmount } = render(<TableroPage />)
+    await screen.findByTestId('tablero-tabla')
 
-    const terminaciones = []
-    reproducirSecuenciaMock.mockImplementation(
-      () => new Promise((resolve) => terminaciones.push(resolve)),
-    )
+    unmount()
 
-    const secuencia = [
-      '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/014.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
-      '/audio/tablero/numeros/6b.mp3',
-    ]
+    expect(detenerAudioTableroMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('si el anuncio falla no bloquea el tablero', async () => {
+    construirSecuenciaPacienteMock.mockReturnValue(null)
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')
@@ -683,66 +686,19 @@ describe('TableroPage · voz local', () => {
     act(() => {
       handlers.onMensaje(
         mensaje({
-          asignacionDiariaEspacioId: 2,
-          turnoActual: 14,
-          espacioNumero: '6B',
+          asignacionDiariaEspacioId: 1,
+          turnoActual: 200,
+          espacioNumero: '999',
           tipoEvento: 'LLAMADO',
           intentosLlamado: 1,
         }),
       )
     })
 
-    expect(construirSecuenciaPacienteMock).toHaveBeenCalledWith({
-      numero: 14,
-      destino: '6B',
-      accion: 'pasara_a',
-    })
-    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(1)
-    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(1, secuencia)
-
-    await act(async () => terminaciones[0]())
-
-    expect(reproducirSecuenciaMock).toHaveBeenCalledTimes(2)
-    expect(reproducirSecuenciaMock).toHaveBeenNthCalledWith(2, secuencia)
-
-    await act(async () => terminaciones[1]())
-
+    expect(reproducirLlamadoMock).toHaveBeenCalled()
+    expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
-  })
-
-  it('no reproduce audio ni bloquea si la secuencia es null', async () => {
-    construirSecuenciaPacienteMock.mockReturnValue(null)
-
-    render(<TableroPage />)
-    await screen.findByTestId('tablero-tabla')
-    await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
-
-    vi.useFakeTimers()
-    try {
-      act(() => {
-        handlers.onMensaje(
-          mensaje({
-            asignacionDiariaEspacioId: 1,
-            turnoActual: 200,
-            espacioNumero: '999',
-            tipoEvento: 'LLAMADO',
-            intentosLlamado: 1,
-          }),
-        )
-      })
-
-      expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-      expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
-
-      act(() => {
-        vi.advanceTimersByTime(DURACION_LLAMADO_SIN_VOZ_MS)
-      })
-
-      expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
-      expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-    }
   })
 })
 
@@ -1093,8 +1049,9 @@ describe('TableroPage · modo llamado (SCRUM-101)', () => {
     }
   })
 
-  it('sin SpeechSynthesis muestra el llamado y avanza por tiempo sin errores', async () => {
-    vi.stubGlobal('Audio', undefined)
+  it('sin audio ni TTS muestra el llamado y avanza por tiempo sin errores', async () => {
+    estaDisponibleAudioTableroMock.mockReturnValue(false)
+    estaDisponibleVozTableroMock.mockReturnValue(false)
 
     render(<TableroPage />)
     await screen.findByTestId('tablero-tabla')

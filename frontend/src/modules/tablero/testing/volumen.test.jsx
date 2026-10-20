@@ -5,15 +5,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   construirSecuenciaPacienteMock,
   crearClienteTableroMock,
+  detenerAudioTableroMock,
+  estaDisponibleAudioTableroMock,
+  estaDisponibleVozTableroMock,
   estaEnModoMockMock,
   obtenerEstadoInicialMock,
+  precargarAudioTableroMock,
+  reproducirLlamadoMock,
   reproducirSecuenciaMock,
   resolverConfiguracionSalaMock,
 } = vi.hoisted(() => ({
   construirSecuenciaPacienteMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
+  detenerAudioTableroMock: vi.fn(),
+  estaDisponibleAudioTableroMock: vi.fn(),
+  estaDisponibleVozTableroMock: vi.fn(),
   estaEnModoMockMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  precargarAudioTableroMock: vi.fn(),
+  reproducirLlamadoMock: vi.fn(),
   reproducirSecuenciaMock: vi.fn(),
   resolverConfiguracionSalaMock: vi.fn(),
 }))
@@ -26,12 +36,12 @@ vi.mock('../api/configuracionSala', () => ({
   resolverConfiguracionSala: resolverConfiguracionSalaMock,
 }))
 
-vi.mock('../api/segmentosVoz', () => ({
-  construirSecuenciaPaciente: construirSecuenciaPacienteMock,
-}))
-
-vi.mock('../api/reproductorVoz', () => ({
-  reproducirSecuencia: reproducirSecuenciaMock,
+vi.mock('../api/audioTablero', () => ({
+  detenerAudioTablero: detenerAudioTableroMock,
+  estaDisponibleAudioTablero: estaDisponibleAudioTableroMock,
+  estaDisponibleVozTablero: estaDisponibleVozTableroMock,
+  precargarAudioTablero: precargarAudioTableroMock,
+  reproducirLlamado: reproducirLlamadoMock,
 }))
 
 vi.mock('../api/tableroApi', async (importOriginal) => {
@@ -75,8 +85,30 @@ function configurarPagina({ inicial = [], permitidas = null } = {}) {
   vi.clearAllMocks()
   handlersRef = null
   estaEnModoMockMock.mockReturnValue(false)
+  estaDisponibleAudioTableroMock.mockReturnValue(true)
+  estaDisponibleVozTableroMock.mockReturnValue(true)
+  precargarAudioTableroMock.mockResolvedValue(true)
+  detenerAudioTableroMock.mockImplementation(() => {})
   construirSecuenciaPacienteMock.mockImplementation(({ destino }) => [`/fake/${destino}.mp3`])
   reproducirSecuenciaMock.mockImplementation(() => new Promise(() => {}))
+  reproducirLlamadoMock.mockImplementation(({ turno, clinicaNumero, onEnd, onError }) => {
+    const secuencia = construirSecuenciaPacienteMock({
+      numero: turno,
+      destino: clinicaNumero,
+      accion: 'pasara_a',
+    })
+
+    if (!secuencia) {
+      onError?.()
+      return
+    }
+
+    try {
+      Promise.resolve(reproducirSecuenciaMock(secuencia)).then(onEnd).catch(onError)
+    } catch {
+      onError?.()
+    }
+  })
   resolverConfiguracionSalaMock.mockResolvedValue({ modo: 'fallback', sala: null, permitidas })
   obtenerEstadoInicialMock.mockImplementation(() => Promise.resolve(inicial))
   crearClienteTableroMock.mockImplementation((opciones) => {

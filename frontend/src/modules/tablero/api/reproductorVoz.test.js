@@ -41,6 +41,7 @@ class AudioFalso {
   }
 }
 
+let detenerReproduccion
 let reproducirSecuencia
 let TIMEOUT_FRAGMENTO_MS
 
@@ -62,7 +63,8 @@ function rutasReproducidas() {
 
 beforeEach(async () => {
   vi.resetModules()
-  ;({ reproducirSecuencia, TIMEOUT_FRAGMENTO_MS } = await import('./reproductorVoz'))
+  ;({ detenerReproduccion, reproducirSecuencia, TIMEOUT_FRAGMENTO_MS } =
+    await import('./reproductorVoz'))
   AudioFalso.instancias = []
   AudioFalso.implPlay = () => Promise.resolve()
 })
@@ -218,6 +220,41 @@ describe('reproducirSecuencia', () => {
 
     AudioFalso.instancias[2].emitir('ended')
     await resolucionB
+  })
+
+  it('detiene el fragmento activo e impide los restantes', async () => {
+    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3', '/3.mp3'], opciones())
+    const rechazo = expect(promesa).rejects.toThrow(/cancel/i)
+
+    await dejarCorrer()
+    const audio = AudioFalso.instancias[0]
+
+    detenerReproduccion()
+    await rechazo
+    await dejarCorrer()
+
+    expect(rutasReproducidas()).toEqual(['/1.mp3'])
+    expect(audio.pauseCalls).toBe(1)
+    expect(audio.contarListeners('ended')).toBe(0)
+    expect(audio.contarListeners('error')).toBe(0)
+  })
+
+  it('vuelve a reproducir después de detener', async () => {
+    const primera = reproducirSecuencia(['/a1.mp3'], opciones())
+    const rechazo = expect(primera).rejects.toThrow(/cancel/i)
+
+    await dejarCorrer()
+    detenerReproduccion()
+    await rechazo
+
+    const segunda = reproducirSecuencia(['/b1.mp3'], opciones())
+    const resolucion = expect(segunda).resolves.toBeUndefined()
+    await dejarCorrer()
+
+    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/b1.mp3'])
+
+    AudioFalso.instancias[1].emitir('ended')
+    await resolucion
   })
 
   it('serializa dos secuencias simultáneas sin superponer audio', async () => {

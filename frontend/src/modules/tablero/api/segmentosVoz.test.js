@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  construirSecuenciaPaciente,
+  construirSecuenciaLlamado,
   RUTA_BASE_AUDIO,
   RUTAS_GENERALES,
   rutaDestino,
@@ -12,19 +12,15 @@ describe('RUTAS_GENERALES', () => {
     expect(RUTA_BASE_AUDIO).toBe('/audio/tablero/')
   })
 
-  it('resuelve la ruta de paciente', () => {
+  it('resuelve las rutas generales del anuncio', () => {
     expect(RUTAS_GENERALES.paciente).toBe('/audio/tablero/generales/paciente.mp3')
-  })
-
-  it('resuelve la ruta de pasar_a', () => {
+    expect(RUTAS_GENERALES.numero).toBe('/audio/tablero/generales/numero.mp3')
     expect(RUTAS_GENERALES.pasarA).toBe('/audio/tablero/generales/pasar_a.mp3')
+    expect(RUTAS_GENERALES.clinica).toBe('/audio/tablero/generales/clinica.mp3')
   })
 
-  it('resuelve la ruta de pasara_a', () => {
+  it('conserva rutas históricas aunque no formen parte del anuncio actual', () => {
     expect(RUTAS_GENERALES.pasaraA).toBe('/audio/tablero/generales/pasara_a.mp3')
-  })
-
-  it('resuelve la ruta de siguientes pacientes a la clínica', () => {
     expect(RUTAS_GENERALES.siguientesPacientesClinica).toBe(
       '/audio/tablero/generales/siguientes_pacientes_clinica.mp3',
     )
@@ -32,36 +28,18 @@ describe('RUTAS_GENERALES', () => {
 })
 
 describe('rutaNumero', () => {
-  it('normaliza el número 1 a 001.mp3', () => {
+  it('normaliza números de un dígito con padding', () => {
     expect(rutaNumero(1)).toBe('/audio/tablero/numeros/001.mp3')
-  })
-
-  it('normaliza el número 7 a 007.mp3', () => {
     expect(rutaNumero(7)).toBe('/audio/tablero/numeros/007.mp3')
-  })
-
-  it('normaliza el número 9 a 009.mp3', () => {
     expect(rutaNumero(9)).toBe('/audio/tablero/numeros/009.mp3')
   })
 
-  it('normaliza el número 25 a 025.mp3', () => {
+  it('normaliza números de dos y tres dígitos', () => {
     expect(rutaNumero(25)).toBe('/audio/tablero/numeros/025.mp3')
-  })
-
-  it('normaliza el número 150 a 150.mp3', () => {
     expect(rutaNumero(150)).toBe('/audio/tablero/numeros/150.mp3')
-  })
-
-  it('normaliza el número 151 a 151.mp3', () => {
-    expect(rutaNumero(151)).toBe('/audio/tablero/numeros/151.mp3')
-  })
-
-  it('normaliza el número 199 a 199.mp3', () => {
-    expect(rutaNumero(199)).toBe('/audio/tablero/numeros/199.mp3')
-  })
-
-  it('normaliza el número 200 a 200.mp3', () => {
     expect(rutaNumero(200)).toBe('/audio/tablero/numeros/200.mp3')
+    expect(rutaNumero(201)).toBe('/audio/tablero/numeros/201.mp3')
+    expect(rutaNumero(300)).toBe('/audio/tablero/numeros/300.mp3')
   })
 
   it('acepta strings numéricos y los normaliza', () => {
@@ -69,7 +47,7 @@ describe('rutaNumero', () => {
     expect(rutaNumero('025')).toBe('/audio/tablero/numeros/025.mp3')
     expect(rutaNumero(' 150 ')).toBe('/audio/tablero/numeros/150.mp3')
     expect(rutaNumero('200')).toBe('/audio/tablero/numeros/200.mp3')
-    expect(rutaNumero(' 200 ')).toBe('/audio/tablero/numeros/200.mp3')
+    expect(rutaNumero('300')).toBe('/audio/tablero/numeros/300.mp3')
   })
 
   it('rechaza el número 0', () => {
@@ -77,9 +55,9 @@ describe('rutaNumero', () => {
     expect(rutaNumero('0')).toBeNull()
   })
 
-  it('rechaza números mayores a 200', () => {
-    expect(rutaNumero(201)).toBeNull()
-    expect(rutaNumero('201')).toBeNull()
+  it('rechaza números mayores a 300', () => {
+    expect(rutaNumero(301)).toBeNull()
+    expect(rutaNumero('301')).toBeNull()
     expect(rutaNumero(999)).toBeNull()
   })
 
@@ -140,78 +118,54 @@ describe('rutaDestino', () => {
   })
 })
 
-describe('construirSecuenciaPaciente', () => {
-  it('construye Paciente + 25 + Pasará a + 6A', () => {
-    expect(construirSecuenciaPaciente({ numero: 25, destino: '6A', accion: 'pasara_a' })).toEqual([
+describe('construirSecuenciaLlamado', () => {
+  it('construye la secuencia exacta para 25 + 6A', () => {
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6A' })).toEqual([
       '/audio/tablero/generales/paciente.mp3',
+      '/audio/tablero/generales/numero.mp3',
       '/audio/tablero/numeros/025.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
-      '/audio/tablero/numeros/6a.mp3',
-    ])
-  })
-
-  it('construye Paciente + 1 + Pasar a + 6B', () => {
-    expect(construirSecuenciaPaciente({ numero: 1, destino: '6B', accion: 'pasar_a' })).toEqual([
-      '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/001.mp3',
       '/audio/tablero/generales/pasar_a.mp3',
-      '/audio/tablero/numeros/6b.mp3',
-    ])
-  })
-
-  it('construye Paciente + 200 + Pasará a + 6B', () => {
-    expect(construirSecuenciaPaciente({ numero: 200, destino: '6B', accion: 'pasara_a' })).toEqual([
-      '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/200.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
-      '/audio/tablero/numeros/6b.mp3',
-    ])
-  })
-
-  it('construye Paciente + 151 + Pasará a + 6A', () => {
-    expect(construirSecuenciaPaciente({ numero: 151, destino: '6A', accion: 'pasara_a' })).toEqual([
-      '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/151.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
+      '/audio/tablero/generales/clinica.mp3',
       '/audio/tablero/numeros/6a.mp3',
     ])
   })
 
-  it('usa "pasara_a" por defecto', () => {
-    expect(construirSecuenciaPaciente({ numero: 7, destino: '6b' })).toEqual([
+  it('construye la secuencia exacta para 300 + 6B', () => {
+    expect(construirSecuenciaLlamado({ turno: 300, clinicaNumero: '6B' })).toEqual([
       '/audio/tablero/generales/paciente.mp3',
-      '/audio/tablero/numeros/007.mp3',
-      '/audio/tablero/generales/pasara_a.mp3',
+      '/audio/tablero/generales/numero.mp3',
+      '/audio/tablero/numeros/300.mp3',
+      '/audio/tablero/generales/pasar_a.mp3',
+      '/audio/tablero/generales/clinica.mp3',
       '/audio/tablero/numeros/6b.mp3',
     ])
   })
 
-  it('devuelve null si el número es inválido', () => {
-    expect(construirSecuenciaPaciente({ numero: 0, destino: '6A' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 201, destino: '6A' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 1.5, destino: '6A' })).toBeNull()
+  it('no usa pasara_a en la secuencia nueva', () => {
+    const secuencia = construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6A' })
+
+    expect(secuencia).not.toContain('/audio/tablero/generales/pasara_a.mp3')
+    expect(secuencia).toContain('/audio/tablero/generales/pasar_a.mp3')
   })
 
-  it('devuelve null si el destino es inválido', () => {
-    expect(construirSecuenciaPaciente({ numero: 25, destino: '201' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 25, destino: '6C' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 25 })).toBeNull()
+  it('devuelve null para turno mayor a 300', () => {
+    expect(construirSecuenciaLlamado({ turno: 301, clinicaNumero: '6A' })).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 999, clinicaNumero: '6A' })).toBeNull()
   })
 
-  it('devuelve null si la acción es inválida', () => {
-    expect(
-      construirSecuenciaPaciente({ numero: 25, destino: '6A', accion: 'gritar' }),
-    ).toBeNull()
+  it('devuelve null para clínica sin ruta local', () => {
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '201' })).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6C' })).toBeNull()
   })
 
   it('devuelve null si faltan argumentos', () => {
-    expect(construirSecuenciaPaciente()).toBeNull()
-    expect(construirSecuenciaPaciente({})).toBeNull()
+    expect(construirSecuenciaLlamado()).toBeNull()
+    expect(construirSecuenciaLlamado({})).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 25 })).toBeNull()
   })
 
   it('no genera rutas parciales ante entradas inválidas', () => {
-    expect(construirSecuenciaPaciente({ numero: 25, destino: '201' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 201, destino: '6A' })).toBeNull()
-    expect(construirSecuenciaPaciente({ numero: 201, destino: '6A', accion: 'pasara_a' })).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 301, clinicaNumero: '6A' })).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '201' })).toBeNull()
   })
 })

@@ -10,8 +10,13 @@ import {
 import { resolverConfiguracionSala } from '../api/configuracionSala'
 import { resolverConfiguracionEstacion } from '../api/configuracionEstacion'
 import { crearClienteTablero, TOPIC_TABLERO, topicEstacion } from '../api/tableroSocket'
-import { construirSecuenciaPaciente } from '../api/segmentosVoz'
-import { reproducirSecuencia } from '../api/reproductorVoz'
+import {
+  detenerAudioTablero,
+  estaDisponibleAudioTablero,
+  estaDisponibleVozTablero,
+  precargarAudioTablero,
+  reproducirLlamado,
+} from '../api/audioTablero'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
 import ControlLimpiarUltimos from '../components/ControlLimpiarUltimos.jsx'
 import ControlTema from '../components/ControlTema.jsx'
@@ -36,13 +41,7 @@ export function resolverDuracionLlamadoMs(env = import.meta.env) {
   return Number.isFinite(valor) && valor > 0 ? valor : DURACION_LLAMADO_SIN_VOZ_MS
 }
 
-export function soportaAudioLocal(entorno = globalThis) {
-  return typeof entorno?.Audio === 'function'
-}
-
-export function estimarDuracionSecuenciaMs(secuencia, baseMs) {
-  return Math.max(baseMs * 2, secuencia.length * 2000)
-}
+export const DURACION_MAXIMA_ANUNCIO_MS = 30000
 
 /**
  * Solo se limpian los recientes cuando cambia realmente la sala activa dentro
@@ -80,7 +79,9 @@ export default function TableroPage() {
   const [estadoConexion, setEstadoConexion] = useState(() =>
     estaEnModoMock() ? 'mock' : 'reconectando',
   )
-  const [vozDisponible] = useState(() => soportaAudioLocal())
+  const [vozDisponible] = useState(
+    () => estaDisponibleAudioTablero() || estaDisponibleVozTablero(),
+  )
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
@@ -165,6 +166,7 @@ export default function TableroPage() {
       }
       colaLlamadosRef.current = []
       reproduciendoRef.current = false
+      detenerAudioTablero()
     }
   }, [cargar])
 
@@ -215,6 +217,12 @@ export default function TableroPage() {
   const activarVoz = useCallback(() => {
     vozActivaRef.current = true
     setVozActiva(true)
+
+    try {
+      precargarAudioTablero()
+    } catch {
+      // La precarga nunca debe bloquear la activación de voz.
+    }
   }, [])
 
   const limpiarUltimosLlamados = useCallback(() => {
@@ -304,8 +312,6 @@ export default function TableroPage() {
         finalizarRepeticion()
       }
 
-      // Fail-fast: si un fragmento falla, no se inicia otra repetición del
-      // mismo llamado. Se cierra el anuncio y se avanza la FIFO.
       const abortarPorFallo = () => {
         if (token !== tokenRepeticion) return
         if (atendido) return
@@ -314,35 +320,18 @@ export default function TableroPage() {
         avanzarDeVerdad()
       }
 
-      const secuencia = construirSecuenciaPaciente({
-        numero: siguiente.turnoActual,
-        destino: siguiente.espacioNumero,
-        accion: 'pasara_a',
-      })
+      timerLlamadoRef.current = setTimeout(abortarPorFallo, DURACION_MAXIMA_ANUNCIO_MS)
 
-      if (generacionLlamadoRef.current !== generacion) return
-
-      if (!secuencia) {
-        programarVisual()
-        return
-      }
-
-      timerLlamadoRef.current = setTimeout(
-        abortarPorFallo,
-        estimarDuracionSecuenciaMs(secuencia, baseMs),
-      )
-
-      let reproduccion
       try {
-        reproduccion = reproducirSecuencia(secuencia)
+        reproducirLlamado({
+          turno: siguiente.turnoActual,
+          clinicaNumero: siguiente.espacioNumero,
+          onEnd: finalizarEstaRepeticion,
+          onError: abortarPorFallo,
+        })
       } catch {
         abortarPorFallo()
-        return
       }
-
-      Promise.resolve(reproduccion)
-        .then(finalizarEstaRepeticion)
-        .catch(abortarPorFallo)
     }
 
     if (conVoz) {

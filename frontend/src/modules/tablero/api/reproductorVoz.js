@@ -5,6 +5,8 @@
 export const TIMEOUT_FRAGMENTO_MS = 15000
 
 let colaReproduccion = Promise.resolve()
+let generacionReproduccion = 0
+let cancelarFragmentoActual = null
 
 function esRutaValida(ruta) {
   return typeof ruta === 'string' && ruta.trim() !== ''
@@ -24,6 +26,9 @@ function reproducirFragmento(ruta, { timeoutMs, AudioCtor, logger }) {
     }
 
     const limpiar = () => {
+      if (cancelarFragmentoActual === cancelar) {
+        cancelarFragmentoActual = null
+      }
       if (timer !== null) {
         clearTimeout(timer)
         timer = null
@@ -56,18 +61,22 @@ function reproducirFragmento(ruta, { timeoutMs, AudioCtor, logger }) {
         return
       }
 
+      const detalle = resultado === 'cancelado' ? 'se canceló' : 'falló'
       reject(
         new Error(
-          `[reproductorVoz] Se abortó la secuencia: falló "${ruta}" (${resultado}).`,
+          `[reproductorVoz] Se abortó la secuencia: ${detalle} "${ruta}" (${resultado}).`,
         ),
       )
     }
+
+    const cancelar = () => finalizar('cancelado')
 
     try {
       audio = new AudioCtor(ruta)
       audio.preload = 'auto'
       audio.addEventListener('ended', alTerminar)
       audio.addEventListener('error', alFallar)
+      cancelarFragmentoActual = cancelar
     } catch {
       logger.warn?.(`[reproductorVoz] No se pudo crear el audio "${ruta}".`)
       finalizar('error')
@@ -116,8 +125,16 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
     )
   }
 
+  const generacion = generacionReproduccion
   const ejecucion = colaReproduccion.then(async () => {
+    if (generacion !== generacionReproduccion) {
+      throw new Error('[reproductorVoz] La secuencia fue cancelada.')
+    }
+
     for (const ruta of lista) {
+      if (generacion !== generacionReproduccion) {
+        throw new Error('[reproductorVoz] La secuencia fue cancelada.')
+      }
       await reproducirFragmento(ruta, { timeoutMs, AudioCtor, logger })
     }
   })
@@ -126,4 +143,15 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
   // bloquee la secuencia B. El rechazo original se devuelve al caller.
   colaReproduccion = ejecucion.catch(() => {})
   return ejecucion
+}
+
+/**
+ * Detiene el fragmento actual e invalida las secuencias pendientes. La cola
+ * queda lista para una nueva reproducción.
+ */
+export function detenerReproduccion() {
+  generacionReproduccion += 1
+  cancelarFragmentoActual?.()
+  cancelarFragmentoActual = null
+  colaReproduccion = Promise.resolve()
 }

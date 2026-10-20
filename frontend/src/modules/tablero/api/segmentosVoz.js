@@ -5,18 +5,15 @@
  */
 export const RUTA_BASE_AUDIO = '/audio/tablero/'
 
-export const MAXIMO_NUMERO_PACIENTE = 200
+export const MAXIMO_NUMERO_PACIENTE = 300
 
 export const RUTAS_GENERALES = Object.freeze({
   paciente: `${RUTA_BASE_AUDIO}generales/paciente.mp3`,
+  numero: `${RUTA_BASE_AUDIO}generales/numero.mp3`,
   pasarA: `${RUTA_BASE_AUDIO}generales/pasar_a.mp3`,
   pasaraA: `${RUTA_BASE_AUDIO}generales/pasara_a.mp3`,
+  clinica: `${RUTA_BASE_AUDIO}generales/clinica.mp3`,
   siguientesPacientesClinica: `${RUTA_BASE_AUDIO}generales/siguientes_pacientes_clinica.mp3`,
-})
-
-const ACCIONES = Object.freeze({
-  pasar_a: RUTAS_GENERALES.pasarA,
-  pasara_a: RUTAS_GENERALES.pasaraA,
 })
 
 const DESTINOS = Object.freeze({
@@ -55,14 +52,19 @@ export function rutaDestino(valor) {
   return DESTINOS[clave]
 }
 
-export function construirSecuenciaPaciente({ numero, destino, accion = 'pasara_a' } = {}) {
-  if (accion !== 'pasar_a' && accion !== 'pasara_a') return null
+export function construirSecuenciaLlamado({ turno, clinicaNumero } = {}) {
+  const rutaDelTurno = rutaNumero(turno)
+  if (!rutaDelTurno) return null
 
-  const rutaDelNumero = rutaNumero(numero)
-  if (!rutaDelNumero) return null
+  const rutaDeClinica = rutaDestino(clinicaNumero)
+  if (!rutaDeClinica) return null
 
-  const rutaDelDestino = rutaDestino(destino)
-  if (!rutaDelDestino) return null
-
-  return [RUTAS_GENERALES.paciente, rutaDelNumero, ACCIONES[accion], rutaDelDestino]
+  return [
+    RUTAS_GENERALES.paciente,
+    RUTAS_GENERALES.numero,
+    rutaDelTurno,
+    RUTAS_GENERALES.pasarA,
+    RUTAS_GENERALES.clinica,
+    rutaDeClinica,
+  ]
 }
