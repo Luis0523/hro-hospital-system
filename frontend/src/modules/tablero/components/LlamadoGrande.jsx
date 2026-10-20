@@ -27,7 +27,7 @@ export default function LlamadoGrande({ asignacion }) {
 
       <div className="flex flex-col items-center">
         <span className="text-label-md uppercase tracking-[0.4em] text-on-surface-variant dark:text-slate-300">
-          Consultorio
+          Clínica
         </span>
         <span
           data-testid="llamado-consultorio"

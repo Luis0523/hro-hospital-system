@@ -21,7 +21,7 @@ describe('TarjetaTurnoMovil', () => {
 
     expect(within(tarjeta).getByText('Turno actual')).toBeInTheDocument()
     expect(within(tarjeta).getByText('#007')).toBeInTheDocument()
-    expect(within(tarjeta).getByText('Consultorio')).toBeInTheDocument()
+    expect(within(tarjeta).getByText('Clínica')).toBeInTheDocument()
     expect(within(tarjeta).getByText('6A')).toBeInTheDocument()
     expect(within(tarjeta).getByText('Siguiente')).toBeInTheDocument()
     expect(within(tarjeta).getByText('#008')).toBeInTheDocument()

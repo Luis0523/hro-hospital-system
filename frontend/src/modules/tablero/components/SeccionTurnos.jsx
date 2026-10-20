@@ -10,7 +10,7 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta, anchoComple
         anchoCompleto ? 'max-w-none' : 'max-w-2xl'
       } table-fixed border-collapse text-center`}
     >
-      <caption className="sr-only">{etiqueta ?? 'Turnos por consultorio'}</caption>
+      <caption className="sr-only">{etiqueta ?? 'Turnos por clínica'}</caption>
       <colgroup>
         <col style={{ width: '30%' }} />
         <col style={{ width: '24%' }} />
@@ -23,7 +23,7 @@ export default function SeccionTurnos({ asignaciones = [], etiqueta, anchoComple
             Turno actual
           </th>
           <th scope="col" className={CLASE_ENCABEZADO}>
-            Consultorio
+            Clínica
           </th>
           <th scope="col" className={CLASE_ENCABEZADO}>
             Siguiente

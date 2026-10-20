@@ -27,7 +27,7 @@ export default function TarjetaTurnoMovil({ asignacion }) {
 
         <div className="min-w-0 text-right">
           <p className="text-label-sm uppercase tracking-wide text-on-surface-variant dark:text-slate-300">
-            Consultorio
+            Clínica
           </p>
           <p className="break-words text-2xl font-bold leading-none tabular-nums text-on-surface dark:text-slate-100">
             {espacioNumero ?? '—'}

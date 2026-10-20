@@ -7,7 +7,7 @@ export default function TarjetaAsignacion({ asignacion }) {
   return (
     <article
       data-testid={`asignacion-${asignacionDiariaEspacioId}`}
-      aria-label={`Turnos de ${subespecialidadNombre ?? 'consultorio'}`}
+      aria-label={`Turnos de ${subespecialidadNombre ?? 'clínica'}`}
       className="flex min-h-[15rem] flex-col gap-3 overflow-hidden rounded-2xl bg-surface-container-lowest p-5 shadow-card ring-1 ring-outline-variant/40 2xl:min-h-[30rem] 2xl:gap-6 2xl:p-8"
     >
       <header className="flex items-start justify-between gap-3">
@@ -17,7 +17,7 @@ export default function TarjetaAsignacion({ asignacion }) {
           </h2>
           <p className="mt-1 flex items-center gap-1 text-title-md text-on-surface-variant">
             <Icon name="meeting_room" className="text-[20px] text-secondary" />
-            Consultorio {espacioNumero ?? '—'}
+            Clínica {espacioNumero ?? '—'}
           </p>
         </div>
         {typeof nivel === 'number' && (

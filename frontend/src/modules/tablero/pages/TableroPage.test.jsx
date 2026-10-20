@@ -372,7 +372,7 @@ describe('TableroPage', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+    expect(await screen.findByText('No hay clínicas con turnos activos')).toBeInTheDocument()
   })
 
   it('muestra el error controlado cuando no hay snapshot disponible', async () => {
@@ -1649,7 +1649,7 @@ describe('TableroPage · configuración de sala (runtime)', () => {
 
     render(<TableroPage />)
 
-    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+    expect(await screen.findByText('No hay clínicas con turnos activos')).toBeInTheDocument()
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
   })
 })
@@ -1797,7 +1797,7 @@ describe('TableroPage · tema claro/oscuro', () => {
     obtenerEstadoInicialMock.mockResolvedValueOnce([])
 
     const { unmount } = render(<TableroPage />)
-    expect(await screen.findByText('No hay consultorios con turnos activos')).toBeInTheDocument()
+    expect(await screen.findByText('No hay clínicas con turnos activos')).toBeInTheDocument()
     unmount()
 
     obtenerEstadoInicialMock.mockRejectedValueOnce(new Error('fallo'))
