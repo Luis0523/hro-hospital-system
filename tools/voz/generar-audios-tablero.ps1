@@ -33,8 +33,12 @@ if ($IntervaloMs -lt 0) {
 # evitar problemas de codificacion en Windows PowerShell 5.1.
 $acentoA = [char]0x00E1
 $acentoI = [char]0x00ED
+$acentoU = [char]0x00FA
 $textoPasara = 'Pasar' + $acentoA + ' a'
 $textoSiguientes = 'Los siguientes pacientes pasar' + $acentoA + 'n a la cl' + $acentoI + 'nica'
+$textoNumero = 'N' + $acentoU + 'mero'
+$textoClinica = 'Cl' + $acentoI + 'nica'
+$textoBuenosDias = 'Buenos d' + $acentoI + 'as'
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $outputRoot = Join-Path $repoRoot 'frontend/public/audio/tablero'
@@ -60,16 +64,24 @@ Add-AudioItem 'generales' 'paciente.mp3' 'Paciente'
 Add-AudioItem 'generales' 'pasar_a.mp3' 'Pasar a'
 Add-AudioItem 'generales' 'pasara_a.mp3' $textoPasara
 Add-AudioItem 'generales' 'siguientes_pacientes_clinica.mp3' $textoSiguientes
+Add-AudioItem 'generales' 'numero.mp3' $textoNumero
+Add-AudioItem 'generales' 'clinica.mp3' $textoClinica
+Add-AudioItem 'generales' 'buenos_dias.mp3' $textoBuenosDias
+Add-AudioItem 'generales' 'buenas_tardes.mp3' 'Buenas tardes'
+Add-AudioItem 'generales' 'gracias_por_visitarnos.mp3' 'Gracias por visitarnos'
 
-1..200 | ForEach-Object {
+1..300 | ForEach-Object {
     Add-AudioItem 'numeros' ($_.ToString('000') + '.mp3') ([string]$_)
 }
 
 Add-AudioItem 'numeros' '6a.mp3' '6 A'
 Add-AudioItem 'numeros' '6b.mp3' '6 B'
 
-if ($items.Count -ne 206) {
-    Fail "El manifiesto completo debe tener 206 elementos; se obtuvieron $($items.Count)."
+# Nota: Azure entrega MP3 24 kHz / 96 kbps mono. El recorte y la medicion
+# automatica del silencio final (<300 ms ideal) no se implementan aqui;
+# se validan en QA auditiva sobre las muestras nuevas.
+if ($items.Count -ne 311) {
+    Fail "El manifiesto completo debe tener 311 elementos; se obtuvieron $($items.Count)."
 }
 
 $duplicados = $items | Group-Object RelativePath | Where-Object { $_.Count -gt 1 }
@@ -88,10 +100,9 @@ $totalDestinos = @($itemsCompletos | Where-Object {
 
 if ($SoloMuestra) {
     $ordenMuestra = @(
-        'generales/paciente.mp3',
-        'numeros/025.mp3',
-        'generales/pasara_a.mp3',
-        'numeros/6a.mp3'
+        'generales/numero.mp3',
+        'generales/clinica.mp3',
+        'numeros/201.mp3'
     )
     $porRuta = @{}
     foreach ($item in $itemsCompletos) {
@@ -100,8 +111,8 @@ if ($SoloMuestra) {
     $items = @($ordenMuestra | ForEach-Object { $porRuta[$_] })
 
     $nulos = @($items | Where-Object { $null -eq $_ })
-    if ($items.Count -ne 4 -or $nulos.Count -gt 0) {
-        Fail 'No se pudieron resolver los cuatro archivos de muestra.'
+    if ($items.Count -ne 3 -or $nulos.Count -gt 0) {
+        Fail 'No se pudieron resolver los tres archivos de muestra.'
     }
 }
 
@@ -121,8 +132,21 @@ if ($DryRun) {
         Write-Host ("[{0}/{1}] {2} <- {3}" -f $indice, $items.Count, $item.RelativePath, $item.Text)
     }
 
+    $existentes = 0
+    $pendientes = 0
+    foreach ($item in $items) {
+        $ruta = Join-Path (Join-Path $outputRoot $item.Directory) $item.FileName
+        if (Test-Path -LiteralPath $ruta) {
+            $existentes += 1
+        } else {
+            $pendientes += 1
+        }
+    }
+
     Write-Host ''
     Write-Host ("Elementos: {0}" -f $items.Count)
+    Write-Host ("Existentes: {0}" -f $existentes)
+    Write-Host ("Pendientes: {0}" -f $pendientes)
     Write-Host 'Llamadas reales: 0'
     Write-Host 'Archivos creados: 0'
     exit 0
