@@ -1,0 +1,22 @@
+.scroll-pacientes {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--hro-outline)) transparent;
+}
+
+.scroll-pacientes::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scroll-pacientes::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-pacientes::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--hro-outline));
+  border-radius: 999px;
+}
+
+.scroll-pacientes::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--hro-primary));
+}
