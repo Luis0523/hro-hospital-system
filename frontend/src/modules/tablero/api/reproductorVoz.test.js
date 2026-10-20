@@ -1,300 +1,276 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-class AudioFalso {
-  static instancias = []
-  static implPlay = () => Promise.resolve()
-
-  constructor(ruta) {
-    this.ruta = ruta
-    this.src = ruta
-    this.preload = ''
-    this.listeners = new Map()
-    this.playCalls = 0
-    this.pauseCalls = 0
-    AudioFalso.instancias.push(this)
+class SourceFalso {
+  constructor(contexto) {
+    this.contexto = contexto
+    this.started = null
+    this.stopped = 0
+    this.buffer = null
+    this.connected = null
   }
 
-  addEventListener(tipo, handler) {
-    if (!this.listeners.has(tipo)) this.listeners.set(tipo, new Set())
-    this.listeners.get(tipo).add(handler)
+  connect(nodo) {
+    this.connected = nodo
   }
 
-  removeEventListener(tipo, handler) {
-    this.listeners.get(tipo)?.delete(handler)
+  start(cuando) {
+    this.started = cuando
+    this.contexto.sources.push(this)
   }
 
-  emitir(tipo) {
-    for (const handler of [...(this.listeners.get(tipo) ?? [])]) handler()
-  }
-
-  contarListeners(tipo) {
-    return this.listeners.get(tipo)?.size ?? 0
-  }
-
-  play() {
-    this.playCalls += 1
-    return AudioFalso.implPlay(this)
-  }
-
-  pause() {
-    this.pauseCalls += 1
+  stop() {
+    this.stopped += 1
   }
 }
 
-let detenerReproduccion
+class ContextoFalso {
+  static instancias = []
+  static duraciones = {}
+  static decodeError = null
+
+  constructor() {
+    this.currentTime = 0
+    this.state = 'running'
+    this.destination = { tipo: 'destino' }
+    this.sources = []
+    this.closed = 0
+    ContextoFalso.instancias.push(this)
+  }
+
+  resume() {
+    return Promise.resolve()
+  }
+
+  close() {
+    this.closed += 1
+    return Promise.resolve()
+  }
+
+  createBufferSource() {
+    return new SourceFalso(this)
+  }
+
+  decodeAudioData(datos) {
+    if (ContextoFalso.decodeError) {
+      return Promise.reject(new Error(ContextoFalso.decodeError))
+    }
+    return Promise.resolve({ duration: ContextoFalso.duraciones[datos.ruta] })
+  }
+}
+
 let reproducirSecuencia
+let detenerReproduccion
+let SOLAPAMIENTO_FRAGMENTOS_MS
 let TIMEOUT_FRAGMENTO_MS
+const fetchFalso = vi.fn()
 
 async function dejarCorrer() {
-  for (let i = 0; i < 10; i += 1) await Promise.resolve()
-}
-
-function crearLogger() {
-  return { warn: vi.fn() }
+  for (let i = 0; i < 20; i += 1) await Promise.resolve()
 }
 
 function opciones(extra = {}) {
-  return { AudioCtor: AudioFalso, logger: crearLogger(), ...extra }
+  return {
+    AudioContextCtor: ContextoFalso,
+    fetchImpl: fetchFalso,
+    timeoutMs: 100,
+    ...extra,
+  }
 }
 
-function rutasReproducidas() {
-  return AudioFalso.instancias.map((audio) => audio.ruta)
+function configurarDuraciones(rutas, duraciones) {
+  ContextoFalso.duraciones = Object.fromEntries(
+    rutas.map((ruta, indice) => [ruta, duraciones[indice]]),
+  )
 }
 
 beforeEach(async () => {
+  vi.useFakeTimers()
   vi.resetModules()
-  ;({ detenerReproduccion, reproducirSecuencia, TIMEOUT_FRAGMENTO_MS } =
-    await import('./reproductorVoz'))
-  AudioFalso.instancias = []
-  AudioFalso.implPlay = () => Promise.resolve()
+  ;({
+    reproducirSecuencia,
+    detenerReproduccion,
+    SOLAPAMIENTO_FRAGMENTOS_MS,
+    TIMEOUT_FRAGMENTO_MS,
+  } = await import('./reproductorVoz'))
+
+  ContextoFalso.instancias = []
+  ContextoFalso.duraciones = {}
+  ContextoFalso.decodeError = null
+  fetchFalso.mockReset()
+  fetchFalso.mockImplementation(async (ruta) => ({
+    ok: true,
+    status: 200,
+    arrayBuffer: async () => ({ ruta }),
+  }))
 })
 
 afterEach(() => {
+  detenerReproduccion?.()
+  vi.clearAllTimers()
   vi.useRealTimers()
 })
 
-describe('reproducirSecuencia', () => {
-  it('expone un timeout por defecto razonable', () => {
+describe('reproductorVoz · Web Audio y solapamiento', () => {
+  it('expone el solapamiento aprobado de 1000 ms', () => {
+    expect(SOLAPAMIENTO_FRAGMENTOS_MS).toBe(1000)
     expect(TIMEOUT_FRAGMENTO_MS).toBe(15000)
   })
 
-  it('resuelve una secuencia vacía sin crear audios', async () => {
+  it('resuelve una secuencia vacía sin cargar audios', async () => {
     await expect(reproducirSecuencia([], opciones())).resolves.toBeUndefined()
-    expect(AudioFalso.instancias).toHaveLength(0)
+    expect(fetchFalso).not.toHaveBeenCalled()
+    expect(ContextoFalso.instancias).toHaveLength(0)
   })
 
-  it('rechaza una secuencia no vacía con rutas inválidas antes de crear audios', async () => {
+  it('rechaza una secuencia no vacía con rutas inválidas', async () => {
     await expect(
       reproducirSecuencia([null, '', '   ', 42], opciones()),
     ).rejects.toThrow(/ruta inválida/i)
-    expect(AudioFalso.instancias).toHaveLength(0)
+    expect(fetchFalso).not.toHaveBeenCalled()
   })
 
-  it('reproduce un fragmento y resuelve al terminar', async () => {
-    const promesa = reproducirSecuencia(['/a.mp3'], opciones())
+  it('carga y decodifica todos los fragmentos en orden', async () => {
+    const rutas = ['/a.mp3', '/b.mp3', '/c.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2, 0.8])
+
+    const promesa = reproducirSecuencia(rutas, opciones())
     await dejarCorrer()
 
-    expect(AudioFalso.instancias).toHaveLength(1)
-    expect(AudioFalso.instancias[0].ruta).toBe('/a.mp3')
-    expect(AudioFalso.instancias[0].playCalls).toBe(1)
+    expect(fetchFalso.mock.calls.map(([ruta]) => ruta)).toEqual(rutas)
+    expect(ContextoFalso.instancias[0].sources).toHaveLength(3)
 
-    AudioFalso.instancias[0].emitir('ended')
-    await expect(promesa).resolves.toBeUndefined()
+    detenerReproduccion()
+    await expect(promesa).rejects.toThrow(/cancel/i)
   })
 
-  it('reproduce varios fragmentos en el orden recibido', async () => {
-    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3', '/3.mp3'], opciones())
+  it('programa los inicios con duración - 1000 ms', async () => {
+    const rutas = ['/1.mp3', '/2.mp3', '/3.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2, 0.8])
+
+    const promesa = reproducirSecuencia(rutas, opciones())
     await dejarCorrer()
 
-    expect(rutasReproducidas()).toEqual(['/1.mp3'])
+    const inicios = ContextoFalso.instancias[0].sources.map((s) => s.started)
+    expect(inicios).toEqual([0.05, 0.55, 0.75])
 
-    AudioFalso.instancias[0].emitir('ended')
-    await dejarCorrer()
-    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3'])
-
-    AudioFalso.instancias[1].emitir('ended')
-    await dejarCorrer()
-    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3', '/3.mp3'])
-
-    AudioFalso.instancias[2].emitir('ended')
-    await expect(promesa).resolves.toBeUndefined()
+    detenerReproduccion()
+    await expect(promesa).rejects.toThrow(/cancel/i)
   })
 
-  it('no inicia el segundo fragmento antes del "ended" del primero', async () => {
-    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3'], opciones())
+  it('no genera avance negativo para fragmentos menores a 1 s', async () => {
+    const rutas = ['/corto1.mp3', '/corto2.mp3']
+    configurarDuraciones(rutas, [0.8, 0.8])
+
+    const promesa = reproducirSecuencia(rutas, opciones())
     await dejarCorrer()
 
-    expect(AudioFalso.instancias).toHaveLength(1)
-    await dejarCorrer()
-    expect(AudioFalso.instancias).toHaveLength(1)
+    const inicios = ContextoFalso.instancias[0].sources.map((s) => s.started)
+    expect(inicios).toEqual([0.05, 0.05])
 
-    AudioFalso.instancias[0].emitir('ended')
-    await dejarCorrer()
-    expect(AudioFalso.instancias).toHaveLength(2)
-
-    AudioFalso.instancias[1].emitir('ended')
-    await expect(promesa).resolves.toBeUndefined()
+    detenerReproduccion()
+    await expect(promesa).rejects.toThrow(/cancel/i)
   })
 
-  it('aborta si el segundo fragmento emite "error" y no inicia el tercero', async () => {
-    const logger = crearLogger()
-    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3', '/3.mp3'], opciones({ logger }))
-    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
+  it('resuelve una sola vez al terminar y cierra el contexto', async () => {
+    const rutas = ['/1.mp3', '/2.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2])
 
-    await dejarCorrer()
-    AudioFalso.instancias[0].emitir('ended')
-    await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3'])
-
-    const roto = AudioFalso.instancias[1]
-    roto.emitir('error')
-
-    await rechazo
-    await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/1.mp3', '/2.mp3'])
-    expect(roto.contarListeners('ended')).toBe(0)
-    expect(roto.contarListeners('error')).toBe(0)
-    expect(roto.pauseCalls).toBe(1)
-    expect(logger.warn).toHaveBeenCalled()
-  })
-
-  it('aborta si el primer fragmento falla con play() rechazado', async () => {
-    AudioFalso.implPlay = (audio) =>
-      audio.ruta === '/1.mp3' ? Promise.reject(new Error('bloqueado')) : Promise.resolve()
-    const logger = crearLogger()
-
-    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3'], opciones({ logger }))
-    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
-
-    await dejarCorrer()
-    await rechazo
-    await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/1.mp3'])
-    expect(logger.warn).toHaveBeenCalled()
-  })
-
-  it('aborta por timeout y no inicia el siguiente fragmento', async () => {
-    vi.useFakeTimers()
-    const logger = crearLogger()
-
-    const promesa = reproducirSecuencia(['/colgado.mp3', '/siguiente.mp3'], {
-      AudioCtor: AudioFalso,
-      logger,
-      timeoutMs: 100,
+    let resoluciones = 0
+    const promesa = reproducirSecuencia(rutas, opciones())
+    promesa.then(() => {
+      resoluciones += 1
     })
-    const rechazo = expect(promesa).rejects.toThrow(/abortó|falló/i)
 
     await dejarCorrer()
-    expect(AudioFalso.instancias).toHaveLength(1)
+    vi.advanceTimersByTime(3000)
+    await promesa
 
-    vi.advanceTimersByTime(100)
-    await dejarCorrer()
-    await rechazo
-
-    expect(rutasReproducidas()).toEqual(['/colgado.mp3'])
+    expect(resoluciones).toBe(1)
+    expect(ContextoFalso.instancias[0].closed).toBe(1)
     expect(vi.getTimerCount()).toBe(0)
-    expect(logger.warn).toHaveBeenCalled()
   })
 
-  it('recupera la cola: B se reproduce después de que A falle', async () => {
-    const primera = reproducirSecuencia(['/a1.mp3', '/a2.mp3'], opciones())
-    const rechazoA = expect(primera).rejects.toThrow(/abortó|falló/i)
+  it('rechaza si falla la carga de un fragmento', async () => {
+    fetchFalso.mockResolvedValue({ ok: false, status: 404 })
 
-    await dejarCorrer()
-    AudioFalso.instancias[0].emitir('ended')
-    await dejarCorrer()
-    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3'])
+    await expect(reproducirSecuencia(['/falta.mp3'], opciones())).rejects.toThrow(
+      /No se pudo cargar/,
+    )
 
-    AudioFalso.instancias[1].emitir('error')
-    await rechazoA
-    await dejarCorrer()
-
-    const segunda = reproducirSecuencia(['/b1.mp3'], opciones())
-    const resolucionB = expect(segunda).resolves.toBeUndefined()
-    await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3', '/b1.mp3'])
-
-    AudioFalso.instancias[2].emitir('ended')
-    await resolucionB
+    expect(ContextoFalso.instancias[0].sources).toHaveLength(0)
+    expect(ContextoFalso.instancias[0].closed).toBe(1)
   })
 
-  it('detiene el fragmento activo e impide los restantes', async () => {
-    const promesa = reproducirSecuencia(['/1.mp3', '/2.mp3', '/3.mp3'], opciones())
+  it('rechaza si falla la decodificación de un fragmento', async () => {
+    ContextoFalso.decodeError = 'decode roto'
+
+    await expect(
+      reproducirSecuencia(['/roto.mp3'], opciones()),
+    ).rejects.toThrow(/decode roto/)
+
+    expect(ContextoFalso.instancias[0].sources).toHaveLength(0)
+  })
+
+  it('detiene sources activos y programados', async () => {
+    const rutas = ['/1.mp3', '/2.mp3', '/3.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2, 0.8])
+
+    const promesa = reproducirSecuencia(rutas, opciones())
     const rechazo = expect(promesa).rejects.toThrow(/cancel/i)
-
-    await dejarCorrer()
-    const audio = AudioFalso.instancias[0]
-
-    detenerReproduccion()
-    await rechazo
     await dejarCorrer()
 
-    expect(rutasReproducidas()).toEqual(['/1.mp3'])
-    expect(audio.pauseCalls).toBe(1)
-    expect(audio.contarListeners('ended')).toBe(0)
-    expect(audio.contarListeners('error')).toBe(0)
-  })
-
-  it('vuelve a reproducir después de detener', async () => {
-    const primera = reproducirSecuencia(['/a1.mp3'], opciones())
-    const rechazo = expect(primera).rejects.toThrow(/cancel/i)
-
-    await dejarCorrer()
+    const contexto = ContextoFalso.instancias[0]
     detenerReproduccion()
     await rechazo
 
-    const segunda = reproducirSecuencia(['/b1.mp3'], opciones())
-    const resolucion = expect(segunda).resolves.toBeUndefined()
+    expect(contexto.sources.every((s) => s.stopped === 1)).toBe(true)
+    expect(contexto.closed).toBe(1)
+
+    vi.advanceTimersByTime(5000)
     await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/b1.mp3'])
-
-    AudioFalso.instancias[1].emitir('ended')
-    await resolucion
-  })
-
-  it('serializa dos secuencias simultáneas sin superponer audio', async () => {
-    const primera = reproducirSecuencia(['/a1.mp3', '/a2.mp3'], opciones())
-    const segunda = reproducirSecuencia(['/b1.mp3'], opciones())
-    await dejarCorrer()
-
-    expect(rutasReproducidas()).toEqual(['/a1.mp3'])
-
-    AudioFalso.instancias[0].emitir('ended')
-    await dejarCorrer()
-    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3'])
-
-    AudioFalso.instancias[1].emitir('ended')
-    await dejarCorrer()
-    expect(rutasReproducidas()).toEqual(['/a1.mp3', '/a2.mp3', '/b1.mp3'])
-
-    AudioFalso.instancias[2].emitir('ended')
-    await expect(primera).resolves.toBeUndefined()
-    await expect(segunda).resolves.toBeUndefined()
-  })
-
-  it('limpia listeners y timers al terminar cada fragmento', async () => {
-    vi.useFakeTimers()
-    const promesa = reproducirSecuencia(['/1.mp3'], opciones())
-    await dejarCorrer()
-
-    const audio = AudioFalso.instancias[0]
-    expect(audio.contarListeners('ended')).toBe(1)
-    expect(audio.contarListeners('error')).toBe(1)
-    expect(vi.getTimerCount()).toBe(1)
-
-    audio.emitir('ended')
-    await dejarCorrer()
-
-    expect(audio.contarListeners('ended')).toBe(0)
-    expect(audio.contarListeners('error')).toBe(0)
-    expect(audio.pauseCalls).toBe(1)
     expect(vi.getTimerCount()).toBe(0)
+  })
 
-    await expect(promesa).resolves.toBeUndefined()
+  it('no resuelve una secuencia vieja después de detener', async () => {
+    const rutas = ['/1.mp3', '/2.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2])
+
+    let resuelta = false
+    let rechazada = false
+    const promesa = reproducirSecuencia(rutas, opciones())
+    promesa.then(
+      () => {
+        resuelta = true
+      },
+      () => {
+        rechazada = true
+      },
+    )
+
+    await dejarCorrer()
+    detenerReproduccion()
+    vi.advanceTimersByTime(5000)
+    await dejarCorrer()
+
+    expect(resuelta).toBe(false)
+    expect(rechazada).toBe(true)
+  })
+
+  it('permite una nueva reproducción después de detener', async () => {
+    const primera = reproducirSecuencia(['/a.mp3'], opciones())
+    configurarDuraciones(['/a.mp3'], [1.5])
+    await dejarCorrer()
+    detenerReproduccion()
+    await expect(primera).rejects.toThrow(/cancel/i)
+
+    const segunda = reproducirSecuencia(['/b.mp3'], opciones())
+    configurarDuraciones(['/b.mp3'], [1.2])
+    await dejarCorrer()
+
+    expect(ContextoFalso.instancias).toHaveLength(2)
+    expect(ContextoFalso.instancias[1].sources).toHaveLength(1)
+
+    vi.advanceTimersByTime(3000)
+    await expect(segunda).resolves.toBeUndefined()
   })
 })
