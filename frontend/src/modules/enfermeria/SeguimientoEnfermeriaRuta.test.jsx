@@ -34,6 +34,22 @@ describe('AppRouter · /seguimiento-enfermeria', () => {
         { timeout: 5000 },
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Registrar turno' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Registrar turno' }, { timeout: 5000 }),
+    ).toBeInTheDocument()
+  })
+
+  it('carga sin sesión en desarrollo local', async () => {
+    localStorage.setItem('hro_sesion', 'cerrada')
+    renderRuta('/seguimiento-enfermeria')
+
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Control de turnos y expedientes' },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Sesión cerrada')).not.toBeInTheDocument()
   })
 })

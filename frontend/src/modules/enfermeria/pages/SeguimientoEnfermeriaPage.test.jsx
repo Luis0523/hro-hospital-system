@@ -35,7 +35,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Control de turnos y expedientes' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Libro digital de recepción')).toBeInTheDocument()
+    expect(await screen.findByText('Libro digital de recepción')).toBeInTheDocument()
     expect(screen.getByTestId('total-turnos')).toHaveTextContent('85')
     expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrado')
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()

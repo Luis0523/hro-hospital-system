@@ -53,6 +53,10 @@ function InicioPorRol() {
   return <Navigate to={inicioSegunRol(usuario?.rol)} replace />
 }
 
+// Solo en desarrollo local: permite probar la pantalla sin iniciar sesión.
+// En build/producción se mantiene como ruta privada.
+const SEGUIMIENTO_PUBLICO_EN_DEV = import.meta.env.DEV
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -62,6 +66,9 @@ export default function AppRouter() {
       <Route path="/sin-acceso" element={<SinAccesoPage />} />
       <Route path="/tablero" element={<TableroPage />} />
       <Route path="/prueba-ocr" element={<PruebaOcrPage />} />
+      {SEGUIMIENTO_PUBLICO_EN_DEV && (
+        <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+      )}
 
       {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>
@@ -70,7 +77,9 @@ export default function AppRouter() {
         <Route element={<RutaPorRol area="enfermeria" />}>
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
           <Route path="/enfermeria/carnets" element={<RegistroCarnetsPage />} />
-          <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+          {!SEGUIMIENTO_PUBLICO_EN_DEV && (
+            <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+          )}
           <Route
             path="/enfermeria"
             element={
