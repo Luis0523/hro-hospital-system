@@ -3,5 +3,6 @@
 export const SECCIONES_ENFERMERIA = [
   { to: '/enfermeria', etiqueta: 'Calendario y citas', icono: 'calendar_month', exacto: true },
   { to: '/enfermeria/carnets', etiqueta: 'Registro de carnets', icono: 'badge' },
+  { to: '/seguimiento-enfermeria', etiqueta: 'Seguimiento de turnos', icono: 'assignment' },
   { to: '/coex', etiqueta: 'Expedientes (COEX)', icono: 'inventory_2' },
 ]
