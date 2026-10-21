@@ -2,14 +2,70 @@
 // La estructura imita los DTO confirmados del backend; no es fuente real.
 
 const ESPACIOS_BASE = [
-  { id: 'ef-101', numero: '101', nivel: 1, capacidadCamillas: 1 },
-  { id: 'ef-102', numero: '102', nivel: 1, capacidadCamillas: 1 },
-  { id: 'ef-201', numero: '201', nivel: 2, capacidadCamillas: 1 },
-  { id: 'ef-202', numero: '202', nivel: 2, capacidadCamillas: 1 },
-  { id: 'ef-203', numero: '203', nivel: 2, capacidadCamillas: 2 },
-  { id: 'ef-301', numero: '301', nivel: 3, capacidadCamillas: 1 },
-  { id: 'ef-401', numero: '401', nivel: 4, capacidadCamillas: 1 },
-  { id: 'ef-402', numero: '402', nivel: 4, capacidadCamillas: 1 },
+  {
+    id: 'ef-101',
+    numero: '101',
+    nivel: 1,
+    capacidadCamillas: 1,
+    nombre: 'Sala 101',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+  },
+  {
+    id: 'ef-102',
+    numero: '102',
+    nivel: 1,
+    capacidadCamillas: 1,
+    nombre: 'Sala 102',
+    ubicacion: 'Edificio Consulta Externa, Nivel 1',
+  },
+  {
+    id: 'ef-201',
+    numero: '201',
+    nivel: 2,
+    capacidadCamillas: 1,
+    nombre: 'Sala 201',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+  },
+  {
+    id: 'ef-202',
+    numero: '202',
+    nivel: 2,
+    capacidadCamillas: 1,
+    nombre: 'Sala 202',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+  },
+  {
+    id: 'ef-203',
+    numero: '203',
+    nivel: 2,
+    capacidadCamillas: 2,
+    nombre: 'Sala 203',
+    ubicacion: 'Edificio Consulta Externa, Nivel 2',
+  },
+  {
+    id: 'ef-301',
+    numero: '301',
+    nivel: 3,
+    capacidadCamillas: 1,
+    nombre: 'Sala 301',
+    ubicacion: 'Edificio Consulta Externa, Nivel 3',
+  },
+  {
+    id: 'ef-401',
+    numero: '401',
+    nivel: 4,
+    capacidadCamillas: 1,
+    nombre: 'Sala 401',
+    ubicacion: 'Edificio Consulta Externa, Nivel 4',
+  },
+  {
+    id: 'ef-402',
+    numero: '402',
+    nivel: 4,
+    capacidadCamillas: 1,
+    nombre: 'Sala 402',
+    ubicacion: 'Edificio Consulta Externa, Nivel 4',
+  },
 ]
 
 const SUBESPECIALIDADES_BASE = [
@@ -40,6 +96,7 @@ export const subespecialidadesMock = SUBESPECIALIDADES_BASE.map((sub) => ({ ...s
 const asignacionesPorFecha = new Map()
 const diasCerrados = new Set()
 let contadorAsignacion = 1
+let contadorEspacio = 1000
 
 function listaDe(fecha) {
   if (!asignacionesPorFecha.has(fecha)) asignacionesPorFecha.set(fecha, [])
@@ -58,6 +115,62 @@ export function listarEspaciosFisicosMock(nivel) {
   return espaciosMock
     .filter((espacio) => !nivel || Number(espacio.nivel) === Number(nivel))
     .map((espacio) => ({ ...espacio, activo: true }))
+}
+
+export function crearEspacioFisicoMock(datos) {
+  contadorEspacio += 1
+  const espacio = {
+    id: `ef-${contadorEspacio}`,
+    numero: String(datos.numero).trim(),
+    nivel: Number(datos.nivel),
+    capacidadCamillas: Number(datos.capacidadCamillas ?? 1),
+    nombre: String(datos.nombre).trim(),
+    ubicacion: datos.ubicacion ?? null,
+    coordenadasPlano: datos.coordenadasPlano ?? null,
+    activo: true,
+  }
+  espaciosMock.push(espacio)
+  return { ...espacio }
+}
+
+export function actualizarEspacioFisicoMock(id, datos) {
+  const espacio = espacioDe(id)
+  if (!espacio) {
+    const error = new Error('Espacio físico no encontrado')
+    error.status = 404
+    throw error
+  }
+  Object.assign(espacio, {
+    numero: String(datos.numero).trim(),
+    nivel: Number(datos.nivel),
+    capacidadCamillas: Number(datos.capacidadCamillas ?? espacio.capacidadCamillas),
+    nombre: String(datos.nombre).trim(),
+    ubicacion: datos.ubicacion ?? null,
+    coordenadasPlano: datos.coordenadasPlano ?? espacio.coordenadasPlano ?? null,
+    activo: datos.activo ?? true,
+  })
+  return { ...espacio }
+}
+
+export function desactivarEspacioFisicoMock(id) {
+  const indice = espaciosMock.findIndex((espacio) => espacio.id === id)
+  if (indice === -1) {
+    const error = new Error('Espacio físico no encontrado')
+    error.status = 404
+    throw error
+  }
+  const [espacio] = espaciosMock.splice(indice, 1)
+  return { ...espacio, activo: false }
+}
+
+export function obtenerEspacioFisicoMock(id) {
+  const espacio = espacioDe(id)
+  if (!espacio) {
+    const error = new Error('Espacio físico no encontrado')
+    error.status = 404
+    throw error
+  }
+  return { ...espacio, activo: true }
 }
 
 export function listarSubespecialidadesMock() {
@@ -602,7 +715,9 @@ export function reiniciarJefeMock() {
     ...ESTACIONES_BASE.map((e) => ({ ...e, subespecialidadIds: [...e.subespecialidadIds] })),
   )
   accesosMockData.splice(0, accesosMockData.length, ...ACCESOS_BASE.map((a) => ({ ...a })))
+  espaciosMock.splice(0, espaciosMock.length, ...ESPACIOS_BASE.map((e) => ({ ...e })))
   contadorAsignacion = 1
+  contadorEspacio = 1000
   contadorHorario = 1
   contadorEstacion = ESTACIONES_BASE.length + 1
 }

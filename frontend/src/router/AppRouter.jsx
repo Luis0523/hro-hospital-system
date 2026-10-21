@@ -26,6 +26,7 @@ import DashboardPage from '@/modules/administracion/pages/DashboardPage.jsx'
 import UsuariosPage from '@/modules/administracion/pages/UsuariosPage.jsx'
 import RolesPaginasPage from '@/modules/administracion/pages/RolesPaginasPage.jsx'
 import ClinicasPage from '@/modules/administracion/pages/ClinicasPage.jsx'
+import MedicosPage from '@/modules/administracion/pages/MedicosPage.jsx'
 import CuposPage from '@/modules/administracion/pages/CuposPage.jsx'
 import CalendarioPage from '@/modules/administracion/pages/CalendarioPage.jsx'
 import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
@@ -54,10 +55,6 @@ function InicioPorRol() {
   return <Navigate to={inicioSegunRol(usuario?.rol)} replace />
 }
 
-// Solo en desarrollo local: permite probar la pantalla sin iniciar sesión.
-// En build/producción se mantiene como ruta privada.
-const SEGUIMIENTO_PUBLICO_EN_DEV = import.meta.env.DEV
-
 export default function AppRouter() {
   return (
     <Routes>
@@ -68,10 +65,6 @@ export default function AppRouter() {
       <Route path="/tablero" element={<TableroPage />} />
       <Route path="/vista-doctor" element={<VistaDoctorPage />} />
       <Route path="/prueba-ocr" element={<PruebaOcrPage />} />
-      {SEGUIMIENTO_PUBLICO_EN_DEV && (
-        <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
-      )}
-
       {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>
         <Route path="/" element={<InicioPorRol />} />
@@ -79,9 +72,7 @@ export default function AppRouter() {
         <Route element={<RutaPorRol area="enfermeria" />}>
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
           <Route path="/enfermeria/carnets" element={<RegistroCarnetsPage />} />
-          {!SEGUIMIENTO_PUBLICO_EN_DEV && (
-            <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
-          )}
+          <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
           <Route
             path="/enfermeria"
             element={
@@ -116,6 +107,7 @@ export default function AppRouter() {
             <Route path="usuarios" element={<UsuariosPage />} />
             <Route path="roles" element={<RolesPaginasPage />} />
             <Route path="clinicas" element={<ClinicasPage />} />
+            <Route path="medicos" element={<MedicosPage />} />
             <Route path="cupos" element={<CuposPage />} />
             <Route path="calendario" element={<CalendarioPage />} />
             <Route path="reportes" element={<ReportesPage />} />

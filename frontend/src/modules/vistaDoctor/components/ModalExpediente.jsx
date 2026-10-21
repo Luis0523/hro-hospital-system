@@ -4,7 +4,7 @@ import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
 import Modal from '@/shared/components/ui/Modal.jsx'
-import { buscarPacientePorExpediente } from '../api/doctorApi'
+import { buscarPacientePorExpediente, esModoDemo } from '../api/doctorApi'
 
 function normalizarNombre(valor) {
   return String(valor ?? '')
@@ -13,12 +13,18 @@ function normalizarNombre(valor) {
     .replace(/\s+/g, ' ')
 }
 
+const PATRON_EXPEDIENTE = esModoDemo ? /^[0-9]{1,10}$/ : /^[A-Za-z0-9-]{1,30}$/
+
 function mensajeError(error) {
   if (error?.code === 'EXPEDIENTE_INVALIDO') {
-    return 'Ingresa un número de expediente válido (de 1 a 10 dígitos numéricos).'
+    return esModoDemo
+      ? 'Ingresa un número de expediente válido (de 1 a 10 dígitos numéricos).'
+      : 'Ingresa un número de expediente válido.'
   }
   if (error?.code === 'EXPEDIENTE_NO_ENCONTRADO') {
-    return 'No encontramos un paciente ficticio con ese número de expediente.'
+    return esModoDemo
+      ? 'No encontramos un paciente ficticio con ese número de expediente.'
+      : 'No encontramos un expediente con ese número.'
   }
   return error?.message ?? 'No se pudo consultar el expediente.'
 }
@@ -53,7 +59,8 @@ export default function ModalExpediente({
   const pacienteEsperado = turno?.pacienteNombre ?? ''
   const coincide =
     Boolean(consulta) &&
-    normalizarNombre(consulta.pacienteNombre) === normalizarNombre(pacienteEsperado)
+    (!normalizarNombre(pacienteEsperado) ||
+      normalizarNombre(consulta.pacienteNombre) === normalizarNombre(pacienteEsperado))
   const puedeAsociar =
     Boolean(consulta && coincide && expediente.trim()) && !guardando && !deshabilitado
 
@@ -69,12 +76,14 @@ export default function ModalExpediente({
 
   function manejarPegado(evento) {
     const texto = String(evento.clipboardData?.getData('text') ?? '').trim()
-    if (!/^[0-9]{1,10}$/.test(texto)) {
+    if (!PATRON_EXPEDIENTE.test(texto)) {
       evento.preventDefault()
       setConsulta(null)
       setError({
         code: 'EXPEDIENTE_INVALIDO',
-        message: 'Ingresa un número de expediente válido (de 1 a 10 dígitos numéricos).',
+        message: esModoDemo
+          ? 'Ingresa un número de expediente válido (de 1 a 10 dígitos numéricos).'
+          : 'Ingresa un número de expediente válido.',
       })
     }
   }
@@ -152,15 +161,19 @@ export default function ModalExpediente({
             value={expediente}
             onChange={manejarCambio}
             onPaste={manejarPegado}
-            placeholder="Ej. 0000000006"
+            placeholder={esModoDemo ? 'Ej. 0000000006' : 'Ej. 1323-23'}
             autoComplete="off"
             autoFocus
-            inputMode="numeric"
-            maxLength={10}
+            inputMode={esModoDemo ? 'numeric' : 'text'}
+            maxLength={esModoDemo ? 10 : 30}
             disabled={consultando || guardando || deshabilitado}
             aria-describedby={error ? 'expediente-error' : undefined}
             aria-invalid={Boolean(error)}
-            hint="Solo dígitos, hasta 10. Se conservan los ceros iniciales."
+            hint={
+              esModoDemo
+                ? 'Solo dígitos, hasta 10. Se conservan los ceros iniciales.'
+                : 'Use el número de expediente del hospital.'
+            }
           />
           <Button
             type="submit"

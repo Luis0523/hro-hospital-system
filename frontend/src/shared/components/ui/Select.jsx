@@ -25,6 +25,7 @@ export default function Select({
   options = [],
   placeholder = 'Seleccione...',
   className = '',
+  ariaLabel = null,
 }) {
   const seleccionada = options.find((opcion) => opcion.value === value) ?? null
 
@@ -33,8 +34,16 @@ export default function Select({
       {label && <span className="block text-sm font-medium text-on-surface">{label}</span>}
       <Listbox value={value} onChange={onChange}>
         <div className="relative">
-          <Listbox.Button className="relative w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-9 text-left text-sm focus:border-primary-container focus:outline-none focus:ring-2 focus:ring-secondary-fixed-dim">
-            <span className={seleccionada ? 'text-on-surface' : 'text-on-surface-variant'}>
+          <Listbox.Button
+            aria-label={ariaLabel ?? undefined}
+            title={seleccionada ? seleccionada.label : placeholder}
+            className="relative w-full whitespace-nowrap rounded-lg border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-9 text-left text-sm focus:border-primary-container focus:outline-none focus:ring-2 focus:ring-secondary-fixed-dim"
+          >
+            <span
+              className={`block truncate ${
+                seleccionada ? 'text-on-surface' : 'text-on-surface-variant'
+              }`}
+            >
               {seleccionada ? seleccionada.label : placeholder}
             </span>
             <span className="absolute inset-y-0 right-2 flex items-center">

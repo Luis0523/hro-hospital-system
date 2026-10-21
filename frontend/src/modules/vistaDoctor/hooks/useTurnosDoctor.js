@@ -12,9 +12,10 @@ export function useTurnosDoctor(asignacion, escenario, medicoId) {
   const [resultado, setResultado] = useState(ESTADO_INICIAL)
   const [intento, setIntento] = useState(0)
   const asignacionId = asignacion?.id ?? null
+  const espacioFisicoId = asignacion?.espacioFisicoId ?? null
 
   useEffect(() => {
-    if (asignacionId == null) {
+    if (asignacionId == null && espacioFisicoId == null) {
       setResultado(ESTADO_INICIAL)
       return undefined
     }
@@ -22,7 +23,7 @@ export function useTurnosDoctor(asignacion, escenario, medicoId) {
     let activo = true
     setResultado({ estado: 'loading', turnos: [], ultimoLlamadoEn: 0, error: null })
 
-    obtenerCola({ asignacionId, escenario, medicoId })
+    obtenerCola({ asignacionId, espacioFisicoId, escenario, medicoId })
       .then((cola) => {
         if (!activo) return
         setResultado({
@@ -40,7 +41,7 @@ export function useTurnosDoctor(asignacion, escenario, medicoId) {
     return () => {
       activo = false
     }
-  }, [asignacionId, escenario, medicoId, intento])
+  }, [asignacionId, espacioFisicoId, escenario, medicoId, intento])
 
   const recargar = useCallback(() => {
     setIntento((valor) => valor + 1)

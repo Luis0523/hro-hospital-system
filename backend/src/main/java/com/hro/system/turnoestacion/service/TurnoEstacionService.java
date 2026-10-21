@@ -12,13 +12,14 @@ import com.hro.system.common.BusinessException;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.espacio.entity.EspacioFisico;
-import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.context.EstacionContexto;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
+import com.hro.system.integracion.dto.PacienteHroDTO;
+import com.hro.system.integracion.service.ExpedienteHroService;
 import com.hro.system.medico.entity.Medico;
 import com.hro.system.medico.repository.MedicoRepository;
 import com.hro.system.paciente.entity.Paciente;
@@ -29,9 +30,11 @@ import com.hro.system.turnoestacion.entity.TurnoEstacion;
 import com.hro.system.turnoestacion.entity.TurnoEstacionMovimiento;
 import com.hro.system.turnoestacion.repository.TurnoEstacionMovimientoRepository;
 import com.hro.system.turnoestacion.repository.TurnoEstacionRepository;
+import com.hro.system.turno.dto.TableroTurnoDTO;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,13 +58,14 @@ public class TurnoEstacionService {
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     private final EspecialidadRepository especialidadRepository;
     private final EspacioFisicoRepository espacioFisicoRepository;
-    private final AsignacionDiariaEspacioRepository asignacionRepository;
     private final MedicoRepository medicoRepository;
     private final PacienteRepository pacienteRepository;
     private final CitaRepository citaRepository;
     private final ExpedienteRepository expedienteRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final EnfermeriaArchivoBridgeService archivoBridge;
+    private final ExpedienteHroService expedienteHroService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional(readOnly = true)
     public List<TurnoEstacionResponseDTO> listar(LocalDate fecha, Long estacionId,
@@ -209,8 +213,7 @@ public class TurnoEstacionService {
             throw new ConflictException("TRANSICION_INVALIDA",
                     "Solo se puede asignar clínica a un turno en estado 'recibido'");
         }
-        EspacioFisico espacio = validarEspacioAsignado(dto.getEspacioFisicoId(), turno.getFecha(),
-                turno.getEspecialidad().getId());
+        EspacioFisico espacio = validarEspacioActivo(dto.getEspacioFisicoId());
         UsuarioReferencia usuario = usuarioActual();
 
         turno.setEspacioFisico(espacio);
@@ -238,28 +241,50 @@ public class TurnoEstacionService {
                     "El turno ya está vinculado al expediente " + turno.getExpediente().getNumeroExpediente());
         }
 
-        Expediente expediente = expedienteRepository.findByNumeroExpediente(numeroExpediente)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Expediente", "numeroExpediente", numeroExpediente));
-        if (turno.getPaciente() != null
-                && !turno.getPaciente().getId().equals(expediente.getPaciente().getId())) {
-            throw new ConflictException("PACIENTE_EXPEDIENTE_INCONSISTENTE",
-                    "El expediente no corresponde al paciente registrado en el turno");
+        if (numeroExpediente.equals(turno.getNumeroExpediente())) {
+            return toDTO(turno, true);
         }
-        if (turnoRepository.existsByFechaAndNumeroExpedienteAndActivoTrue(turno.getFecha(), numeroExpediente)) {
-            throw new ConflictException("EXPEDIENTE_CON_TURNO",
-                    "El expediente " + numeroExpediente + " ya tiene otro turno activo para la fecha");
+        if (turno.getNumeroExpediente() != null) {
+            throw new ConflictException("EXPEDIENTE_YA_VINCULADO",
+                    "El turno ya está vinculado al expediente " + turno.getNumeroExpediente());
         }
 
-        EnfermeriaArchivoBridgeService.VinculoExpediente vinculo = archivoBridge.vincular(
-                expediente, turno.getCita() != null ? turno.getCita().getId() : null,
-                dto.getObservacion());
+        Optional<Expediente> local = expedienteRepository.findByNumeroExpediente(numeroExpediente);
+        if (local.isPresent()) {
+            Expediente expediente = local.get();
+            if (turno.getPaciente() != null
+                    && !turno.getPaciente().getId().equals(expediente.getPaciente().getId())) {
+                throw new ConflictException("PACIENTE_EXPEDIENTE_INCONSISTENTE",
+                        "El expediente no corresponde al paciente registrado en el turno");
+            }
+            if (turnoRepository.existsByFechaAndNumeroExpedienteAndActivoTrue(turno.getFecha(), numeroExpediente)) {
+                throw new ConflictException("EXPEDIENTE_CON_TURNO",
+                        "El expediente " + numeroExpediente + " ya tiene otro turno activo para la fecha");
+            }
 
-        turno.setExpediente(expediente);
-        turno.setExpedienteCiclo(vinculo.ciclo());
-        turno.setNumeroExpediente(expediente.getNumeroExpediente());
-        turno.setPaciente(expediente.getPaciente());
-        turno.setPacienteNombre(nombreCompleto(expediente.getPaciente()));
+            EnfermeriaArchivoBridgeService.VinculoExpediente vinculo = archivoBridge.vincular(
+                    expediente, turno.getCita() != null ? turno.getCita().getId() : null,
+                    dto.getObservacion());
+
+            turno.setExpediente(expediente);
+            turno.setExpedienteCiclo(vinculo.ciclo());
+            turno.setNumeroExpediente(expediente.getNumeroExpediente());
+            turno.setPaciente(expediente.getPaciente());
+            turno.setPacienteNombre(nombreCompleto(expediente.getPaciente()));
+        } else {
+            // El expediente no vive en la BD local: se valida y consulta en el API del hospital.
+            PacienteHroDTO externo = expedienteHroService.consultar(numeroExpediente);
+            if (turnoRepository.existsByFechaAndNumeroExpedienteAndActivoTrue(turno.getFecha(), numeroExpediente)) {
+                throw new ConflictException("EXPEDIENTE_CON_TURNO",
+                        "El expediente " + numeroExpediente + " ya tiene otro turno activo para la fecha");
+            }
+            turno.setNumeroExpediente(numeroExpediente);
+            turno.setPacienteNombre(externo.getNombreCompleto());
+            turno.setPaciente(null);
+            turno.setExpediente(null);
+            turno.setExpedienteCiclo(null);
+        }
+
         turno.setMedico(medico);
         turno.setActualizadoEn(OffsetDateTime.now());
         turnoRepository.save(turno);
@@ -283,6 +308,7 @@ public class TurnoEstacionService {
         turno.setMedico(medico);
         cambiarEstado(turno, EstadoTurnoEstacion.llamado, usuario, medico,
                 dto.getObservacion() != null ? dto.getObservacion() : "Paciente llamado a consulta");
+        publicarLlamadoEnTablero(turno);
         return toDTO(turno, true);
     }
 
@@ -346,6 +372,68 @@ public class TurnoEstacionService {
         cambiarEstado(turno, EstadoTurnoEstacion.archivado, usuario, turno.getMedico(), observacion);
         archivoBridge.reflejarArchivado(turno.getExpedienteCiclo(),
                 dto != null ? dto.getUbicacionDestinoId() : null, observacion);
+        return toDTO(turno, true);
+    }
+
+    @Transactional
+    public TurnoEstacionResponseDTO revertir(UUID id) {
+        TurnoEstacion turno = cargar(id);
+        validarAccesoEstacion(turno);
+
+        if (turno.getEstado() == EstadoTurnoEstacion.registrado
+                || turno.getEstado() == EstadoTurnoEstacion.devuelto
+                || turno.getEstado() == EstadoTurnoEstacion.archivado) {
+            throw new ConflictException("TURNO_NO_REVERSIBLE",
+                    "El turno no se puede revertir desde el estado '" + turno.getEstado() + "'");
+        }
+
+        TurnoEstacionMovimiento ultimo = movimientoRepository
+                .findFirstByTurnoEstacionIdAndEstadoNuevoAndEstadoAnteriorNotOrderByFechaMovimientoDescIdDesc(
+                        turno.getId(), turno.getEstado(), turno.getEstado())
+                .orElseThrow(() -> new ConflictException("SIN_ESTADO_ANTERIOR",
+                        "No hay un estado anterior para revertir"));
+
+        EstadoTurnoEstacion anterior = ultimo.getEstadoAnterior();
+        if (anterior == null || anterior == turno.getEstado()) {
+            throw new ConflictException("SIN_ESTADO_ANTERIOR",
+                    "No hay un estado anterior para revertir");
+        }
+
+        EstadoTurnoEstacion actual = turno.getEstado();
+        switch (actual) {
+            case recibido -> {
+                turno.setRecibidoPor(null);
+                turno.setRecibidoEn(null);
+            }
+            case en_clinica -> {
+                turno.setEspacioFisico(null);
+                turno.setAsignadoPor(null);
+                turno.setAsignadoEn(null);
+            }
+            case llamado -> {
+                int llamados = Math.max(0, (turno.getLlamados() == null ? 0 : turno.getLlamados()) - 1);
+                turno.setLlamados(llamados);
+                if (llamados == 0) turno.setUltimoLlamadoEn(null);
+            }
+            case no_asistio -> {
+                turno.setNoAsistioPor(null);
+                turno.setNoAsistioEn(null);
+            }
+            case atendido -> {
+                turno.setAtendidoPor(null);
+                turno.setAtendidoEn(null);
+            }
+            default -> throw new ConflictException("TURNO_NO_REVERSIBLE",
+                    "El turno no se puede revertir desde el estado '" + actual + "'");
+        }
+
+        UsuarioReferencia usuario = usuarioActual();
+        turno.setEstado(anterior);
+        turno.setActualizadoEn(OffsetDateTime.now());
+        turnoRepository.save(turno);
+        registrarMovimiento(turno, actual, anterior, usuario, turno.getMedico(),
+                "Estado revertido de " + actual + " a " + anterior);
+        log.info("Turno de estación {} revertido de {} a {}", id, actual, anterior);
         return toDTO(turno, true);
     }
 
@@ -524,17 +612,41 @@ public class TurnoEstacionService {
         return especialidad;
     }
 
-    private EspacioFisico validarEspacioAsignado(UUID espacioFisicoId, LocalDate fecha, Long especialidadId) {
+    private void publicarLlamadoEnTablero(TurnoEstacion turno) {
+        if (turno.getEspacioFisico() == null || turno.getEstacion() == null) return;
+
+        long clave = Integer.toUnsignedLong(Objects.hash(
+                turno.getEstacion().getId(), turno.getEspacioFisico().getId()));
+        TableroTurnoDTO evento = TableroTurnoDTO.builder()
+                .asignacionDiariaEspacioId(clave)
+                .espacioNumero(turno.getEspacioFisico().getNumero())
+                .nivel(turno.getEspacioFisico().getNivel())
+                .subespecialidadNombre(turno.getEspecialidad() != null
+                        ? turno.getEspecialidad().getNombre() : null)
+                .especialidadId(turno.getEspecialidad() != null
+                        ? turno.getEspecialidad().getId() : null)
+                .turnoActual(turno.getNumeroGeneral())
+                .ultimaActualizacion(OffsetDateTime.now())
+                .intentosLlamado(turno.getLlamados())
+                .tipoEvento("LLAMADO")
+                .pacienteNombre(turno.getPacienteNombre())
+                .turnosEnEspera(List.of())
+                .porNombre(false)
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/tablero", evento);
+        messagingTemplate.convertAndSend(
+                "/topic/estacion/" + turno.getEstacion().getId(), evento);
+        log.info("Evento de llamado enviado al tablero: estación={} clínica={} turno={}",
+                turno.getEstacion().getId(), turno.getEspacioFisico().getNumero(),
+                turno.getNumeroGeneral());
+    }
+
+    private EspacioFisico validarEspacioActivo(UUID espacioFisicoId) {
         EspacioFisico espacio = espacioFisicoRepository.findById(espacioFisicoId)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", espacioFisicoId));
         if (!Boolean.TRUE.equals(espacio.getActivo())) {
             throw new BusinessException("ESPACIO_INACTIVO", "La clínica está fuera de servicio");
-        }
-        boolean asignada = asignacionRepository
-                .existsByEspacioFisicoIdAndFechaAndEspecialidadId(espacioFisicoId, fecha, especialidadId);
-        if (!asignada) {
-            throw new ConflictException("CLINICA_NO_ASIGNADA",
-                    "La clínica " + espacio.getNumero() + " no está asignada a la especialidad en la fecha " + fecha);
         }
         return espacio;
     }

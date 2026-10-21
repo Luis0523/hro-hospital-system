@@ -124,6 +124,14 @@ public class TurnoEstacionController {
         return ResponseEntity.ok(ApiResponse.ok(turnoEstacionService.archivar(id, dto), "Turno archivado"));
     }
 
+    @PostMapping("/{id}/revertir")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Revertir el último estado",
+            description = "Devuelve el turno al estado anterior registrado en la bitácora. No aplica a turnos devueltos o archivados.")
+    public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> revertir(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(turnoEstacionService.revertir(id), "Estado revertido"));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
     @Operation(summary = "Eliminar turno erróneo",

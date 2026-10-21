@@ -21,6 +21,7 @@ const CASOS = [
   { ruta: '/administracion', titulo: 'Dashboard' },
   { ruta: '/administracion/usuarios', titulo: 'Usuarios y roles' },
   { ruta: '/administracion/clinicas', titulo: 'Clínicas' },
+  { ruta: '/administracion/medicos', titulo: 'Médicos' },
   { ruta: '/administracion/cupos', titulo: 'Cupos y capacidad' },
   { ruta: '/administracion/calendario', titulo: 'Calendario institucional' },
   { ruta: '/administracion/reportes', titulo: 'Reportes' },

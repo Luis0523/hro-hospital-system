@@ -1,5 +1,6 @@
 import Card from '@/shared/components/ui/Card.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
+import { esModoDemo } from '../api/doctorApi'
 
 export default function EncabezadoDoctor({ medico, clinica, asignacion }) {
   return (
@@ -14,9 +15,11 @@ export default function EncabezadoDoctor({ medico, clinica, asignacion }) {
             <h1 className="break-words text-headline-md text-on-surface">Vista del doctor</h1>
           </div>
         </div>
-        <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-          Demostración
-        </span>
+        {esModoDemo && (
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+            Demostración
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:p-5">

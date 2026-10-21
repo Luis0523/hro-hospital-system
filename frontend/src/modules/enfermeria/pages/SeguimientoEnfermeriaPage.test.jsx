@@ -3,6 +3,7 @@ import { configure, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
 import { reiniciarSeguimientoMock } from '../api/seguimientoApi'
@@ -15,9 +16,11 @@ function renderPagina() {
     <MemoryRouter initialEntries={['/seguimiento-enfermeria']}>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <SeguimientoEnfermeriaPage />
-          </ToastProvider>
+          <EstacionProvider>
+            <ToastProvider>
+              <SeguimientoEnfermeriaPage />
+            </ToastProvider>
+          </EstacionProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -25,6 +28,7 @@ function renderPagina() {
 }
 
 beforeEach(() => {
+  localStorage.clear()
   reiniciarSeguimientoMock()
 })
 
@@ -53,8 +57,8 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(await screen.findByRole('button', { name: 'ONC-05, Recibido' })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('etapa-en_clinica'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
     await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('etapa-devuelto'))
@@ -81,12 +85,10 @@ describe('SeguimientoEnfermeriaPage', () => {
 
     await user.click(presentacion())
     expect(presentacion()).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'MI-39, sin registro' })).toHaveFocus()
 
     await user.click(privado())
     expect(presentacion()).toHaveAttribute('aria-pressed', 'false')
     expect(privado()).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'MI-39, sin registro' })).toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
     const casilla = await screen.findByRole('button', {
@@ -96,12 +98,12 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(casilla.className).not.toContain('ring-fuchsia-400')
     expect(screen.queryByTestId('editor-tipo-registro')).not.toBeInTheDocument()
 
-    await waitFor(() => expect(screen.getByTestId('etapa-registrado')).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Oncología\./ })).toHaveFocus())
     expect(presentacion()).toHaveAttribute('aria-pressed', 'false')
     expect(privado()).toHaveAttribute('aria-pressed', 'false')
   }, 20000)
 
-  it('inicia en Registrado con Enter, elige el tipo con flechas y registra', async () => {
+  it('inicia en Registrado con Enter y navega entre especialidades con las flechas', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -110,43 +112,89 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(etapa).toHaveFocus()
 
     await user.keyboard('{Enter}')
-    const opciones = () => within(screen.getByTestId('opciones-registro'))
-    const presentacion = () => opciones().getByRole('button', { name: 'Presentación' })
-    const privado = () => opciones().getByRole('button', { name: 'Privado de libertad' })
-    await waitFor(() => expect(presentacion()).toHaveFocus())
+    const medicina = () => screen.getByRole('button', { name: /^Medicina Interna\./ })
+    await waitFor(() => expect(medicina()).toHaveFocus())
 
-    await user.keyboard('{ArrowRight}')
-    expect(privado()).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    const oncologia = () => screen.getByRole('button', { name: /^Oncología\./ })
+    expect(oncologia()).toHaveFocus()
+
+    await user.keyboard('{ArrowUp}')
+    expect(medicina()).toHaveFocus()
 
     await user.keyboard('{Enter}')
-    expect(screen.getByRole('button', { name: 'MI-39, sin registro' })).toHaveFocus()
-
-    await user.keyboard('{Enter}')
-    expect(
-      await screen.findByRole('button', { name: 'MI-39, Registrado, privado de libertad' }),
-    ).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByTestId('etapa-registrado')).toHaveFocus())
+    expect(await screen.findByRole('button', { name: 'MI-39, Registrado' })).toBeInTheDocument()
+    await waitFor(() => expect(medicina()).toHaveFocus())
   }, 20000)
 
-  it('permite omitir el tipo y llegar a la casilla con las flechas', async () => {
+  it('Enter sobre una especialidad registra el siguiente correlativo y repite', async () => {
     const user = userEvent.setup()
     renderPagina()
 
     await screen.findByTestId('etapa-registrado')
     await user.keyboard('{Enter}')
     await user.keyboard('{Enter}')
-    const presentacion = () =>
-      within(screen.getByTestId('opciones-registro')).getByRole('button', {
-        name: 'Presentación',
-      })
-    await waitFor(() => expect(presentacion()).toHaveFocus())
 
     await user.keyboard('{ArrowDown}')
-    expect(screen.getByRole('button', { name: 'MI-39, sin registro' })).toHaveFocus()
+    const oncologia = () => screen.getByRole('button', { name: /^Oncología\./ })
+    await waitFor(() => expect(oncologia()).toHaveFocus())
 
     await user.keyboard('{Enter}')
-    expect(await screen.findByRole('button', { name: 'MI-39, Registrado' })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByTestId('etapa-registrado')).toHaveFocus())
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
+    await waitFor(() => expect(oncologia()).toHaveFocus())
+
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('button', { name: 'ONC-06, Registrado' })).toBeInTheDocument()
+    await waitFor(() => expect(oncologia()).toHaveFocus())
+  }, 20000)
+
+  it('mantiene la clínica destino para asignar varios turnos seguidos', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-registrado'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
+    await screen.findByRole('button', { name: 'ONC-05, Registrado' })
+    await user.click(screen.getByRole('button', { name: 'ONC-06, sin registro' }))
+    await screen.findByRole('button', { name: 'ONC-06, Registrado' })
+
+    await user.click(screen.getByTestId('etapa-recibido'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
+    await screen.findByRole('button', { name: 'ONC-05, Recibido' })
+    await user.click(screen.getByRole('button', { name: 'ONC-06, Registrado' }))
+    await screen.findByRole('button', { name: 'ONC-06, Recibido' })
+
+    await user.click(screen.getByTestId('etapa-en_clinica'))
+    const clinica = screen.getByRole('button', { name: /^Clínica 2:/ })
+    await user.click(clinica)
+    expect(clinica).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
+    expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
+    expect(clinica).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'ONC-06, Recibido' }))
+    expect(await screen.findByRole('button', { name: 'ONC-06, En clínica' })).toBeInTheDocument()
+    expect(clinica).toHaveAttribute('aria-pressed', 'true')
+  }, 20000)
+
+  it('muestra el historial y permite revertir un turno recibido', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-registrado'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
+    await screen.findByRole('button', { name: 'ONC-05, Registrado' })
+
+    await user.click(screen.getByTestId('etapa-recibido'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
+    await screen.findByRole('button', { name: 'ONC-05, Recibido' })
+
+    await user.click(screen.getByRole('button', { name: 'Ver historial del turno' }))
+    expect(await screen.findByText('Registrado → Recibido')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Revertir' }))
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
   }, 20000)
 
   it('filtra por etapa sin controles de búsqueda ni registro', async () => {

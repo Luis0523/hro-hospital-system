@@ -6,6 +6,7 @@ export const ITEMS_ADMINISTRACION = [
   { to: '/administracion/usuarios', etiqueta: 'Usuarios y roles', icono: 'manage_accounts' },
   { to: '/administracion/roles', etiqueta: 'Roles y páginas', icono: 'rule' },
   { to: '/administracion/clinicas', etiqueta: 'Clínicas', icono: 'local_hospital' },
+  { to: '/administracion/medicos', etiqueta: 'Médicos', icono: 'stethoscope' },
   { to: '/administracion/cupos', etiqueta: 'Cupos y capacidad', icono: 'event_available' },
   {
     to: '/administracion/calendario',

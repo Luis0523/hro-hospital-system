@@ -8,7 +8,16 @@ function etiquetaTurno(codigo, numero) {
   return `${codigo}-${String(numero).padStart(2, '0')}`
 }
 
-function CasillaTurno({ codigo, numero, turno, seleccionada, filtro, onSeleccionar, casillaRef }) {
+function CasillaTurno({
+  especialidadId,
+  codigo,
+  numero,
+  turno,
+  seleccionada,
+  filtro,
+  onSeleccionar,
+  casillaRef,
+}) {
   const estilo = estiloDeEtapa(turno?.etapa)
   const brillo = estiloRegistro(turno)
   const marca = etiquetaRegistro(turno)
@@ -23,11 +32,12 @@ function CasillaTurno({ codigo, numero, turno, seleccionada, filtro, onSeleccion
     <button
       ref={casillaRef}
       type="button"
+      tabIndex={-1}
       aria-label={`${etiquetaTurno(codigo, numero)}, ${nombre ?? 'sin registro'}${
         marca ? `, ${marca}` : ''
       }`}
       aria-pressed={seleccionada}
-      onClick={() => onSeleccionar(codigo, numero)}
+      onClick={() => onSeleccionar(especialidadId, codigo, numero)}
       className={`relative h-8 w-8 rounded-md border text-label-sm font-bold transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${estilo.borde} ${estilo.fondo} ${estilo.texto} ${brillo} ${
         seleccionada ? 'outline outline-2 outline-offset-2 outline-primary' : ''
       } ${atenuada ? 'opacity-25' : ''}`}
@@ -49,6 +59,8 @@ export default function LibroSeguimiento({
   seleccionId,
   filtro,
   onSeleccionar,
+  onActivarEspecialidad,
+  especialidadActivaId = null,
   tipoRegistro,
   onCambiarTipoRegistro,
   enfoqueTipo = 0,
@@ -59,20 +71,24 @@ export default function LibroSeguimiento({
   const primeraCasillaRef = useRef(null)
   const nombreFiltro = ETAPAS_SEGUIMIENTO.find((etapa) => etapa.id === filtro)?.nombre
   const indicaciones = {
-    registrado: 'Elija un tipo si aplica y haga clic en una casilla vacía para registrar.',
-    recibido: 'Haga clic en un turno registrado para recibirlo.',
-    en_clinica: 'Haga clic en un turno recibido y luego elija una clínica.',
-    devuelto: 'Haga clic en un turno en clínica para marcarlo como devuelto.',
-    archivo: 'Haga clic en un turno devuelto para enviarlo al archivo.',
+    registrado: 'Enter sobre una especialidad asigna el siguiente turno.',
+    recibido: 'Enter sobre una especialidad recibe su siguiente turno pendiente.',
+    en_clinica: 'Enter sobre una especialidad elige su turno pendiente; luego pulse una clínica.',
+    devuelto: 'Enter sobre una especialidad devuelve su siguiente turno en clínica.',
+    archivo: 'Enter sobre una especialidad envía su siguiente turno devuelto al archivo.',
   }
   const hint = nombreFiltro
-    ? `Modo ${nombreFiltro}: ${indicaciones[nombreFiltro]}`
-    : 'Elija una etapa y haga clic en la casilla correspondiente.'
+    ? `Modo ${nombreFiltro}: ${indicaciones[filtro]}`
+    : 'Elija una etapa. Use ↑/↓ entre especialidades y Enter para ejecutar.'
   const primerVacio = filas
     .flatMap((fila) =>
       fila.slots
         .filter((slot) => !slot.turno)
-        .map((slot) => ({ codigo: fila.codigo, numero: slot.numero })),
+        .map((slot) => ({
+          especialidadId: fila.id,
+          codigo: fila.codigo,
+          numero: slot.numero,
+        })),
     )
     .at(0)
 
@@ -83,6 +99,29 @@ export default function LibroSeguimiento({
     casilla.focus()
     casilla.scrollIntoView?.({ block: 'nearest' })
   }, [enfoqueCasillas])
+
+  function manejarTeclaEspecialidad(evento, fila) {
+    if (evento.key === 'Enter' || evento.key === ' ') {
+      evento.preventDefault()
+      evento.stopPropagation()
+      onActivarEspecialidad?.(fila.id, fila.codigo)
+      return
+    }
+
+    if (evento.key !== 'ArrowDown' && evento.key !== 'ArrowUp') return
+
+    evento.preventDefault()
+    evento.stopPropagation()
+    const cabeceras = Array.from(
+      evento.currentTarget
+        .closest('section')
+        ?.querySelectorAll('[data-especialidad-header="true"]') ?? [],
+    )
+    const indice = cabeceras.indexOf(evento.currentTarget)
+    const destino = cabeceras[indice + (evento.key === 'ArrowDown' ? 1 : -1)]
+    destino?.focus()
+    destino?.scrollIntoView?.({ block: 'nearest' })
+  }
 
   return (
     <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-card">
@@ -129,26 +168,38 @@ export default function LibroSeguimiento({
           <EmptyState title="Sin resultados" description="No hay especialidades para mostrar." />
         ) : (
           filas.map((fila) => (
-            <div key={fila.codigo} className="grid gap-2 md:grid-cols-[165px_minmax(0,1fr)]">
-              <div className="flex flex-col justify-center rounded-lg border border-l-4 border-outline-variant border-l-primary bg-surface-container-low px-3 py-1.5">
+            <div key={fila.id} className="grid gap-2 md:grid-cols-[165px_minmax(0,1fr)]">
+              <button
+                type="button"
+                data-especialidad-header="true"
+                data-especialidad-id={fila.id}
+                aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Presione Enter para ejecutar el siguiente paso.`}
+                onKeyDown={(evento) => manejarTeclaEspecialidad(evento, fila)}
+                className={`flex w-full flex-col justify-center rounded-lg border border-l-4 px-3 py-1.5 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+                  String(especialidadActivaId) === String(fila.id)
+                    ? 'border-primary-container border-l-primary bg-secondary-fixed/30 ring-1 ring-primary-container/40'
+                    : 'border-outline-variant border-l-primary bg-surface-container-low'
+                }`}
+              >
                 <span className="text-label-md text-on-surface">{fila.nombre}</span>
                 <span className="text-label-sm text-on-surface-variant">
-                  {fila.registrados} / {fila.maximo} registrados
+                  {fila.registrados} / {fila.maximo} registrados · Enter
                 </span>
-              </div>
+              </button>
 
               <div className="flex flex-wrap content-start gap-1">
                 {fila.slots.map(({ numero, turno }) => (
                   <CasillaTurno
                     key={numero}
+                    especialidadId={fila.id}
                     codigo={fila.codigo}
                     numero={numero}
                     turno={turno}
                     filtro={filtro}
-                    seleccionada={seleccionId === `${fila.codigo}-${numero}`}
+                    seleccionada={seleccionId === `${fila.id}-${numero}`}
                     onSeleccionar={onSeleccionar}
                     casillaRef={
-                      primerVacio?.codigo === fila.codigo && primerVacio?.numero === numero
+                      primerVacio?.especialidadId === fila.id && primerVacio?.numero === numero
                         ? primeraCasillaRef
                         : undefined
                     }

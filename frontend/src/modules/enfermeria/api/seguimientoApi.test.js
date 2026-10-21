@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   avanzarTurno,
+  contarExpedientesEnClinica,
+  etapaDesdeEstado,
   listarClinicas,
   obtenerLibro,
   registrarTurno,
@@ -55,6 +57,40 @@ describe('seguimientoApi', () => {
     expect(oncologia.turnos.find((item) => item.numero === 5)).toMatchObject({
       tipoRegistro: 'privado_libertad',
     })
+  })
+
+  it('traduce los estados del backend a las etapas visuales', () => {
+    expect(etapaDesdeEstado('registrado')).toBe('registrado')
+    expect(etapaDesdeEstado('recibido')).toBe('recibido')
+    expect(etapaDesdeEstado('en_clinica')).toBe('en_clinica')
+    expect(etapaDesdeEstado('llamado')).toBe('en_clinica')
+    expect(etapaDesdeEstado('no_asistio')).toBe('en_clinica')
+    expect(etapaDesdeEstado('atendido')).toBe('en_clinica')
+    expect(etapaDesdeEstado('devuelto')).toBe('devuelto')
+    expect(etapaDesdeEstado('archivado')).toBe('archivo')
+  })
+
+  it('cuenta expedientes por clínica usando el estado real del backend', () => {
+    const clinicas = [
+      { id: 'clinica-1', nombre: 'Clínica 101' },
+      { id: 'clinica-2', nombre: 'Clínica 102' },
+    ]
+    const especialidades = [
+      {
+        id: 1,
+        turnos: [
+          { estadoBackend: 'en_clinica', clinicaId: 'clinica-1' },
+          { estadoBackend: 'llamado', clinicaId: 'clinica-1' },
+          { estadoBackend: 'devuelto', clinicaId: 'clinica-1' },
+          { estadoBackend: 'atendido', clinicaId: 'clinica-2' },
+        ],
+      },
+    ]
+
+    expect(contarExpedientesEnClinica(clinicas, especialidades)).toEqual([
+      { id: 'clinica-1', nombre: 'Clínica 101', expedientesEnClinica: 2 },
+      { id: 'clinica-2', nombre: 'Clínica 102', expedientesEnClinica: 1 },
+    ])
   })
 
   it('avanza por las cinco etapas y exige clínica al repartir', async () => {

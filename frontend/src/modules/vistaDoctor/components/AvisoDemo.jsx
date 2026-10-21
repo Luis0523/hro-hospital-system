@@ -1,6 +1,9 @@
 import Alert from '@/shared/components/ui/Alert.jsx'
+import { esModoDemo } from '../api/doctorApi'
 
 export default function AvisoDemo() {
+  if (!esModoDemo) return null
+
   return (
     <Alert tone="info" title="Modo demostración">
       <p>

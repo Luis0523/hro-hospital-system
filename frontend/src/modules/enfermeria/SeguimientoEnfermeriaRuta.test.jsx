@@ -40,17 +40,13 @@ describe('AppRouter · /seguimiento-enfermeria', () => {
     expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
   })
 
-  it('carga sin sesión en desarrollo local', async () => {
+  it('sin sesión no muestra la página y redirige a la pantalla de sesión cerrada', async () => {
     localStorage.setItem('hro_sesion', 'cerrada')
     renderRuta('/seguimiento-enfermeria')
 
+    expect(await screen.findByText('Sesión cerrada')).toBeInTheDocument()
     expect(
-      await screen.findByRole(
-        'heading',
-        { name: 'Control de turnos y expedientes' },
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('Sesión cerrada')).not.toBeInTheDocument()
+      screen.queryByRole('heading', { name: 'Control de turnos y expedientes' }),
+    ).not.toBeInTheDocument()
   })
 })

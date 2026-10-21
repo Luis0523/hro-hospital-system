@@ -12,9 +12,7 @@ import com.hro.system.clinica.entity.Especialidad;
 import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
-import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
-import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
@@ -71,7 +69,6 @@ class TurnoEstacionCircuitoTest {
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private SubespecialidadRepository subespecialidadRepository;
     @Autowired private EspacioFisicoRepository espacioFisicoRepository;
-    @Autowired private AsignacionDiariaEspacioRepository asignacionRepository;
     @Autowired private MedicoRepository medicoRepository;
     @Autowired private PacienteRepository pacienteRepository;
     @Autowired private UsuarioReferenciaRepository usuarioRepository;
@@ -127,13 +124,6 @@ class TurnoEstacionCircuitoTest {
                 .nivel((short) 1)
                 .nombre("Consultorio " + suffix)
                 .activo(true)
-                .build());
-
-        asignacionRepository.save(AsignacionDiariaEspacio.builder()
-                .espacioFisico(espacio)
-                .subespecialidad(subespecialidad)
-                .fecha(HOY)
-                .creadoPor(setup)
                 .build());
 
         Medico medico = medicoRepository.save(Medico.builder()
@@ -316,6 +306,31 @@ class TurnoEstacionCircuitoTest {
                 .andExpect(jsonPath("$.data.especialidades[0].registrados").value(1))
                 .andExpect(jsonPath("$.data.especialidades[0].turnos[0].codigo").value("MI1"))
                 .andExpect(jsonPath("$.data.resumen.archivado").value(1));
+    }
+
+    @Test
+    @DisplayName("Revierte el último estado y deja el movimiento en la bitácora")
+    void revierteUltimoEstado() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String usuario = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), usuario);
+        UUID turnoId = UUID.fromString(turno.get("id").asText());
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("recibido"));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/revertir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("registrado"));
+
+        mockMvc.perform(auth(get("/turnos-estacion/" + turnoId), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.movimientos[?(@.estadoNuevo == 'registrado')]").exists());
     }
 
     @Test

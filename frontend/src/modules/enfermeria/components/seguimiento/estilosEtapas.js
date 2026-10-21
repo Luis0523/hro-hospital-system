@@ -9,11 +9,11 @@ export const ESTILOS_ETAPA = {
     barra: 'bg-sky-500',
   },
   recibido: {
-    texto: 'text-teal-600 dark:text-teal-300',
-    borde: 'border-teal-500/60',
-    fondo: 'bg-teal-500/10',
-    punto: 'bg-teal-500',
-    barra: 'bg-teal-500',
+    texto: 'text-orange-600 dark:text-orange-300',
+    borde: 'border-orange-500/70',
+    fondo: 'bg-orange-500/15',
+    punto: 'bg-orange-500',
+    barra: 'bg-orange-500',
   },
   en_clinica: {
     texto: 'text-violet-600 dark:text-violet-300',
@@ -23,11 +23,11 @@ export const ESTILOS_ETAPA = {
     barra: 'bg-violet-500',
   },
   devuelto: {
-    texto: 'text-amber-600 dark:text-amber-300',
-    borde: 'border-amber-500/60',
-    fondo: 'bg-amber-500/10',
-    punto: 'bg-amber-500',
-    barra: 'bg-amber-500',
+    texto: 'text-rose-600 dark:text-rose-300',
+    borde: 'border-rose-500/70',
+    fondo: 'bg-rose-500/15',
+    punto: 'bg-rose-500',
+    barra: 'bg-rose-500',
   },
   archivo: {
     texto: 'text-emerald-600 dark:text-emerald-300',

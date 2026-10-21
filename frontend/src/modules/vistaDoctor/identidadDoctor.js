@@ -49,6 +49,7 @@ function normalizarAsignacion(asignacion) {
   if (!Number.isFinite(id)) return null
   return {
     id,
+    espacioFisicoId: texto(asignacion.espacioFisicoId) || null,
     subespecialidadId: asignacion.subespecialidadId ?? null,
     subespecialidadNombre: texto(asignacion.subespecialidadNombre),
     especialidadId: asignacion.especialidadId ?? null,

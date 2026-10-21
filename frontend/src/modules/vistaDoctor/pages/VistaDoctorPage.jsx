@@ -15,6 +15,7 @@ import TablaPacientesDoctor from '../components/TablaPacientesDoctor.jsx'
 import { calcularEstadisticas } from '../api/doctorAcciones'
 import {
   cerrarJornada,
+  esModoDemo,
   descartarJornadaCerrada,
   jornadaCerradaCorrespondeA,
   limpiarJornadaOperativa,
@@ -108,13 +109,17 @@ export default function VistaDoctorPage() {
     if (!expedienteTurno || !sesion) return
     const resultado = await registrarExpediente({
       asignacionId: asignacion.id,
+      espacioFisicoId: asignacion.espacioFisicoId ?? clinica?.espacioFisicoId,
       medicoId: sesion.medico.id,
+      numeroColegiado: sesion.medico.colegiado,
       turnoId: expedienteTurno.id,
       expediente,
       escenario,
     })
     actualizarEstado(resultado)
-    setMensajeExpediente('Expediente registrado en esta demostración.')
+    setMensajeExpediente(
+      esModoDemo ? 'Expediente registrado en esta demostración.' : 'Expediente vinculado al turno.',
+    )
     setExpedienteTurno(null)
   }
 
@@ -228,7 +233,7 @@ export default function VistaDoctorPage() {
         </section>
 
         <footer className="pb-2 text-center text-sm text-on-surface-variant">
-          SIGHO · Vista del doctor · Datos de demostración
+          SIGHO · Vista del doctor {esModoDemo ? '· Datos de demostración' : '· Datos del hospital'}
         </footer>
 
         <ModalExpediente

@@ -7,7 +7,14 @@ export const RUTA_BASE_AUDIO = '/audio/tablero/'
 
 export const MAXIMO_NUMERO_PACIENTE = 300
 
+/** Pausa de silencio después del número del paciente. */
+export const PAUSA_TRAS_NUMERO_MS = 350
+
+/** Índice del fragmento del número dentro de construirSecuenciaLlamado. */
+export const INDICE_NUMERO_PACIENTE = 3
+
 export const RUTAS_GENERALES = Object.freeze({
+  sonidoPrevio: `${RUTA_BASE_AUDIO}generales/sonidoprevio.mp3`,
   paciente: `${RUTA_BASE_AUDIO}generales/paciente.mp3`,
   numero: `${RUTA_BASE_AUDIO}generales/numero.mp3`,
   pasarA: `${RUTA_BASE_AUDIO}generales/pasar_a.mp3`,
@@ -56,10 +63,11 @@ export function construirSecuenciaLlamado({ turno, clinicaNumero } = {}) {
   const rutaDelTurno = rutaNumero(turno)
   if (!rutaDelTurno) return null
 
-  const rutaDeClinica = rutaDestino(clinicaNumero)
+  const rutaDeClinica = rutaDestino(clinicaNumero) ?? rutaNumero(clinicaNumero)
   if (!rutaDeClinica) return null
 
   return [
+    RUTAS_GENERALES.sonidoPrevio,
     RUTAS_GENERALES.paciente,
     RUTAS_GENERALES.numero,
     rutaDelTurno,

@@ -25,6 +25,7 @@ import { useTemaTablero } from '../hooks/useTemaTablero'
 import EncabezadoTablero from '../components/EncabezadoTablero.jsx'
 import EstadoConexion from '../components/EstadoConexion.jsx'
 import LlamadoGrande from '../components/LlamadoGrande.jsx'
+import PruebaAudioLlamado, { pruebaAudioHabilitada } from '../components/PruebaAudioLlamado.jsx'
 import SimuladorLlamado, { simuladorHabilitado } from '../components/SimuladorLlamado.jsx'
 import TablaTurnos from '../components/TablaTurnos.jsx'
 import TableroError from '../components/TableroError.jsx'
@@ -79,9 +80,7 @@ export default function TableroPage() {
   const [estadoConexion, setEstadoConexion] = useState(() =>
     estaEnModoMock() ? 'mock' : 'reconectando',
   )
-  const [vozDisponible] = useState(
-    () => estaDisponibleAudioTablero() || estaDisponibleVozTablero(),
-  )
+  const [vozDisponible] = useState(() => estaDisponibleAudioTablero() || estaDisponibleVozTablero())
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
@@ -350,6 +349,20 @@ export default function TableroPage() {
     }
   }, [])
 
+  const pruebaAudioActiva = pruebaAudioHabilitada()
+
+  const probarAudioLlamado = useCallback(() => {
+    activarVoz()
+    const base = asignaciones[0] ?? { asignacionDiariaEspacioId: 0, nivel: 1 }
+    encolarLlamado({
+      ...base,
+      espacioNumero: '3',
+      turnoActual: 55,
+      intentosLlamado: 1,
+      tipoEvento: 'LLAMADO',
+    })
+  }, [activarVoz, asignaciones, encolarLlamado])
+
   // Pipeline único compartido por el WebSocket real y por el simulador DEV.
   const procesarEventoTablero = useCallback(
     (estado) => {
@@ -457,6 +470,7 @@ export default function TableroPage() {
             onLimpiar={limpiarUltimosLlamados}
           />
           <EstadoConexion estado={estadoConexion} />
+          <PruebaAudioLlamado habilitado={pruebaAudioActiva} onProbar={probarAudioLlamado} />
           <SimuladorLlamado
             habilitado={simuladorActivo}
             hayAsignacion={asignaciones.length > 0}

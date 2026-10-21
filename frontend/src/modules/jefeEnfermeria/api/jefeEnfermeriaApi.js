@@ -6,9 +6,11 @@ import {
   asignarSubespecialidadesEstacionMock,
   cerrarDiaMock,
   crearEstacionMock,
+  crearEspacioFisicoMock,
   crearHorarioMock,
   asegurarAreaEspecialidadMock,
   desactivarEstacionMock,
+  desactivarEspacioFisicoMock,
   desactivarHorarioMock,
   listarEspecialidadesMock,
   duplicarAsignacionMock,
@@ -16,6 +18,8 @@ import {
   guardarAsignacionMock,
   listarAccesosMock,
   listarEspaciosFisicosMock,
+  obtenerEspacioFisicoMock,
+  actualizarEspacioFisicoMock,
   listarEstacionesMock,
   listarHorariosMock,
   listarSubespecialidadesMock,
@@ -68,6 +72,26 @@ export async function listarEspaciosFisicos(nivel) {
   if (USE_MOCK) return listarEspaciosFisicosMock(nivel)
   if (nivel) return desenvolver(await client.get(`/espacios-fisicos/nivel/${nivel}`))
   return desenvolver(await client.get('/espacios-fisicos'))
+}
+
+export async function crearEspacioFisico(datos) {
+  if (USE_MOCK) return crearEspacioFisicoMock(datos)
+  return desenvolver(await client.post('/espacios-fisicos', datos))
+}
+
+export async function actualizarEspacioFisico(id, datos) {
+  if (USE_MOCK) return actualizarEspacioFisicoMock(id, datos)
+  return desenvolver(await client.put(`/espacios-fisicos/${id}`, datos))
+}
+
+export async function desactivarEspacioFisico(id) {
+  if (USE_MOCK) return desactivarEspacioFisicoMock(id)
+  return desenvolver(await client.delete(`/espacios-fisicos/${id}`))
+}
+
+export async function obtenerEspacioFisico(id) {
+  if (USE_MOCK) return obtenerEspacioFisicoMock(id)
+  return desenvolver(await client.get(`/espacios-fisicos/${id}`))
 }
 
 export async function listarSubespecialidades() {

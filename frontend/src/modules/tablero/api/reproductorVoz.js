@@ -70,6 +70,7 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
     timeoutMs = TIMEOUT_FRAGMENTO_MS,
     AudioContextCtor = globalThis.AudioContext || globalThis.webkitAudioContext,
     fetchImpl = globalThis.fetch,
+    pausasPorIndice = {},
   } = opciones
 
   const lista = Array.isArray(rutas) ? rutas : []
@@ -79,15 +80,11 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
   }
 
   if (!lista.every(esRutaValida)) {
-    return Promise.reject(
-      new Error('[reproductorVoz] La secuencia contiene una ruta inválida.'),
-    )
+    return Promise.reject(new Error('[reproductorVoz] La secuencia contiene una ruta inválida.'))
   }
 
   if (typeof AudioContextCtor !== 'function' || typeof fetchImpl !== 'function') {
-    return Promise.reject(
-      new Error('[reproductorVoz] Web Audio API o fetch no están disponibles.'),
-    )
+    return Promise.reject(new Error('[reproductorVoz] Web Audio API o fetch no están disponibles.'))
   }
 
   const generacion = generacionReproduccion
@@ -112,8 +109,7 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
         let timer = null
         let finalizado = false
         let cancelar = null
-        const abortController =
-          typeof AbortController === 'function' ? new AbortController() : null
+        const abortController = typeof AbortController === 'function' ? new AbortController() : null
 
         const finalizar = (error) => {
           if (finalizado) return
@@ -173,9 +169,7 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
             }
 
             if (contexto.state && contexto.state !== 'running') {
-              finalizar(
-                new Error('[reproductorVoz] El AudioContext está suspendido (autoplay).'),
-              )
+              finalizar(new Error('[reproductorVoz] El AudioContext está suspendido (autoplay).'))
               return
             }
 
@@ -183,7 +177,7 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
             let cursor = inicio
             let finMaximo = inicio
 
-            for (const buffer of buffers) {
+            buffers.forEach((buffer, indice) => {
               const source = contexto.createBufferSource()
               source.buffer = buffer
               source.connect(contexto.destination)
@@ -193,14 +187,15 @@ export function reproducirSecuencia(rutas = [], opciones = {}) {
               const fin = cursor + buffer.duration
               if (fin > finMaximo) finMaximo = fin
 
-              cursor += Math.max(
-                0,
-                buffer.duration - SOLAPAMIENTO_FRAGMENTOS_MS / 1000,
-              )
-            }
+              const pausaMs = Number(pausasPorIndice[indice] ?? 0)
+              const pausa = Number.isFinite(pausaMs) && pausaMs > 0 ? pausaMs / 1000 : 0
+              cursor +=
+                pausa > 0
+                  ? buffer.duration + pausa
+                  : Math.max(0, buffer.duration - SOLAPAMIENTO_FRAGMENTOS_MS / 1000)
+            })
 
-            const esperaMs =
-              Math.max(0, (finMaximo - contexto.currentTime) * 1000) + MARGEN_FIN_MS
+            const esperaMs = Math.max(0, (finMaximo - contexto.currentTime) * 1000) + MARGEN_FIN_MS
             timer = setTimeout(() => finalizar(), esperaMs)
           } catch (error) {
             finalizar(error)

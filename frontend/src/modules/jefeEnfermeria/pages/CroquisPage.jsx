@@ -7,15 +7,20 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import {
+  actualizarEspacioFisico,
   cerrarDia,
+  crearEspacioFisico,
+  desactivarEspacioFisico,
   duplicarAsignacion,
   eliminarAsignacion,
   guardarAsignacion,
+  listarEspaciosFisicos,
   listarSubespecialidades,
   listarVistaAsignacion,
   obtenerCobertura,
   reasignarEnCaliente,
 } from '../api/jefeEnfermeriaApi'
+import EspacioFisicoForm from '../components/EspacioFisicoForm.jsx'
 import TarjetaSala from '../components/TarjetaSala.jsx'
 
 const NIVELES = [1, 2, 3, 4]
@@ -30,6 +35,10 @@ export default function CroquisPage() {
   const [subespecialidades, setSubespecialidades] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [espacios, setEspacios] = useState([])
+  const [modalEspacio, setModalEspacio] = useState(null)
+  const [confirmarDesactivar, setConfirmarDesactivar] = useState(false)
+  const [procesandoEspacio, setProcesandoEspacio] = useState(false)
 
   const [seleccion, setSeleccion] = useState(null)
   const [subElegida, setSubElegida] = useState('')
@@ -47,13 +56,15 @@ export default function CroquisPage() {
     setCargando(true)
     setError(null)
     try {
-      const [data, faltantes] = await Promise.all([
+      const [data, faltantes, espaciosData] = await Promise.all([
         listarVistaAsignacion({ fecha, nivel: nivel || undefined }),
         obtenerCobertura(fecha),
+        listarEspaciosFisicos().catch(() => []),
       ])
       const lista = Array.isArray(data) ? data : []
       setItems(lista)
       setCobertura(Array.isArray(faltantes) ? faltantes : [])
+      setEspacios(Array.isArray(espaciosData) ? espaciosData : [])
       return lista
     } catch (fallo) {
       setError(fallo?.message || 'No se pudo cargar la asignación del día.')
@@ -180,6 +191,64 @@ export default function CroquisPage() {
     }
   }
 
+  const espacioSeleccionado = useMemo(() => {
+    if (!seleccion) return null
+    return (
+      espacios.find((espacio) => espacio.id === seleccion.espacioFisicoId) ?? {
+        ...seleccion,
+        id: seleccion.espacioFisicoId,
+        nombre: `Sala ${seleccion.numero}`,
+        ubicacion: null,
+        activo: true,
+      }
+    )
+  }, [espacios, seleccion])
+
+  function abrirCrearEspacio() {
+    setModalEspacio({ modo: 'crear', registro: null })
+  }
+
+  function abrirEditarEspacio() {
+    if (!espacioSeleccionado) return
+    setModalEspacio({ modo: 'editar', registro: espacioSeleccionado })
+  }
+
+  async function guardarEspacio(datos) {
+    if (!modalEspacio) return
+    setProcesandoEspacio(true)
+    try {
+      if (modalEspacio.modo === 'crear') {
+        await crearEspacioFisico(datos)
+        mostrarToast({ tone: 'success', title: 'Clínica física creada' })
+      } else {
+        await actualizarEspacioFisico(modalEspacio.registro.id, datos)
+        mostrarToast({ tone: 'success', title: 'Clínica física actualizada' })
+      }
+      setModalEspacio(null)
+      await recargarSeleccion(seleccion?.espacioFisicoId)
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo guardar la clínica física.')
+    } finally {
+      setProcesandoEspacio(false)
+    }
+  }
+
+  async function eliminarEspacio() {
+    if (!espacioSeleccionado) return
+    setProcesandoEspacio(true)
+    try {
+      await desactivarEspacioFisico(espacioSeleccionado.id)
+      setConfirmarDesactivar(false)
+      setSeleccion(null)
+      await cargar()
+      mostrarToast({ tone: 'info', title: 'Clínica física desactivada' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo desactivar la clínica física.')
+    } finally {
+      setProcesandoEspacio(false)
+    }
+  }
+
   const asignaciones = seleccion?.asignaciones ?? []
   const otrasSalas = useMemo(
     () => items.filter((item) => item.espacioFisicoId !== seleccion?.espacioFisicoId),
@@ -196,6 +265,10 @@ export default function CroquisPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={abrirCrearEspacio}>
+            <Icon name="add_business" className="text-[18px]" />
+            Nueva clínica
+          </Button>
           <Button variant="secondary" onClick={() => setDuplicarAbierto(true)}>
             <Icon name="content_copy" className="text-[18px]" />
             Duplicar de otra fecha
@@ -209,7 +282,9 @@ export default function CroquisPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card">
         <label className="flex flex-col gap-1">
-          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">Fecha</span>
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+            Fecha
+          </span>
           <input
             type="date"
             value={fecha}
@@ -219,7 +294,9 @@ export default function CroquisPage() {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">Nivel</span>
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+            Nivel
+          </span>
           <select
             value={nivel}
             onChange={(evento) => setNivel(evento.target.value)}
@@ -292,9 +369,35 @@ export default function CroquisPage() {
       >
         {seleccion && (
           <div className="space-y-4">
-            <p className="text-body-sm text-on-surface-variant">
-              Nivel {seleccion.nivel} · {fecha}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-body-sm text-on-surface-variant">
+                Nivel {seleccion.nivel} · {fecha}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    window.open(
+                      `/vista-doctor?clinica=${encodeURIComponent(seleccion.numero)}`,
+                      '_blank',
+                      'noopener',
+                    )
+                  }
+                >
+                  <Icon name="open_in_new" className="text-[16px]" />
+                  Vista doctor
+                </Button>
+                <Button variant="secondary" size="sm" onClick={abrirEditarEspacio}>
+                  <Icon name="edit" className="text-[16px]" />
+                  Editar clínica
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => setConfirmarDesactivar(true)}>
+                  <Icon name="delete" className="text-[16px]" />
+                  Desactivar
+                </Button>
+              </div>
+            </div>
 
             <div>
               <p className="mb-1 text-label-sm uppercase tracking-wide text-on-surface-variant">
@@ -407,6 +510,69 @@ export default function CroquisPage() {
         )}
       </Modal>
 
+      {/* Crear/editar clínica física */}
+      <Modal
+        open={Boolean(modalEspacio)}
+        onClose={() => {
+          if (!procesandoEspacio) setModalEspacio(null)
+        }}
+        title={modalEspacio?.modo === 'editar' ? 'Editar clínica física' : 'Nueva clínica física'}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setModalEspacio(null)}
+              disabled={procesandoEspacio}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" form="form-espacio-fisico" disabled={procesandoEspacio}>
+              {procesandoEspacio
+                ? 'Guardando…'
+                : modalEspacio?.modo === 'editar'
+                  ? 'Guardar cambios'
+                  : 'Crear clínica'}
+            </Button>
+          </>
+        }
+      >
+        {modalEspacio && (
+          <EspacioFisicoForm
+            valoresIniciales={modalEspacio.registro}
+            modo={modalEspacio.modo}
+            onSubmit={guardarEspacio}
+          />
+        )}
+      </Modal>
+
+      {/* Confirmar desactivación de clínica */}
+      <Modal
+        open={confirmarDesactivar}
+        onClose={() => {
+          if (!procesandoEspacio) setConfirmarDesactivar(false)
+        }}
+        title="Desactivar clínica física"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmarDesactivar(false)}
+              disabled={procesandoEspacio}
+            >
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={eliminarEspacio} disabled={procesandoEspacio}>
+              {procesandoEspacio ? 'Desactivando…' : 'Sí, desactivar'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-body-md text-on-surface-variant">
+          La clínica <b>{espacioSeleccionado?.nombre ?? espacioSeleccionado?.numero}</b> dejará de
+          aparecer en el croquis y no podrá recibir turnos nuevos.
+        </p>
+      </Modal>
+
       {/* Confirmar cierre del día */}
       <Modal
         open={confirmarCierre}
@@ -414,7 +580,11 @@ export default function CroquisPage() {
         title="Cerrar asignación del día"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setConfirmarCierre(false)} disabled={procesando}>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmarCierre(false)}
+              disabled={procesando}
+            >
               Cancelar
             </Button>
             <Button onClick={confirmarCerrarDia} disabled={procesando}>
@@ -436,7 +606,11 @@ export default function CroquisPage() {
         title="Duplicar asignación de otra fecha"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDuplicarAbierto(false)} disabled={procesando}>
+            <Button
+              variant="secondary"
+              onClick={() => setDuplicarAbierto(false)}
+              disabled={procesando}
+            >
               Cancelar
             </Button>
             <Button onClick={confirmarDuplicar} disabled={procesando || !fechaOrigen}>

@@ -4,16 +4,22 @@ import Button from '@/shared/components/ui/Button.jsx'
 import Card from '@/shared/components/ui/Card.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
-import { buscarMedicoPorColegiado } from '../api/doctorApi'
+import { buscarMedicoPorColegiado, esModoDemo } from '../api/doctorApi'
 import { COLEGIADOS_DEMO } from '../api/mockData'
 
-const COLEGIADO_RE = /^\d{3,10}$/
+const COLEGIADO_RE = esModoDemo ? /^\d{3,10}$/ : /^[A-Za-z0-9-]{3,50}$/
 
-const MENSAJES = {
-  COLEGIADO_INVALIDO: 'Ingresa un número de colegiado válido (solo dígitos, mínimo 3).',
-  MEDICO_NO_ENCONTRADO: 'No encontramos un médico con ese número de colegiado.',
-  MEDICO_INACTIVO: 'El médico está inactivo. Contacta al administrador.',
-}
+const MENSAJES = esModoDemo
+  ? {
+      COLEGIADO_INVALIDO: 'Ingresa un número de colegiado válido (solo dígitos, mínimo 3).',
+      MEDICO_NO_ENCONTRADO: 'No encontramos un médico con ese número de colegiado.',
+      MEDICO_INACTIVO: 'El médico está inactivo. Contacta al administrador.',
+    }
+  : {
+      COLEGIADO_INVALIDO: 'Ingresa un colegiado válido (letras, números o guiones).',
+      MEDICO_NO_ENCONTRADO: 'No encontramos un médico con ese número de colegiado.',
+      MEDICO_INACTIVO: 'El médico está inactivo. Contacta al administrador.',
+    }
 
 function mensajeDeError(error) {
   return MENSAJES[error?.code] ?? error?.message ?? 'No se pudo validar el colegiado.'
@@ -85,7 +91,7 @@ export default function AccesoDoctor({ clinica, asignacion, onIdentificado }) {
             label="Número de colegiado"
             value={colegiado}
             onChange={manejarCambio}
-            placeholder="Ej. 1001"
+            placeholder={esModoDemo ? 'Ej. 1001' : 'Ej. COL-12890'}
             autoComplete="off"
             autoFocus
             inputMode="numeric"
@@ -109,13 +115,15 @@ export default function AccesoDoctor({ clinica, asignacion, onIdentificado }) {
           )}
         </div>
 
-        <div className="rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
-          <p className="font-semibold text-on-surface">Datos de demostración</p>
-          <p className="mt-1">
-            Válidos: {COLEGIADOS_DEMO.validos.join(', ')}. Inactivo: {COLEGIADOS_DEMO.inactivo}.
-            Inexistente: {COLEGIADOS_DEMO.inexistente}.
-          </p>
-        </div>
+        {esModoDemo && (
+          <div className="rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+            <p className="font-semibold text-on-surface">Datos de demostración</p>
+            <p className="mt-1">
+              Válidos: {COLEGIADOS_DEMO.validos.join(', ')}. Inactivo: {COLEGIADOS_DEMO.inactivo}.
+              Inexistente: {COLEGIADOS_DEMO.inexistente}.
+            </p>
+          </div>
+        )}
       </Card>
     </div>
   )

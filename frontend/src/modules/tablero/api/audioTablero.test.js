@@ -63,6 +63,7 @@ class AudioFalso {
 }
 
 const SECUENCIA_25_6A = [
+  '/audio/tablero/generales/sonidoprevio.mp3',
   '/audio/tablero/generales/paciente.mp3',
   '/audio/tablero/generales/numero.mp3',
   '/audio/tablero/numeros/025.mp3',
@@ -72,6 +73,7 @@ const SECUENCIA_25_6A = [
 ]
 
 const SECUENCIA_300_6B = [
+  '/audio/tablero/generales/sonidoprevio.mp3',
   '/audio/tablero/generales/paciente.mp3',
   '/audio/tablero/generales/numero.mp3',
   '/audio/tablero/numeros/300.mp3',
@@ -106,7 +108,9 @@ describe('audioTablero · reproducción local', () => {
     reproducirLlamado({ turno: 25, clinicaNumero: '6A', onEnd })
 
     await vi.waitFor(() => expect(onEnd).toHaveBeenCalledTimes(1))
-    expect(reproducirSecuenciaMock).toHaveBeenCalledWith(SECUENCIA_25_6A)
+    expect(reproducirSecuenciaMock).toHaveBeenCalledWith(SECUENCIA_25_6A, {
+      pausasPorIndice: { 3: 350 },
+    })
     expect(anunciarTurnoMock).not.toHaveBeenCalled()
   })
 
@@ -116,7 +120,9 @@ describe('audioTablero · reproducción local', () => {
     reproducirLlamado({ turno: 300, clinicaNumero: '6B', onEnd })
 
     await vi.waitFor(() => expect(onEnd).toHaveBeenCalledTimes(1))
-    expect(reproducirSecuenciaMock).toHaveBeenCalledWith(SECUENCIA_300_6B)
+    expect(reproducirSecuenciaMock).toHaveBeenCalledWith(SECUENCIA_300_6B, {
+      pausasPorIndice: { 3: 350 },
+    })
   })
 
   it('turno > 300 usa TTS sin intentar MP3', async () => {
@@ -136,18 +142,24 @@ describe('audioTablero · reproducción local', () => {
     expect(onEnd).toHaveBeenCalledTimes(1)
   })
 
-  it('clínica sin asset local usa TTS completo', async () => {
+  it('reproduce la clínica numérica con los MP3 locales', async () => {
     const onEnd = vi.fn()
-    anunciarTurnoMock.mockImplementation((_, { onEnd: terminar }) => {
-      terminar?.()
-      return 'mensaje'
-    })
 
-    reproducirLlamado({ turno: 25, clinicaNumero: '201', onEnd })
+    reproducirLlamado({ turno: 55, clinicaNumero: '3', onEnd })
 
-    expect(reproducirSecuenciaMock).not.toHaveBeenCalled()
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
-    expect(onEnd).toHaveBeenCalledTimes(1)
+    expect(reproducirSecuenciaMock).toHaveBeenCalledWith(
+      [
+        '/audio/tablero/generales/sonidoprevio.mp3',
+        '/audio/tablero/generales/paciente.mp3',
+        '/audio/tablero/generales/numero.mp3',
+        '/audio/tablero/numeros/055.mp3',
+        '/audio/tablero/generales/pasar_a.mp3',
+        '/audio/tablero/generales/clinica.mp3',
+        '/audio/tablero/numeros/003.mp3',
+      ],
+      { pausasPorIndice: { 3: 350 } },
+    )
+    await vi.waitFor(() => expect(onEnd).toHaveBeenCalledTimes(1))
   })
 
   it('si falla la reproducción local usa TTS con la frase completa', async () => {
@@ -209,13 +221,14 @@ describe('audioTablero · disponibilidad y precarga', () => {
   it('precarga primero generales y destinos', async () => {
     const promesa = precargarAudioTablero()
 
-    await vi.waitFor(() => expect(AudioFalso.instancias.length).toBeGreaterThanOrEqual(6))
-    for (const audio of AudioFalso.instancias.slice(0, 6)) {
+    await vi.waitFor(() => expect(AudioFalso.instancias.length).toBeGreaterThanOrEqual(7))
+    for (const audio of AudioFalso.instancias.slice(0, 7)) {
       audio.emitir('canplaythrough')
     }
 
     await expect(promesa).resolves.toBe(true)
-    expect(AudioFalso.instancias.slice(0, 6).map((audio) => audio.src)).toEqual([
+    expect(AudioFalso.instancias.slice(0, 7).map((audio) => audio.src)).toEqual([
+      '/audio/tablero/generales/sonidoprevio.mp3',
       '/audio/tablero/generales/paciente.mp3',
       '/audio/tablero/generales/numero.mp3',
       '/audio/tablero/generales/pasar_a.mp3',
@@ -228,8 +241,9 @@ describe('audioTablero · disponibilidad y precarga', () => {
   it('marca fallido un archivo ausente y usa TTS sin intentar MP3', async () => {
     const promesa = precargarAudioTablero()
 
-    await vi.waitFor(() => expect(AudioFalso.instancias.length).toBeGreaterThanOrEqual(6))
-    const [paciente, numero, pasarA, clinica, seisA, seisB] = AudioFalso.instancias
+    await vi.waitFor(() => expect(AudioFalso.instancias.length).toBeGreaterThanOrEqual(7))
+    const [sonidoPrevio, paciente, numero, pasarA, clinica, seisA, seisB] = AudioFalso.instancias
+    sonidoPrevio.emitir('canplaythrough')
     paciente.emitir('canplaythrough')
     numero.emitir('error')
     pasarA.emitir('canplaythrough')
@@ -279,9 +293,10 @@ describe('audioTablero · detener', () => {
     const onError = vi.fn()
     let rechazar
     reproducirSecuenciaMock.mockImplementation(
-      () => new Promise((_, reject) => {
-        rechazar = reject
-      }),
+      () =>
+        new Promise((_, reject) => {
+          rechazar = reject
+        }),
     )
 
     reproducirLlamado({ turno: 25, clinicaNumero: '6A', onEnd, onError })

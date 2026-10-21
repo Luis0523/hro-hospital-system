@@ -13,6 +13,7 @@ describe('RUTAS_GENERALES', () => {
   })
 
   it('resuelve las rutas generales del anuncio', () => {
+    expect(RUTAS_GENERALES.sonidoPrevio).toBe('/audio/tablero/generales/sonidoprevio.mp3')
     expect(RUTAS_GENERALES.paciente).toBe('/audio/tablero/generales/paciente.mp3')
     expect(RUTAS_GENERALES.numero).toBe('/audio/tablero/generales/numero.mp3')
     expect(RUTAS_GENERALES.pasarA).toBe('/audio/tablero/generales/pasar_a.mp3')
@@ -121,6 +122,7 @@ describe('rutaDestino', () => {
 describe('construirSecuenciaLlamado', () => {
   it('construye la secuencia exacta para 25 + 6A', () => {
     expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6A' })).toEqual([
+      '/audio/tablero/generales/sonidoprevio.mp3',
       '/audio/tablero/generales/paciente.mp3',
       '/audio/tablero/generales/numero.mp3',
       '/audio/tablero/numeros/025.mp3',
@@ -132,6 +134,7 @@ describe('construirSecuenciaLlamado', () => {
 
   it('construye la secuencia exacta para 300 + 6B', () => {
     expect(construirSecuenciaLlamado({ turno: 300, clinicaNumero: '6B' })).toEqual([
+      '/audio/tablero/generales/sonidoprevio.mp3',
       '/audio/tablero/generales/paciente.mp3',
       '/audio/tablero/generales/numero.mp3',
       '/audio/tablero/numeros/300.mp3',
@@ -153,8 +156,25 @@ describe('construirSecuenciaLlamado', () => {
     expect(construirSecuenciaLlamado({ turno: 999, clinicaNumero: '6A' })).toBeNull()
   })
 
-  it('devuelve null para clínica sin ruta local', () => {
-    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '201' })).toBeNull()
+  it('usa el audio numérico para clínicas como 201 o 3', () => {
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '201' })).toEqual([
+      '/audio/tablero/generales/sonidoprevio.mp3',
+      '/audio/tablero/generales/paciente.mp3',
+      '/audio/tablero/generales/numero.mp3',
+      '/audio/tablero/numeros/025.mp3',
+      '/audio/tablero/generales/pasar_a.mp3',
+      '/audio/tablero/generales/clinica.mp3',
+      '/audio/tablero/numeros/201.mp3',
+    ])
+    expect(construirSecuenciaLlamado({ turno: 55, clinicaNumero: '3' })).toEqual([
+      '/audio/tablero/generales/sonidoprevio.mp3',
+      '/audio/tablero/generales/paciente.mp3',
+      '/audio/tablero/generales/numero.mp3',
+      '/audio/tablero/numeros/055.mp3',
+      '/audio/tablero/generales/pasar_a.mp3',
+      '/audio/tablero/generales/clinica.mp3',
+      '/audio/tablero/numeros/003.mp3',
+    ])
     expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6C' })).toBeNull()
   })
 
@@ -166,6 +186,6 @@ describe('construirSecuenciaLlamado', () => {
 
   it('no genera rutas parciales ante entradas inválidas', () => {
     expect(construirSecuenciaLlamado({ turno: 301, clinicaNumero: '6A' })).toBeNull()
-    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '201' })).toBeNull()
+    expect(construirSecuenciaLlamado({ turno: 25, clinicaNumero: '6C' })).toBeNull()
   })
 })

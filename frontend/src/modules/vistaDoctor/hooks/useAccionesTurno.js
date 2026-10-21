@@ -39,7 +39,9 @@ export function useAccionesTurno({ medico, asignacion, escenario, onActualizar }
 
       const base = {
         asignacionId: asignacion.id,
+        espacioFisicoId: asignacion.espacioFisicoId ?? null,
         medicoId: medico.id,
+        numeroColegiado: medico.colegiado,
         turnoId: turno.id,
         escenario,
       }

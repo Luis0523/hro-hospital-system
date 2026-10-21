@@ -86,12 +86,8 @@ function configurarDuraciones(rutas, duraciones) {
 beforeEach(async () => {
   vi.useFakeTimers()
   vi.resetModules()
-  ;({
-    reproducirSecuencia,
-    detenerReproduccion,
-    SOLAPAMIENTO_FRAGMENTOS_MS,
-    TIMEOUT_FRAGMENTO_MS,
-  } = await import('./reproductorVoz'))
+  ;({ reproducirSecuencia, detenerReproduccion, SOLAPAMIENTO_FRAGMENTOS_MS, TIMEOUT_FRAGMENTO_MS } =
+    await import('./reproductorVoz'))
 
   ContextoFalso.instancias = []
   ContextoFalso.duraciones = {}
@@ -123,9 +119,9 @@ describe('reproductorVoz · Web Audio y solapamiento', () => {
   })
 
   it('rechaza una secuencia no vacía con rutas inválidas', async () => {
-    await expect(
-      reproducirSecuencia([null, '', '   ', 42], opciones()),
-    ).rejects.toThrow(/ruta inválida/i)
+    await expect(reproducirSecuencia([null, '', '   ', 42], opciones())).rejects.toThrow(
+      /ruta inválida/i,
+    )
     expect(fetchFalso).not.toHaveBeenCalled()
   })
 
@@ -152,6 +148,22 @@ describe('reproductorVoz · Web Audio y solapamiento', () => {
 
     const inicios = ContextoFalso.instancias[0].sources.map((s) => s.started)
     expect(inicios).toEqual([0.05, 0.55, 0.75])
+
+    detenerReproduccion()
+    await expect(promesa).rejects.toThrow(/cancel/i)
+  })
+
+  it('aplica una pausa de silencio después del índice indicado', async () => {
+    const rutas = ['/1.mp3', '/2.mp3', '/3.mp3']
+    configurarDuraciones(rutas, [1.5, 1.2, 0.8])
+
+    const promesa = reproducirSecuencia(rutas, opciones({ pausasPorIndice: { 1: 350 } }))
+    await dejarCorrer()
+
+    const inicios = ContextoFalso.instancias[0].sources.map((s) => s.started)
+    expect(inicios[0]).toBeCloseTo(0.05)
+    expect(inicios[1]).toBeCloseTo(0.55)
+    expect(inicios[2]).toBeCloseTo(2.1)
 
     detenerReproduccion()
     await expect(promesa).rejects.toThrow(/cancel/i)
@@ -204,9 +216,7 @@ describe('reproductorVoz · Web Audio y solapamiento', () => {
   it('rechaza si falla la decodificación de un fragmento', async () => {
     ContextoFalso.decodeError = 'decode roto'
 
-    await expect(
-      reproducirSecuencia(['/roto.mp3'], opciones()),
-    ).rejects.toThrow(/decode roto/)
+    await expect(reproducirSecuencia(['/roto.mp3'], opciones())).rejects.toThrow(/decode roto/)
 
     expect(ContextoFalso.instancias[0].sources).toHaveLength(0)
   })

@@ -1,6 +1,8 @@
 import { anunciarTurno, detenerHabla, estaDisponibleVoz } from './comunicacionVoz'
 import {
   construirSecuenciaLlamado,
+  INDICE_NUMERO_PACIENTE,
+  PAUSA_TRAS_NUMERO_MS,
   RUTAS_GENERALES,
   rutaDestino,
   rutaNumero,
@@ -136,6 +138,7 @@ function iniciarPrecargaNumeros(token) {
 
 function rutasCriticas() {
   return [
+    RUTAS_GENERALES.sonidoPrevio,
     RUTAS_GENERALES.paciente,
     RUTAS_GENERALES.numero,
     RUTAS_GENERALES.pasarA,
@@ -227,7 +230,9 @@ export function reproducirLlamado({ turno, clinicaNumero, onEnd, onError } = {})
   }
 
   try {
-    reproducirSecuencia(secuencia)
+    reproducirSecuencia(secuencia, {
+      pausasPorIndice: { [INDICE_NUMERO_PACIENTE]: PAUSA_TRAS_NUMERO_MS },
+    })
       .then(() => finalizar(onEnd))
       .catch(() => {
         if (generacion !== generacionDetencion) return

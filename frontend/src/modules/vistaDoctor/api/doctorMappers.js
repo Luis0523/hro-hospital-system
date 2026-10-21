@@ -33,6 +33,7 @@ export function normalizarAsignacion(asignacion) {
   if (!asignacion) return null
   return {
     id: Number(asignacion.id),
+    espacioFisicoId: asignacion.espacioFisicoId ?? null,
     subespecialidadId: asignacion.subespecialidadId ?? null,
     subespecialidadNombre: String(asignacion.subespecialidadNombre ?? '').trim(),
     especialidadId: asignacion.especialidadId ?? null,
