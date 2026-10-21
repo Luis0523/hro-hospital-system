@@ -52,6 +52,7 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/ws-turnos/**", "/api/v1/ws-turnos/**",
+            "/publico/tablero/**", "/api/v1/publico/tablero/**",
             "/auth/**", "/api/v1/auth/**",
             "/health", "/api/v1/health"
         };

@@ -1,8 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import {
-  leerEstacionDeUrl,
-  resolverConfiguracionEstacion,
-} from './configuracionEstacion'
+import { describe, expect, it, vi } from 'vitest'
+import { leerEstacionDeUrl, resolverConfiguracionEstacion } from './configuracionEstacion'
 
 function clienteCon(data) {
   return { get: async () => ({ data }) }
@@ -20,16 +17,25 @@ describe('configuracionEstacion', () => {
     expect(config).toBeNull()
   })
 
-  it('resuelve la estación por código', async () => {
-    const cliente = clienteCon([
-      { id: 7, codigo: 'EST-02', nombre: 'Consulta Externa — Pediatría', subespecialidades: [{ id: 3 }, { id: 5 }] },
-    ])
+  it('resuelve la estación por código usando el catálogo público', async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 7,
+          codigo: 'EST-02',
+          nombre: 'Consulta Externa — Pediatría',
+          subespecialidades: [{ id: 3 }, { id: 5 }],
+        },
+      ],
+    })
+    const cliente = { get }
 
     const config = await resolverConfiguracionEstacion({ search: '?estacion=EST-02', cliente })
 
     expect(config.estacionId).toBe(7)
     expect(config.nombre).toBe('Consulta Externa — Pediatría')
     expect(config.subespecialidadIds).toEqual([3, 5])
+    expect(get).toHaveBeenCalledWith('/publico/tablero/estaciones')
   })
 
   it('lanza error si la estación no existe', async () => {

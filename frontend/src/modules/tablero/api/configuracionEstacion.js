@@ -31,7 +31,7 @@ export async function resolverConfiguracionEstacion({
 
   let cuerpo
   try {
-    cuerpo = await cliente.get('/estaciones')
+    cuerpo = await cliente.get('/publico/tablero/estaciones')
   } catch {
     throw crearErrorEstacion()
   }

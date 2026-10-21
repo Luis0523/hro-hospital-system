@@ -261,7 +261,9 @@ export async function obtenerEstadoInicialEstacion({
     return ordenarAsignaciones(normalizarListaAsignaciones(base))
   }
 
-  const cuerpo = await cliente.get(`/turnos/estacion/${estacionId}/tablero`, { params: { fecha } })
+  const cuerpo = await cliente.get(`/publico/tablero/estaciones/${estacionId}/tablero`, {
+    params: { fecha },
+  })
   const lista = extraerListaRespuesta(cuerpo)
 
   if (lista === null) {

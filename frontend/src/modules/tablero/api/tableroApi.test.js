@@ -9,6 +9,7 @@ import {
   mapearAsignacionDiaria,
   normalizarEstadoTablero,
   normalizarListaAsignaciones,
+  obtenerEstadoInicialEstacion,
   obtenerEstadoInicialTablero,
   ordenarAsignaciones,
   parsearAsignacionesFiltradas,
@@ -375,6 +376,21 @@ describe('tableroApi · estado inicial real (REST)', () => {
     await obtenerEstadoInicialTablero({ modoMock: false, cliente, permitidas: null })
 
     expect(cliente.get.mock.calls[0][1].params.fecha).toBe(hoyIso())
+  })
+
+  it('consulta el endpoint público del tablero de la estación', async () => {
+    const cliente = clienteConRespuesta({ success: true, data: [] })
+
+    await obtenerEstadoInicialEstacion({
+      estacionId: 9,
+      modoMock: false,
+      cliente,
+      fecha: '2026-09-25',
+    })
+
+    expect(cliente.get).toHaveBeenCalledWith('/publico/tablero/estaciones/9/tablero', {
+      params: { fecha: '2026-09-25' },
+    })
   })
 
   it('interpreta el wrapper ApiResponse y mapea el DTO al modelo del tablero', async () => {
