@@ -333,6 +333,61 @@ public class ArchivoService {
         return mapCiclo(ciclo);
     }
 
+    @Transactional
+    public ExpedienteCiclo vincularCicloDesdeEnfermeria(UUID expedienteId, Long citaId, String observacion) {
+        Expediente expediente = buscarExpediente(expedienteId);
+        Cita cita = null;
+        if (citaId != null) {
+            cita = citaRepository.findById(citaId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Cita", "id", citaId));
+            if (!cita.getPaciente().getId().equals(expediente.getPaciente().getId())) {
+                throw new BusinessException("La cita indicada no pertenece al paciente del expediente");
+            }
+        }
+
+        Optional<ExpedienteCiclo> existente = (cita != null)
+                ? expedienteCicloRepository.findByCitaId(cita.getId())
+                : expedienteCicloRepository.buscarCiclosSinCitaActivos(expediente.getId()).stream().findFirst();
+
+        if (existente.isPresent()) {
+            ExpedienteCiclo ciclo = existente.get();
+            if (ENTREGADO.equals(ciclo.getEstadoActual())) {
+                return ciclo;
+            }
+            if (EN_TRANSITO_ENTREGA.equals(ciclo.getEstadoActual())) {
+                UsuarioReferencia usuario = usuarioActual();
+                String anterior = ciclo.getEstadoActual();
+                ciclo.setEstadoActual(ENTREGADO);
+                ciclo.setActualizadoEn(OffsetDateTime.now());
+                ExpedienteCiclo actualizado = expedienteCicloRepository.saveAndFlush(ciclo);
+                registrarMovimiento(actualizado, anterior, ENTREGADO, null, null, usuario,
+                        observacion != null ? observacion : "Vinculado desde estación de enfermería");
+                return actualizado;
+            }
+            if (EN_TRANSITO_RETORNO.equals(ciclo.getEstadoActual()) || ARCHIVADO.equals(ciclo.getEstadoActual())) {
+                throw new ConflictException("CICLO_CERRADO",
+                        "El expediente ya tiene un ciclo cerrado o en retorno para esta cita");
+            }
+            return ciclo;
+        }
+
+        UsuarioReferencia usuario = usuarioActual();
+        ExpedienteCiclo ciclo = expedienteCicloRepository.saveAndFlush(ExpedienteCiclo.builder()
+                .expediente(expediente)
+                .cita(cita)
+                .estadoActual(ENTREGADO)
+                .version(0)
+                .creadoEn(OffsetDateTime.now())
+                .actualizadoEn(OffsetDateTime.now())
+                .build());
+
+        registrarMovimiento(ciclo, null, ENTREGADO, null, null, usuario,
+                observacion != null ? observacion : "Vinculado desde estación de enfermería");
+
+        log.info("Ciclo {} vinculado desde enfermería para expediente {}", ciclo.getId(), expediente.getNumeroExpediente());
+        return ciclo;
+    }
+
     /**
      * Check-in de un expediente físico: inicia el tracking del día.
      * <p>

@@ -25,6 +25,9 @@ public class Especialidad {
     @Column(name = "abreviatura", length = 20)
     private String abreviatura;
 
+    @Column(name = "correlativo_max")
+    private Integer correlativoMax;
+
     @Column(name = "activo", nullable = false)
     @Builder.Default
     private Boolean activo = true;

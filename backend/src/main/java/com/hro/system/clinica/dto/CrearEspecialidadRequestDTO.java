@@ -1,6 +1,7 @@
 package com.hro.system.clinica.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,4 +20,7 @@ public class CrearEspecialidadRequestDTO {
 
     @Size(max = 20, message = "La abreviatura no puede exceder 20 caracteres")
     private String abreviatura;
+
+    @Min(value = 1, message = "El correlativo máximo debe ser mayor que cero")
+    private Integer correlativoMax;
 }

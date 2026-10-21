@@ -61,6 +61,14 @@ public class EspacioFisicoController {
                 "Espacios del nivel " + nivel));
     }
 
+    @GetMapping("/numero/{numero}")
+    @Operation(summary = "Buscar espacio físico por número",
+            description = "Resuelve la clínica a partir del número leído en el QR o código de barras de la sala.")
+    public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> buscarPorNumero(@PathVariable String numero) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                espacioFisicoService.buscarPorNumero(numero), "Espacio físico localizado"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Buscar espacio físico por ID")
     public ResponseEntity<ApiResponse<EspacioFisicoResponseDTO>> buscar(@PathVariable UUID id) {

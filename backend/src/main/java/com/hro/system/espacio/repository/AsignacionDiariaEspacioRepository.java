@@ -35,6 +35,17 @@ public interface AsignacionDiariaEspacioRepository extends JpaRepository<Asignac
 
     boolean existsByEspacioFisicoIdAndFecha(UUID espacioFisicoId, LocalDate fecha);
 
+    @Query("""
+            SELECT COUNT(a) > 0 FROM AsignacionDiariaEspacio a
+             WHERE a.espacioFisico.id = :espacioFisicoId
+               AND a.fecha = :fecha
+               AND a.subespecialidad.especialidad.id = :especialidadId
+            """)
+    boolean existsByEspacioFisicoIdAndFechaAndEspecialidadId(
+            @Param("espacioFisicoId") UUID espacioFisicoId,
+            @Param("fecha") LocalDate fecha,
+            @Param("especialidadId") Long especialidadId);
+
     long deleteByFecha(LocalDate fecha);
 
     @Query(value = "SELECT subespecialidad_id, subespecialidad_nombre FROM fn_subespecialidades_sin_asignar(:fecha)", nativeQuery = true)

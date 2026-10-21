@@ -45,6 +45,7 @@ public class EspecialidadService {
         Especialidad esp = Especialidad.builder()
                 .nombre(dto.getNombre().trim())
                 .abreviatura(normalizarAbreviatura(dto.getAbreviatura()))
+                .correlativoMax(dto.getCorrelativoMax())
                 .activo(true)
                 .creadoEn(OffsetDateTime.now())
                 .build();
@@ -74,6 +75,7 @@ public class EspecialidadService {
 
         esp.setNombre(dto.getNombre().trim());
         esp.setAbreviatura(normalizarAbreviatura(dto.getAbreviatura()));
+        esp.setCorrelativoMax(dto.getCorrelativoMax());
         Especialidad actualizada = especialidadRepository.save(esp);
         invalidarCache();
         return mapToDTO(actualizada);
@@ -152,6 +154,7 @@ public class EspecialidadService {
                 .id(esp.getId())
                 .nombre(esp.getNombre())
                 .abreviatura(esp.getAbreviatura())
+                .correlativoMax(esp.getCorrelativoMax())
                 .activo(esp.getActivo())
                 .creadoEn(esp.getCreadoEn())
                 .build();
