@@ -133,6 +133,12 @@ public class EspacioFisicoService {
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", id)));
     }
 
+    @Transactional(readOnly = true)
+    public EspacioFisicoResponseDTO buscarPorNumero(String numero) {
+        return mapToDTO(espacioFisicoRepository.findByNumero(numero.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "numero", numero)));
+    }
+
     private EspacioFisicoResponseDTO mapToDTO(EspacioFisico e) {
         return EspacioFisicoResponseDTO.builder()
                 .id(e.getId())

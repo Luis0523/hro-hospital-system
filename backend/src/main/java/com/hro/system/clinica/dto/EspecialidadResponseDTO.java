@@ -15,6 +15,7 @@ public class EspecialidadResponseDTO {
     private Long id;
     private String nombre;
     private String abreviatura;
+    private Integer correlativoMax;
     private Boolean activo;
     private OffsetDateTime creadoEn;
 }
