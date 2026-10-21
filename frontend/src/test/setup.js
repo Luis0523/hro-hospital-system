@@ -75,4 +75,5 @@ if (typeof globalThis.localStorage === 'undefined') {
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear()
 })

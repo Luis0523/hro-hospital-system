@@ -2,19 +2,18 @@
 
 - **Jira:** SCRUM-258
 - **Responsable:** Andrés López
-- **Vencimiento:** 2026-10-21
-- **Prioridad:** Highest
-- **Sprint:** Sprint 3 - Archivo
-- **Épica padre:** SCRUM-155
-- **Rama sugerida:** `frontend-vista-doctor`
+- **Rama:** `frontend-vista-doctor`
+- **Estado Jira:** En curso
+- **Alcance actual:** F1–F4.1 con datos ficticios locales
 
 ## Contexto
 
-El doctor necesita llamar pacientes desde su teléfono. El tablero ya reacciona a
-`POST /turnos/{id}/llamar` mediante WebSocket. La vista nueva usa la **misma lógica**
-que la estación de enfermería; solo cambia el origen de la orden: el teléfono.
+El doctor necesita llamar pacientes desde su teléfono. El tablero institucional reacciona a
+`POST /turnos/{id}/llamar` mediante WebSocket, pero esta rama **todavía no está integrada**
+con el backend ni con el WebSocket real. Las acciones, el orden y el cooldown se simulan
+localmente.
 
-Mockup de referencia:
+Mockup de referencia visual:
 
 `docs/mockups/vistaDoctor/hro_vista_doctor_movil.html`
 
@@ -22,148 +21,160 @@ Mockup de referencia:
 
 Implementar la ruta pública `/vista-doctor` con:
 
-- acceso solo por número de colegiado (sin contraseña),
-- lista de pacientes **de la clínica** (no del médico),
-- llamar, rellamar, marcar no respondió y atendido,
-- fin de jornada local,
-- registro del doctor que atendió: colegiado, nombre y paciente/turno.
+- acceso por número de colegiado, sin contraseña;
+- identificación de la clínica mediante un enlace corto;
+- lista de pacientes de la clínica, no del médico;
+- nombre y expediente ocultos hasta validar el expediente;
+- llamar, rellamar, no respondió y atendido;
+- un solo turno activo, orden explícito de cola y cooldown local;
+- registro local del médico que atendió;
+- asociación local de expediente;
+- resumen de jornada;
+- cierre con doble confirmación y reapertura controlada.
 
 ## Reglas generales
 
 - Solo frontend. **No** tocar backend ni base de datos.
 - No crear endpoints nuevos ni inventar contratos.
 - Usar `@/` para imports cross-carpeta.
-- Reutilizar UI kit y `client.js`.
+- Reutilizar UI kit y la fachada `doctorApi.js`.
 - No usar `AuthContext` para la identidad del doctor.
-- No implementar `BroadcastChannel`: la sincronización con el tablero la hace el backend/WebSocket existente.
+- No implementar `BroadcastChannel` ni publicar eventos al tablero real.
 - UI en español, responsive móvil primero.
+- No usar datos hospitalarios reales.
 
-## Estructura propuesta
+## Acceso y clínica
 
-```text
-frontend/src/modules/vistaDoctor/
-├── pages/
-│   └── VistaDoctorPage.jsx
-├── components/
-│   ├── AccesoDoctor.jsx
-│   ├── TablaPacientesDoctor.jsx
-│   ├── ResumenJornada.jsx
-│   ├── AvisosDoctor.jsx
-│   └── ModalFinJornada.jsx
-├── api/
-│   └── doctorApi.js
-└── identidadDoctor.js
-```
+- Ruta pública: `/vista-doctor?clinica=101-11` (código corto provisional).
+- También se acepta el UUID del espacio físico.
+- Código ausente, inválido o desconocido: error claro; no se elige otra clínica.
+- Código sin asignación diaria: error claro.
+- Pantalla inicial: “¿Quién está ahí?”.
+- Colegiado numérico (por ejemplo `1001`), sin prefijo `COL-`; se conserva como texto.
+- Búsqueda mock; el adaptador acepta `COL-1001` por compatibilidad.
+- El nombre se obtiene del registro; no se escribe manualmente.
+- La identidad se guarda en `sessionStorage['hro_doctor']`.
 
-## Acceso
+## Lista de pacientes
 
-- Pantalla inicial: input de número de colegiado.
-- Al enviar: `GET /medicos/colegiado/{numeroColegiado}`.
-- Si no existe: mensaje claro, no continuar.
-- Si existe: guardar en `sessionStorage` con la clave `hro_doctor`:
+- La lista pertenece a la asignación/clínica; **no** se filtra por médico.
+- Scroll interno con altura máxima responsiva, scrollbar compacta y cabecera sticky en
+  escritorio.
+- En móvil, la pista “Desliza para ver más” aparece cuando hay contenido fuera del área.
+- Correlativos alfanuméricos (`MI-1`, `REUMA-2`) sin truncar; los numéricos se normalizan a
+  texto.
+- El orden de la cola proviene del campo explícito `orden`, no del texto del correlativo.
+- Inicialmente solo se muestra el correlativo:
+  - Expediente: **Sin registrar**.
+  - Nombre: **Pendiente de identificar**.
+- Columnas: correlativo, expediente, paciente, estado, espera y acciones.
+- Estados: `en_espera`, `llamado`, `no_responde`, `atendido`, `reintegrado`.
+- Estados de interfaz: loading, success, empty, error y retry.
 
-```js
-{
-  medicoId,
-  nombre: nombres,
-  numeroColegiado,
-  usuarioReferenciaId: medico.usuarioReferenciaId ?? null,
-  clinicaId: null,
-  clinicaNombre: null
-}
-```
+## Contratos reales de referencia
 
-- No guardar en `localStorage` ni en `AuthContext`.
+Los endpoints de “clínica” usados en versiones anteriores (`/clinicas`,
+`/turnos/clinica/{id}`) **no existen** en el backend vigente. El modelo actual es
+`EspacioFisico` + `AsignacionDiariaEspacio`.
 
-## Clínica de trabajo
+| Operación | Contrato real |
+|---|---|
+| Médico por colegiado | `GET /medicos/colegiado/{numeroColegiado}` |
+| Espacio físico | `GET /espacios-fisicos/{id}` |
+| Asignaciones del día | `GET /asignaciones-diarias?fecha=YYYY-MM-DD` |
+| Turnos de la asignación | `GET /turnos/asignacion/{asignacionDiariaEspacioId}` |
+| Paciente por expediente | `GET /pacientes/expediente/{numeroExpediente}` |
+| Llamar / rellamar | `POST /turnos/{id}/llamar` |
+| No respondió | `POST /turnos/{id}/no-responde` |
+| Atendió | `POST /turnos/{id}/atendido` |
+| WebSocket | `/topic/tablero`, `/topic/clinica/{asignacionId}`, `/topic/estacion/{id}` |
 
-El médico no trae clínica desde el backend. La vista se enfoca en **una clínica**.
-
-- Soportar `?clinica=<id>` para abrir directo una clínica.
-- Si no viene, mostrar selector con `GET /clinicas` (`listarClinicas` de `enfermeriaApi.js`).
-- Guardar la clínica elegida en `sessionStorage.hro_doctor` y en el estado de la página.
-- Mostrar una cabecera con nombre del médico, especialidad si la hay, y clínica activa.
-
-## Listado de pacientes
-
-- `GET /turnos/clinica/{clinicaId}?fecha=YYYY-MM-DD`.
-- Reutilizar `listarTurnosClinica` de `frontend/src/modules/enfermeria/api/enfermeriaApi.js`.
-- Columnas: correlativo, expediente, nombre, estado y tiempo.
-- La lista **no** se filtra por médico.
-- Consultar el nombre por expediente con `buscarPaciente` (expediente con respaldo DPI).
-- Si el expediente no existe, marcar la fila como inválida y deshabilitar “Llamar”.
+No hay un endpoint para persistir el colegiado/nombre del médico en la atención ni para
+registrar el expediente asociado al turno. Esas operaciones quedan locales en esta fase.
 
 ## Acciones
 
-Reutilizar de `enfermeriaApi.js`:
+- **Llamar:** `en_espera` o `reintegrado` → `llamado`.
+- **Rellamar:** `llamado` o `no_responde` → `llamado`, incrementa intentos y conserva
+  correlativo. En `no_responde` no equivale a reintegrar al final de la cola.
+- **No respondió:** `llamado` → `no_responde`; no exige expediente.
+- **Atendió:** `llamado` → `atendido`; exige expediente validado y guarda atención local con
+  médico, colegiado, turno, paciente, expediente y fecha/hora.
+- Las transiciones inválidas, dobles clics y acciones con jornada cerrada se bloquean.
+- Solo puede existir un turno `llamado` por cola.
+- Para llamar un turno `en_espera` o `reintegrado`, debe ser el primero elegible por `orden`.
+- Mientras exista un turno activo, no se puede llamar a otro.
+- `Atendió` y `No respondió` liberan la atención.
+- Cooldown local de 10 s entre llamados/rellamados; el botón muestra el tiempo restante.
+  Atender, no responder, consultar/registrar expediente y cerrar jornada no esperan cooldown.
+- En modo mock la exclusividad es local a la pestaña; no hay garantía entre dispositivos.
 
-- `llamarTurno(turnoId)`
-- `marcarNoResponde(turnoId, motivo)`
-- `marcarAtendido(turnoId)`
+## Expediente
 
-Estados y botones:
+- Acción **Registrar expediente** o **Editar expediente** por fila.
+- El expediente es numérico, de **1 a 10 dígitos**, se conserva como texto y admite ceros
+  iniciales.
+- El nombre y el expediente no se muestran hasta que el médico valida el número en el modal.
+- El modal consulta el registro ficticio y muestra el nombre del paciente.
+- Si el expediente no existe, se muestra error.
+- Si corresponde a otro paciente, se bloquea la asociación.
+- Si el turno ya fue atendido, no se permite modificar.
+- La asociación se guarda en el turno dentro de `hro_jornada_operativa` y sobrevive a la
+  recarga de la misma pestaña.
+- No se usa `PUT /pacientes/{id}` ni se modifica un registro institucional.
+- La versión 2 de la jornada invalida datos antiguos de F4 para no exponer nombres ni
+  expedientes desde sesiones previas.
 
-- `en_espera`: **Llamar**.
-- `llamado`: **Rellamar**, **No respondió**, **Atendió**.
-- `no_responde`: **Rellamar**.
-- `atendido`: sin acciones.
+## Estadísticas
 
-El evento de llamado debe llegar al tablero por el flujo actual.
-No implementar atajos locales ni canales alternos.
+- **Pendientes:** `llamado` + `no_responde`.
+- **En espera:** `en_espera` + `reintegrado`.
+- **Atendidos:** `atendido`.
 
-## Registro del doctor que atiende
-
-Al pulsar **Atendió**, registrar la atención:
-
-> El doctor con colegiado X, nombre X, atendió al paciente X.
-
-- Guardar localmente el registro:
-
-```js
-{
-  medicoId,
-  numeroColegiado,
-  nombre,
-  turnoId,
-  correlativo,
-  paciente,
-  expediente,
-  atendidoEn: 'ISO-8601'
-}
-```
-
-- Mostrarlo en el resumen/bitácora de la jornada.
-- Si el médico trae `usuarioReferenciaId`, enviarlo como `usuarioId` en `marcarAtendido` para que el backend audite al usuario correcto.
-- Si no lo trae, **no inventar** un `usuarioId`.
-- Marcar como **PENDIENTE DE BACKEND** la persistencia del colegiado/nombre como campo de la atención.
+Son categorías disjuntas. Se calculan con los turnos ficticios de la pestaña; no son cifras
+institucionales. Un rellamado no crea un paciente ni una atención nuevos.
 
 ## Fin de jornada
 
-- Botón “Fin de jornada” con modal de confirmación y resumen (pendientes, en espera, atendidos).
-- Al confirmar: bloquear nuevos llamados localmente.
-- Estado cerrado persistido solo en `sessionStorage`.
-- Permitir reabrir con confirmación.
-- No imprimir resumen.
+- Doble confirmación: resumen y advertencia, luego confirmación final.
+- Al confirmar: se guarda `hro_jornada_cerrada`, se elimina `hro_jornada_operativa` y
+  `hro_doctor`; se vuelve a “¿Quién está ahí?”.
+- El mismo médico y clínica puede reabrir con confirmación explícita.
+- Otro médico no reabre automáticamente la jornada anterior.
+- No modifica la jornada institucional ni la sesión global de HRO.
 
-## Fuera de alcance
+## Fuera de alcance actual
 
-- Backend, endpoints nuevos o migraciones.
-- Persistencia real del campo del doctor en BD.
-- Sincronización por `BroadcastChannel`.
-- Filtrado de pacientes por médico.
-- Login con contraseña.
+- Backend, migraciones y endpoints nuevos.
+- Persistencia real de expediente o del médico en la atención.
+- WebSocket y tablero real.
+- Autenticación segura de la vista pública.
+- Resolución institucional de códigos cortos y múltiples asignaciones por clínica.
+- Exclusividad, orden y cooldown transaccionales entre múltiples dispositivos.
+- Estadísticas institucionales.
 
 ## Criterios de aceptación
 
-- [ ] `/vista-doctor` es pública y pide colegiado.
-- [ ] Un colegiado inexistente muestra error claro.
-- [ ] La lista corresponde a la clínica seleccionada.
-- [ ] “Llamar” dispara el flujo existente y el tablero recibe el evento.
-- [ ] “Rellamar”, “No respondió” y “Atendió” actualizan el estado.
-- [ ] Se registra el doctor que atendió (colegiado, nombre, paciente).
-- [ ] “Fin de jornada” bloquea llamados y se puede reabrir.
-- [ ] Funciona en móvil.
-- [ ] `npm run lint`, `npm run test:run` y `npm run build` pasan sin errores nuevos.
+Comprobables con mocks:
+
+- [x] `/vista-doctor` es pública y pide colegiado.
+- [x] Colegiado inexistente/inactivo muestra error.
+- [x] La lista corresponde a la clínica y no al médico.
+- [x] Nombre y expediente ocultos hasta validar.
+- [x] Llamar, rellamar, no respondió y atendió actualizan el estado local.
+- [x] Un solo turno activo, orden explícito y cooldown local.
+- [x] El médico que atendió queda registrado localmente.
+- [x] Fin de jornada bloquea acciones y permite reapertura controlada.
+- [x] La interfaz funciona en móvil.
+- [x] Asociación local de expediente con validación de paciente.
+
+Pendientes de backend real:
+
+- [ ] El tablero institucional recibe el llamado real.
+- [ ] El médico y el expediente se persisten institucionalmente.
+- [ ] La vista pública tiene autenticación/autorización segura.
+- [ ] Los códigos cortos se resuelven con un contrato institucional.
+- [ ] La exclusividad, el orden y el cooldown se validan entre dispositivos.
 
 ## Validación
 
@@ -175,11 +186,19 @@ npm run test:run
 npm run build
 ```
 
+Desde la raíz:
+
+```bash
+git diff --check
+git status -sb
+```
+
 ## Referencias
 
-- Mockup: `docs/mockups/vistaDoctor/hro_vista_doctor_movil.html`
-- `frontend/src/modules/enfermeria/api/enfermeriaApi.js`
-- `frontend/src/modules/tablero/pages/TableroPage.jsx`
-- `frontend/src/shared/api/client.js`
+- `frontend/src/modules/vistaDoctor/README.md`
+- `frontend/src/modules/vistaDoctor/api/doctorApi.js`
+- `frontend/src/modules/vistaDoctor/api/doctorMockApi.js`
+- `frontend/src/modules/vistaDoctor/api/doctorAcciones.js`
+- `frontend/src/modules/vistaDoctor/pages/VistaDoctorPage.jsx`
 - `backend/src/main/java/com/hro/system/medico/controller/MedicoController.java`
 - `backend/src/main/java/com/hro/system/turno/controller/TurnoController.java`
