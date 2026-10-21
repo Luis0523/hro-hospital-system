@@ -8,8 +8,6 @@ export default function ClinicasSeguimiento({
   clinicaSeleccionadaId = null,
   onElegir,
 }) {
-  const visibles = clinicas.slice(0, 5)
-
   return (
     <section className="h-fit rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card">
       <div className="space-y-1">
@@ -25,7 +23,7 @@ export default function ClinicasSeguimiento({
       </div>
 
       <div className="mt-3 flex flex-col gap-2">
-        {visibles.map((clinica) => {
+        {clinicas.map((clinica) => {
           const conteo = clinica.expedientesEnClinica ?? 0
           const seleccionada = String(clinicaSeleccionadaId) === String(clinica.id)
           return (
@@ -75,7 +73,7 @@ export default function ClinicasSeguimiento({
         })}
       </div>
 
-      {visibles.length === 0 && (
+      {clinicas.length === 0 && (
         <p className="mt-3 rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-3 text-body-sm text-on-surface-variant">
           No hay clínicas disponibles para la fecha seleccionada.
         </p>

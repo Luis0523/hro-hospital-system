@@ -113,6 +113,13 @@ describe('seguimientoApi', () => {
     await expect(avanzarTurno(registrado.id)).rejects.toMatchObject({ status: 409 })
   })
 
+  it('lista todas las clínicas sin limitarlas a cinco', async () => {
+    const clinicas = await listarClinicas()
+
+    expect(clinicas).toHaveLength(8)
+    expect(clinicas.map((clinica) => clinica.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+  })
+
   it('cuenta los expedientes que permanecen en cada clínica', async () => {
     const antes = await listarClinicas()
     const clinica3 = antes.find((clinica) => clinica.id === 3)

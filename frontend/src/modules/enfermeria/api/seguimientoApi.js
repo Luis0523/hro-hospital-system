@@ -6,7 +6,6 @@ const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOC
 export const ES_MODO_MOCK = USE_MOCK
 
 const MAXIMO_POR_DEFECTO = 18
-const CLINICAS_VISIBLES = 5
 const ESTADOS_EN_CLINICA = new Set(['en_clinica', 'llamado', 'no_asistio', 'atendido'])
 
 const NOMBRES_ESTADO = {
@@ -76,7 +75,7 @@ export const ESPECIALIDADES_SEGUIMIENTO = [
   { id: 'MUJ', codigo: 'MUJ', nombre: 'Clínica de la Mujer', maximo: 18 },
 ]
 
-export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5].map((id) => ({
+export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => ({
   id,
   nombre: `Clínica ${id}`,
 }))
@@ -281,7 +280,7 @@ export async function obtenerLibro(estacionId, fecha = hoyIso()) {
 export async function listarClinicas() {
   if (USE_MOCK) {
     await esperar()
-    return CLINICAS_SEGUIMIENTO.slice(0, CLINICAS_VISIBLES).map((clinica) => ({
+    return CLINICAS_SEGUIMIENTO.map((clinica) => ({
       ...clinica,
       expedientesEnClinica: [...turnos.values()].filter(
         (turno) => turno.etapa === 'en_clinica' && turno.clinicaId === clinica.id,
@@ -290,15 +289,13 @@ export async function listarClinicas() {
   }
 
   const espaciosFisicos = desenvolver(await leerConReintento('/espacios-fisicos'))
-  return (Array.isArray(espaciosFisicos) ? espaciosFisicos : [])
-    .slice(0, CLINICAS_VISIBLES)
-    .map((espacio) => ({
-      id: espacio.id,
-      numero: espacio.numero,
-      nivel: espacio.nivel,
-      nombre: espacio.nombre ?? `Clínica ${espacio.numero}`,
-      expedientesEnClinica: 0,
-    }))
+  return (Array.isArray(espaciosFisicos) ? espaciosFisicos : []).map((espacio) => ({
+    id: espacio.id,
+    numero: espacio.numero,
+    nivel: espacio.nivel,
+    nombre: espacio.nombre ?? `Clínica ${espacio.numero}`,
+    expedientesEnClinica: 0,
+  }))
 }
 
 // Registra el siguiente correlativo de la especialidad. En modo real el backend
