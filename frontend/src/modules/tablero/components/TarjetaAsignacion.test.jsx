@@ -17,7 +17,7 @@ describe('TarjetaAsignacion', () => {
     render(<TarjetaAsignacion asignacion={ASIGNACION} />)
 
     expect(screen.getByText('Pediatría General')).toBeInTheDocument()
-    expect(screen.getByText(/Consultorio 201/)).toBeInTheDocument()
+    expect(screen.getByText(/Clínica 201/)).toBeInTheDocument()
     expect(screen.getByText(/Nivel 2/)).toBeInTheDocument()
     expect(screen.getByText('#007')).toBeInTheDocument()
     expect(screen.getByText('#008')).toBeInTheDocument()

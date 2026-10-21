@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   anunciarTurno,
   buscarVozEspanol,
+  construirMensajeLlamado,
   construirMensajeTurno,
+  detenerHabla,
   estaDisponibleVoz,
-  FRASE_ACTIVACION,
   hablar,
   vocesDisponibles,
 } from './comunicacionVoz'
@@ -41,10 +42,13 @@ function stubVoz({ voces = [], speechExtra = {} } = {}) {
   return hablados
 }
 
-describe('construirMensajeTurno', () => {
-  it('construye la frase exacta con turno y consultorio', () => {
+describe('construirMensajeLlamado / construirMensajeTurno', () => {
+  it('construye la frase exacta con turno y clínica', () => {
+    expect(construirMensajeLlamado({ turno: 14, clinicaNumero: '6A' })).toBe(
+      'Paciente número 14, pasar a clínica 6A.',
+    )
     expect(construirMensajeTurno(ASIGNACION)).toBe(
-      'Turno número 14. Favor pasar al consultorio 103.',
+      'Paciente número 14, pasar a clínica 103.',
     )
   })
 
@@ -53,7 +57,7 @@ describe('construirMensajeTurno', () => {
 
     expect(mensaje).not.toContain('#')
     expect(mensaje).not.toContain('#014')
-    expect(mensaje).toContain('Turno número 14.')
+    expect(mensaje).toContain('Paciente número 14')
   })
 
   it('ignora la subespecialidad aunque venga en el objeto', () => {
@@ -91,12 +95,12 @@ describe('construirMensajeTurno', () => {
     expect(mensaje).not.toContain('prepararse')
   })
 
-  it('si falta el consultorio usa solo el turno', () => {
+  it('si falta la clínica usa solo el turno', () => {
     expect(construirMensajeTurno({ turnoActual: 14, espacioNumero: null })).toBe(
-      'Turno número 14.',
+      'Paciente número 14.',
     )
     expect(construirMensajeTurno({ turnoActual: 14, espacioNumero: '   ' })).toBe(
-      'Turno número 14.',
+      'Paciente número 14.',
     )
   })
 
@@ -182,7 +186,7 @@ describe('disponibilidad y locución', () => {
 
     const mensaje = anunciarTurno(ASIGNACION)
 
-    expect(mensaje).toBe('Turno número 14. Favor pasar al consultorio 103.')
+    expect(mensaje).toBe('Paciente número 14, pasar a clínica 103.')
     expect(hablados[0].text).toBe(mensaje)
   })
 
@@ -211,7 +215,7 @@ describe('disponibilidad y locución', () => {
     const onEnd = vi.fn()
 
     expect(anunciarTurno(ASIGNACION, { onEnd })).toBe(
-      'Turno número 14. Favor pasar al consultorio 103.',
+      'Paciente número 14, pasar a clínica 103.',
     )
     hablados[0].onend()
 
@@ -227,8 +231,13 @@ describe('disponibilidad y locución', () => {
     expect(hablados[0].onerror).toBeUndefined()
   })
 
-  it('expone la frase de activación', () => {
-    expect(FRASE_ACTIVACION).toBe('Comunicación por voz activada.')
+  it('cancela SpeechSynthesis mediante detenerHabla', () => {
+    const cancel = vi.fn()
+    const entorno = { speechSynthesis: { cancel } }
+
+    detenerHabla(entorno)
+
+    expect(cancel).toHaveBeenCalledTimes(1)
   })
 })
 

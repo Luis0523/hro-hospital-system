@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import TablaTurnos from './TablaTurnos.jsx'
 
@@ -32,10 +32,10 @@ describe('TablaTurnos', () => {
       <TablaTurnos asignaciones={[asignacion(1), asignacion(2), asignacion(3), asignacion(4)]} />,
     )
 
-    expect(screen.queryByRole('columnheader', { name: /clínica|subespecialidad/i })).toBeNull()
+    expect(screen.queryByRole('columnheader', { name: /subespecialidad/i })).toBeNull()
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
     expect(screen.getAllByRole('columnheader', { name: /turno actual/i })).toHaveLength(2)
-    expect(screen.getAllByRole('columnheader', { name: /consultorio/i })).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: /clínica/i })).toHaveLength(2)
     expect(screen.getAllByRole('columnheader', { name: /siguiente/i })).toHaveLength(2)
     expect(screen.getAllByRole('columnheader', { name: /en espera/i })).toHaveLength(2)
   })
@@ -49,11 +49,11 @@ describe('TablaTurnos', () => {
 
     expect(encabezados.map((th) => th.textContent)).toEqual([
       'Turno actual',
-      'Consultorio',
+      'Clínica',
       'Siguiente',
       'En espera',
       'Turno actual',
-      'Consultorio',
+      'Clínica',
       'Siguiente',
       'En espera',
     ])
@@ -108,7 +108,7 @@ describe('TablaTurnos', () => {
   it('no muestra clínica ni nivel en las filas', () => {
     render(<TablaTurnos asignaciones={[asignacion(1), asignacion(2)]} />)
 
-    expect(screen.queryByText(/Clínica/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Clínica \d/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Nivel/)).not.toBeInTheDocument()
   })
 })
@@ -165,5 +165,56 @@ describe('TablaTurnos · últimos llamados', () => {
     expect(screen.queryByTestId('tablero-ultimos-llamados')).not.toBeInTheDocument()
     expect(secciones()).toHaveLength(2)
     expect(screen.getByTestId('fila-turno-3')).toBeInTheDocument()
+  })
+})
+
+describe('TablaTurnos · responsive estructural', () => {
+  const anchoOriginal = window.innerWidth
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: anchoOriginal,
+    })
+  })
+
+  function fijarAncho(valor) {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: valor,
+    })
+  }
+
+  const asignaciones = [1, 2, 3, 4].map((id) => asignacion(id))
+
+  it('en móvil (<768) usa tarjetas y no tabla', () => {
+    fijarAncho(412)
+
+    render(<TablaTurnos asignaciones={asignaciones} />)
+
+    expect(screen.getByTestId('tablero-turnos-movil')).toBeInTheDocument()
+    expect(screen.getAllByTestId(/^tarjeta-turno-/)).toHaveLength(4)
+    expect(screen.queryAllByTestId('tablero-tabla-cuerpo')).toHaveLength(0)
+  })
+
+  it('en tablet (768-1023) usa una sola tabla a ancho completo', () => {
+    fijarAncho(800)
+
+    render(<TablaTurnos asignaciones={asignaciones} />)
+
+    expect(screen.getAllByTestId('tablero-tabla-cuerpo')).toHaveLength(1)
+    expect(filas()).toHaveLength(4)
+    expect(screen.queryByTestId('tablero-turnos-movil')).not.toBeInTheDocument()
+  })
+
+  it('en desktop (>=1024) conserva las dos secciones', () => {
+    fijarAncho(1366)
+
+    render(<TablaTurnos asignaciones={asignaciones} />)
+
+    expect(screen.getAllByTestId('tablero-tabla-cuerpo')).toHaveLength(2)
+    expect(screen.queryByTestId('tablero-turnos-movil')).not.toBeInTheDocument()
   })
 })

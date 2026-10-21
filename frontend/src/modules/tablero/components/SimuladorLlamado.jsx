@@ -4,9 +4,12 @@ import { estaEnModoMock } from '../api/tableroApi'
 /**
  * Herramienta EXCLUSIVA de desarrollo + modo mock. En producción
  * (`import.meta.env.DEV === false`) queda deshabilitada.
+ * En DEV + mock se habilita por defecto; `VITE_TABLERO_SIMULADOR_LLAMADO=false`
+ * permite ocultarla explícitamente.
  */
 export function simuladorHabilitado(env = import.meta.env) {
-  return env.DEV === true && estaEnModoMock(env) && env.VITE_TABLERO_SIMULADOR_LLAMADO === 'true'
+  if (env.DEV !== true || !estaEnModoMock(env)) return false
+  return String(env.VITE_TABLERO_SIMULADOR_LLAMADO ?? '').toLowerCase() !== 'false'
 }
 
 const CLASE_BOTON =

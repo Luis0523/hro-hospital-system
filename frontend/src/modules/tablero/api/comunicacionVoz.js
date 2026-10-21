@@ -24,8 +24,6 @@ export const IDIOMAS_LATAM = [
 
 export const IDIOMAS_ES_ES = ['es-ES']
 
-export const FRASE_ACTIVACION = 'Comunicación por voz activada.'
-
 // Caché de voces por instancia de `speechSynthesis`. El WeakMap evita registrar
 // listeners duplicados y no retiene entornos ya descartados.
 const cacheVoces = new WeakMap()
@@ -104,14 +102,21 @@ export function buscarVozEspanol(voces = []) {
   return voces.find((voz) => idiomaNormalizado(voz).startsWith('es')) ?? null
 }
 
-export function construirMensajeTurno(asignacion = {}) {
-  const turnoActual = comoTurno(asignacion.turnoActual)
+export function construirMensajeLlamado({ turno, clinicaNumero } = {}) {
+  const turnoActual = comoTurno(turno)
   if (!turnoActual) return null
 
-  const consultorio = String(asignacion.espacioNumero ?? '').trim()
-  if (!consultorio) return `Turno número ${turnoActual}.`
+  const clinica = String(clinicaNumero ?? '').trim()
+  if (!clinica) return `Paciente número ${turnoActual}.`
 
-  return `Turno número ${turnoActual}. Favor pasar al consultorio ${consultorio}.`
+  return `Paciente número ${turnoActual}, pasar a clínica ${clinica}.`
+}
+
+export function construirMensajeTurno(asignacion = {}) {
+  return construirMensajeLlamado({
+    turno: asignacion.turnoActual,
+    clinicaNumero: asignacion.espacioNumero,
+  })
 }
 
 export function hablar(
@@ -149,4 +154,12 @@ export function anunciarTurno(asignacion, opciones = {}) {
   const mensaje = construirMensajeTurno(asignacion)
   if (!mensaje) return null
   return hablar(mensaje, opciones) ? mensaje : null
+}
+
+export function detenerHabla(entorno = globalThis) {
+  try {
+    entorno?.speechSynthesis?.cancel?.()
+  } catch {
+    // SpeechSynthesis puede no estar disponible o estar bloqueado.
+  }
 }

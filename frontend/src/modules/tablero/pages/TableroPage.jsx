@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import {
   estaEnModoMock,
@@ -10,7 +10,13 @@ import {
 import { resolverConfiguracionSala } from '../api/configuracionSala'
 import { resolverConfiguracionEstacion } from '../api/configuracionEstacion'
 import { crearClienteTablero, TOPIC_TABLERO, topicEstacion } from '../api/tableroSocket'
-import { anunciarTurno, estaDisponibleVoz, FRASE_ACTIVACION, hablar } from '../api/comunicacionVoz'
+import {
+  detenerAudioTablero,
+  estaDisponibleAudioTablero,
+  estaDisponibleVozTablero,
+  precargarAudioTablero,
+  reproducirLlamado,
+} from '../api/audioTablero'
 import ControlPantallaCompleta from '../components/ControlPantallaCompleta.jsx'
 import ControlLimpiarUltimos from '../components/ControlLimpiarUltimos.jsx'
 import ControlTema from '../components/ControlTema.jsx'
@@ -35,10 +41,7 @@ export function resolverDuracionLlamadoMs(env = import.meta.env) {
   return Number.isFinite(valor) && valor > 0 ? valor : DURACION_LLAMADO_SIN_VOZ_MS
 }
 
-function estimarDuracionVozMs(mensaje, baseMs) {
-  if (!mensaje) return baseMs
-  return Math.max(baseMs, Math.min(30000, 2000 + mensaje.length * 80))
-}
+export const DURACION_MAXIMA_ANUNCIO_MS = 30000
 
 /**
  * Solo se limpian los recientes cuando cambia realmente la sala activa dentro
@@ -76,7 +79,9 @@ export default function TableroPage() {
   const [estadoConexion, setEstadoConexion] = useState(() =>
     estaEnModoMock() ? 'mock' : 'reconectando',
   )
-  const [vozDisponible] = useState(() => estaDisponibleVoz())
+  const [vozDisponible] = useState(
+    () => estaDisponibleAudioTablero() || estaDisponibleVozTablero(),
+  )
   const [vozActiva, setVozActiva] = useState(false)
   const [vista, setVista] = useState('tabla')
   const [llamadoActual, setLlamadoActual] = useState(null)
@@ -161,8 +166,36 @@ export default function TableroPage() {
       }
       colaLlamadosRef.current = []
       reproduciendoRef.current = false
+      detenerAudioTablero()
     }
   }, [cargar])
+
+  /**
+   * El Tablero controla su tema con un wrapper local, pero el ThemeProvider
+   * global aplica `.dark` a <html>. Mientras /tablero está montado se aísla
+   * esa clase y se restaura el estado global al salir.
+   */
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    const root = document.documentElement
+    let teniaDarkGlobal = root.classList.contains('dark')
+
+    const quitarDark = () => {
+      if (!root.classList.contains('dark')) return
+      teniaDarkGlobal = true
+      root.classList.remove('dark')
+    }
+
+    quitarDark()
+    const observer = new MutationObserver(quitarDark)
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
+
+    return () => {
+      observer.disconnect()
+      root.classList.toggle('dark', teniaDarkGlobal)
+    }
+  }, [])
 
   // Un único timeout al vencimiento más próximo; al cambiar la lista se
   // reprograma solo. Evita setInterval/polling.
@@ -184,7 +217,12 @@ export default function TableroPage() {
   const activarVoz = useCallback(() => {
     vozActivaRef.current = true
     setVozActiva(true)
-    hablar(FRASE_ACTIVACION)
+
+    try {
+      precargarAudioTablero()
+    } catch {
+      // La precarga nunca debe bloquear la activación de voz.
+    }
   }, [])
 
   const limpiarUltimosLlamados = useCallback(() => {
@@ -218,9 +256,10 @@ export default function TableroPage() {
     setVista('llamado')
 
     const baseMs = resolverDuracionLlamadoMs()
-    const conVoz = vozActivaRef.current && estaDisponibleVoz()
+    const conVoz = vozActivaRef.current && vozDisponible
     const totalRepeticiones = conVoz ? 2 : 0
     let repeticionActual = 0
+    let tokenRepeticion = 0
     let atendido = false
 
     const avanzarDeVerdad = () => {
@@ -265,23 +304,34 @@ export default function TableroPage() {
 
     const reproducir = () => {
       repeticionActual += 1
+      const token = ++tokenRepeticion
       atendido = false
-      const mensaje = anunciarTurno(siguiente, {
-        onEnd: finalizarRepeticion,
-        onError: finalizarRepeticion,
-      })
 
-      if (generacionLlamadoRef.current !== generacion) return
-
-      if (!mensaje) {
-        programarVisual()
-        return
+      const finalizarEstaRepeticion = () => {
+        if (token !== tokenRepeticion) return
+        finalizarRepeticion()
       }
 
-      timerLlamadoRef.current = setTimeout(
-        () => finalizarRepeticion(),
-        estimarDuracionVozMs(mensaje, baseMs),
-      )
+      const abortarPorFallo = () => {
+        if (token !== tokenRepeticion) return
+        if (atendido) return
+        atendido = true
+        limpiarTimerLlamado()
+        avanzarDeVerdad()
+      }
+
+      timerLlamadoRef.current = setTimeout(abortarPorFallo, DURACION_MAXIMA_ANUNCIO_MS)
+
+      try {
+        reproducirLlamado({
+          turno: siguiente.turnoActual,
+          clinicaNumero: siguiente.espacioNumero,
+          onEnd: finalizarEstaRepeticion,
+          onError: abortarPorFallo,
+        })
+      } catch {
+        abortarPorFallo()
+      }
     }
 
     if (conVoz) {
@@ -289,7 +339,7 @@ export default function TableroPage() {
     } else {
       programarVisual()
     }
-  }, [limpiarTimerLlamado, avanzar])
+  }, [limpiarTimerLlamado, avanzar, vozDisponible])
 
   iniciarSiguienteRef.current = iniciarSiguiente
 
@@ -416,7 +466,7 @@ export default function TableroPage() {
           />
         </EncabezadoTablero>
 
-        <main className="flex flex-1 flex-col gap-4 px-4 py-2 md:px-6 2xl:gap-6 2xl:py-6">
+        <main className="flex flex-1 flex-col gap-4 px-3 py-2 sm:px-4 md:px-6 2xl:gap-6 2xl:py-6">
           {cargando && (
             <div className="flex flex-1 items-center justify-center">
               <Spinner label="Cargando turnos…" />

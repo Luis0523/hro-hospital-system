@@ -3,20 +3,28 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
-  anunciarTurnoMock,
+  construirSecuenciaPacienteMock,
   crearClienteTableroMock,
-  estaDisponibleVozMock,
+  detenerAudioTableroMock,
+  estaDisponibleAudioTableroMock,
+  estaDisponibleVozTableroMock,
   estaEnModoMockMock,
-  hablarMock,
   obtenerEstadoInicialMock,
+  precargarAudioTableroMock,
+  reproducirLlamadoMock,
+  reproducirSecuenciaMock,
   resolverConfiguracionSalaMock,
 } = vi.hoisted(() => ({
-  anunciarTurnoMock: vi.fn(),
+  construirSecuenciaPacienteMock: vi.fn(),
   crearClienteTableroMock: vi.fn(),
-  estaDisponibleVozMock: vi.fn(),
+  detenerAudioTableroMock: vi.fn(),
+  estaDisponibleAudioTableroMock: vi.fn(),
+  estaDisponibleVozTableroMock: vi.fn(),
   estaEnModoMockMock: vi.fn(),
-  hablarMock: vi.fn(),
   obtenerEstadoInicialMock: vi.fn(),
+  precargarAudioTableroMock: vi.fn(),
+  reproducirLlamadoMock: vi.fn(),
+  reproducirSecuenciaMock: vi.fn(),
   resolverConfiguracionSalaMock: vi.fn(),
 }))
 
@@ -28,11 +36,12 @@ vi.mock('../api/configuracionSala', () => ({
   resolverConfiguracionSala: resolverConfiguracionSalaMock,
 }))
 
-vi.mock('../api/comunicacionVoz', () => ({
-  estaDisponibleVoz: estaDisponibleVozMock,
-  hablar: hablarMock,
-  anunciarTurno: anunciarTurnoMock,
-  FRASE_ACTIVACION: 'Comunicación por voz activada.',
+vi.mock('../api/audioTablero', () => ({
+  detenerAudioTablero: detenerAudioTableroMock,
+  estaDisponibleAudioTablero: estaDisponibleAudioTableroMock,
+  estaDisponibleVozTablero: estaDisponibleVozTableroMock,
+  precargarAudioTablero: precargarAudioTableroMock,
+  reproducirLlamado: reproducirLlamadoMock,
 }))
 
 vi.mock('../api/tableroApi', async (importOriginal) => {
@@ -76,9 +85,30 @@ function configurarPagina({ inicial = [], permitidas = null } = {}) {
   vi.clearAllMocks()
   handlersRef = null
   estaEnModoMockMock.mockReturnValue(false)
-  estaDisponibleVozMock.mockReturnValue(true)
-  hablarMock.mockReturnValue(true)
-  anunciarTurnoMock.mockReturnValue('mensaje')
+  estaDisponibleAudioTableroMock.mockReturnValue(true)
+  estaDisponibleVozTableroMock.mockReturnValue(true)
+  precargarAudioTableroMock.mockResolvedValue(true)
+  detenerAudioTableroMock.mockImplementation(() => {})
+  construirSecuenciaPacienteMock.mockImplementation(({ destino }) => [`/fake/${destino}.mp3`])
+  reproducirSecuenciaMock.mockImplementation(() => new Promise(() => {}))
+  reproducirLlamadoMock.mockImplementation(({ turno, clinicaNumero, onEnd, onError }) => {
+    const secuencia = construirSecuenciaPacienteMock({
+      numero: turno,
+      destino: clinicaNumero,
+      accion: 'pasara_a',
+    })
+
+    if (!secuencia) {
+      onError?.()
+      return
+    }
+
+    try {
+      Promise.resolve(reproducirSecuenciaMock(secuencia)).then(onEnd).catch(onError)
+    } catch {
+      onError?.()
+    }
+  })
   resolverConfiguracionSalaMock.mockResolvedValue({ modo: 'fallback', sala: null, permitidas })
   obtenerEstadoInicialMock.mockImplementation(() => Promise.resolve(inicial))
   crearClienteTableroMock.mockImplementation((opciones) => {
@@ -94,11 +124,11 @@ async function abrirTablero({ inicial, permitidas = null } = {}) {
   return utils
 }
 
-function drenarLlamados(anuncios) {
+async function drenarLlamados(anuncios) {
   let indice = 0
   while (indice < anuncios.length) {
     const actual = anuncios[indice]
-    act(() => actual.onEnd())
+    await act(async () => actual.resolve())
     indice += 1
   }
 }
@@ -266,9 +296,9 @@ describe('volumen · TableroPage · llamados y eventos', () => {
   it('FIFO con 6 clínicas conserva el orden', async () => {
     await abrirTablero({ inicial: generarAsignacionesPrueba(6) })
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ id: asignacion.asignacionDiariaEspacioId, onEnd: opciones.onEnd })
-      return 'mensaje'
+    reproducirSecuenciaMock.mockImplementation(([ruta]) => {
+      const destino = ruta.slice('/fake/'.length, -4)
+      return new Promise((resolve) => anuncios.push({ id: Number(destino) - 100, resolve }))
     })
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
@@ -286,7 +316,7 @@ describe('volumen · TableroPage · llamados y eventos', () => {
     })
 
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
-    drenarLlamados(anuncios)
+    await drenarLlamados(anuncios)
 
     expect(idsUnicosEnOrden(anuncios.map((a) => a.id))).toEqual([1, 2, 3, 4, 5, 6])
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
@@ -295,9 +325,9 @@ describe('volumen · TableroPage · llamados y eventos', () => {
   it.each([10, 25, 50])('FIFO con %i llamados procesa en orden y termina', async (cantidad) => {
     await abrirTablero({ inicial: generarAsignacionesPrueba(cantidad) })
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ id: asignacion.asignacionDiariaEspacioId, onEnd: opciones.onEnd })
-      return 'mensaje'
+    reproducirSecuenciaMock.mockImplementation(([ruta]) => {
+      const destino = ruta.slice('/fake/'.length, -4)
+      return new Promise((resolve) => anuncios.push({ id: Number(destino) - 100, resolve }))
     })
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
@@ -314,7 +344,7 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       }
     })
 
-    drenarLlamados(anuncios)
+    await drenarLlamados(anuncios)
 
     expect(idsUnicosEnOrden(anuncios.map((a) => a.id))).toEqual(
       generarIdsSala(cantidad, { desde: 1 }),
@@ -340,16 +370,16 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       }
     })
 
-    expect(anunciarTurnoMock).toHaveBeenCalledTimes(1)
+    expect(construirSecuenciaPacienteMock).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('llamado-grande')).toBeInTheDocument()
   })
 
   it('re-llamado i1/i2/i3 anuncia los tres y no repite el i3', async () => {
     await abrirTablero({ inicial: generarAsignacionesPrueba(1) })
     const anuncios = []
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      anuncios.push({ id: asignacion.asignacionDiariaEspacioId, onEnd: opciones.onEnd })
-      return 'mensaje'
+    reproducirSecuenciaMock.mockImplementation(([ruta]) => {
+      const destino = ruta.slice('/fake/'.length, -4)
+      return new Promise((resolve) => anuncios.push({ id: Number(destino) - 100, resolve }))
     })
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
@@ -366,11 +396,11 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       })
     })
 
-    drenarLlamados(anuncios)
+    await drenarLlamados(anuncios)
     expect(anuncios).toHaveLength(6)
     expect(idsUnicosEnOrden(anuncios.map((a) => a.id))).toEqual([1])
 
-    anunciarTurnoMock.mockClear()
+    construirSecuenciaPacienteMock.mockClear()
     act(() => {
       handlersRef.onMensaje(
         generarEventoPrueba({
@@ -382,7 +412,7 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       )
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
     expect(screen.getByTestId('tablero-tabla')).toBeInTheDocument()
   })
 
@@ -390,14 +420,15 @@ describe('volumen · TableroPage · llamados y eventos', () => {
     const asignaciones = generarAsignacionesPrueba(20)
     const jornada = generarJornadaPrueba({ asignaciones, totalEventos: 700 })
     await abrirTablero({ inicial: asignaciones })
-    anunciarTurnoMock.mockImplementation((asignacion, opciones) => {
-      opciones.onEnd()
-      return 'mensaje'
-    })
+    reproducirSecuenciaMock.mockImplementation(() => Promise.resolve())
     await userEvent.click(screen.getByRole('button', { name: /activar voz/i }))
 
     act(() => {
       jornada.forEach((evento) => handlersRef.onMensaje(evento))
+    })
+
+    await act(async () => {
+      for (let i = 0; i < 2000; i += 1) await Promise.resolve()
     })
 
     const cuerpos = screen.getAllByTestId('tablero-tabla-cuerpo')
@@ -454,7 +485,7 @@ describe('volumen · TableroPage · llamados y eventos', () => {
       }
     })
 
-    expect(anunciarTurnoMock).not.toHaveBeenCalled()
+    expect(construirSecuenciaPacienteMock).not.toHaveBeenCalled()
     expect(screen.queryByTestId('llamado-grande')).not.toBeInTheDocument()
   })
 })
