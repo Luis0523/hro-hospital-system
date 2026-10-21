@@ -9,6 +9,7 @@ import SalidaArchivoHospitalPage from '@/modules/archivo/pages/SalidaArchivoHosp
 import RegistroCarnetsPage from '@/modules/archivo/pages/RegistroCarnetsPage.jsx'
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
+import SeguimientoEnfermeriaPage from '@/modules/enfermeria/pages/SeguimientoEnfermeriaPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import LoginPage from '@/modules/login/pages/LoginPage.jsx'
@@ -53,6 +54,10 @@ function InicioPorRol() {
   return <Navigate to={inicioSegunRol(usuario?.rol)} replace />
 }
 
+// Solo en desarrollo local: permite probar la pantalla sin iniciar sesión.
+// En build/producción se mantiene como ruta privada.
+const SEGUIMIENTO_PUBLICO_EN_DEV = import.meta.env.DEV
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -63,6 +68,9 @@ export default function AppRouter() {
       <Route path="/tablero" element={<TableroPage />} />
       <Route path="/vista-doctor" element={<VistaDoctorPage />} />
       <Route path="/prueba-ocr" element={<PruebaOcrPage />} />
+      {SEGUIMIENTO_PUBLICO_EN_DEV && (
+        <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+      )}
 
       {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>
@@ -71,6 +79,9 @@ export default function AppRouter() {
         <Route element={<RutaPorRol area="enfermeria" />}>
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
           <Route path="/enfermeria/carnets" element={<RegistroCarnetsPage />} />
+          {!SEGUIMIENTO_PUBLICO_EN_DEV && (
+            <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+          )}
           <Route
             path="/enfermeria"
             element={
