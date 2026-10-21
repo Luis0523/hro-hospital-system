@@ -27,6 +27,7 @@ function Marca({ titulo }) {
 
 export default function AppShell({
   titulo,
+  tituloCentrado = null,
   icono = 'dashboard',
   secciones = [],
   usuario,
@@ -162,7 +163,7 @@ export default function AppShell({
         }`}
       >
         <header className="sticky top-0 z-30 border-b border-outline-variant bg-surface-container-lowest/95 backdrop-blur">
-          <div className="flex items-center gap-3 px-4 py-2.5">
+          <div className="relative flex items-center gap-3 px-4 py-2.5">
             <button
               type="button"
               onClick={alternar}
@@ -178,14 +179,25 @@ export default function AppShell({
               <Icon name={icono} className="text-[20px]" />
             </span>
 
-            <div className="min-w-0">
-              <p className="text-label-sm uppercase leading-none tracking-widest text-primary">
-                SIGHO
-              </p>
-              <h1 className="truncate text-title-sm font-semibold leading-tight text-on-surface">
-                {titulo}
-              </h1>
-            </div>
+            {tituloCentrado ? (
+              <div className="pointer-events-none absolute inset-x-16 top-1/2 -translate-y-1/2 text-center sm:inset-x-24 md:inset-x-40">
+                <p className="text-label-sm uppercase leading-none tracking-widest text-primary">
+                  SIGHO
+                </p>
+                <h1 className="truncate text-title-sm font-semibold leading-tight text-on-surface">
+                  {tituloCentrado}
+                </h1>
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <p className="text-label-sm uppercase leading-none tracking-widest text-primary">
+                  SIGHO
+                </p>
+                <h1 className="truncate text-title-sm font-semibold leading-tight text-on-surface">
+                  {titulo}
+                </h1>
+              </div>
+            )}
 
             {acciones && (
               <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">

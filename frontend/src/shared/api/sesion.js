@@ -111,22 +111,12 @@ export function renovarSesion() {
 }
 
 /**
- * Marca la sesión como expirada: limpia credenciales, lo anuncia a React y, si
- * no estamos ya en el login, navega allí. Se usa solo cuando el refresh falla.
+ * Marca la sesión como expirada: limpia credenciales y lo anuncia a React.
+ * Los guards de ruta se encargan de redirigir (login o sesión cerrada según el
+ * modo); así una ruta pública no se ve expulsada por un 401 en segundo plano.
  */
 export function expirarSesion() {
   limpiarSesion()
   escribir(CLAVES_SESION.sesion, 'cerrada')
   emitir(EVENTO_SESION_EXPIRADA)
-  try {
-    if (
-      typeof window !== 'undefined' &&
-      window.location &&
-      !window.location.pathname.startsWith('/login')
-    ) {
-      window.location.assign('/login')
-    }
-  } catch {
-    // location no disponible (tests): se ignora
-  }
 }

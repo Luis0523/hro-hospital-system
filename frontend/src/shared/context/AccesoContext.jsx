@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { MAPEO_DEFECTO, inicioSegunMapa, listarRolesPaginas } from '@/shared/api/rolesPaginasApi.js'
 
 /**
@@ -20,8 +21,9 @@ const DEFAULT_ACCESO = {
 const AccesoContext = createContext(DEFAULT_ACCESO)
 
 export function AccesoProvider({ children }) {
+  const { autenticado } = useAuth()
   const [paginasPorRol, setPaginasPorRol] = useState(MAPEO_DEFECTO)
-  const [cargando, setCargando] = useState(true)
+  const [cargando, setCargando] = useState(autenticado)
 
   const recargar = useCallback(async () => {
     try {
@@ -41,8 +43,12 @@ export function AccesoProvider({ children }) {
   }, [])
 
   useEffect(() => {
+    if (!autenticado) {
+      setCargando(false)
+      return
+    }
     recargar()
-  }, [recargar])
+  }, [autenticado, recargar])
 
   const paginasDe = useCallback((rol) => paginasPorRol[rol] ?? [], [paginasPorRol])
 

@@ -28,12 +28,32 @@ describe('seguimientoApi', () => {
   it('registra un correlativo disponible y rechaza duplicados', async () => {
     const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
 
-    expect(turno).toMatchObject({ id: 'ONC-5', etapa: 'registrado', clinicaId: null })
+    expect(turno).toMatchObject({
+      id: 'ONC-5',
+      etapa: 'registrado',
+      clinicaId: null,
+      tipoRegistro: null,
+    })
     await expect(registrarTurno({ codigo: 'ONC', numero: 5 })).rejects.toMatchObject({
       status: 409,
     })
     await expect(registrarTurno({ codigo: 'ONC', numero: 15 })).rejects.toMatchObject({
       status: 422,
+    })
+  })
+
+  it('guarda un solo tipo de registro por turno', async () => {
+    const turno = await registrarTurno({
+      codigo: 'ONC',
+      numero: 5,
+      tipoRegistro: 'privado_libertad',
+    })
+
+    expect(turno.tipoRegistro).toBe('privado_libertad')
+    const libro = await obtenerLibro()
+    const oncologia = libro.especialidades.find((especialidad) => especialidad.codigo === 'ONC')
+    expect(oncologia.turnos.find((item) => item.numero === 5)).toMatchObject({
+      tipoRegistro: 'privado_libertad',
     })
   })
 

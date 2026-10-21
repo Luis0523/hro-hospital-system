@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  EVENTO_SESION_EXPIRADA,
   EVENTO_TOKEN_RENOVADO,
+  expirarSesion,
   guardarSesion,
   leerExpiracion,
   leerRefreshToken,
@@ -67,5 +69,25 @@ describe('sesion', () => {
 
   it('rechaza renovar sin refresh token', async () => {
     await expect(renovarSesion()).rejects.toMatchObject({ status: 401 })
+  })
+
+  it('expira la sesión y notifica sin forzar navegación', () => {
+    guardarSesion({ token: 't', refreshToken: 'r', expiraEn: 1234 })
+    window.history.replaceState(null, '', '/seguimiento-enfermeria')
+
+    const escuchado = vi.fn()
+    window.addEventListener(EVENTO_SESION_EXPIRADA, escuchado)
+
+    expirarSesion()
+
+    window.removeEventListener(EVENTO_SESION_EXPIRADA, escuchado)
+
+    expect(leerToken()).toBeNull()
+    expect(leerRefreshToken()).toBeNull()
+    expect(localStorage.getItem('hro_sesion')).toBe('cerrada')
+    expect(window.location.pathname).toBe('/seguimiento-enfermeria')
+    expect(escuchado).toHaveBeenCalledTimes(1)
+
+    window.history.replaceState(null, '', '/')
   })
 })
