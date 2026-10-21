@@ -49,3 +49,28 @@ export const ESTILO_SIN_REGISTRO = {
 export function estiloDeEtapa(id) {
   return ESTILOS_ETAPA[id] ?? ESTILO_SIN_REGISTRO
 }
+
+// Brillo de las casillas con marca especial (presentación / privado de libertad).
+export const ESTILOS_REGISTRO = {
+  presentacion:
+    'ring-2 ring-cyan-400 shadow-[0_0_12px_2px_rgba(34,211,238,0.75)] dark:ring-cyan-300',
+  privado_libertad:
+    'ring-2 ring-rose-500 shadow-[0_0_12px_2px_rgba(244,63,94,0.75)] dark:ring-rose-400',
+}
+
+export const CHIPS_REGISTRO = {
+  presentacion:
+    'border-cyan-400/70 bg-cyan-500/15 text-cyan-700 shadow-[0_0_10px_rgba(34,211,238,0.55)] dark:border-cyan-300/60 dark:text-cyan-200',
+  privado_libertad:
+    'border-rose-400/70 bg-rose-500/15 text-rose-700 shadow-[0_0_10px_rgba(244,63,94,0.55)] dark:border-rose-300/60 dark:text-rose-200',
+}
+
+export function estiloRegistro(turno) {
+  return ESTILOS_REGISTRO[turno?.tipoRegistro] ?? ''
+}
+
+export function etiquetaRegistro(turno) {
+  if (turno?.tipoRegistro === 'presentacion') return 'presentación'
+  if (turno?.tipoRegistro === 'privado_libertad') return 'privado de libertad'
+  return ''
+}

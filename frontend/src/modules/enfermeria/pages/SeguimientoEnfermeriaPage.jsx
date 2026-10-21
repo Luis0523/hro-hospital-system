@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
@@ -6,7 +6,13 @@ import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.j
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
 import EtapasSeguimiento from '../components/seguimiento/EtapasSeguimiento.jsx'
 import LibroSeguimiento from '../components/seguimiento/LibroSeguimiento.jsx'
-import { ETAPAS_SEGUIMIENTO, nombreEtapa } from '../api/seguimientoApi'
+import {
+  ETAPA_PREVIA,
+  ETAPAS_SEGUIMIENTO,
+  nombreEtapa,
+  nombreTipoRegistro,
+} from '../api/seguimientoApi'
+import { useNavegacionFlechas } from '../hooks/useNavegacionFlechas'
 import { useSeguimientoEnfermeria } from '../hooks/useSeguimientoEnfermeria'
 
 function etiquetaTurno(codigo, numero) {
@@ -17,12 +23,42 @@ function etiquetaTurno(codigo, numero) {
 export default function SeguimientoEnfermeriaPage() {
   const { libro, clinicas, cargando, error, recargar, registrar, avanzar } =
     useSeguimientoEnfermeria()
+  const contenidoRef = useRef(null)
+  useNavegacionFlechas(contenidoRef)
   const { mostrarToast } = useToast()
 
   const [seleccion, setSeleccion] = useState(null)
   const [filtro, setFiltro] = useState(null)
-  const [busqueda, setBusqueda] = useState('')
   const [procesando, setProcesando] = useState(false)
+  const [tipoRegistro, setTipoRegistro] = useState(null)
+  const [enfoqueTipo, setEnfoqueTipo] = useState(0)
+  const [enfoqueCasillas, setEnfoqueCasillas] = useState(0)
+  const [enfoqueRegistrado, setEnfoqueRegistrado] = useState(0)
+
+  useEffect(() => {
+    function iniciarEnRegistrado(evento) {
+      if (evento.key !== 'Enter' || evento.defaultPrevented) return
+      const objetivo = evento.target
+      if (
+        objetivo instanceof Element &&
+        objetivo.closest('button, a, input, select, textarea, [contenteditable="true"]')
+      ) {
+        return
+      }
+      const etapa = contenidoRef.current?.querySelector('[data-testid="etapa-registrado"]')
+      if (!etapa) return
+      evento.preventDefault()
+      etapa.focus()
+    }
+
+    document.addEventListener('keydown', iniciarEnRegistrado)
+    return () => document.removeEventListener('keydown', iniciarEnRegistrado)
+  }, [])
+
+  useEffect(() => {
+    if (enfoqueRegistrado === 0) return
+    contenidoRef.current?.querySelector('[data-testid="etapa-registrado"]')?.focus()
+  }, [enfoqueRegistrado])
 
   const especialidades = useMemo(() => libro?.especialidades ?? [], [libro])
 
@@ -46,10 +82,9 @@ export default function SeguimientoEnfermeriaPage() {
     return base
   }, [especialidades])
 
-  const filas = useMemo(() => {
-    const consulta = busqueda.trim().toLowerCase()
-    return especialidades
-      .map((especialidad) => {
+  const filas = useMemo(
+    () =>
+      especialidades.map((especialidad) => {
         const slots = Array.from({ length: especialidad.maximo }, (_, indice) => {
           const numero = indice + 1
           return { numero, turno: turnosPorClave.get(`${especialidad.codigo}-${numero}`) ?? null }
@@ -61,15 +96,9 @@ export default function SeguimientoEnfermeriaPage() {
           registrados: especialidad.turnos.length,
           slots,
         }
-      })
-      .filter((fila) => {
-        if (!consulta) return true
-        if (`${fila.nombre} ${fila.codigo}`.toLowerCase().includes(consulta)) return true
-        return fila.slots.some((slot) =>
-          etiquetaTurno(fila.codigo, slot.numero).toLowerCase().includes(consulta),
-        )
-      })
-  }, [especialidades, turnosPorClave, busqueda])
+      }),
+    [especialidades, turnosPorClave],
+  )
 
   const seleccionCompleta = useMemo(() => {
     if (!seleccion) return null
@@ -78,10 +107,53 @@ export default function SeguimientoEnfermeriaPage() {
     return { ...seleccion, turno, especialidadNombre: especialidad?.nombre ?? '' }
   }, [seleccion, turnosPorClave, especialidades])
 
-  const puedeRepartir = seleccionCompleta?.turno?.etapa === 'recibido'
+  const puedeRepartir = filtro === 'en_clinica' && seleccionCompleta?.turno?.etapa === 'recibido'
 
   function seleccionar(codigo, numero) {
+    if (procesando) return
+    const turno = turnosPorClave.get(`${codigo}-${numero}`) ?? null
     setSeleccion({ codigo, numero })
+
+    if (!filtro) return
+
+    if (filtro === 'registrado') {
+      if (turno) {
+        mostrarToast({
+          tone: 'info',
+          title: `El turno ${etiquetaTurno(codigo, numero)} ya está registrado.`,
+        })
+        return
+      }
+      registrarDirecto(codigo, numero)
+      return
+    }
+
+    if (!turno) {
+      mostrarToast({
+        tone: 'warning',
+        title: `La casilla ${etiquetaTurno(codigo, numero)} está vacía. Regístrela antes de marcarla como ${nombreEtapa(filtro)}.`,
+      })
+      return
+    }
+
+    const previa = ETAPA_PREVIA[filtro]
+    if (turno.etapa !== previa) {
+      mostrarToast({
+        tone: 'warning',
+        title: `Para marcar ${nombreEtapa(filtro)}, el turno debe estar ${nombreEtapa(previa)}.`,
+      })
+      return
+    }
+
+    if (filtro === 'en_clinica') {
+      mostrarToast({
+        tone: 'info',
+        title: 'Seleccione una clínica de la parte inferior para distribuir este expediente.',
+      })
+      return
+    }
+
+    avanzarDirecto(turno)
   }
 
   async function ejecutarAccion(accion) {
@@ -99,29 +171,34 @@ export default function SeguimientoEnfermeriaPage() {
     }
   }
 
-  function manejarAccion() {
-    if (!seleccionCompleta) return
-    const { codigo, numero, turno } = seleccionCompleta
-
-    if (!turno) {
-      ejecutarAccion(async () => {
-        const creado = await registrar(codigo, numero)
-        mostrarToast({
-          tone: 'success',
-          title: `Turno ${etiquetaTurno(creado.codigo, creado.numero)} registrado.`,
-        })
-      })
-      return
-    }
-
-    if (turno.etapa === 'recibido') {
+  function registrarDirecto(codigo, numero) {
+    const tipo = tipoRegistro
+    ejecutarAccion(async () => {
+      const creado = await registrar(codigo, numero, { tipoRegistro: tipo })
+      setSeleccion({ codigo, numero })
+      setTipoRegistro(null)
+      setEnfoqueRegistrado((valor) => valor + 1)
       mostrarToast({
-        tone: 'info',
-        title: 'Seleccione una clínica de la parte inferior para distribuir este expediente.',
+        tone: 'success',
+        title: `Turno ${etiquetaTurno(creado.codigo, creado.numero)} registrado${
+          tipo ? ` · ${nombreTipoRegistro(tipo)}` : ''
+        }.`,
       })
-      return
-    }
+    })
+  }
 
+  function elegirTipoRegistro(tipo) {
+    setTipoRegistro(tipo)
+    setEnfoqueCasillas((valor) => valor + 1)
+  }
+
+  function cambiarFiltro(nuevo) {
+    setFiltro(nuevo)
+    setTipoRegistro(null)
+    if (nuevo === 'registrado') setEnfoqueTipo((valor) => valor + 1)
+  }
+
+  function avanzarDirecto(turno) {
     ejecutarAccion(async () => {
       const actualizado = await avanzar(turno.id)
       mostrarToast({
@@ -162,54 +239,9 @@ export default function SeguimientoEnfermeriaPage() {
     })
   }
 
-  function registrarSiguiente() {
-    for (const especialidad of especialidades) {
-      for (let numero = 1; numero <= especialidad.maximo; numero += 1) {
-        if (!turnosPorClave.has(`${especialidad.codigo}-${numero}`)) {
-          setFiltro(null)
-          setBusqueda('')
-          setSeleccion({ codigo: especialidad.codigo, numero })
-          mostrarToast({
-            tone: 'info',
-            title: `Correlativo ${etiquetaTurno(especialidad.codigo, numero)} listo para registrar.`,
-          })
-          return
-        }
-      }
-    }
-    mostrarToast({ tone: 'warning', title: 'No hay correlativos disponibles por ahora.' })
-  }
-
-  function limpiarFiltros() {
-    setFiltro(null)
-    setBusqueda('')
-  }
-
   return (
-    <EnfermeriaEstacionLayout>
-      <main className="mx-auto w-full max-w-7xl space-y-4 px-4 py-5">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-label-sm uppercase tracking-widest text-primary">
-              Consulta Externa · Segundo Nivel
-            </p>
-            <h1 className="mt-1 text-headline-lg text-on-surface">
-              Control de turnos y expedientes
-            </h1>
-            <p className="text-body-md text-on-surface-variant">
-              Recepción, distribución y devolución · Cuaderno digital por especialidad
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-label-sm text-on-surface-variant">
-              PROTOTIPO · DATOS DE EJEMPLO
-            </span>
-            <span className="rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-label-sm text-on-surface">
-              Jornada de hoy
-            </span>
-          </div>
-        </header>
-
+    <EnfermeriaEstacionLayout tituloCentrado="Control de turnos y expedientes">
+      <main ref={contenidoRef} className="mx-auto w-full max-w-7xl space-y-4 px-2 py-4">
         {error && (
           <Alert tone="error" title="No se pudo cargar el libro de turnos">
             <div className="mt-2 flex items-center gap-3">
@@ -227,45 +259,40 @@ export default function SeguimientoEnfermeriaPage() {
           </div>
         ) : (
           <>
-            <div>
-              <h2 className="mb-2 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                Flujo de seguimiento · Seleccione una etapa para resaltarla
-              </h2>
-              <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={setFiltro} />
-            </div>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div className="grid gap-3 md:grid-cols-[130px_minmax(0,1fr)]">
+                <aside className="space-y-1.5 md:-ml-2">
+                  <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                    Flujo de seguimiento
+                  </h2>
+                  <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+                </aside>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_310px]">
-              <LibroSeguimiento
-                filas={filas}
-                totalRegistrados={libro?.totalRegistrados ?? 0}
-                seleccionId={seleccion ? `${seleccion.codigo}-${seleccion.numero}` : null}
-                filtro={filtro}
-                busqueda={busqueda}
-                onBuscar={setBusqueda}
-                onLimpiar={limpiarFiltros}
-                onRegistrar={registrarSiguiente}
-                onSeleccionar={seleccionar}
+                <LibroSeguimiento
+                  filas={filas}
+                  seleccionId={seleccion ? `${seleccion.codigo}-${seleccion.numero}` : null}
+                  filtro={filtro}
+                  onSeleccionar={seleccionar}
+                  tipoRegistro={tipoRegistro}
+                  onCambiarTipoRegistro={elegirTipoRegistro}
+                  enfoqueTipo={enfoqueTipo}
+                  enfoqueCasillas={enfoqueCasillas}
+                  onIrACasillas={() => setEnfoqueCasillas((valor) => valor + 1)}
+                  detalle={
+                    <DetalleTurno
+                      seleccion={seleccionCompleta}
+                      especialidadNombre={seleccionCompleta?.especialidadNombre}
+                    />
+                  }
+                />
+              </div>
+
+              <ClinicasSeguimiento
+                clinicas={clinicas}
+                puedeRepartir={puedeRepartir}
+                onElegir={elegirClinica}
               />
-              <DetalleTurno
-                seleccion={seleccionCompleta}
-                especialidadNombre={seleccionCompleta?.especialidadNombre}
-                onAccion={manejarAccion}
-                procesando={procesando}
-              />
             </div>
-
-            <ClinicasSeguimiento
-              clinicas={clinicas}
-              puedeRepartir={puedeRepartir}
-              onElegir={elegirClinica}
-            />
-
-            <footer className="flex flex-wrap justify-between gap-2 pt-2 text-label-sm text-on-surface-variant">
-              <span>
-                Los números corresponden a correlativos de atención, no a números de expediente.
-              </span>
-              <span>Vista demostrativa sin conexión a base de datos · SIGHO / HRO</span>
-            </footer>
           </>
         )}
       </main>

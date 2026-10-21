@@ -4,22 +4,20 @@ import { Icon } from '@/shared/components/ui'
 // Si hay un turno recibido seleccionado, pulsar una clínica lo reparte.
 export default function ClinicasSeguimiento({ clinicas, puedeRepartir, onElegir }) {
   return (
-    <section>
-      <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-headline-sm text-on-surface">Clínicas físicas</h2>
-          <p className="text-body-sm text-on-surface-variant">
-            Expedientes que permanecen actualmente en cada clínica
-          </p>
-        </div>
-        <span className="rounded-md bg-surface-container-high px-2 py-1 text-label-sm text-on-surface-variant">
+    <section className="h-fit rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card">
+      <div className="space-y-1">
+        <h2 className="text-headline-sm text-on-surface">Clínicas físicas</h2>
+        <p className="text-body-sm text-on-surface-variant">
+          Expedientes que permanecen actualmente en cada clínica
+        </p>
+        <span className="inline-block rounded-md bg-surface-container-high px-2 py-1 text-label-sm text-on-surface-variant">
           {puedeRepartir
             ? 'Pulse una clínica para repartir el expediente'
             : 'Pulse una clínica para consultar su detalle'}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-3 flex flex-col gap-2">
         {clinicas.map((clinica) => {
           const conteo = clinica.expedientesEnClinica ?? 0
           return (
@@ -28,7 +26,7 @@ export default function ClinicasSeguimiento({ clinicas, puedeRepartir, onElegir 
               type="button"
               aria-label={`${clinica.nombre}: ${conteo} expedientes en clínica`}
               onClick={() => onElegir(clinica)}
-              className={`min-h-[120px] rounded-xl border bg-surface-container-lowest p-3 text-left transition hover:border-primary hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+              className={`min-h-[100px] rounded-xl border bg-surface-container-lowest p-2.5 text-left transition hover:border-primary hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
                 puedeRepartir
                   ? 'border-primary-container shadow-card ring-1 ring-primary-container/40'
                   : 'border-outline-variant'

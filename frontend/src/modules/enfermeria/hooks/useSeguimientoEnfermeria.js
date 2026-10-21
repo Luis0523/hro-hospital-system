@@ -27,8 +27,8 @@ export function useSeguimientoEnfermeria() {
   }, [cargar])
 
   const registrar = useCallback(
-    async (codigo, numero) => {
-      const turno = await registrarTurno({ codigo, numero })
+    async (codigo, numero, opciones) => {
+      const turno = await registrarTurno({ codigo, numero, ...opciones })
       await cargar()
       return turno
     },

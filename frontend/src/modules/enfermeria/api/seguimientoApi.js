@@ -10,6 +10,22 @@ export const ETAPAS_SEGUIMIENTO = [
   { id: 'archivo', nombre: 'Archivo' },
 ]
 
+// Etapa que debe tener el turno para poder aplicar la etapa seleccionada.
+export const ETAPA_PREVIA = {
+  recibido: 'registrado',
+  en_clinica: 'recibido',
+  devuelto: 'en_clinica',
+  archivo: 'devuelto',
+}
+
+// Tipos de registro excluyentes. Se muestran con un brillo especial en el libro.
+export const TIPOS_REGISTRO = [
+  { id: 'presentacion', nombre: 'Presentación', icono: 'gavel' },
+  { id: 'privado_libertad', nombre: 'Privado de libertad', icono: 'lock' },
+]
+
+const TIPOS_VALIDOS = new Set(TIPOS_REGISTRO.map((tipo) => tipo.id))
+
 // Correlativos disponibles por especialidad. `maximo` es el último número que
 // puede registrarse en la jornada; la semilla deja libres los correlativos
 // posteriores al límite simulado.
@@ -66,12 +82,19 @@ function sembrarTurnos() {
       const orden = indice === 0 ? numero : ((numero + indice * 3) % 22) + 1
       const etapa = etapaPorOrden(orden)
       const conClinica = ['en_clinica', 'devuelto', 'archivo'].includes(etapa)
+      const tipoRegistro =
+        (numero + indice * 2) % 9 === 0
+          ? 'presentacion'
+          : (numero + indice * 3) % 14 === 0
+            ? 'privado_libertad'
+            : null
       turnos.set(clave(especialidad.codigo, numero), {
         id: clave(especialidad.codigo, numero),
         codigo: especialidad.codigo,
         numero,
         etapa,
         clinicaId: conClinica ? 1 + ((numero + indice) % 5) : null,
+        tipoRegistro,
         registradoEn: new Date().toISOString(),
       })
     }
@@ -85,6 +108,18 @@ const buscarEspecialidad = (codigo) =>
 
 export function nombreEtapa(id) {
   return ETAPAS_SEGUIMIENTO.find((etapa) => etapa.id === id)?.nombre ?? 'Sin registrar'
+}
+
+export function nombreTipoRegistro(id) {
+  return TIPOS_REGISTRO.find((tipo) => tipo.id === id)?.nombre ?? 'Sin tipo'
+}
+
+function normalizarTipoRegistro(tipoRegistro) {
+  if (tipoRegistro == null || tipoRegistro === '') return null
+  if (!TIPOS_VALIDOS.has(tipoRegistro)) {
+    throw crearError('Tipo de registro inválido', 422)
+  }
+  return tipoRegistro
 }
 
 // Libro completo: especialidades con sus correlativos ya registrados. El
@@ -116,7 +151,7 @@ export async function listarClinicas() {
 }
 
 // Registra un correlativo nuevo (etapa inicial `registrado`).
-export async function registrarTurno({ codigo, numero } = {}) {
+export async function registrarTurno({ codigo, numero, tipoRegistro } = {}) {
   await esperar()
   const especialidad = buscarEspecialidad(codigo)
   const correlativo = Number(numero)
@@ -135,6 +170,7 @@ export async function registrarTurno({ codigo, numero } = {}) {
     numero: correlativo,
     etapa: 'registrado',
     clinicaId: null,
+    tipoRegistro: normalizarTipoRegistro(tipoRegistro),
     registradoEn: new Date().toISOString(),
   }
   turnos.set(turno.id, turno)

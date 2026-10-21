@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
+import { AccesoProvider } from '@/shared/context/AccesoContext.jsx'
 import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
 import { ToastProvider } from '@/shared/context/ToastContext.jsx'
@@ -12,11 +13,13 @@ function renderRuta(ruta) {
     <MemoryRouter initialEntries={[ruta]}>
       <ThemeProvider>
         <AuthProvider>
-          <EstacionProvider>
-            <ToastProvider>
-              <AppRouter />
-            </ToastProvider>
-          </EstacionProvider>
+          <AccesoProvider>
+            <EstacionProvider>
+              <ToastProvider>
+                <AppRouter />
+              </ToastProvider>
+            </EstacionProvider>
+          </AccesoProvider>
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -34,9 +37,7 @@ describe('AppRouter · /seguimiento-enfermeria', () => {
         { timeout: 5000 },
       ),
     ).toBeInTheDocument()
-    expect(
-      await screen.findByRole('button', { name: 'Registrar turno' }, { timeout: 5000 }),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
   })
 
   it('carga sin sesión en desarrollo local', async () => {
