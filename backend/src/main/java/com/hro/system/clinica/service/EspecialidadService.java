@@ -23,6 +23,7 @@ public class EspecialidadService {
 
     /** TTL de la caché del catálogo activo (catálogo pequeño y de lectura muy frecuente). */
     private static final long CATALOGO_TTL_MS = 60_000;
+    private static final int CORRELATIVO_MAX_POR_DEFECTO = 18;
 
     private final EspecialidadRepository especialidadRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -45,7 +46,7 @@ public class EspecialidadService {
         Especialidad esp = Especialidad.builder()
                 .nombre(dto.getNombre().trim())
                 .abreviatura(normalizarAbreviatura(dto.getAbreviatura()))
-                .correlativoMax(dto.getCorrelativoMax())
+                .correlativoMax(normalizarCorrelativoMax(dto.getCorrelativoMax()))
                 .activo(true)
                 .creadoEn(OffsetDateTime.now())
                 .build();
@@ -75,7 +76,7 @@ public class EspecialidadService {
 
         esp.setNombre(dto.getNombre().trim());
         esp.setAbreviatura(normalizarAbreviatura(dto.getAbreviatura()));
-        esp.setCorrelativoMax(dto.getCorrelativoMax());
+        esp.setCorrelativoMax(normalizarCorrelativoMax(dto.getCorrelativoMax()));
         Especialidad actualizada = especialidadRepository.save(esp);
         invalidarCache();
         return mapToDTO(actualizada);
@@ -158,6 +159,10 @@ public class EspecialidadService {
                 .activo(esp.getActivo())
                 .creadoEn(esp.getCreadoEn())
                 .build();
+    }
+
+    private Integer normalizarCorrelativoMax(Integer valor) {
+        return valor != null ? valor : CORRELATIVO_MAX_POR_DEFECTO;
     }
 
     /** Normaliza la abreviatura (mayúsculas, sin espacios) o null si viene vacía. */

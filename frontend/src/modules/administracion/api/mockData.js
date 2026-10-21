@@ -14,12 +14,24 @@ import { hoyISO } from '../utils/fechas.js'
 const creadoEnBase = '2026-01-05T08:00:00-06:00'
 
 const ESPECIALIDADES_BASE = [
-  { id: 1, nombre: 'Medicina Interna', activo: true, creadoEn: creadoEnBase },
-  { id: 2, nombre: 'Pediatría', activo: true, creadoEn: creadoEnBase },
-  { id: 3, nombre: 'Ginecología y Obstetricia', activo: true, creadoEn: creadoEnBase },
-  { id: 4, nombre: 'Cirugía General', activo: true, creadoEn: creadoEnBase },
-  { id: 5, nombre: 'Traumatología y Ortopedia', activo: true, creadoEn: creadoEnBase },
-  { id: 6, nombre: 'Cardiología', activo: true, creadoEn: creadoEnBase },
+  { id: 1, nombre: 'Medicina Interna', correlativoMax: 100, activo: true, creadoEn: creadoEnBase },
+  { id: 2, nombre: 'Pediatría', correlativoMax: 18, activo: true, creadoEn: creadoEnBase },
+  {
+    id: 3,
+    nombre: 'Ginecología y Obstetricia',
+    correlativoMax: 18,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  { id: 4, nombre: 'Cirugía General', correlativoMax: 18, activo: true, creadoEn: creadoEnBase },
+  {
+    id: 5,
+    nombre: 'Traumatología y Ortopedia',
+    correlativoMax: 18,
+    activo: true,
+    creadoEn: creadoEnBase,
+  },
+  { id: 6, nombre: 'Cardiología', correlativoMax: 18, activo: true, creadoEn: creadoEnBase },
 ]
 
 const SUBESPECIALIDADES_BASE = [
@@ -295,7 +307,7 @@ export function listarEspecialidadesMock() {
   return especialidadesMock.filter((item) => item.activo)
 }
 
-export function crearEspecialidadMock({ nombre }) {
+export function crearEspecialidadMock({ nombre, correlativoMax = 18 }) {
   const duplicada = especialidadesMock.some(
     (item) => item.nombre.toLowerCase() === nombre.toLowerCase(),
   )
@@ -306,6 +318,7 @@ export function crearEspecialidadMock({ nombre }) {
   const nueva = {
     id: contadorIdEspecialidad,
     nombre,
+    correlativoMax,
     activo: true,
     creadoEn: new Date().toISOString(),
   }
@@ -313,7 +326,7 @@ export function crearEspecialidadMock({ nombre }) {
   return nueva
 }
 
-export function actualizarEspecialidadMock(id, { nombre }) {
+export function actualizarEspecialidadMock(id, { nombre, correlativoMax }) {
   const especialidad = especialidadesMock.find((item) => item.id === id)
   if (!especialidad) {
     throw errorBackend(`No se encontró la especialidad con ID ${id}`, 404)
@@ -325,6 +338,7 @@ export function actualizarEspecialidadMock(id, { nombre }) {
     throw errorBackend(`Ya existe otra especialidad con el nombre: ${nombre}`)
   }
   especialidad.nombre = nombre
+  if (correlativoMax != null) especialidad.correlativoMax = correlativoMax
   return especialidad
 }
 

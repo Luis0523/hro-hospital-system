@@ -16,6 +16,11 @@ import TablaCatalogo from './TablaCatalogo.jsx'
 const COLUMNAS = [
   { key: 'nombre', label: 'Especialidad' },
   { key: 'abreviatura', label: 'Abreviatura' },
+  {
+    key: 'correlativoMax',
+    label: 'Correlativo máx.',
+    render: (fila) => fila.correlativoMax ?? 18,
+  },
   { key: 'activo', label: 'Estado' },
 ]
 

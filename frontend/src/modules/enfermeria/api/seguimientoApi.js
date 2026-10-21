@@ -5,7 +5,7 @@ import { hoyIso } from '@/shared/utils/fecha'
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 export const ES_MODO_MOCK = USE_MOCK
 
-const MAXIMO_POR_DEFECTO = 100
+const MAXIMO_POR_DEFECTO = 18
 const CLINICAS_VISIBLES = 5
 const ESTADOS_EN_CLINICA = new Set(['en_clinica', 'llamado', 'no_asistio', 'atendido'])
 
@@ -62,18 +62,18 @@ const TIPOS_VALIDOS = new Set(TIPOS_REGISTRO.map((tipo) => tipo.id))
 // puede registrarse en la jornada. Se usa solo como semilla del mock.
 export const ESPECIALIDADES_SEGUIMIENTO = [
   { id: 'MI', codigo: 'MI', nombre: 'Medicina Interna', maximo: 100 },
-  { id: 'ONC', codigo: 'ONC', nombre: 'Oncología', maximo: 14 },
-  { id: 'NEU', codigo: 'NEU', nombre: 'Neurología', maximo: 14 },
-  { id: 'NEF', codigo: 'NEF', nombre: 'Nefrología', maximo: 14 },
-  { id: 'END', codigo: 'END', nombre: 'Endocrinología', maximo: 14 },
-  { id: 'INF', codigo: 'INF', nombre: 'Infectología', maximo: 14 },
-  { id: 'REU', codigo: 'REU', nombre: 'Reumatología', maximo: 14 },
-  { id: 'DER', codigo: 'DER', nombre: 'Dermatología', maximo: 14 },
-  { id: 'NEM', codigo: 'NEM', nombre: 'Neumología', maximo: 14 },
-  { id: 'DOL', codigo: 'DOL', nombre: 'Clínica del Dolor', maximo: 13 },
-  { id: 'GAS', codigo: 'GAS', nombre: 'Gastroenterología', maximo: 12 },
-  { id: 'NUT', codigo: 'NUT', nombre: 'Nutrición', maximo: 12 },
-  { id: 'MUJ', codigo: 'MUJ', nombre: 'Clínica de la Mujer', maximo: 12 },
+  { id: 'ONC', codigo: 'ONC', nombre: 'Oncología', maximo: 18 },
+  { id: 'NEU', codigo: 'NEU', nombre: 'Neurología', maximo: 18 },
+  { id: 'NEF', codigo: 'NEF', nombre: 'Nefrología', maximo: 18 },
+  { id: 'END', codigo: 'END', nombre: 'Endocrinología', maximo: 18 },
+  { id: 'INF', codigo: 'INF', nombre: 'Infectología', maximo: 18 },
+  { id: 'REU', codigo: 'REU', nombre: 'Reumatología', maximo: 18 },
+  { id: 'DER', codigo: 'DER', nombre: 'Dermatología', maximo: 18 },
+  { id: 'NEM', codigo: 'NEM', nombre: 'Neumología', maximo: 18 },
+  { id: 'DOL', codigo: 'DOL', nombre: 'Clínica del Dolor', maximo: 18 },
+  { id: 'GAS', codigo: 'GAS', nombre: 'Gastroenterología', maximo: 18 },
+  { id: 'NUT', codigo: 'NUT', nombre: 'Nutrición', maximo: 18 },
+  { id: 'MUJ', codigo: 'MUJ', nombre: 'Clínica de la Mujer', maximo: 18 },
 ]
 
 export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5].map((id) => ({
@@ -209,10 +209,7 @@ function normalizarTurno(turno, especialidad = {}) {
 }
 
 function normalizarEspecialidad(especialidad) {
-  const maximo = Math.min(
-    Math.max(Number(especialidad.correlativoMax) || MAXIMO_POR_DEFECTO, 1),
-    MAXIMO_POR_DEFECTO,
-  )
+  const maximo = Math.max(Number(especialidad.correlativoMax) || MAXIMO_POR_DEFECTO, 1)
   const codigo = especialidad.abreviatura ?? especialidad.codigo ?? `E${especialidad.id}`
 
   return {
@@ -220,7 +217,7 @@ function normalizarEspecialidad(especialidad) {
     codigo,
     nombre: especialidad.nombre,
     maximo,
-    correlativoMax: especialidad.correlativoMax ?? null,
+    correlativoMax: maximo,
     turnos: (especialidad.turnos ?? []).map((turno) => normalizarTurno(turno, { codigo })),
   }
 }

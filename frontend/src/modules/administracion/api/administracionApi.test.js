@@ -97,10 +97,11 @@ describe('administracionApi (mock)', () => {
     })
 
     it('crea una especialidad', async () => {
-      const creada = await crearEspecialidad({ nombre: 'Neurología' })
+      const creada = await crearEspecialidad({ nombre: 'Neurología', correlativoMax: 25 })
 
       expect(typeof creada.id).toBe('number')
       expect(creada.nombre).toBe('Neurología')
+      expect(creada.correlativoMax).toBe(25)
       expect((await listarEspecialidades()).some((item) => item.nombre === 'Neurología')).toBe(true)
     })
 
@@ -112,9 +113,11 @@ describe('administracionApi (mock)', () => {
       const [primera] = await listarEspecialidades()
       const actualizada = await actualizarEspecialidad(primera.id, {
         nombre: 'Medicina Interna HRO',
+        correlativoMax: 42,
       })
 
       expect(actualizada.nombre).toBe('Medicina Interna HRO')
+      expect(actualizada.correlativoMax).toBe(42)
     })
 
     it('desactiva una especialidad y deja de listarse', async () => {

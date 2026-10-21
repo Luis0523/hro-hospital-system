@@ -4,8 +4,12 @@ import Input from '@/shared/components/ui/Input.jsx'
 export default function EspecialidadForm({ valoresIniciales, soloLectura = false, onSubmit }) {
   const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? '')
   const [abreviatura, setAbreviatura] = useState(valoresIniciales?.abreviatura ?? '')
+  const [correlativoMax, setCorrelativoMax] = useState(
+    String(valoresIniciales?.correlativoMax ?? 18),
+  )
   const [errorNombre, setErrorNombre] = useState('')
   const [errorAbreviatura, setErrorAbreviatura] = useState('')
+  const [errorCorrelativo, setErrorCorrelativo] = useState('')
 
   const manejarEnvio = (evento) => {
     evento.preventDefault()
@@ -23,9 +27,15 @@ export default function EspecialidadForm({ valoresIniciales, soloLectura = false
       setErrorAbreviatura('La abreviatura no puede exceder 20 caracteres')
       return
     }
+    const maximo = Number(correlativoMax)
+    if (!Number.isInteger(maximo) || maximo < 1) {
+      setErrorCorrelativo('El correlativo máximo debe ser un número entero mayor que cero')
+      return
+    }
     setErrorNombre('')
     setErrorAbreviatura('')
-    onSubmit({ nombre: limpio, abreviatura: abrev || null })
+    setErrorCorrelativo('')
+    onSubmit({ nombre: limpio, abreviatura: abrev || null, correlativoMax: maximo })
   }
 
   return (
@@ -50,6 +60,18 @@ export default function EspecialidadForm({ valoresIniciales, soloLectura = false
         maxLength={20}
         placeholder="Por ejemplo: PED"
         hint="Se muestra en el correlativo del carnet (p. ej. PED-3)."
+      />
+      <Input
+        name="correlativoMax"
+        type="number"
+        min="1"
+        step="1"
+        label="Correlativo máximo diario"
+        value={correlativoMax}
+        onChange={(evento) => setCorrelativoMax(evento.target.value)}
+        error={errorCorrelativo}
+        disabled={soloLectura}
+        hint="Último número que puede registrarse al día. Medicina Interna: 100; demás: 18."
       />
     </form>
   )

@@ -18,14 +18,14 @@ VALUES
 ON CONFLICT (id_externo) DO NOTHING;
 
 -- 2. Especialidades Médicas
-INSERT INTO especialidad (nombre, activo)
+INSERT INTO especialidad (nombre, correlativo_max, activo)
 VALUES
-    ('Medicina Interna', true),
-    ('Pediatría', true),
-    ('Ginecología y Obstetricia', true),
-    ('Cirugía General', true),
-    ('Traumatología y Ortopedia', true),
-    ('Cardiología', true)
+    ('Medicina Interna', 100, true),
+    ('Pediatría', 18, true),
+    ('Ginecología y Obstetricia', 18, true),
+    ('Cirugía General', 18, true),
+    ('Traumatología y Ortopedia', 18, true),
+    ('Cardiología', 18, true)
 ON CONFLICT (nombre) DO NOTHING;
 
 -- 3. Subespecialidades

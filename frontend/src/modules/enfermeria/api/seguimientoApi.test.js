@@ -39,7 +39,7 @@ describe('seguimientoApi', () => {
     await expect(registrarTurno({ codigo: 'ONC', numero: 5 })).rejects.toMatchObject({
       status: 409,
     })
-    await expect(registrarTurno({ codigo: 'ONC', numero: 15 })).rejects.toMatchObject({
+    await expect(registrarTurno({ codigo: 'ONC', numero: 19 })).rejects.toMatchObject({
       status: 422,
     })
   })
