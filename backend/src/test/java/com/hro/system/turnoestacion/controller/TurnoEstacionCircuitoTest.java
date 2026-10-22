@@ -202,10 +202,18 @@ class TurnoEstacionCircuitoTest {
     }
 
     private JsonNode crearTurno(Contexto contexto, Long especialidadId, String usuario) throws Exception {
+        return crearTurno(contexto, especialidadId, usuario, null);
+    }
+
+    private JsonNode crearTurno(Contexto contexto, Long especialidadId, String usuario,
+                                String tipoRegistro) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("estacionId", contexto.estacion().getId());
         body.put("especialidadId", especialidadId);
         body.put("fecha", HOY.toString());
+        if (tipoRegistro != null) {
+            body.put("tipoRegistro", tipoRegistro);
+        }
 
         String respuesta = mockMvc.perform(auth(post("/turnos-estacion"), "enfermeria", usuario,
                         contexto.estacion().getId())
@@ -487,8 +495,10 @@ class TurnoEstacionCircuitoTest {
         Contexto contexto = crearContexto(null);
         String enfermeria = "enf-" + UUID.randomUUID().toString().substring(0, 8);
 
-        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), enfermeria);
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), enfermeria,
+                "presentacion");
         UUID turnoId = UUID.fromString(turno.get("id").asText());
+        assertThat(turno.get("tipoRegistro").asText()).isEqualTo("presentacion");
 
         mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"), "enfermeria", enfermeria,
                         contexto.estacion().getId()))
@@ -509,7 +519,9 @@ class TurnoEstacionCircuitoTest {
                 .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
                         + "')].devueltos").value(0))
                 .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
-                        + "')].pendientes").value(1));
+                        + "')].pendientes").value(1))
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
+                        + "')].presentaciones").value(1));
 
         mockMvc.perform(auth(post("/turnos-estacion/clinicas/" + contexto.espacio().getId()
                         + "/devoluciones"), "enfermeria", enfermeria, contexto.estacion().getId())

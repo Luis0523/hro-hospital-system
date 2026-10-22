@@ -23,5 +23,7 @@ public class ResumenClinicaDTO {
     private long devueltos;
     /** Asignados que todavía no se han devuelto. */
     private long pendientes;
+    /** Presentaciones registradas y asignadas a esta clínica. */
+    private long presentaciones;
     private OffsetDateTime ultimaDevolucionEn;
 }

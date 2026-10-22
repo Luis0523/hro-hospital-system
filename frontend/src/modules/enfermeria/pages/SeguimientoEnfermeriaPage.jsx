@@ -77,12 +77,20 @@ export default function SeguimientoEnfermeriaPage() {
   const [focoEspecialidad, setFocoEspecialidad] = useState({ id: null, token: 0 })
   const [correlativoModal, setCorrelativoModal] = useState(null)
   const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
+  const dobleEnterRef = useRef(null)
 
   useEffect(() => {
     if (!correlativoModal) return undefined
     const timer = setTimeout(() => setCorrelativoModal(null), 5000)
     return () => clearTimeout(timer)
   }, [correlativoModal])
+
+  useEffect(
+    () => () => {
+      if (dobleEnterRef.current) clearTimeout(dobleEnterRef.current.timer)
+    },
+    [],
+  )
 
   useEffect(() => {
     let activo = true
@@ -223,14 +231,38 @@ export default function SeguimientoEnfermeriaPage() {
     return null
   }
 
-  function activarEspecialidad(especialidadId, codigo) {
+  function registrarConDobleEnter(accionNormal, accionPresentacion) {
+    const ahora = Date.now()
+    const pendiente = dobleEnterRef.current
+    if (pendiente && ahora - pendiente.instante <= 280) {
+      clearTimeout(pendiente.timer)
+      dobleEnterRef.current = null
+      accionPresentacion()
+      return
+    }
+    if (pendiente) clearTimeout(pendiente.timer)
+    const timer = setTimeout(() => {
+      dobleEnterRef.current = null
+      accionNormal()
+    }, 280)
+    dobleEnterRef.current = { timer, instante: ahora }
+  }
+
+  function activarEspecialidad(especialidadId, codigo, opciones = {}) {
     if (registrando && (!filtro || filtro === 'registrado')) return
     const especialidad = especialidades.find((item) => String(item.id) === String(especialidadId))
     if (!especialidad) return
 
     // En modo Registrado (o sin etapa elegida) Enter asigna el siguiente turno.
     if (!filtro || filtro === 'registrado') {
-      registrarSiguiente(especialidad)
+      if (opciones.tecla === 'Enter') {
+        registrarConDobleEnter(
+          () => registrarSiguiente(especialidad),
+          () => registrarSiguiente(especialidad, 'presentacion'),
+        )
+      } else {
+        registrarSiguiente(especialidad)
+      }
       return
     }
 
@@ -265,7 +297,7 @@ export default function SeguimientoEnfermeriaPage() {
     avanzarDirecto(turno, especialidadId)
   }
 
-  function registrarSiguiente(especialidad) {
+  function registrarSiguiente(especialidad, tipoForzado = null) {
     const numero = siguienteCorrelativo(especialidad)
     if (numero == null) {
       mostrarToast({
@@ -274,7 +306,7 @@ export default function SeguimientoEnfermeriaPage() {
       })
       return
     }
-    registrarDirecto(especialidad.id, especialidad.codigo, numero)
+    registrarDirecto(especialidad.id, especialidad.codigo, numero, tipoForzado)
   }
 
   function manejarEstacion(valor) {
@@ -354,9 +386,9 @@ export default function SeguimientoEnfermeriaPage() {
     }
   }
 
-  function registrarDirecto(especialidadId, codigo, numero) {
+  function registrarDirecto(especialidadId, codigo, numero, tipoForzado = null) {
     if (registrando) return
-    const tipo = tipoRegistro
+    const tipo = tipoForzado ?? tipoRegistro
     setRegistrando(true)
     ejecutarAccion(async () => {
       try {

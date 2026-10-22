@@ -94,6 +94,7 @@ function actualizarResumenClinica(clinicas, resumen) {
           ...clinica,
           asignados: Number(resumen.asignados ?? clinica.asignados ?? 0),
           devueltos: Number(resumen.devueltos ?? clinica.devueltos ?? 0),
+          presentaciones: Number(resumen.presentaciones ?? clinica.presentaciones ?? 0),
           expedientesEnClinica: Number(
             resumen.pendientes ?? resumen.expedientesEnClinica ?? clinica.expedientesEnClinica ?? 0,
           ),

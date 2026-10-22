@@ -105,7 +105,7 @@ export default function LibroSeguimiento({
     if (evento.key === 'Enter' || evento.key === ' ') {
       evento.preventDefault()
       evento.stopPropagation()
-      onActivarEspecialidad?.(fila.id, fila.codigo)
+      onActivarEspecialidad?.(fila.id, fila.codigo, { tecla: evento.key })
       return
     }
 

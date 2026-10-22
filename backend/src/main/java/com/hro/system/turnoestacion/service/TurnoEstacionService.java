@@ -163,6 +163,7 @@ public class TurnoEstacionService {
 
         int numeroGeneral = ((Number) filas.getFirst()[0]).intValue();
         int correlativo = ((Number) filas.getFirst()[1]).intValue();
+        String tipoRegistro = normalizarTipoRegistro(dto.getTipoRegistro());
 
         TurnoEstacion turno = TurnoEstacion.builder()
                 .fecha(dia)
@@ -175,6 +176,7 @@ public class TurnoEstacionService {
                 .expediente(expediente)
                 .numeroExpediente(numeroExpediente)
                 .pacienteNombre(paciente != null ? nombreCompleto(paciente) : normalizar(dto.getPacienteNombre()))
+                .tipoRegistro(tipoRegistro)
                 .cita(cita)
                 .espacioFisico(espacio)
                 .asignadoPor(espacio != null ? usuario : null)
@@ -618,6 +620,11 @@ public class TurnoEstacionService {
                 .filter(turno -> turno.getEspacioFisico() != null)
                 .collect(Collectors.groupingBy(
                         turno -> turno.getEspacioFisico().getId(), Collectors.counting()));
+        Map<UUID, Long> presentaciones = turnos.stream()
+                .filter(turno -> turno.getEspacioFisico() != null
+                        && "presentacion".equals(turno.getTipoRegistro()))
+                .collect(Collectors.groupingBy(
+                        turno -> turno.getEspacioFisico().getId(), Collectors.counting()));
         Map<UUID, List<DevolucionClinica>> devoluciones = devolucionClinicaRepository
                 .findByFechaAndEstacionIdAndRevertidoEnIsNull(dia, estacion.getId()).stream()
                 .collect(Collectors.groupingBy(devolucion -> devolucion.getEspacioFisico().getId()));
@@ -643,6 +650,7 @@ public class TurnoEstacionService {
                             .asignados(totalAsignados)
                             .devueltos(totalDevueltos)
                             .pendientes(Math.max(0L, totalAsignados - totalDevueltos))
+                            .presentaciones(presentaciones.getOrDefault(espacio.getId(), 0L))
                             .ultimaDevolucionEn(ultima)
                             .build();
                 })
@@ -825,6 +833,19 @@ public class TurnoEstacionService {
         return espacio;
     }
 
+    private String normalizarTipoRegistro(String valor) {
+        String tipo = normalizar(valor);
+        if (tipo == null) {
+            return null;
+        }
+        tipo = tipo.toLowerCase(Locale.ROOT);
+        if (!tipo.equals("presentacion") && !tipo.equals("privado_libertad")) {
+            throw new BusinessException("TIPO_REGISTRO_INVALIDO",
+                    "Tipo de registro inválido: " + valor);
+        }
+        return tipo;
+    }
+
     private EspacioFisico validarEspacioActivo(UUID espacioFisicoId) {
         EspacioFisico espacio = espacioFisicoRepository.findById(espacioFisicoId)
                 .orElseThrow(() -> new ResourceNotFoundException("EspacioFisico", "id", espacioFisicoId));
@@ -950,6 +971,7 @@ public class TurnoEstacionService {
                 .pacienteId(turno.getPaciente() != null ? turno.getPaciente().getId() : null)
                 .pacienteNombre(turno.getPaciente() != null
                         ? nombreCompleto(turno.getPaciente()) : turno.getPacienteNombre())
+                .tipoRegistro(turno.getTipoRegistro())
                 .expedienteId(turno.getExpediente() != null ? turno.getExpediente().getId() : null)
                 .numeroExpediente(turno.getNumeroExpediente())
                 .citaId(turno.getCita() != null ? turno.getCita().getId() : null)

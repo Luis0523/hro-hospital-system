@@ -44,6 +44,7 @@ export default function DevolucionesClinicas({
             const pendientes = Number(
               clinica.expedientesEnClinica ?? Math.max(0, asignados - devueltos),
             )
+            const presentaciones = Number(clinica.presentaciones ?? 0)
             const ocupada = String(procesandoId) === String(clinica.id)
             return (
               <article
@@ -85,6 +86,11 @@ export default function DevolucionesClinicas({
                     </dd>
                   </div>
                 </dl>
+
+                <p className="mt-2 flex items-center justify-between rounded-lg bg-cyan-500/10 px-2.5 py-1.5 text-label-sm text-cyan-800 dark:text-cyan-200">
+                  <span>Presentaciones asignadas</span>
+                  <strong className="text-title-sm font-bold">{conteo(presentaciones)}</strong>
+                </p>
 
                 {horaDevolucion(clinica.ultimaDevolucionEn) && (
                   <p className="mt-2 text-label-sm text-on-surface-variant">

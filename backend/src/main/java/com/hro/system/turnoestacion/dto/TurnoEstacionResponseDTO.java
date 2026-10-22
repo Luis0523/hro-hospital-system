@@ -30,6 +30,7 @@ public class TurnoEstacionResponseDTO {
 
     private UUID pacienteId;
     private String pacienteNombre;
+    private String tipoRegistro;
     private UUID expedienteId;
     private String numeroExpediente;
     private Long citaId;

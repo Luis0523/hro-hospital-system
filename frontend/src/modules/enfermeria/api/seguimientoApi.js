@@ -331,10 +331,15 @@ function resumenClinicaMock(clinica, fecha) {
       !devolucion.revertidoEn,
   )
   const asignados = Math.max(enClinica, devueltos.length)
+  const presentaciones = [...turnos.values()].filter(
+    (turno) =>
+      String(turno.clinicaId) === String(clinica.id) && turno.tipoRegistro === 'presentacion',
+  ).length
   return {
     ...clinica,
     asignados,
     devueltos: devueltos.length,
+    presentaciones,
     expedientesEnClinica: Math.max(0, asignados - devueltos.length),
     ultimaDevolucionEn:
       devueltos
@@ -362,6 +367,7 @@ export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
     nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
     asignados: Number(clinica.asignados ?? 0),
     devueltos: Number(clinica.devueltos ?? 0),
+    presentaciones: Number(clinica.presentaciones ?? 0),
     expedientesEnClinica: Number(clinica.pendientes ?? 0),
     ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
   }))

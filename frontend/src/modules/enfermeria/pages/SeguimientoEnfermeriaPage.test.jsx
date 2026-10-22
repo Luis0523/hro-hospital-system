@@ -157,6 +157,24 @@ describe('SeguimientoEnfermeriaPage', () => {
     await waitFor(() => expect(oncologia()).toHaveFocus())
   }, 20000)
 
+  it('doble Enter registra el turno como presentación', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-registrado')
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
+    await user.keyboard('{ArrowDown}')
+
+    const oncologia = screen.getByRole('button', { name: /^Oncología\./ })
+    await waitFor(() => expect(oncologia).toHaveFocus())
+    await user.keyboard('{Enter}{Enter}')
+
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Registrado, presentación' }),
+    ).toBeInTheDocument()
+  }, 20000)
+
   it('mantiene la clínica destino para asignar varios turnos seguidos', async () => {
     const user = userEvent.setup()
     renderPagina()

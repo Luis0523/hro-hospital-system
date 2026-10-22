@@ -35,5 +35,9 @@ public class CrearTurnoEstacionRequestDTO {
     @Size(max = 200, message = "El nombre del paciente no puede superar 200 caracteres")
     private String pacienteNombre;
 
+    /** presentacion, privado_libertad o null. */
+    @Size(max = 30, message = "El tipo de registro no puede superar 30 caracteres")
+    private String tipoRegistro;
+
     private Long citaId;
 }

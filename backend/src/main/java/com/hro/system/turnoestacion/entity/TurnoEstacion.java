@@ -65,6 +65,9 @@ public class TurnoEstacion {
     @Column(name = "paciente_nombre", length = 200)
     private String pacienteNombre;
 
+    @Column(name = "tipo_registro", length = 30)
+    private String tipoRegistro;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cita_id")
     private Cita cita;
