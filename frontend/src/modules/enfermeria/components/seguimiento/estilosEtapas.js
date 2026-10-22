@@ -2,11 +2,11 @@
 // el color sea consistente en toda la pantalla.
 export const ESTILOS_ETAPA = {
   registrado: {
-    texto: 'text-sky-600 dark:text-sky-300',
-    borde: 'border-sky-500/60',
-    fondo: 'bg-sky-500/10',
-    punto: 'bg-sky-500',
-    barra: 'bg-sky-500',
+    texto: 'text-amber-700 dark:text-amber-300',
+    borde: 'border-amber-500/80',
+    fondo: 'bg-amber-400/20',
+    punto: 'bg-amber-500',
+    barra: 'bg-amber-500',
   },
   recibido: {
     texto: 'text-orange-600 dark:text-orange-300',
