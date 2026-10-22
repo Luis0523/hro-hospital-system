@@ -1,0 +1,8 @@
+{
+  "puerto": 17777,
+  "impresora": "AON Printer",
+  "columnas": 48,
+  "corte": true,
+  "token": "",
+  "origen": "*"
+}
