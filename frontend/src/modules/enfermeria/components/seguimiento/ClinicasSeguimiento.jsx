@@ -66,25 +66,37 @@ export default function ClinicasSeguimiento({
               aria-disabled={!elegible}
               disabled={!elegible}
               onClick={() => onElegir(clinica)}
-              className={`min-h-[100px] rounded-xl border bg-surface-container-lowest p-2.5 text-left transition hover:border-primary hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-inherit disabled:hover:bg-surface-container-lowest ${
+              className={`min-h-[104px] rounded-xl border-2 bg-surface-container-lowest p-3 text-left transition-all hover:border-primary hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-inherit disabled:hover:bg-surface-container-lowest ${
                 seleccionada
-                  ? 'border-primary-container shadow-card ring-2 ring-primary-container/60'
+                  ? 'scale-[1.02] border-primary bg-primary-container/15 shadow-popover ring-4 ring-primary/40'
                   : modoAsignacion || modoRegistro || modoCambio
                     ? 'border-primary-container/60 ring-1 ring-primary-container/30'
                     : 'border-outline-variant'
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-title-sm text-on-surface">{clinica.nombre}</span>
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-container-high text-primary">
-                  <Icon name="local_hospital" className="text-[16px]" />
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-headline-md font-bold leading-tight text-on-surface">
+                  {clinica.nombre}
+                </span>
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+                    seleccionada
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container-high text-primary'
+                  }`}
+                >
+                  <Icon name={seleccionada ? 'check' : 'local_hospital'} className="text-[18px]" />
                 </span>
               </div>
-              <p className="mt-1 text-label-sm text-on-surface-variant">
+              <p
+                className={`mt-1 text-body-sm ${
+                  seleccionada ? 'font-bold text-primary' : 'text-on-surface-variant'
+                }`}
+              >
                 {seleccionada
                   ? modoCambio
                     ? 'Nueva clínica seleccionada'
-                    : 'Destino activo'
+                    : 'Destino activo · clínica seleccionada'
                   : !elegible
                     ? 'No asignada a esta especialidad'
                     : modoRegistro || modoCambio
@@ -93,10 +105,10 @@ export default function ClinicasSeguimiento({
                         ? 'Pulse para fijar como clínica destino'
                         : 'Atención en consultorio'}
               </p>
-              <div className="mt-3 flex items-baseline gap-1.5">
-                <strong className="text-metric-display leading-none text-on-surface">
+              <div className="mt-2 flex items-center gap-2">
+                <span className="inline-flex min-w-7 items-center justify-center rounded-md bg-surface-container-high px-1.5 py-0.5 text-label-md font-bold text-on-surface-variant">
                   {String(conteo).padStart(2, '0')}
-                </strong>
+                </span>
                 <span className="text-label-sm text-on-surface-variant">
                   expedientes en clínica
                 </span>
