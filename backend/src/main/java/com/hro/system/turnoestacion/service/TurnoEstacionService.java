@@ -26,9 +26,11 @@ import com.hro.system.medico.repository.MedicoRepository;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.paciente.repository.PacienteRepository;
 import com.hro.system.turnoestacion.dto.*;
+import com.hro.system.turnoestacion.entity.DevolucionClinica;
 import com.hro.system.turnoestacion.entity.EstadoTurnoEstacion;
 import com.hro.system.turnoestacion.entity.TurnoEstacion;
 import com.hro.system.turnoestacion.entity.TurnoEstacionMovimiento;
+import com.hro.system.turnoestacion.repository.DevolucionClinicaRepository;
 import com.hro.system.turnoestacion.repository.TurnoEstacionMovimientoRepository;
 import com.hro.system.turnoestacion.repository.TurnoEstacionRepository;
 import com.hro.system.turno.dto.TableroTurnoDTO;
@@ -55,6 +57,7 @@ public class TurnoEstacionService {
 
     private final TurnoEstacionRepository turnoRepository;
     private final TurnoEstacionMovimientoRepository movimientoRepository;
+    private final DevolucionClinicaRepository devolucionClinicaRepository;
     private final EstacionEnfermeriaRepository estacionRepository;
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     private final EspecialidadRepository especialidadRepository;
@@ -521,6 +524,129 @@ public class TurnoEstacionService {
         registrarMovimiento(turno, turno.getEstado(), turno.getEstado(), turno.getEliminadoPor(), null,
                 "Turno desactivado sin reutilizar el número " + turno.getNumeroGeneral());
         log.info("Turno de estación {} dado de baja lógica", id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ResumenClinicaDTO> resumenClinicas(LocalDate fecha, Long estacionId) {
+        LocalDate dia = fecha != null ? fecha : hoy();
+        Long estacionRef = resolverEstacion(estacionId);
+        if (estacionRef == null) {
+            throw new BusinessException("ESTACION_REQUERIDA",
+                    "Debe indicar la estación para consultar las clínicas");
+        }
+        EstacionEnfermeria estacion = estacionActiva(estacionRef);
+        validarAccesoEstacion(estacion.getId());
+        return construirResumenClinicas(dia, estacion);
+    }
+
+    @Transactional
+    public ResumenClinicaDTO registrarDevolucionClinica(UUID espacioFisicoId, LocalDate fecha,
+                                                         Long estacionId) {
+        LocalDate dia = fecha != null ? fecha : hoy();
+        Long estacionRef = resolverEstacion(estacionId);
+        if (estacionRef == null) {
+            throw new BusinessException("ESTACION_REQUERIDA",
+                    "Debe indicar la estación para registrar la devolución");
+        }
+        EstacionEnfermeria estacion = estacionActiva(estacionRef);
+        validarAccesoEstacion(estacion.getId());
+        EspacioFisico espacio = validarEspacioActivo(espacioFisicoId);
+
+        ResumenClinicaDTO actual = construirResumenClinicas(dia, estacion).stream()
+                .filter(item -> item.getEspacioFisicoId().equals(espacio.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EspacioFisico", "id", espacioFisicoId));
+        if (actual.getPendientes() <= 0) {
+            throw new ConflictException("SIN_PENDIENTES",
+                    "No hay pacientes pendientes de devolver en la clínica " + espacio.getNumero());
+        }
+
+        DevolucionClinica devolucion = DevolucionClinica.builder()
+                .estacion(estacion)
+                .espacioFisico(espacio)
+                .fecha(dia)
+                .usuario(usuarioActual())
+                .creadoEn(OffsetDateTime.now())
+                .observacion("Devolución registrada desde seguimiento de enfermería")
+                .build();
+        devolucionClinicaRepository.saveAndFlush(devolucion);
+        log.info("Devolución agregada registrada: estación={} clínica={} fecha={}",
+                estacion.getId(), espacio.getNumero(), dia);
+        return construirResumenClinicas(dia, estacion).stream()
+                .filter(item -> item.getEspacioFisicoId().equals(espacio.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EspacioFisico", "id", espacioFisicoId));
+    }
+
+    @Transactional
+    public ResumenClinicaDTO deshacerDevolucionClinica(UUID espacioFisicoId, LocalDate fecha,
+                                                       Long estacionId) {
+        LocalDate dia = fecha != null ? fecha : hoy();
+        Long estacionRef = resolverEstacion(estacionId);
+        if (estacionRef == null) {
+            throw new BusinessException("ESTACION_REQUERIDA",
+                    "Debe indicar la estación para deshacer la devolución");
+        }
+        EstacionEnfermeria estacion = estacionActiva(estacionRef);
+        validarAccesoEstacion(estacion.getId());
+        EspacioFisico espacio = validarEspacioActivo(espacioFisicoId);
+
+        DevolucionClinica ultima = devolucionClinicaRepository
+                .findFirstByFechaAndEstacionIdAndEspacioFisicoIdAndRevertidoEnIsNullOrderByCreadoEnDescIdDesc(
+                        dia, estacion.getId(), espacio.getId())
+                .orElseThrow(() -> new ConflictException("SIN_DEVOLUCIONES",
+                        "No hay devoluciones para deshacer en la clínica " + espacio.getNumero()));
+        ultima.setRevertidoEn(OffsetDateTime.now());
+        ultima.setRevertidoPor(usuarioActual());
+        devolucionClinicaRepository.saveAndFlush(ultima);
+        log.info("Devolución agregada deshecha: estación={} clínica={} fecha={}",
+                estacion.getId(), espacio.getNumero(), dia);
+        return construirResumenClinicas(dia, estacion).stream()
+                .filter(item -> item.getEspacioFisicoId().equals(espacio.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EspacioFisico", "id", espacioFisicoId));
+    }
+
+    private List<ResumenClinicaDTO> construirResumenClinicas(LocalDate dia,
+                                                              EstacionEnfermeria estacion) {
+        List<TurnoEstacion> turnos = turnoRepository
+                .findByFechaAndEstacionIdAndActivoTrueOrderByNumeroGeneralAsc(dia, estacion.getId());
+        Map<UUID, Long> asignados = turnos.stream()
+                .filter(turno -> turno.getEspacioFisico() != null)
+                .collect(Collectors.groupingBy(
+                        turno -> turno.getEspacioFisico().getId(), Collectors.counting()));
+        Map<UUID, List<DevolucionClinica>> devoluciones = devolucionClinicaRepository
+                .findByFechaAndEstacionIdAndRevertidoEnIsNull(dia, estacion.getId()).stream()
+                .collect(Collectors.groupingBy(devolucion -> devolucion.getEspacioFisico().getId()));
+
+        return espacioFisicoRepository.findByActivoTrue().stream()
+                .sorted(Comparator.comparing(EspacioFisico::getNumero,
+                        Comparator.nullsLast(String::compareTo)))
+                .map(espacio -> {
+                    long totalAsignados = asignados.getOrDefault(espacio.getId(), 0L);
+                    List<DevolucionClinica> devolucionesClinica = devoluciones
+                            .getOrDefault(espacio.getId(), List.of());
+                    long totalDevueltos = devolucionesClinica.size();
+                    OffsetDateTime ultima = devolucionesClinica.stream()
+                            .map(DevolucionClinica::getCreadoEn)
+                            .filter(Objects::nonNull)
+                            .max(Comparator.naturalOrder())
+                            .orElse(null);
+                    return ResumenClinicaDTO.builder()
+                            .espacioFisicoId(espacio.getId())
+                            .numero(espacio.getNumero())
+                            .nombre(espacio.getNombre())
+                            .nivel(espacio.getNivel())
+                            .asignados(totalAsignados)
+                            .devueltos(totalDevueltos)
+                            .pendientes(Math.max(0L, totalAsignados - totalDevueltos))
+                            .ultimaDevolucionEn(ultima)
+                            .build();
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

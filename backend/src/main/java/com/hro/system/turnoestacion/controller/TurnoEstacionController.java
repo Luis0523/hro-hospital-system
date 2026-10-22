@@ -50,6 +50,45 @@ public class TurnoEstacionController {
                 "Turnos de estación obtenidos"));
     }
 
+    @GetMapping("/clinicas/resumen")
+    @Operation(summary = "Resumen de clínicas para devoluciones",
+            description = "Asignados, devueltos y pendientes por clínica en la fecha.")
+    public ResponseEntity<ApiResponse<List<ResumenClinicaDTO>>> resumenClinicas(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long estacionId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.resumenClinicas(fecha, estacionId),
+                "Resumen de clínicas obtenido"));
+    }
+
+    @PostMapping("/clinicas/{espacioFisicoId}/devoluciones")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Registrar devolución por clínica",
+            description = "Descuenta un expediente pendiente de la clínica sin asociarlo a un turno.")
+    public ResponseEntity<ApiResponse<ResumenClinicaDTO>> registrarDevolucionClinica(
+            @PathVariable UUID espacioFisicoId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long estacionId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.registrarDevolucionClinica(espacioFisicoId, fecha, estacionId),
+                "Devolución registrada"));
+    }
+
+    @PostMapping("/clinicas/{espacioFisicoId}/devoluciones/deshacer")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Deshacer la última devolución de una clínica")
+    public ResponseEntity<ApiResponse<ResumenClinicaDTO>> deshacerDevolucionClinica(
+            @PathVariable UUID espacioFisicoId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long estacionId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.deshacerDevolucionClinica(espacioFisicoId, fecha, estacionId),
+                "Devolución deshecha"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Obtener turno de estación", description = "Detalle del turno con su bitácora de movimientos.")
     public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> obtener(@PathVariable UUID id) {

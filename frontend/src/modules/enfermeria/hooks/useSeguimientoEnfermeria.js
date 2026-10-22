@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   avanzarTurno,
   cambiarClinicaTurno,
-  contarExpedientesEnClinica,
+  deshacerDevolucionClinica,
   listarClinicas,
+  registrarDevolucionClinica,
   obtenerLibro,
   registrarTurno,
   revertirTurno,
@@ -45,6 +46,24 @@ function reemplazarTurno(libro, turno) {
   }
 }
 
+function quitarTurno(libro, id) {
+  if (!libro) return libro
+  let eliminado = false
+  const especialidades = libro.especialidades.map((especialidad) => ({
+    ...especialidad,
+    turnos: especialidad.turnos.filter((item) => {
+      if (item.id !== id) return true
+      eliminado = true
+      return false
+    }),
+  }))
+  return {
+    ...libro,
+    especialidades,
+    totalRegistrados: Math.max(0, (libro.totalRegistrados ?? 0) - (eliminado ? 1 : 0)),
+  }
+}
+
 // Pinta el nuevo estado antes de que responda el backend.
 function cambiarEstadoLocal(libro, id, etapa, { clinica = null } = {}) {
   if (!libro) return libro
@@ -64,6 +83,24 @@ function cambiarEstadoLocal(libro, id, etapa, { clinica = null } = {}) {
       ),
     })),
   }
+}
+
+function actualizarResumenClinica(clinicas, resumen) {
+  if (!resumen) return clinicas
+  const id = resumen.espacioFisicoId ?? resumen.id
+  return clinicas.map((clinica) =>
+    String(clinica.id) === String(id)
+      ? {
+          ...clinica,
+          asignados: Number(resumen.asignados ?? clinica.asignados ?? 0),
+          devueltos: Number(resumen.devueltos ?? clinica.devueltos ?? 0),
+          expedientesEnClinica: Number(
+            resumen.pendientes ?? resumen.expedientesEnClinica ?? clinica.expedientesEnClinica ?? 0,
+          ),
+          ultimaDevolucionEn: resumen.ultimaDevolucionEn ?? clinica.ultimaDevolucionEn ?? null,
+        }
+      : clinica,
+  )
 }
 
 // Carga el libro y las clínicas de la estación/fecha y refresca ambos tras cada acción.
@@ -90,9 +127,9 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
       }
       try {
         const libroCargado = await obtenerLibro(estacionId, fecha)
-        const clinicasCargadas = await listarClinicas()
+        const clinicasCargadas = await listarClinicas({ estacionId, fecha })
         setLibro(libroCargado)
-        setClinicas(contarExpedientesEnClinica(clinicasCargadas, libroCargado.especialidades))
+        setClinicas(Array.isArray(clinicasCargadas) ? clinicasCargadas : [])
       } catch (fallo) {
         if (!silencioso) {
           setError(fallo?.message ?? 'No fue posible cargar el libro de turnos.')
@@ -124,14 +161,37 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
   // Devuelve el turno en cuanto el backend confirma y refresca el libro en segundo plano.
   const registrar = useCallback(
     async (datos) => {
-      const creado = await registrarTurno({ ...datos, estacionId, fecha })
-      const turno = {
-        ...creado,
-        especialidadId: creado.especialidadId ?? datos.especialidadId,
+      // Pinta la casilla de inmediato; el backend confirma y luego se reconcilia.
+      const provisionalId = `tmp-${datos.codigo}-${datos.numero}-${Date.now()}`
+      const provisional = {
+        id: provisionalId,
+        especialidadId: datos.especialidadId,
+        codigo: datos.codigo,
+        numero: datos.numero,
+        numeroGeneral: null,
+        etapa: 'registrado',
+        estadoBackend: 'registrado',
+        clinicaId: null,
+        clinicaNumero: null,
+        clinicaNombre: null,
+        tipoRegistro: datos.tipoRegistro ?? null,
+        registradoEn: new Date().toISOString(),
       }
-      setLibro((actual) => insertarTurno(actual, turno))
-      cargar({ silencioso: true })
-      return turno
+      setLibro((actual) => insertarTurno(actual, provisional))
+
+      try {
+        const creado = await registrarTurno({ ...datos, estacionId, fecha })
+        const turno = {
+          ...creado,
+          especialidadId: creado.especialidadId ?? datos.especialidadId,
+        }
+        setLibro((actual) => insertarTurno(quitarTurno(actual, provisionalId), turno))
+        cargar({ silencioso: true })
+        return turno
+      } catch (fallo) {
+        setLibro((actual) => quitarTurno(actual, provisionalId))
+        throw fallo
+      }
     },
     [cargar, estacionId, fecha],
   )
@@ -182,6 +242,24 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     [cargar, encolar],
   )
 
+  const devolverClinica = useCallback(
+    async (espacioFisicoId) => {
+      const resumen = await registrarDevolucionClinica({ espacioFisicoId, estacionId, fecha })
+      setClinicas((actual) => actualizarResumenClinica(actual, resumen))
+      return resumen
+    },
+    [estacionId, fecha],
+  )
+
+  const deshacerDevolucion = useCallback(
+    async (espacioFisicoId) => {
+      const resumen = await deshacerDevolucionClinica({ espacioFisicoId, estacionId, fecha })
+      setClinicas((actual) => actualizarResumenClinica(actual, resumen))
+      return resumen
+    },
+    [estacionId, fecha],
+  )
+
   const recargar = useCallback(() => cargar(), [cargar])
 
   return {
@@ -194,5 +272,7 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     avanzar,
     revertir,
     cambiarClinica,
+    devolverClinica,
+    deshacerDevolucion,
   }
 }

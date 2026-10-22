@@ -495,7 +495,7 @@ export default function SeguimientoEnfermeriaDosPage() {
           codigo
         const numeroClinica = clinica?.numero ?? clinica?.id ?? creado.clinicaNumero ?? null
         imprimirTicketTurno({
-          turno: creado.numero ?? numero,
+          turno: creado.numeroGeneral,
           especialidad: especialidadNombre,
           clinica: numeroClinica,
         }).catch(() => {

@@ -6,6 +6,7 @@ import { hoyIso } from '@/shared/utils/fecha'
 import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
 import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.jsx'
+import DevolucionesClinicas from '../components/seguimiento/DevolucionesClinicas.jsx'
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
 import EtapasSeguimiento from '../components/seguimiento/EtapasSeguimiento.jsx'
 import LibroSeguimiento from '../components/seguimiento/LibroSeguimiento.jsx'
@@ -56,8 +57,17 @@ export default function SeguimientoEnfermeriaPage() {
   const [cargandoEstaciones, setCargandoEstaciones] = useState(true)
   const [errorEstaciones, setErrorEstaciones] = useState(null)
 
-  const { libro, clinicas, error, recargar, registrar, avanzar, revertir } =
-    useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
+  const {
+    libro,
+    clinicas,
+    error,
+    recargar,
+    registrar,
+    avanzar,
+    revertir,
+    devolverClinica,
+    deshacerDevolucion,
+  } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
 
   const [seleccion, setSeleccion] = useState(null)
   const [filtro, setFiltro] = useState(null)
@@ -65,6 +75,14 @@ export default function SeguimientoEnfermeriaPage() {
   const [tipoRegistro, setTipoRegistro] = useState(null)
   const [clinicaDestino, setClinicaDestino] = useState(null)
   const [focoEspecialidad, setFocoEspecialidad] = useState({ id: null, token: 0 })
+  const [correlativoModal, setCorrelativoModal] = useState(null)
+  const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
+
+  useEffect(() => {
+    if (!correlativoModal) return undefined
+    const timer = setTimeout(() => setCorrelativoModal(null), 5000)
+    return () => clearTimeout(timer)
+  }, [correlativoModal])
 
   useEffect(() => {
     let activo = true
@@ -356,6 +374,10 @@ export default function SeguimientoEnfermeriaPage() {
           numero: creado.numero,
         })
         setTipoRegistro(null)
+        setCorrelativoModal({
+          codigo: creado.codigo ?? codigo,
+          numero: creado.numero ?? numero,
+        })
         enfocarEspecialidad(especialidadId)
         mostrarToast({
           tone: 'success',
@@ -368,7 +390,7 @@ export default function SeguimientoEnfermeriaPage() {
           especialidades.find((item) => String(item.id) === String(especialidadId))?.nombre ??
           codigo
         imprimirTicketTurno({
-          turno: creado.numero ?? numero,
+          turno: creado.numeroGeneral,
           especialidad: especialidadNombre,
           clinica: null,
         }).catch(() => {
@@ -393,7 +415,48 @@ export default function SeguimientoEnfermeriaPage() {
     setFiltro(nuevo)
     setTipoRegistro(null)
     if (nuevo !== 'en_clinica') setClinicaDestino(null)
+    if (nuevo === 'devuelto') setSeleccion(null)
     enfocarEspecialidad(filas[0]?.id)
+  }
+
+  async function registrarDevolucionEnClinica(clinica) {
+    if (procesandoClinicaId != null) return
+    setProcesandoClinicaId(clinica.id)
+    try {
+      const resumen = await devolverClinica(clinica.id)
+      mostrarToast({
+        tone: 'success',
+        title: `${clinica.nombre}: devolución registrada`,
+        message: `Pendientes: ${resumen?.pendientes ?? clinica.expedientesEnClinica ?? 0}`,
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo registrar la devolución.',
+      })
+    } finally {
+      setProcesandoClinicaId(null)
+    }
+  }
+
+  async function deshacerDevolucionEnClinica(clinica) {
+    if (procesandoClinicaId != null) return
+    setProcesandoClinicaId(clinica.id)
+    try {
+      const resumen = await deshacerDevolucion(clinica.id)
+      mostrarToast({
+        tone: 'info',
+        title: `${clinica.nombre}: devolución deshecha`,
+        message: `Devueltos: ${resumen?.devueltos ?? clinica.devueltos ?? 0}`,
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo deshacer la devolución.',
+      })
+    } finally {
+      setProcesandoClinicaId(null)
+    }
   }
 
   function asignarTurnoAClinica(turno, especialidadId, clinica) {
@@ -533,6 +596,21 @@ export default function SeguimientoEnfermeriaPage() {
             title="Seleccione una estación"
             description="Elija la estación de enfermería desde la cual se está abriendo esta jornada."
           />
+        ) : filtro === 'devuelto' ? (
+          <div className="grid gap-3 lg:grid-cols-[130px_minmax(0,1fr)]">
+            <aside className="space-y-1.5 md:-ml-2">
+              <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                Flujo de seguimiento
+              </h2>
+              <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+            </aside>
+            <DevolucionesClinicas
+              clinicas={clinicas}
+              onDevolver={registrarDevolucionEnClinica}
+              onDeshacer={deshacerDevolucionEnClinica}
+              procesandoId={procesandoClinicaId}
+            />
+          </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]">
             <div className="grid gap-3 md:grid-cols-[130px_minmax(0,1fr)]">
@@ -572,6 +650,23 @@ export default function SeguimientoEnfermeriaPage() {
           </div>
         )}
       </main>
+
+      {correlativoModal && (
+        <div
+          role="status"
+          aria-live="assertive"
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div className="rounded-2xl border-4 border-indigo-500 bg-surface-container-lowest px-12 py-7 text-center shadow-modal dark:border-indigo-400">
+            <p className="text-label-md uppercase tracking-widest text-on-surface-variant">
+              Correlativo
+            </p>
+            <p className="mt-1 text-6xl font-black tracking-tight text-indigo-600 dark:text-indigo-300">
+              {`${correlativoModal.codigo}-${String(correlativoModal.numero).padStart(2, '0')}`}
+            </p>
+          </div>
+        </div>
+      )}
     </EnfermeriaEstacionLayout>
   )
 }

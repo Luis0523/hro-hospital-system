@@ -46,7 +46,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()
   })
 
-  it('registra y avanza un correlativo con un clic por etapa', async () => {
+  it('registra, envía a clínica y descuenta devoluciones por clínica', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -60,12 +60,23 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('etapa-devuelto'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, En clínica' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, Devuelto' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ONC-05, En clínica' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Devoluciones por clínica' })).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('etapa-archivo'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Devuelto' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, Archivo' })).toBeInTheDocument()
+    const articulo = screen.getByRole('heading', { name: 'Clínica 2' }).closest('article')
+    const valores = () =>
+      within(articulo)
+        .getAllByRole('definition')
+        .map((dd) => Number(dd.textContent))
+
+    await user.click(within(articulo).getByRole('button', { name: 'Devolver 1' }))
+    await waitFor(() => expect(articulo).toHaveTextContent(/Devueltos\s*01/))
+    const [asignados, devueltos, pendientes] = valores()
+    expect(pendientes).toBe(asignados - devueltos)
+
+    await user.click(within(articulo).getByRole('button', { name: 'Deshacer' }))
+    await waitFor(() => expect(articulo).toHaveTextContent(/Devueltos\s*00/))
+    expect(valores()[2]).toBe(valores()[0])
   }, 20000)
 
   it('permite un solo tipo de registro y no lo edita después de registrar', async () => {

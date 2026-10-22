@@ -100,6 +100,9 @@ const CLINICAS_POR_ESPECIALIDAD_MOCK = {
 const LIMITES_SEMILLA = [38, 4, 2, 3, 7, 4, 2, 3, 0, 5, 7, 2, 8]
 
 let turnos = new Map()
+let contadorGeneralMock = 1
+let devolucionesClinicaMock = []
+let contadorDevolucionMock = 1
 // El backend aún no persiste el tipo de registro: se conserva durante la sesión.
 const tiposPorTurno = new Map()
 
@@ -317,25 +320,111 @@ export async function listarAsignacionesClinicas(fecha = hoyIso()) {
   return Array.isArray(vista) ? vista : []
 }
 
-export async function listarClinicas() {
+function resumenClinicaMock(clinica, fecha) {
+  const enClinica = [...turnos.values()].filter(
+    (turno) => turno.etapa === 'en_clinica' && turno.clinicaId === clinica.id,
+  ).length
+  const devueltos = devolucionesClinicaMock.filter(
+    (devolucion) =>
+      devolucion.fecha === fecha &&
+      String(devolucion.espacioFisicoId) === String(clinica.id) &&
+      !devolucion.revertidoEn,
+  )
+  const asignados = Math.max(enClinica, devueltos.length)
+  return {
+    ...clinica,
+    asignados,
+    devueltos: devueltos.length,
+    expedientesEnClinica: Math.max(0, asignados - devueltos.length),
+    ultimaDevolucionEn:
+      devueltos
+        .map((devolucion) => devolucion.creadoEn)
+        .sort()
+        .at(-1) ?? null,
+  }
+}
+
+export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
   if (USE_MOCK) {
     await esperar()
-    return CLINICAS_SEGUIMIENTO.map((clinica) => ({
-      ...clinica,
-      expedientesEnClinica: [...turnos.values()].filter(
-        (turno) => turno.etapa === 'en_clinica' && turno.clinicaId === clinica.id,
-      ).length,
-    }))
+    return CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha))
   }
 
-  const espaciosFisicos = desenvolver(await leerConReintento('/espacios-fisicos'))
-  return (Array.isArray(espaciosFisicos) ? espaciosFisicos : []).map((espacio) => ({
-    id: espacio.id,
-    numero: espacio.numero,
-    nivel: espacio.nivel,
-    nombre: espacio.nombre ?? `Clínica ${espacio.numero}`,
-    expedientesEnClinica: 0,
+  const resumen = desenvolver(
+    await leerConReintento('/turnos-estacion/clinicas/resumen', {
+      params: { fecha, estacionId },
+    }),
+  )
+  return (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
+    id: clinica.espacioFisicoId,
+    numero: clinica.numero,
+    nivel: clinica.nivel,
+    nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
+    asignados: Number(clinica.asignados ?? 0),
+    devueltos: Number(clinica.devueltos ?? 0),
+    expedientesEnClinica: Number(clinica.pendientes ?? 0),
+    ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
   }))
+}
+
+export async function registrarDevolucionClinica({
+  espacioFisicoId,
+  estacionId,
+  fecha = hoyIso(),
+} = {}) {
+  if (USE_MOCK) {
+    await esperar()
+    const clinica = CLINICAS_SEGUIMIENTO.find((item) => String(item.id) === String(espacioFisicoId))
+    if (!clinica) throw crearError('Clínica no encontrada', 404)
+    const actual = resumenClinicaMock(clinica, fecha)
+    if (actual.expedientesEnClinica <= 0) {
+      throw crearError('No hay pacientes pendientes de devolver en esta clínica', 409)
+    }
+    devolucionesClinicaMock.push({
+      id: contadorDevolucionMock++,
+      espacioFisicoId: clinica.id,
+      fecha,
+      creadoEn: new Date().toISOString(),
+      revertidoEn: null,
+    })
+    return resumenClinicaMock(clinica, fecha)
+  }
+
+  const respuesta = await client.post(
+    `/turnos-estacion/clinicas/${espacioFisicoId}/devoluciones`,
+    {},
+    { params: { fecha, estacionId } },
+  )
+  return desenvolver(respuesta)
+}
+
+export async function deshacerDevolucionClinica({
+  espacioFisicoId,
+  estacionId,
+  fecha = hoyIso(),
+} = {}) {
+  if (USE_MOCK) {
+    await esperar()
+    const clinica = CLINICAS_SEGUIMIENTO.find((item) => String(item.id) === String(espacioFisicoId))
+    if (!clinica) throw crearError('Clínica no encontrada', 404)
+    const activas = devolucionesClinicaMock.filter(
+      (devolucion) =>
+        devolucion.fecha === fecha &&
+        String(devolucion.espacioFisicoId) === String(clinica.id) &&
+        !devolucion.revertidoEn,
+    )
+    const ultima = activas.at(-1)
+    if (!ultima) throw crearError('No hay devoluciones para deshacer', 409)
+    ultima.revertidoEn = new Date().toISOString()
+    return resumenClinicaMock(clinica, fecha)
+  }
+
+  const respuesta = await client.post(
+    `/turnos-estacion/clinicas/${espacioFisicoId}/devoluciones/deshacer`,
+    {},
+    { params: { fecha, estacionId } },
+  )
+  return desenvolver(respuesta)
 }
 
 // Registra el siguiente correlativo de la especialidad. En modo real el backend
@@ -373,6 +462,7 @@ export async function registrarTurno({
       especialidadId: codigo,
       codigo,
       numero: correlativo,
+      numeroGeneral: contadorGeneralMock++,
       etapa: 'registrado',
       estadoBackend: 'registrado',
       clinicaId: clinica?.id ?? null,
@@ -604,4 +694,7 @@ export function contarExpedientesEnClinica(clinicas, especialidades) {
 // Solo para pruebas: deja el estado mutable como al cargar la página.
 export function reiniciarSeguimientoMock() {
   sembrarTurnos()
+  contadorGeneralMock = 1
+  devolucionesClinicaMock = []
+  contadorDevolucionMock = 1
 }

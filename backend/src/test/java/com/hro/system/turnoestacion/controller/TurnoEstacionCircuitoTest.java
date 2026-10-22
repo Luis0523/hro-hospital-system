@@ -482,6 +482,52 @@ class TurnoEstacionCircuitoTest {
     }
 
     @Test
+    @DisplayName("Resumen de clínicas: registra y deshace devoluciones sin identificar el turno")
+    void resumenYDevolucionesPorClinica() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String enfermeria = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), enfermeria);
+        UUID turnoId = UUID.fromString(turno.get("id").asText());
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"), "enfermeria", enfermeria,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk());
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/asignar-clinica"),
+                        "enfermeria", enfermeria, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", contexto.espacio().getId().toString()))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria", enfermeria,
+                        contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
+                        + "')].asignados").value(1))
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
+                        + "')].devueltos").value(0))
+                .andExpect(jsonPath("$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId()
+                        + "')].pendientes").value(1));
+
+        mockMvc.perform(auth(post("/turnos-estacion/clinicas/" + contexto.espacio().getId()
+                        + "/devoluciones"), "enfermeria", enfermeria, contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.devueltos").value(1))
+                .andExpect(jsonPath("$.data.pendientes").value(0));
+
+        mockMvc.perform(auth(post("/turnos-estacion/clinicas/" + contexto.espacio().getId()
+                        + "/devoluciones/deshacer"), "enfermeria", enfermeria,
+                        contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.devueltos").value(0))
+                .andExpect(jsonPath("$.data.pendientes").value(1));
+    }
+
+    @Test
     @DisplayName("No se puede vincular expediente antes de enviar el turno a la clínica")
     void vinculacionRequiereClinica() throws Exception {
         Contexto contexto = crearContexto(null);

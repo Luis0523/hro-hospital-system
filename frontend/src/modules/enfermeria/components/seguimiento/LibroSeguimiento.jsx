@@ -39,7 +39,9 @@ function CasillaTurno({
       aria-pressed={seleccionada}
       onClick={() => onSeleccionar(especialidadId, codigo, numero)}
       className={`relative h-8 w-8 rounded-md border text-label-sm font-bold transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${estilo.borde} ${estilo.fondo} ${estilo.texto} ${brillo} ${
-        seleccionada ? 'outline outline-2 outline-offset-2 outline-primary' : ''
+        seleccionada
+          ? 'z-10 outline outline-4 outline-offset-2 outline-indigo-600 ring-2 ring-indigo-500/60 dark:outline-indigo-400 dark:ring-indigo-400/50'
+          : ''
       } ${atenuada ? 'opacity-25' : ''}`}
     >
       {numero}
@@ -174,9 +176,9 @@ export default function LibroSeguimiento({
                 data-especialidad-id={fila.id}
                 aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Presione Enter para ejecutar el siguiente paso.`}
                 onKeyDown={(evento) => manejarTeclaEspecialidad(evento, fila)}
-                className={`flex w-full flex-col justify-center rounded-lg border border-l-4 px-3 py-1.5 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+                className={`flex w-full flex-col justify-center rounded-lg border border-l-4 px-3 py-1.5 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 ${
                   String(especialidadActivaId) === String(fila.id)
-                    ? 'border-primary-container border-l-primary bg-secondary-fixed/30 ring-1 ring-primary-container/40'
+                    ? 'border-indigo-600 border-l-indigo-600 bg-indigo-500/20 ring-4 ring-indigo-500/60 shadow-popover dark:border-indigo-400 dark:border-l-indigo-400 dark:bg-indigo-500/25 dark:ring-indigo-400/60'
                     : 'border-outline-variant border-l-primary bg-surface-container-low'
                 }`}
               >
