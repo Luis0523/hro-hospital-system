@@ -82,9 +82,13 @@ export function construirTicketPrueba(
     'NUMERO DE TURNO',
   ]
 
+  const clinicaTexto = clinica == null ? '' : limpiar(clinica)
+
   const detalle = [
     ...campo('ESPECIALIDAD: ', especialidad, ancho),
-    ...campo('CLINICA:      ', clinica, ancho),
+    ...(clinicaTexto
+      ? campo('CLINICA:      ', clinicaTexto, ancho)
+      : ['', 'ESTAR ATENTO A LA PANTALLA']),
     ...campo('FECHA Y HORA: ', fechaHora || fechaHoraActual(), ancho),
   ]
 

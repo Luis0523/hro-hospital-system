@@ -3,6 +3,7 @@ import { Alert, Button, EmptyState, Select, Spinner } from '@/shared/components/
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
+import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
 import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.jsx'
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
@@ -487,6 +488,23 @@ export default function SeguimientoEnfermeriaDosPage() {
           message: clinica
             ? undefined
             : 'Sin clínica asignada. Puede asignarla desde el detalle antes de En clínica.',
+        })
+
+        const especialidadNombre =
+          especialidades.find((item) => String(item.id) === String(especialidadId))?.nombre ??
+          codigo
+        const numeroClinica =
+          clinica?.numero ?? clinica?.id ?? creado.clinicaNumero ?? null
+        imprimirTicketTurno({
+          turno: creado.numero ?? numero,
+          especialidad: especialidadNombre,
+          clinica: numeroClinica,
+        }).catch(() => {
+          mostrarToast({
+            tone: 'warning',
+            title: `Turno ${etiquetaTurno(creado.codigo ?? codigo, creado.numero)} registrado, pero no se pudo imprimir el ticket.`,
+            message: 'Verifique que el agente de impresión (printer-agent/iniciar.bat) esté abierto.',
+          })
         })
       } finally {
         setRegistrando(false)

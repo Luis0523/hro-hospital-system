@@ -22,6 +22,13 @@ test('el ticket contiene turno, especialidad y clínica', () => {
   assert.doesNotMatch(texto, /sin validez/)
 })
 
+test('muestra el aviso cuando no hay clínica asignada', () => {
+  const buffer = construirTicketPrueba({ turno: 7, especialidad: 'X', clinica: null })
+  const texto = buffer.toString('latin1')
+  assert.match(texto, /ESTAR ATENTO A LA PANTALLA/)
+  assert.doesNotMatch(texto, /CLINICA:/)
+})
+
 test('rechaza un turno inválido', () => {
   assert.throws(() => construirTicketPrueba({ especialidad: 'X', clinica: '1' }), /turno/i)
 })

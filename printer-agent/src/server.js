@@ -116,10 +116,11 @@ const servidor = http.createServer(async (req, res) => {
       return
     }
 
+    const clinicaSinAsignar = datos.clinica == null || String(datos.clinica).trim() === ''
     const ticket = {
       turno,
       especialidad: texto(datos.especialidad, 'Medicina General'),
-      clinica: texto(datos.clinica, '01', 16),
+      clinica: clinicaSinAsignar ? (esPrueba ? '01' : null) : texto(datos.clinica, '', 16),
       fechaHora: texto(datos.fechaHora, '', 40) || undefined,
     }
 
@@ -142,7 +143,7 @@ const servidor = http.createServer(async (req, res) => {
       }
 
       console.log(
-        `[ticket] #${String(turno).padStart(3, '0')} | ${ticket.especialidad} | clinica ${ticket.clinica} | ${duracionMs} ms`,
+        `[ticket] #${String(turno).padStart(3, '0')} | ${ticket.especialidad} | clinica ${ticket.clinica ?? 'sin asignar'} | ${duracionMs} ms`,
       )
       responderJson(res, 200, {
         ok: true,
