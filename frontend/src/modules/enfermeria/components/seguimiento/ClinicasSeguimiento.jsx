@@ -32,7 +32,7 @@ export default function ClinicasSeguimiento({
     : modoRegistro
       ? 'Elija la clínica para registrar el turno'
       : modoAsignacion
-        ? 'Seleccione la clínica destino y luego marque los turnos recibidos'
+        ? 'Seleccione la clínica destino y luego marque los turnos registrados'
         : 'Pulse una clínica para consultar su detalle'
 
   return (

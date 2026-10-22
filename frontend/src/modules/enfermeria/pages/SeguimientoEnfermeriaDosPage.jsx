@@ -493,8 +493,7 @@ export default function SeguimientoEnfermeriaDosPage() {
         const especialidadNombre =
           especialidades.find((item) => String(item.id) === String(especialidadId))?.nombre ??
           codigo
-        const numeroClinica =
-          clinica?.numero ?? clinica?.id ?? creado.clinicaNumero ?? null
+        const numeroClinica = clinica?.numero ?? clinica?.id ?? creado.clinicaNumero ?? null
         imprimirTicketTurno({
           turno: creado.numero ?? numero,
           especialidad: especialidadNombre,
@@ -503,7 +502,8 @@ export default function SeguimientoEnfermeriaDosPage() {
           mostrarToast({
             tone: 'warning',
             title: `Turno ${etiquetaTurno(creado.codigo ?? codigo, creado.numero)} registrado, pero no se pudo imprimir el ticket.`,
-            message: 'Verifique que el agente de impresión (printer-agent/iniciar.bat) esté abierto.',
+            message:
+              'Verifique que el agente de impresión (printer-agent/iniciar.bat) esté abierto.',
           })
         })
       } finally {
@@ -648,7 +648,7 @@ export default function SeguimientoEnfermeriaDosPage() {
           : `${clinica.nombre} seleccionada como destino.`,
         message: misma
           ? undefined
-          : 'Ahora pulse los turnos recibidos que desea enviar a esta clínica.',
+          : 'Ahora pulse los turnos registrados que desea enviar a esta clínica.',
       })
       return
     }

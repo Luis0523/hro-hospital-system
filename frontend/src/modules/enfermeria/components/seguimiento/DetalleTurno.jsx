@@ -117,7 +117,7 @@ export default function DetalleTurno({
         <span className="text-label-sm text-on-surface-variant">{especialidadNombre}</span>
         <span className="text-label-sm text-on-surface-variant">· {clinicaAsignada}</span>
         <span className="text-label-sm text-on-surface-variant">
-          · Etapa {turno ? `${indice + 1} de 5` : 'sin iniciar'}
+          · Etapa {turno ? `${indice + 1} de ${ETAPAS_SEGUIMIENTO.length}` : 'sin iniciar'}
         </span>
 
         <div className="ml-auto flex items-center gap-1">

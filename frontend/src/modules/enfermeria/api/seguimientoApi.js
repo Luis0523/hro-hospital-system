@@ -35,16 +35,16 @@ async function leerConReintento(url, config) {
 
 export const ETAPAS_SEGUIMIENTO = [
   { id: 'registrado', nombre: 'Registrado' },
-  { id: 'recibido', nombre: 'Recibido' },
   { id: 'en_clinica', nombre: 'En clínica' },
   { id: 'devuelto', nombre: 'Devuelto' },
   { id: 'archivo', nombre: 'Archivo' },
 ]
 
-// Etapa que debe tener el turno para poder aplicar la etapa seleccionada.
+// El backend conserva el estado interno `recibido`, pero la operación lo une
+// con `en_clinica`: al pasar de Registrado a En clínica se recibe y se asigna
+// la clínica en una sola acción.
 export const ETAPA_PREVIA = {
-  recibido: 'registrado',
-  en_clinica: 'recibido',
+  en_clinica: 'registrado',
   devuelto: 'en_clinica',
   archivo: 'devuelto',
 }
@@ -184,7 +184,6 @@ export function etapaDesdeEstado(estado) {
     case 'registrado':
       return 'registrado'
     case 'recibido':
-      return 'recibido'
     case 'en_clinica':
     case 'llamado':
     case 'no_asistio':
@@ -441,23 +440,42 @@ export async function avanzarTurno(id, { clinicaId, estadoBackend, observacion }
     const turno = turnos.get(id)
     if (!turno) throw crearError('Turno no encontrado', 404)
 
-    const indice = ETAPAS_SEGUIMIENTO.findIndex((etapa) => etapa.id === turno.etapa)
-    const siguiente = ETAPAS_SEGUIMIENTO[indice + 1]
-    if (!siguiente) throw crearError('El turno ya completó el flujo', 409)
-
-    if (turno.etapa === 'recibido') {
+    // La UI unifica recibido dentro de en_clinica: el backend real hace
+    // recibir + asignar-clinica en una sola acción.
+    if (turno.etapa === 'registrado') {
+      if (!clinicaId) {
+        throw crearError('Seleccione una clínica para repartir el expediente', 422)
+      }
       const clinica = Number(clinicaId)
       if (!CLINICAS_SEGUIMIENTO.some((item) => item.id === clinica)) {
         throw crearError('Seleccione una clínica para repartir el expediente', 422)
       }
       turno.clinicaId = clinica
       turno.clinicaNombre = `Clínica ${clinica}`
+      turno.etapa = 'en_clinica'
+      turno.estadoBackend = 'en_clinica'
+      turno.actualizadoEn = new Date().toISOString()
+      return copiarTurno(turno)
     }
+
+    const indice = ETAPAS_SEGUIMIENTO.findIndex((etapa) => etapa.id === turno.etapa)
+    const siguiente = ETAPAS_SEGUIMIENTO[indice + 1]
+    if (!siguiente) throw crearError('El turno ya completó el flujo', 409)
 
     turno.etapa = siguiente.id
     turno.estadoBackend = siguiente.id === 'archivo' ? 'archivado' : siguiente.id
     turno.actualizadoEn = new Date().toISOString()
     return copiarTurno(turno)
+  }
+
+  // En la UI ya no existe Recibido: al pasar de Registrado a En clínica se
+  // ejecutan internamente recibir + asignar-clinica.
+  if (estadoBackend === 'registrado' && clinicaId) {
+    await client.post(`/turnos-estacion/${id}/recibir`, {})
+    const respuesta = await client.post(`/turnos-estacion/${id}/asignar-clinica`, {
+      espacioFisicoId: clinicaId,
+    })
+    return normalizarTurno(desenvolver(respuesta))
   }
 
   const { ruta, cuerpo } = rutaSiguiente(estadoBackend, clinicaId, observacion)
@@ -498,7 +516,7 @@ export async function obtenerHistorialTurno(id) {
     await esperar()
     const turno = turnos.get(id)
     if (!turno) throw crearError('Turno no encontrado', 404)
-    const secuencia = ['registrado', 'recibido', 'en_clinica', 'devuelto', 'archivo']
+    const secuencia = ['registrado', 'en_clinica', 'devuelto', 'archivo']
     const indice = Math.max(0, secuencia.indexOf(turno.etapa))
     return secuencia.slice(0, indice + 1).map((etapa, posicion) => ({
       id: posicion + 1,
@@ -512,7 +530,7 @@ export async function obtenerHistorialTurno(id) {
   }
 
   const detalle = desenvolver(await leerConReintento(`/turnos-estacion/${id}`))
-  return (detalle?.movimientos ?? []).map((movimiento) => ({
+  const movimientos = (detalle?.movimientos ?? []).map((movimiento) => ({
     id: movimiento.id,
     estadoAnterior: movimiento.estadoAnterior,
     estadoNuevo: movimiento.estadoNuevo,
@@ -521,6 +539,16 @@ export async function obtenerHistorialTurno(id) {
     observacion: movimiento.observacion,
     fechaMovimiento: movimiento.fechaMovimiento,
   }))
+
+  // La UI unificada no muestra el estado interno recibido.
+  return movimientos.reduce((visibles, movimiento) => {
+    if (movimiento.estadoNuevo === 'recibido') return visibles
+    if (movimiento.estadoAnterior === 'recibido') {
+      const anterior = [...visibles].reverse().find((item) => item.estadoNuevo !== 'recibido')
+      return [...visibles, { ...movimiento, estadoAnterior: anterior?.estadoNuevo ?? 'registrado' }]
+    }
+    return [...visibles, movimiento]
+  }, [])
 }
 
 // Revierte el turno al estado anterior. El backend no permite devueltos/archivados.
@@ -530,8 +558,7 @@ export async function revertirTurno(id) {
     const turno = turnos.get(id)
     if (!turno) throw crearError('Turno no encontrado', 404)
     const anteriorPorEtapa = {
-      recibido: 'registrado',
-      en_clinica: 'recibido',
+      en_clinica: 'registrado',
       devuelto: 'en_clinica',
       archivo: 'devuelto',
     }
@@ -539,7 +566,7 @@ export async function revertirTurno(id) {
     if (!anterior) throw crearError('El turno no se puede revertir en este estado', 409)
     turno.etapa = anterior
     turno.estadoBackend = anterior
-    if (anterior === 'registrado' || anterior === 'recibido') {
+    if (anterior === 'registrado') {
       turno.clinicaId = null
       turno.clinicaNombre = null
     }
@@ -547,7 +574,14 @@ export async function revertirTurno(id) {
     return copiarTurno(turno)
   }
 
-  const respuesta = await client.post(`/turnos-estacion/${id}/revertir`)
+  // Si el backend está en en_clinica, la UI unificada necesita retroceder dos
+  // pasos internos (en_clinica -> recibido -> registrado) para verse en Registrado.
+  const detalle = desenvolver(await leerConReintento(`/turnos-estacion/${id}`))
+  const veces = detalle?.estado === 'en_clinica' ? 2 : 1
+  let respuesta
+  for (let paso = 0; paso < veces; paso += 1) {
+    respuesta = await client.post(`/turnos-estacion/${id}/revertir`)
+  }
   return normalizarTurno(desenvolver(respuesta))
 }
 

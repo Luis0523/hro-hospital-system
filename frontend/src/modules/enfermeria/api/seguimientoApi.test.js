@@ -73,12 +73,8 @@ describe('seguimientoApi', () => {
     const cambiado = await cambiarClinicaTurno(medicina.id, 3)
     expect(cambiado).toMatchObject({ etapa: 'registrado', clinicaId: 3 })
 
-    await avanzarTurno(medicina.id)
-    await expect(cambiarClinicaTurno(medicina.id, 4)).resolves.toMatchObject({
-      etapa: 'recibido',
-      clinicaId: 4,
-    })
-    await avanzarTurno(medicina.id, { clinicaId: 4 })
+    const enClinica = await avanzarTurno(medicina.id, { clinicaId: 4 })
+    expect(enClinica).toMatchObject({ etapa: 'en_clinica', clinicaId: 4 })
     await expect(cambiarClinicaTurno(medicina.id, 4)).rejects.toMatchObject({ status: 409 })
   })
 
@@ -98,7 +94,7 @@ describe('seguimientoApi', () => {
 
   it('traduce los estados del backend a las etapas visuales', () => {
     expect(etapaDesdeEstado('registrado')).toBe('registrado')
-    expect(etapaDesdeEstado('recibido')).toBe('recibido')
+    expect(etapaDesdeEstado('recibido')).toBe('en_clinica')
     expect(etapaDesdeEstado('en_clinica')).toBe('en_clinica')
     expect(etapaDesdeEstado('llamado')).toBe('en_clinica')
     expect(etapaDesdeEstado('no_asistio')).toBe('en_clinica')
@@ -130,11 +126,8 @@ describe('seguimientoApi', () => {
     ])
   })
 
-  it('avanza por las cinco etapas y exige clínica al repartir', async () => {
+  it('avanza por las cuatro etapas visibles y exige clínica al repartir', async () => {
     const registrado = await registrarTurno({ codigo: 'ONC', numero: 5 })
-
-    const recibido = await avanzarTurno(registrado.id)
-    expect(recibido.etapa).toBe('recibido')
 
     await expect(avanzarTurno(registrado.id)).rejects.toMatchObject({ status: 422 })
 
@@ -162,7 +155,6 @@ describe('seguimientoApi', () => {
     const clinica3 = antes.find((clinica) => clinica.id === 3)
 
     const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
-    await avanzarTurno(turno.id)
     await avanzarTurno(turno.id, { clinicaId: 3 })
 
     const despues = await listarClinicas()

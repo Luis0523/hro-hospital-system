@@ -27,7 +27,7 @@ export default function EtapasSeguimiento({ conteos, filtro, onFiltrar }) {
           >
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[9px] font-bold tracking-wider text-on-surface-variant">
-                0{indice + 1} / 05
+                0{indice + 1} / 0{ETAPAS_SEGUIMIENTO.length}
               </span>
               <span className={`h-1.5 w-1.5 rounded-full ${estilo.punto}`} />
             </div>

@@ -41,6 +41,8 @@ describe('SeguimientoEnfermeriaPage', () => {
     ).toBeInTheDocument()
     expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
     expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrado')
+    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('En clínica')
+    expect(screen.queryByTestId('etapa-recibido')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()
   })
 
@@ -52,13 +54,9 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('etapa-recibido'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, Recibido' })).toBeInTheDocument()
-
     await user.click(screen.getByTestId('etapa-en_clinica'))
     await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('etapa-devuelto'))
@@ -158,27 +156,21 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(screen.getByRole('button', { name: 'ONC-06, sin registro' }))
     await screen.findByRole('button', { name: 'ONC-06, Registrado' })
 
-    await user.click(screen.getByTestId('etapa-recibido'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    await screen.findByRole('button', { name: 'ONC-05, Recibido' })
-    await user.click(screen.getByRole('button', { name: 'ONC-06, Registrado' }))
-    await screen.findByRole('button', { name: 'ONC-06, Recibido' })
-
     await user.click(screen.getByTestId('etapa-en_clinica'))
     const clinica = screen.getByRole('button', { name: /^Clínica 2:/ })
     await user.click(clinica)
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'ONC-06, Recibido' }))
+    await user.click(screen.getByRole('button', { name: 'ONC-06, Registrado' }))
     expect(await screen.findByRole('button', { name: 'ONC-06, En clínica' })).toBeInTheDocument()
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
   }, 20000)
 
-  it('muestra el historial y permite revertir un turno recibido', async () => {
+  it('muestra el historial y permite revertir un turno en clínica', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -186,12 +178,13 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
     await screen.findByRole('button', { name: 'ONC-05, Registrado' })
 
-    await user.click(screen.getByTestId('etapa-recibido'))
+    await user.click(screen.getByTestId('etapa-en_clinica'))
+    await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    await screen.findByRole('button', { name: 'ONC-05, Recibido' })
+    await screen.findByRole('button', { name: 'ONC-05, En clínica' })
 
     await user.click(screen.getByRole('button', { name: 'Ver historial del turno' }))
-    expect(await screen.findByText('Registrado → Recibido')).toBeInTheDocument()
+    expect(await screen.findByText('Registrado → En clínica')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Revertir' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
@@ -201,7 +194,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     const user = userEvent.setup()
     renderPagina()
 
-    const etapa = await screen.findByTestId('etapa-recibido')
+    const etapa = await screen.findByTestId('etapa-en_clinica')
     await user.click(etapa)
     expect(etapa).toHaveAttribute('aria-pressed', 'true')
     await user.click(etapa)

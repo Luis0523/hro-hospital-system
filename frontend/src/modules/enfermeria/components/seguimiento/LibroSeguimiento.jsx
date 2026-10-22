@@ -72,8 +72,7 @@ export default function LibroSeguimiento({
   const nombreFiltro = ETAPAS_SEGUIMIENTO.find((etapa) => etapa.id === filtro)?.nombre
   const indicaciones = {
     registrado: 'Enter sobre una especialidad asigna el siguiente turno.',
-    recibido: 'Enter sobre una especialidad recibe su siguiente turno pendiente.',
-    en_clinica: 'Enter sobre una especialidad elige su turno pendiente; luego pulse una clínica.',
+    en_clinica: 'Enter sobre una especialidad elige su turno registrado; luego pulse una clínica.',
     devuelto: 'Enter sobre una especialidad devuelve su siguiente turno en clínica.',
     archivo: 'Enter sobre una especialidad envía su siguiente turno devuelto al archivo.',
   }

@@ -94,7 +94,7 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     expect(detalle().getByText(/Clínica 3/)).toBeInTheDocument()
   }, 20000)
 
-  it('permite registrar sin clínica y mantener Recibido como paso aparte', async () => {
+  it('mantiene el flujo sin la etapa Recibido', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -108,14 +108,11 @@ describe('SeguimientoEnfermeriaDosPage', () => {
 
     expect(await screen.findByRole('button', { name: 'NEF-04, Registrado' })).toBeInTheDocument()
     expect(detalle().getByText(/sin asignar/)).toBeInTheDocument()
-
-    await user.click(screen.getByTestId('etapa-recibido'))
-    await user.click(screen.getByRole('button', { name: 'NEF-04, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'NEF-04, Recibido' })).toBeInTheDocument()
-    expect(detalle().getByText(/sin asignar/)).toBeInTheDocument()
+    expect(screen.queryByTestId('etapa-recibido')).not.toBeInTheDocument()
+    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('En clínica')
   }, 20000)
 
-  it('usa la clínica preasignada al pasar de Recibido a En clínica', async () => {
+  it('usa la clínica preasignada al pasar de Registrado a En clínica', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -127,12 +124,8 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     await user.keyboard('{Enter}')
     await screen.findByRole('button', { name: 'ONC-05, Registrado' })
 
-    await user.click(screen.getByTestId('etapa-recibido'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    await screen.findByRole('button', { name: 'ONC-05, Recibido' })
-
     await user.click(screen.getByTestId('etapa-en_clinica'))
-    await user.click(screen.getByRole('button', { name: 'ONC-05, Recibido' }))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
     expect(detalle().getByText(/Clínica 2/)).toBeInTheDocument()
   }, 20000)
