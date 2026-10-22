@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   avanzarTurno,
+  cambiarClinicaTurno,
   contarExpedientesEnClinica,
   etapaDesdeEstado,
+  listarAsignacionesClinicas,
   listarClinicas,
   obtenerLibro,
   registrarTurno,
@@ -57,6 +59,41 @@ describe('seguimientoApi', () => {
     expect(oncologia.turnos.find((item) => item.numero === 5)).toMatchObject({
       tipoRegistro: 'privado_libertad',
     })
+  })
+
+  it('asigna la clínica configurada al registrar y permite cambiarla antes de En clínica', async () => {
+    const conClinica = await registrarTurno({ codigo: 'ONC', numero: 5, espacioFisicoId: 2 })
+    expect(conClinica).toMatchObject({ clinicaId: 2, clinicaNombre: 'Clínica 2' })
+
+    await expect(
+      registrarTurno({ codigo: 'ONC', numero: 6, espacioFisicoId: 3 }),
+    ).rejects.toMatchObject({ status: 422 })
+
+    const medicina = await registrarTurno({ codigo: 'MI', numero: 39, espacioFisicoId: 1 })
+    const cambiado = await cambiarClinicaTurno(medicina.id, 3)
+    expect(cambiado).toMatchObject({ etapa: 'registrado', clinicaId: 3 })
+
+    await avanzarTurno(medicina.id)
+    await expect(cambiarClinicaTurno(medicina.id, 4)).resolves.toMatchObject({
+      etapa: 'recibido',
+      clinicaId: 4,
+    })
+    await avanzarTurno(medicina.id, { clinicaId: 4 })
+    await expect(cambiarClinicaTurno(medicina.id, 4)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('expone la asignación diaria de clínicas por especialidad', async () => {
+    const asignaciones = await listarAsignacionesClinicas()
+
+    const oncologia = asignaciones.find((item) =>
+      item.asignaciones.some((asignacion) => asignacion.especialidadId === 'ONC'),
+    )
+    expect(oncologia.espacioFisicoId).toBe(2)
+    expect(
+      asignaciones.some((item) =>
+        item.asignaciones.some((asignacion) => asignacion.especialidadId === 'NEF'),
+      ),
+    ).toBe(false)
   })
 
   it('traduce los estados del backend a las etapas visuales', () => {

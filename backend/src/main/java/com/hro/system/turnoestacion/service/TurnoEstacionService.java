@@ -12,6 +12,7 @@ import com.hro.system.common.BusinessException;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
 import com.hro.system.espacio.entity.EspacioFisico;
+import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.context.EstacionContexto;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
@@ -58,6 +59,7 @@ public class TurnoEstacionService {
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     private final EspecialidadRepository especialidadRepository;
     private final EspacioFisicoRepository espacioFisicoRepository;
+    private final AsignacionDiariaEspacioRepository asignacionDiariaEspacioRepository;
     private final MedicoRepository medicoRepository;
     private final PacienteRepository pacienteRepository;
     private final CitaRepository citaRepository;
@@ -145,6 +147,10 @@ public class TurnoEstacionService {
             }
         }
 
+        EspacioFisico espacio = dto.getEspacioFisicoId() != null
+                ? validarClinicaParaEspecialidad(dto.getEspacioFisicoId(), especialidad, dia)
+                : null;
+
         List<Object[]> filas = turnoRepository.asignarCorrelativos(
                 estacion.getId(), especialidad.getId(), dia);
         if (filas.isEmpty() || filas.getFirst().length < 2 || filas.getFirst()[0] == null) {
@@ -167,6 +173,9 @@ public class TurnoEstacionService {
                 .numeroExpediente(numeroExpediente)
                 .pacienteNombre(paciente != null ? nombreCompleto(paciente) : normalizar(dto.getPacienteNombre()))
                 .cita(cita)
+                .espacioFisico(espacio)
+                .asignadoPor(espacio != null ? usuario : null)
+                .asignadoEn(espacio != null ? OffsetDateTime.now() : null)
                 .registradoPor(usuario)
                 .registradoEn(OffsetDateTime.now())
                 .llamados(0)
@@ -177,8 +186,11 @@ public class TurnoEstacionService {
                 .build();
 
         TurnoEstacion guardado = turnoRepository.save(turno);
-        registrarMovimiento(guardado, null, EstadoTurnoEstacion.registrado, usuario, null,
-                "Turno registrado en estación " + estacion.getNombre());
+        String observacion = espacio != null
+                ? "Turno registrado en estación " + estacion.getNombre()
+                    + " con clínica destino " + espacio.getNumero()
+                : "Turno registrado en estación " + estacion.getNombre() + " sin clínica asignada";
+        registrarMovimiento(guardado, null, EstadoTurnoEstacion.registrado, usuario, null, observacion);
 
         log.info("Turno de estación {} creado: general={} especialidad={} {}",
                 guardado.getId(), numeroGeneral, especialidad.getNombre(), guardado.getCorrelativoEspecialidad());
@@ -221,6 +233,36 @@ public class TurnoEstacionService {
         turno.setAsignadoEn(OffsetDateTime.now());
         cambiarEstado(turno, EstadoTurnoEstacion.en_clinica, usuario, null,
                 "Paciente enviado a la clínica " + espacio.getNumero());
+        return toDTO(turno, true);
+    }
+
+    @Transactional
+    public TurnoEstacionResponseDTO cambiarClinica(UUID id, AsignarClinicaRequestDTO dto) {
+        TurnoEstacion turno = cargar(id);
+        validarAccesoEstacion(turno);
+        if (turno.getEstado() != EstadoTurnoEstacion.registrado
+                && turno.getEstado() != EstadoTurnoEstacion.recibido) {
+            throw new ConflictException("CAMBIO_CLINICA_NO_PERMITIDO",
+                    "Solo se puede asignar o cambiar la clínica antes de 'en_clinica'");
+        }
+        if (turno.getEspacioFisico() != null
+                && turno.getEspacioFisico().getId().equals(dto.getEspacioFisicoId())) {
+            return toDTO(turno, true);
+        }
+
+        EspacioFisico espacio = validarClinicaParaEspecialidad(
+                dto.getEspacioFisicoId(), turno.getEspecialidad(), turno.getFecha());
+        UsuarioReferencia usuario = usuarioActual();
+        String anterior = turno.getEspacioFisico() != null
+                ? turno.getEspacioFisico().getNumero() : "sin clínica";
+
+        turno.setEspacioFisico(espacio);
+        turno.setAsignadoPor(usuario);
+        turno.setAsignadoEn(OffsetDateTime.now());
+        turno.setActualizadoEn(OffsetDateTime.now());
+        turnoRepository.save(turno);
+        registrarMovimiento(turno, turno.getEstado(), turno.getEstado(), usuario, null,
+                "Clínica cambiada de " + anterior + " a " + espacio.getNumero());
         return toDTO(turno, true);
     }
 
@@ -640,6 +682,21 @@ public class TurnoEstacionService {
         log.info("Evento de llamado enviado al tablero: estación={} clínica={} turno={}",
                 turno.getEstacion().getId(), turno.getEspacioFisico().getNumero(),
                 turno.getNumeroGeneral());
+    }
+
+    private EspacioFisico validarClinicaParaEspecialidad(UUID espacioFisicoId,
+                                                         Especialidad especialidad,
+                                                         LocalDate fecha) {
+        EspacioFisico espacio = validarEspacioActivo(espacioFisicoId);
+        boolean asignada = asignacionDiariaEspacioRepository
+                .existsByEspacioFisicoIdAndFechaAndEspecialidadId(
+                        espacioFisicoId, fecha, especialidad.getId());
+        if (!asignada) {
+            throw new BusinessException("CLINICA_NO_ASIGNADA",
+                    "La clínica " + espacio.getNumero() + " no está asignada a la especialidad "
+                            + especialidad.getNombre() + " para la fecha " + fecha);
+        }
+        return espacio;
     }
 
     private EspacioFisico validarEspacioActivo(UUID espacioFisicoId) {

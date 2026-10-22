@@ -80,6 +80,23 @@ export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => ({
   nombre: `Clínica ${id}`,
 }))
 
+// Configuración simulada de clínica por especialidad para el modo demo.
+const CLINICAS_POR_ESPECIALIDAD_MOCK = {
+  MI: [1, 2, 3, 4, 5, 6, 7, 8],
+  ONC: [2],
+  NEU: [3, 4],
+  NEF: [],
+  END: [1, 2],
+  INF: [2, 3],
+  REU: [4],
+  DER: [5],
+  NEM: [1, 2, 3, 4, 5, 6],
+  DOL: [3],
+  GAS: [4],
+  NUT: [5],
+  MUJ: [1],
+}
+
 const LIMITES_SEMILLA = [38, 4, 2, 3, 7, 4, 2, 3, 0, 5, 7, 2, 8]
 
 let turnos = new Map()
@@ -277,6 +294,30 @@ export async function obtenerLibro(estacionId, fecha = hoyIso()) {
   }
 }
 
+/** Asignación diaria de clínicas por especialidad (vista del jefe de enfermería). */
+export async function listarAsignacionesClinicas(fecha = hoyIso()) {
+  if (USE_MOCK) {
+    await esperar()
+    return CLINICAS_SEGUIMIENTO.map((clinica) => ({
+      espacioFisicoId: clinica.id,
+      numero: String(clinica.id),
+      asignaciones: ESPECIALIDADES_SEGUIMIENTO.filter((especialidad) =>
+        (CLINICAS_POR_ESPECIALIDAD_MOCK[especialidad.codigo] ?? [])
+          .map(String)
+          .includes(String(clinica.id)),
+      ).map((especialidad) => ({
+        especialidadId: especialidad.id,
+        especialidadNombre: especialidad.nombre,
+      })),
+    }))
+  }
+
+  const vista = desenvolver(
+    await leerConReintento('/asignaciones-diarias/vista', { params: { fecha } }),
+  )
+  return Array.isArray(vista) ? vista : []
+}
+
 export async function listarClinicas() {
   if (USE_MOCK) {
     await esperar()
@@ -306,6 +347,7 @@ export async function registrarTurno({
   tipoRegistro,
   estacionId,
   especialidadId,
+  espacioFisicoId,
   fecha = hoyIso(),
 } = {}) {
   if (USE_MOCK) {
@@ -321,6 +363,12 @@ export async function registrarTurno({
       throw crearError('El correlativo ya está registrado', 409)
     }
 
+    const clinicasValidas = (CLINICAS_POR_ESPECIALIDAD_MOCK[especialidad.codigo] ?? []).map(String)
+    if (espacioFisicoId != null && !clinicasValidas.includes(String(espacioFisicoId))) {
+      throw crearError('La clínica no está asignada a la especialidad', 422)
+    }
+    const clinica = CLINICAS_SEGUIMIENTO.find((item) => String(item.id) === String(espacioFisicoId))
+
     const turno = {
       id: clave(codigo, correlativo),
       especialidadId: codigo,
@@ -328,8 +376,8 @@ export async function registrarTurno({
       numero: correlativo,
       etapa: 'registrado',
       estadoBackend: 'registrado',
-      clinicaId: null,
-      clinicaNombre: null,
+      clinicaId: clinica?.id ?? null,
+      clinicaNombre: clinica?.nombre ?? null,
       tipoRegistro: normalizarTipoRegistro(tipoRegistro),
       registradoEn: new Date().toISOString(),
     }
@@ -347,6 +395,7 @@ export async function registrarTurno({
     especialidadId,
     fecha,
     tipoRegistro: tipo,
+    espacioFisicoId,
   })
   const turno = {
     ...normalizarTurno(desenvolver(respuesta), { codigo }),
@@ -413,6 +462,33 @@ export async function avanzarTurno(id, { clinicaId, estadoBackend, observacion }
 
   const { ruta, cuerpo } = rutaSiguiente(estadoBackend, clinicaId, observacion)
   const respuesta = await client.post(`/turnos-estacion/${id}/${ruta}`, cuerpo)
+  return normalizarTurno(desenvolver(respuesta))
+}
+
+/** Asigna o cambia la clínica sin avanzar el estado (solo registrado/recibido). */
+export async function cambiarClinicaTurno(id, espacioFisicoId) {
+  if (USE_MOCK) {
+    await esperar()
+    const turno = turnos.get(id)
+    if (!turno) throw crearError('Turno no encontrado', 404)
+    if (turno.etapa !== 'registrado' && turno.etapa !== 'recibido') {
+      throw crearError('Solo se puede cambiar la clínica antes de En clínica', 409)
+    }
+    const especialidad = buscarEspecialidad(turno.codigo)
+    const clinicasValidas = (CLINICAS_POR_ESPECIALIDAD_MOCK[especialidad?.codigo] ?? []).map(String)
+    if (!clinicasValidas.includes(String(espacioFisicoId))) {
+      throw crearError('La clínica no está asignada a la especialidad', 422)
+    }
+    const clinica = CLINICAS_SEGUIMIENTO.find((item) => String(item.id) === String(espacioFisicoId))
+    turno.clinicaId = clinica?.id ?? null
+    turno.clinicaNombre = clinica?.nombre ?? null
+    turno.actualizadoEn = new Date().toISOString()
+    return copiarTurno(turno)
+  }
+
+  const respuesta = await client.put(`/turnos-estacion/${id}/clinica`, {
+    espacioFisicoId,
+  })
   return normalizarTurno(desenvolver(respuesta))
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   avanzarTurno,
+  cambiarClinicaTurno,
   contarExpedientesEnClinica,
   listarClinicas,
   obtenerLibro,
@@ -171,7 +172,27 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     [cargar, encolar],
   )
 
+  const cambiarClinica = useCallback(
+    async (id, espacioFisicoId) => {
+      const turno = await encolar(id, () => cambiarClinicaTurno(id, espacioFisicoId))
+      setLibro((actual) => reemplazarTurno(actual, turno))
+      cargar({ silencioso: true })
+      return turno
+    },
+    [cargar, encolar],
+  )
+
   const recargar = useCallback(() => cargar(), [cargar])
 
-  return { libro, clinicas, cargando, error, recargar, registrar, avanzar, revertir }
+  return {
+    libro,
+    clinicas,
+    cargando,
+    error,
+    recargar,
+    registrar,
+    avanzar,
+    revertir,
+    cambiarClinica,
+  }
 }

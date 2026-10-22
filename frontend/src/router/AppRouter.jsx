@@ -10,6 +10,7 @@ import RegistroCarnetsPage from '@/modules/archivo/pages/RegistroCarnetsPage.jsx
 import LibroCitasPage from '@/modules/libroCitas/pages/LibroCitasPage.jsx'
 import EnfermeriaPage from '@/modules/enfermeria/pages/EnfermeriaPage.jsx'
 import SeguimientoEnfermeriaPage from '@/modules/enfermeria/pages/SeguimientoEnfermeriaPage.jsx'
+import SeguimientoEnfermeriaDosPage from '@/modules/enfermeria/pages/SeguimientoEnfermeriaDosPage.jsx'
 import SeleccionEstacionPage from '@/modules/enfermeria/pages/SeleccionEstacionPage.jsx'
 import SesionCerradaPage from '@/modules/enfermeria/pages/SesionCerradaPage.jsx'
 import LoginPage from '@/modules/login/pages/LoginPage.jsx'
@@ -73,6 +74,7 @@ export default function AppRouter() {
           <Route path="/seleccion-estacion" element={<SeleccionEstacionPage />} />
           <Route path="/enfermeria/carnets" element={<RegistroCarnetsPage />} />
           <Route path="/seguimiento-enfermeria" element={<SeguimientoEnfermeriaPage />} />
+          <Route path="/seguimiento-enfermeria-dos" element={<SeguimientoEnfermeriaDosPage />} />
           <Route
             path="/enfermeria"
             element={

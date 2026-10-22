@@ -12,7 +12,9 @@ import com.hro.system.clinica.entity.Especialidad;
 import com.hro.system.clinica.entity.Subespecialidad;
 import com.hro.system.clinica.repository.EspecialidadRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
+import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
+import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
@@ -46,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,6 +72,7 @@ class TurnoEstacionCircuitoTest {
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private SubespecialidadRepository subespecialidadRepository;
     @Autowired private EspacioFisicoRepository espacioFisicoRepository;
+    @Autowired private AsignacionDiariaEspacioRepository asignacionDiariaEspacioRepository;
     @Autowired private MedicoRepository medicoRepository;
     @Autowired private PacienteRepository pacienteRepository;
     @Autowired private UsuarioReferenciaRepository usuarioRepository;
@@ -124,6 +128,13 @@ class TurnoEstacionCircuitoTest {
                 .nivel((short) 1)
                 .nombre("Consultorio " + suffix)
                 .activo(true)
+                .build());
+
+        asignacionDiariaEspacioRepository.save(AsignacionDiariaEspacio.builder()
+                .espacioFisico(espacio)
+                .subespecialidad(subespecialidad)
+                .fecha(HOY)
+                .creadoPor(setup)
                 .build());
 
         Medico medico = medicoRepository.save(Medico.builder()
@@ -306,6 +317,73 @@ class TurnoEstacionCircuitoTest {
                 .andExpect(jsonPath("$.data.especialidades[0].registrados").value(1))
                 .andExpect(jsonPath("$.data.especialidades[0].turnos[0].codigo").value("MI1"))
                 .andExpect(jsonPath("$.data.resumen.archivado").value(1));
+    }
+
+    @Test
+    @DisplayName("Registra con clínica y permite cambiarla antes de En clínica")
+    void registraConClinicaYCambiaAntesDeEnClinica() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String usuario = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+
+        EspacioFisico otraClinica = espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("C2-" + suffix)
+                .nivel((short) 1)
+                .nombre("Consultorio alterno " + suffix)
+                .activo(true)
+                .build());
+        asignacionDiariaEspacioRepository.save(AsignacionDiariaEspacio.builder()
+                .espacioFisico(otraClinica)
+                .subespecialidad(contexto.subespecialidad())
+                .fecha(HOY)
+                .creadoPor(contexto.setup())
+                .build());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("estacionId", contexto.estacion().getId());
+        body.put("especialidadId", contexto.especialidad().getId());
+        body.put("fecha", HOY.toString());
+        body.put("espacioFisicoId", contexto.espacio().getId().toString());
+
+        String creado = mockMvc.perform(auth(post("/turnos-estacion"), "enfermeria", usuario,
+                        contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.estado").value("registrado"))
+                .andExpect(jsonPath("$.data.espacioFisicoId").value(contexto.espacio().getId().toString()))
+                .andReturn().getResponse().getContentAsString();
+        UUID turnoId = UUID.fromString(objectMapper.readTree(creado).get("data").get("id").asText());
+
+        mockMvc.perform(auth(put("/turnos-estacion/" + turnoId + "/clinica"),
+                        "enfermeria", usuario, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", otraClinica.getId().toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("registrado"))
+                .andExpect(jsonPath("$.data.espacioFisicoId").value(otraClinica.getId().toString()));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("recibido"))
+                .andExpect(jsonPath("$.data.espacioFisicoId").value(otraClinica.getId().toString()));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/asignar-clinica"),
+                        "enfermeria", usuario, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", otraClinica.getId().toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("en_clinica"));
+
+        mockMvc.perform(auth(put("/turnos-estacion/" + turnoId + "/clinica"),
+                        "enfermeria", usuario, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", contexto.espacio().getId().toString()))))
+                .andExpect(status().isConflict());
     }
 
     @Test

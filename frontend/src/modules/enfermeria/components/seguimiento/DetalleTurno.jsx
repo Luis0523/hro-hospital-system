@@ -26,7 +26,12 @@ function puedeRevertirTurno(turno) {
 }
 
 // Resumen compacto del turno asignado, su historial y la reversión de estado.
-export default function DetalleTurno({ seleccion, especialidadNombre, onRevertir }) {
+export default function DetalleTurno({
+  seleccion,
+  especialidadNombre,
+  onRevertir,
+  onCambiarClinica,
+}) {
   const [historialAbierto, setHistorialAbierto] = useState(false)
   const [historial, setHistorial] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
@@ -90,6 +95,9 @@ export default function DetalleTurno({ seleccion, especialidadNombre, onRevertir
     (turno?.clinicaNumero ? `Clínica ${turno.clinicaNumero}` : null) ??
     'sin asignar'
   const mostrarRevertir = puedeRevertirTurno(turno) && Boolean(onRevertir)
+  const estadoTurno = turno?.estadoBackend ?? turno?.etapa
+  const mostrarCambiarClinica =
+    Boolean(onCambiarClinica) && ['registrado', 'recibido'].includes(estadoTurno)
 
   return (
     <div
@@ -113,6 +121,12 @@ export default function DetalleTurno({ seleccion, especialidadNombre, onRevertir
         </span>
 
         <div className="ml-auto flex items-center gap-1">
+          {mostrarCambiarClinica && (
+            <Button variant="secondary" size="sm" onClick={onCambiarClinica}>
+              <Icon name="swap_horiz" className="text-[16px]" />
+              Cambiar clínica
+            </Button>
+          )}
           {mostrarRevertir && (
             <Button variant="secondary" size="sm" onClick={onRevertir}>
               <Icon name="undo" className="text-[16px]" />

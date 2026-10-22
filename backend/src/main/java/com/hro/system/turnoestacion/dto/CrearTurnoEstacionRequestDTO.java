@@ -24,6 +24,9 @@ public class CrearTurnoEstacionRequestDTO {
 
     private LocalDate fecha;
 
+    /** Clínica destino opcional. Se puede asignar después si no viene. */
+    private UUID espacioFisicoId;
+
     private UUID pacienteId;
 
     @Size(max = 30, message = "El número de expediente no puede superar 30 caracteres")

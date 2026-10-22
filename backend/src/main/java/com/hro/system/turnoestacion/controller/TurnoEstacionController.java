@@ -72,6 +72,16 @@ public class TurnoEstacionController {
                 turnoEstacionService.asignarClinica(id, dto), "Clínica asignada"));
     }
 
+    @PutMapping("/{id}/clinica")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Asignar o cambiar clínica sin avanzar de estado",
+            description = "Permitido en registrado/recibido. Valida que la clínica esté asignada a la especialidad en la fecha.")
+    public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> cambiarClinica(
+            @PathVariable UUID id, @Valid @RequestBody AsignarClinicaRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.cambiarClinica(id, dto), "Clínica actualizada"));
+    }
+
     @PostMapping("/{id}/vincular-expediente")
     @PreAuthorize("hasAnyRole('medico', 'administrador')")
     @Operation(summary = "Vincular expediente (médico)",
