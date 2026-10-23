@@ -16,6 +16,8 @@ import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
 import com.hro.system.reporte.PlantillaReportePdf;
+import com.hro.system.turnoestacion.entity.TurnoEstacion;
+import com.hro.system.turnoestacion.repository.TurnoEstacionRepository;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.UUID;
 
@@ -48,6 +52,7 @@ public class SalidaEnfermeriaArchivoService {
     private final EspacioFisicoRepository espacioFisicoRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ExpedienteHroService expedienteHroService;
+    private final TurnoEstacionRepository turnoEstacionRepository;
     private final PlantillaReportePdf plantilla;
 
     @Transactional
@@ -126,6 +131,15 @@ public class SalidaEnfermeriaArchivoService {
         List<SalidaEnfermeriaArchivo> lista = repository
                 .findByFechaAndEstacionIdOrderByRegistradoEnDesc(fecha, estacion);
 
+        Map<String, String> especialidades = turnoEstacionRepository
+                .findByFechaAndEstacionIdAndActivoTrueOrderByNumeroGeneralAsc(fecha, estacion).stream()
+                .filter(turno -> turno.getNumeroExpediente() != null
+                        && turno.getEspecialidad() != null)
+                .collect(Collectors.toMap(
+                        TurnoEstacion::getNumeroExpediente,
+                        turno -> turno.getEspecialidad().getNombre(),
+                        (anterior, actual) -> actual));
+
         List<List<String>> filas = new ArrayList<>();
         int indice = 1;
         for (SalidaEnfermeriaArchivo salida : lista) {
@@ -133,6 +147,7 @@ public class SalidaEnfermeriaArchivoService {
                     String.valueOf(indice++),
                     salida.getNumeroExpediente(),
                     salida.getPacienteNombre(),
+                    especialidades.getOrDefault(salida.getNumeroExpediente(), ""),
                     etiquetaTipo(salida.getTipo()),
                     Boolean.TRUE.equals(salida.getPrimeraVez()) ? "Sí" : "No",
                     salida.getClinicaPersonal() != null ? salida.getClinicaPersonal().getNombre() : "",
@@ -168,8 +183,9 @@ public class SalidaEnfermeriaArchivoService {
         return List.of(
                 new PlantillaReportePdf.Columna("#", 0.5f, PlantillaReportePdf.Alineacion.CENTRO),
                 new PlantillaReportePdf.Columna("Expediente", 1.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
-                new PlantillaReportePdf.Columna("Paciente", 2.4f, PlantillaReportePdf.Alineacion.IZQUIERDA),
-                new PlantillaReportePdf.Columna("Etiqueta", 1.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Paciente", 2.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Especialidad", 1.3f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Etiqueta", 1.1f, PlantillaReportePdf.Alineacion.IZQUIERDA),
                 new PlantillaReportePdf.Columna("Primera vez", 0.9f, PlantillaReportePdf.Alineacion.CENTRO),
                 new PlantillaReportePdf.Columna("Clínica", 1.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
                 new PlantillaReportePdf.Columna("Hora", 0.8f, PlantillaReportePdf.Alineacion.CENTRO));
