@@ -140,14 +140,19 @@ public class SalidaEnfermeriaArchivoService {
                         turno -> turno.getEspecialidad().getNombre(),
                         (anterior, actual) -> actual));
 
+        String areaPredeterminada = nvl(estacionEntidad.getNombre());
         List<List<String>> filas = new ArrayList<>();
         int indice = 1;
         for (SalidaEnfermeriaArchivo salida : lista) {
+            String area = especialidades.get(salida.getNumeroExpediente());
+            if (area == null || area.isBlank()) {
+                area = areaPredeterminada;
+            }
             filas.add(List.of(
                     String.valueOf(indice++),
                     salida.getNumeroExpediente(),
                     salida.getPacienteNombre(),
-                    especialidades.getOrDefault(salida.getNumeroExpediente(), ""),
+                    area,
                     etiquetaTipo(salida.getTipo()),
                     Boolean.TRUE.equals(salida.getPrimeraVez()) ? "Sí" : "No",
                     salida.getClinicaPersonal() != null ? salida.getClinicaPersonal().getNombre() : "",
