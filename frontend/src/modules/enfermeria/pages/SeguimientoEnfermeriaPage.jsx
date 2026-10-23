@@ -78,6 +78,7 @@ export default function SeguimientoEnfermeriaPage() {
   const [focoEspecialidad, setFocoEspecialidad] = useState({ id: null, token: 0 })
   const [correlativoModal, setCorrelativoModal] = useState(null)
   const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
+  const [flujoArchivoAbierto, setFlujoArchivoAbierto] = useState(false)
   const dobleEnterRef = useRef(null)
 
   useEffect(() => {
@@ -632,10 +633,22 @@ export default function SeguimientoEnfermeriaPage() {
         ) : filtro === 'archivo' ? (
           <div className="grid gap-3 lg:grid-cols-[130px_minmax(0,1fr)]">
             <aside className="space-y-1.5 md:-ml-2">
-              <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                Flujo de seguimiento
-              </h2>
-              <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                  Flujo de seguimiento
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setFlujoArchivoAbierto((valor) => !valor)}
+                  aria-expanded={flujoArchivoAbierto}
+                  className="rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1 text-label-sm font-semibold text-on-surface-variant md:hidden"
+                >
+                  {flujoArchivoAbierto ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+              <div className={flujoArchivoAbierto ? 'block' : 'hidden md:block'}>
+                <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+              </div>
             </aside>
             <SalidaEnfermeriaArchivo estacionId={estacion?.id} fecha={fecha} clinicas={clinicas} />
           </div>

@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -111,6 +112,15 @@ class SalidaEnfermeriaArchivoTest {
                         .header("X-Usuario-Nombre", "Enfermería")
                         .content(body(normal, "normal")))
                 .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/salidas-enfermeria-archivo/pdf")
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .param("fecha", fecha.toString())
+                        .param("estacionId", String.valueOf(estacion.getId())))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
     }
 
     @Test

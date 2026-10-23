@@ -120,6 +120,9 @@ public class SalidaEnfermeriaArchivoService {
         if (estacion == null) {
             throw new BusinessException("Seleccione la estación para generar el reporte.");
         }
+        EstacionEnfermeria estacionEntidad = estacionRepository.findById(estacion)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EstacionEnfermeria", "id", estacion));
         List<SalidaEnfermeriaArchivo> lista = repository
                 .findByFechaAndEstacionIdOrderByRegistradoEnDesc(fecha, estacion);
 
@@ -136,12 +139,12 @@ public class SalidaEnfermeriaArchivoService {
                     formatearHora(salida.getRegistradoEn())));
         }
 
-        String estacionTxt = lista.stream().findFirst()
-                .map(s -> s.getEstacion() != null ? s.getEstacion().getNombre() : "")
-                .orElse("");
+        String estacionTxt = (estacionEntidad.getCodigo() != null
+                ? estacionEntidad.getCodigo() + " · " : "")
+                + nvl(estacionEntidad.getNombre());
         PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
                 "CONTROL DE SALIDA DE ENFERMERÍA A ARCHIVO",
-                "Enfermería -> Archivo" + (estacionTxt.isBlank() ? "" : " · " + estacionTxt),
+                "Enfermería -> Archivo · Estación: " + estacionTxt,
                 "SALENF-" + fecha.format(DateTimeFormatter.ofPattern("yyyyMMdd")),
                 fecha,
                 OffsetDateTime.now(ZONA_HORARIA),
