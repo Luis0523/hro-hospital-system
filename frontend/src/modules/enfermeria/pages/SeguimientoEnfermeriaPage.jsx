@@ -7,6 +7,7 @@ import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
 import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.jsx'
 import DevolucionesClinicas from '../components/seguimiento/DevolucionesClinicas.jsx'
+import SalidaEnfermeriaArchivo from '../components/seguimiento/SalidaEnfermeriaArchivo.jsx'
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
 import EtapasSeguimiento from '../components/seguimiento/EtapasSeguimiento.jsx'
 import LibroSeguimiento from '../components/seguimiento/LibroSeguimiento.jsx'
@@ -447,7 +448,7 @@ export default function SeguimientoEnfermeriaPage() {
     setFiltro(nuevo)
     setTipoRegistro(null)
     if (nuevo !== 'en_clinica') setClinicaDestino(null)
-    if (nuevo === 'devuelto') setSeleccion(null)
+    if (nuevo === 'devuelto' || nuevo === 'archivo') setSeleccion(null)
     enfocarEspecialidad(filas[0]?.id)
   }
 
@@ -628,6 +629,16 @@ export default function SeguimientoEnfermeriaPage() {
             title="Seleccione una estación"
             description="Elija la estación de enfermería desde la cual se está abriendo esta jornada."
           />
+        ) : filtro === 'archivo' ? (
+          <div className="grid gap-3 lg:grid-cols-[130px_minmax(0,1fr)]">
+            <aside className="space-y-1.5 md:-ml-2">
+              <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                Flujo de seguimiento
+              </h2>
+              <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+            </aside>
+            <SalidaEnfermeriaArchivo estacionId={estacion?.id} fecha={fecha} clinicas={clinicas} />
+          </div>
         ) : filtro === 'devuelto' ? (
           <div className="grid gap-3 lg:grid-cols-[130px_minmax(0,1fr)]">
             <aside className="space-y-1.5 md:-ml-2">

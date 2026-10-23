@@ -219,6 +219,22 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
   }, 20000)
 
+  it('en modo Archivo oculta las casillas y muestra la salida a Archivo', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-archivo'))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Salida de Enfermería a Archivo' }),
+    ).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Escriba o escanee el expediente')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^ONC-05,/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Personal' }))
+    expect(screen.getByRole('combobox', { name: /clínica/i })).toBeInTheDocument()
+  })
+
   it('filtra por etapa sin controles de búsqueda ni registro', async () => {
     const user = userEvent.setup()
     renderPagina()
