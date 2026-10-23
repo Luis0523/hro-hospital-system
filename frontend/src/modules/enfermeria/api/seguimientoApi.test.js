@@ -150,6 +150,16 @@ describe('seguimientoApi', () => {
     expect(clinicas.map((clinica) => clinica.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
   })
 
+  it('filtra clínicas por nivel según la estación', async () => {
+    const estacion1 = await listarClinicas({ estacionId: 1 })
+    const estacion3 = await listarClinicas({ estacionId: 3 })
+
+    expect(estacion1.length).toBeGreaterThan(0)
+    expect(estacion1.every((clinica) => clinica.nivel === 2)).toBe(true)
+    expect(estacion3.length).toBeGreaterThan(0)
+    expect(estacion3.every((clinica) => clinica.nivel === 1)).toBe(true)
+  })
+
   it('cuenta los expedientes que permanecen en cada clínica', async () => {
     const antes = await listarClinicas()
     const clinica3 = antes.find((clinica) => clinica.id === 3)

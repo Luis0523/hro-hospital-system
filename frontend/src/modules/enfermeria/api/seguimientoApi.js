@@ -78,7 +78,24 @@ export const ESPECIALIDADES_SEGUIMIENTO = [
 export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => ({
   id,
   nombre: `Clínica ${id}`,
+  nivel: id <= 4 ? 2 : 1,
 }))
+
+// Estaciones 1 y 2 trabajan con clínicas del nivel 2; las estaciones 3, 4 y 5
+// con las del nivel 1.
+const NIVEL_CLINICAS_POR_ESTACION = new Map([
+  [1, 2],
+  [2, 2],
+  [3, 1],
+  [4, 1],
+  [5, 1],
+])
+
+function filtrarClinicasPorNivel(clinicas, estacionId) {
+  const nivel = NIVEL_CLINICAS_POR_ESTACION.get(Number(estacionId))
+  if (!nivel) return clinicas
+  return clinicas.filter((clinica) => Number(clinica.nivel) === nivel)
+}
 
 // Configuración simulada de clínica por especialidad para el modo demo.
 const CLINICAS_POR_ESPECIALIDAD_MOCK = {
@@ -352,7 +369,10 @@ function resumenClinicaMock(clinica, fecha) {
 export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
   if (USE_MOCK) {
     await esperar()
-    return CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha))
+    return filtrarClinicasPorNivel(
+      CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha)),
+      estacionId,
+    )
   }
 
   const resumen = desenvolver(
@@ -360,17 +380,20 @@ export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
       params: { fecha, estacionId },
     }),
   )
-  return (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
-    id: clinica.espacioFisicoId,
-    numero: clinica.numero,
-    nivel: clinica.nivel,
-    nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
-    asignados: Number(clinica.asignados ?? 0),
-    devueltos: Number(clinica.devueltos ?? 0),
-    presentaciones: Number(clinica.presentaciones ?? 0),
-    expedientesEnClinica: Number(clinica.pendientes ?? 0),
-    ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
-  }))
+  return filtrarClinicasPorNivel(
+    (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
+      id: clinica.espacioFisicoId,
+      numero: clinica.numero,
+      nivel: clinica.nivel,
+      nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
+      asignados: Number(clinica.asignados ?? 0),
+      devueltos: Number(clinica.devueltos ?? 0),
+      presentaciones: Number(clinica.presentaciones ?? 0),
+      expedientesEnClinica: Number(clinica.pendientes ?? 0),
+      ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
+    })),
+    estacionId,
+  )
 }
 
 export async function registrarDevolucionClinica({
