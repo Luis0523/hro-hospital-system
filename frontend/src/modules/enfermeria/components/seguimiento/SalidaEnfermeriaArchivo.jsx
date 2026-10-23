@@ -3,6 +3,7 @@ import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { formatearExpediente } from '@/shared/utils/expediente'
 import { descargarBlob } from '@/modules/archivo/utils/descargarBlob'
+import ModalGenerandoPdf from './ModalGenerandoPdf.jsx'
 import {
   descargarSalidasEnfermeriaArchivoPdf,
   listarSalidasEnfermeriaArchivo,
@@ -48,6 +49,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [progresoPdf, setProgresoPdf] = useState(0)
 
   async function cargar() {
     if (!estacionId) {
@@ -124,18 +126,49 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
   }
 
   async function descargarPdf() {
+    if (generandoPdf) return
     setGenerandoPdf(true)
+    setProgresoPdf(0)
+
+    const inicio = Date.now()
+    const simulacionMs = 2400
+    const maximoMs = 12000
+    const progresoTimer = setInterval(() => {
+      const transcurrido = Date.now() - inicio
+      const objetivo = Math.min(92, Math.round((transcurrido / simulacionMs) * 92))
+      setProgresoPdf((actual) => Math.max(actual, objetivo))
+    }, 50)
+
+    let timeoutId = null
     try {
-      const blob = await descargarSalidasEnfermeriaArchivoPdf({ fecha, estacionId })
-      if (blob) descargarBlob(blob, `salida-enfermeria-archivo-${fecha}.pdf`)
+      const timeout = new Promise((_, rechazar) => {
+        timeoutId = setTimeout(
+          () => rechazar(new Error('La generación del documento tardó demasiado.')),
+          maximoMs,
+        )
+      })
+      const [blob] = await Promise.all([
+        Promise.race([descargarSalidasEnfermeriaArchivoPdf({ fecha, estacionId }), timeout]),
+        new Promise((resolver) => setTimeout(resolver, simulacionMs)),
+      ])
+      clearInterval(progresoTimer)
+      setProgresoPdf(100)
+      if (blob) {
+        descargarBlob(blob, `salida-enfermeria-archivo-${fecha}.pdf`)
+      }
+      await new Promise((resolver) => setTimeout(resolver, 450))
     } catch (fallo) {
+      clearInterval(progresoTimer)
       mostrarToast({
         tone: 'error',
         title: 'No se pudo generar el reporte',
         message: fallo?.message,
       })
     } finally {
+      clearInterval(progresoTimer)
+      if (timeoutId) clearTimeout(timeoutId)
       setGenerandoPdf(false)
+      setProgresoPdf(0)
     }
   }
 
@@ -401,6 +434,8 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
           </>
         )}
       </div>
+
+      <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </section>
   )
 }
