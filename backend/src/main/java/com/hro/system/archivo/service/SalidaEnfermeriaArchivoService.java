@@ -140,7 +140,7 @@ public class SalidaEnfermeriaArchivoService {
                         turno -> turno.getEspecialidad().getNombre(),
                         (anterior, actual) -> actual));
 
-        String areaPredeterminada = nvl(estacionEntidad.getNombre());
+        String areaPredeterminada = areaDesdeEstacion(estacionEntidad);
         List<List<String>> filas = new ArrayList<>();
         int indice = 1;
         for (SalidaEnfermeriaArchivo salida : lista) {
@@ -222,6 +222,11 @@ public class SalidaEnfermeriaArchivoService {
             throw new BusinessException("TIPO_SALIDA_INVALIDO", "Tipo de salida inválido: " + valor);
         }
         return tipo;
+    }
+
+    private static String areaDesdeEstacion(EstacionEnfermeria estacion) {
+        String nombre = nvl(estacion.getNombre());
+        return nombre.replaceFirst("(?i)^consulta externa\s*[-–]\s*", "").trim();
     }
 
     private static String etiquetaTipo(String tipo) {
