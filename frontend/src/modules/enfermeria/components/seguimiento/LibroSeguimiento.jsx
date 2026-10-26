@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/shared/components/ui'
 import { ETAPA_PREVIA, ETAPAS_SEGUIMIENTO } from '../../api/seguimientoApi'
 import SelectorTipoRegistro from './SelectorTipoRegistro'
@@ -17,6 +17,7 @@ function CasillaTurno({
   filtro,
   onSeleccionar,
   casillaRef,
+  accesible = false,
 }) {
   const estilo = estiloDeEtapa(turno?.etapa)
   const brillo = estiloRegistro(turno)
@@ -38,7 +39,9 @@ function CasillaTurno({
       }`}
       aria-pressed={seleccionada}
       onClick={() => onSeleccionar(especialidadId, codigo, numero)}
-      className={`relative h-8 w-8 rounded-md border text-label-sm font-bold transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${estilo.borde} ${estilo.fondo} ${estilo.texto} ${brillo} ${
+      className={`relative rounded-md border font-bold transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
+        accesible ? 'h-11 w-11 text-title-sm' : 'h-8 w-8 text-label-sm'
+      } ${estilo.borde} ${estilo.fondo} ${estilo.texto} ${brillo} ${
         seleccionada
           ? 'z-10 outline outline-4 outline-offset-2 outline-indigo-600 ring-2 ring-indigo-500/60 dark:outline-indigo-400 dark:ring-indigo-400/50'
           : ''
@@ -71,17 +74,51 @@ export default function LibroSeguimiento({
   detalle = null,
 }) {
   const primeraCasillaRef = useRef(null)
+  const [rangoInicio, setRangoInicio] = useState(null)
+  const [accesible, setAccesible] = useState(() => {
+    try {
+      return localStorage.getItem('hro_seguimiento_accesible') === 'true'
+    } catch {
+      return false
+    }
+  })
   const nombreFiltro = ETAPAS_SEGUIMIENTO.find((etapa) => etapa.id === filtro)?.nombre
   const indicaciones = {
     registrado: 'Enter sobre una especialidad asigna el siguiente turno.',
-    en_clinica: 'Enter sobre una especialidad elige su turno registrado; luego pulse una clínica.',
+    en_clinica:
+      'Enter sobre una especialidad elige su turno; se usa la clínica ya asignada o la seleccionada.',
     devuelto: 'Enter sobre una especialidad devuelve su siguiente turno en clínica.',
     archivo: 'Enter sobre una especialidad envía su siguiente turno devuelto al archivo.',
   }
   const hint = nombreFiltro
     ? `Modo ${nombreFiltro}: ${indicaciones[filtro]}`
     : 'Elija una etapa. Use ↑/↓ entre especialidades y Enter para ejecutar.'
-  const primerVacio = filas
+  useEffect(() => {
+    try {
+      localStorage.setItem('hro_seguimiento_accesible', String(accesible))
+    } catch {
+      // sin storage: se ignora
+    }
+  }, [accesible])
+
+  const maximoGeneral = Math.max(0, ...filas.map((fila) => fila.maximo ?? 0))
+  const tamanosRango = [20, 40, 60, 80, 100, 120, 150, 200]
+  const rangoMaximo = tamanosRango.find((limite) => maximoGeneral <= limite) ?? maximoGeneral
+  const rangos = []
+  for (let inicio = 1; inicio <= maximoGeneral; inicio += rangoMaximo) {
+    rangos.push({ inicio, fin: Math.min(inicio + rangoMaximo - 1, maximoGeneral) })
+  }
+  const rangoActivo = rangos.find((rango) => rango.inicio === rangoInicio) ?? null
+  const filasVisibles = filas.map((fila) => ({
+    ...fila,
+    slots: rangoActivo
+      ? fila.slots.filter(
+          (slot) => slot.numero >= rangoActivo.inicio && slot.numero <= rangoActivo.fin,
+        )
+      : fila.slots,
+  }))
+
+  const primerVacio = filasVisibles
     .flatMap((fila) =>
       fila.slots
         .filter((slot) => !slot.turno)
@@ -118,8 +155,11 @@ export default function LibroSeguimiento({
         .closest('section')
         ?.querySelectorAll('[data-especialidad-header="true"]') ?? [],
     )
+    if (cabeceras.length === 0) return
     const indice = cabeceras.indexOf(evento.currentTarget)
-    const destino = cabeceras[indice + (evento.key === 'ArrowDown' ? 1 : -1)]
+    const delta = evento.key === 'ArrowDown' ? 1 : -1
+    const siguiente = (indice + delta + cabeceras.length) % cabeceras.length
+    const destino = cabeceras[siguiente]
     destino?.focus()
     destino?.scrollIntoView?.({ block: 'nearest' })
   }
@@ -127,6 +167,51 @@ export default function LibroSeguimiento({
   return (
     <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-card">
       <div className="border-b border-outline-variant p-4">{detalle}</div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant bg-surface-container-low px-4 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            Rango
+          </span>
+          <button
+            type="button"
+            onClick={() => setRangoInicio(null)}
+            aria-pressed={rangoInicio === null}
+            className={`rounded-md border px-2 py-1 text-label-sm font-semibold transition ${
+              rangoInicio === null
+                ? 'border-primary bg-primary text-on-primary'
+                : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary'
+            }`}
+          >
+            Todos
+          </button>
+          {rangos.map((rango) => (
+            <button
+              key={rango.inicio}
+              type="button"
+              onClick={() => setRangoInicio(rango.inicio)}
+              aria-pressed={rangoInicio === rango.inicio}
+              className={`rounded-md border px-2 py-1 text-label-sm font-semibold transition ${
+                rangoInicio === rango.inicio
+                  ? 'border-primary bg-primary text-on-primary'
+                  : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary'
+              }`}
+            >
+              {rango.inicio}–{rango.fin}
+            </button>
+          ))}
+        </div>
+
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 py-1 text-label-sm font-semibold text-on-surface">
+          <input
+            type="checkbox"
+            checked={accesible}
+            onChange={(evento) => setAccesible(evento.target.checked)}
+            className="h-4 w-4 rounded accent-primary"
+          />
+          Vista ampliada
+        </label>
+      </div>
 
       {filtro === 'registrado' && (
         <div
@@ -164,11 +249,11 @@ export default function LibroSeguimiento({
         </span>
       </div>
 
-      <div className="space-y-2 p-4">
-        {filas.length === 0 ? (
+      <div className="max-h-[58vh] space-y-2 overflow-y-auto overscroll-contain p-4 pr-3">
+        {filasVisibles.length === 0 ? (
           <EmptyState title="Sin resultados" description="No hay especialidades para mostrar." />
         ) : (
-          filas.map((fila) => (
+          filasVisibles.map((fila) => (
             <div key={fila.id} className="grid gap-2 md:grid-cols-[165px_minmax(0,1fr)]">
               <button
                 type="button"
@@ -182,13 +267,33 @@ export default function LibroSeguimiento({
                     : 'border-outline-variant border-l-primary bg-surface-container-low'
                 }`}
               >
-                <span className="text-label-md text-on-surface">{fila.nombre}</span>
-                <span className="text-label-sm text-on-surface-variant">
+                <span
+                  className={
+                    accesible
+                      ? 'text-title-md font-bold text-on-surface'
+                      : 'text-label-md text-on-surface'
+                  }
+                >
+                  {fila.nombre}
+                </span>
+                <span
+                  className={
+                    accesible
+                      ? 'text-body-sm text-on-surface-variant'
+                      : 'text-label-sm text-on-surface-variant'
+                  }
+                >
                   {fila.registrados} / {fila.maximo} registrados · Enter
                 </span>
               </button>
 
-              <div className="flex flex-wrap content-start gap-1">
+              <div
+                className={
+                  accesible
+                    ? 'flex flex-wrap content-start gap-1.5'
+                    : 'flex flex-wrap content-start gap-1'
+                }
+              >
                 {fila.slots.map(({ numero, turno }) => (
                   <CasillaTurno
                     key={numero}
@@ -199,6 +304,7 @@ export default function LibroSeguimiento({
                     filtro={filtro}
                     seleccionada={seleccionId === `${fila.id}-${numero}`}
                     onSeleccionar={onSeleccionar}
+                    accesible={accesible}
                     casillaRef={
                       primerVacio?.especialidadId === fila.id && primerVacio?.numero === numero
                         ? primeraCasillaRef

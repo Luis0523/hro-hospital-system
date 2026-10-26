@@ -4,7 +4,7 @@ import { estiloDeEtapa } from './estilosEtapas'
 // Columna vertical con el conteo por etapa; cada tarjeta funciona como filtro.
 export default function EtapasSeguimiento({ conteos, filtro, onFiltrar }) {
   return (
-    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 md:flex md:flex-col">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:flex md:flex-col">
       {ETAPAS_SEGUIMIENTO.map((etapa, indice) => {
         const estilo = estiloDeEtapa(etapa.id)
         const activa = filtro === etapa.id
@@ -21,7 +21,7 @@ export default function EtapasSeguimiento({ conteos, filtro, onFiltrar }) {
               evento.preventDefault()
               onFiltrar(etapa.id)
             }}
-            className={`min-w-0 rounded-lg border px-2 py-1 text-left transition hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${estilo.borde} ${estilo.fondo} ${
+            className={`flex min-h-[74px] min-w-0 flex-col justify-between rounded-lg border px-2.5 py-2.5 text-left transition hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${estilo.borde} ${estilo.fondo} ${
               activa ? 'ring-2 ring-primary' : ''
             }`}
           >

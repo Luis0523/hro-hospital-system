@@ -109,10 +109,10 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     expect(await screen.findByRole('button', { name: 'NEF-04, Registrado' })).toBeInTheDocument()
     expect(detalle().getByText(/sin asignar/)).toBeInTheDocument()
     expect(screen.queryByTestId('etapa-recibido')).not.toBeInTheDocument()
-    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('En clínica')
+    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('Recibir/Repartir')
   }, 20000)
 
-  it('usa la clínica preasignada al pasar de Registrado a En clínica', async () => {
+  it('usa la clínica preasignada al pasar de Registrado a Recibir/Repartir', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -126,11 +126,13 @@ describe('SeguimientoEnfermeriaDosPage', () => {
 
     await user.click(screen.getByTestId('etapa-en_clinica'))
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
+    ).toBeInTheDocument()
     expect(detalle().getByText(/Clínica 2/)).toBeInTheDocument()
   }, 20000)
 
-  it('permite cambiar la clínica antes de En clínica', async () => {
+  it('permite cambiar la clínica antes de Recibir/Repartir', async () => {
     const user = userEvent.setup()
     renderPagina()
 

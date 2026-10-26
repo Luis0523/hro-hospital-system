@@ -4,12 +4,15 @@ import com.hro.system.common.ApiResponse;
 import com.hro.system.common.EstadoFiltro;
 import com.hro.system.estacion.dto.ActualizarEstacionRequestDTO;
 import com.hro.system.estacion.dto.AsignarEspecialidadesRequestDTO;
+import com.hro.system.estacion.dto.AsignarClinicasFijasRequestDTO;
 import com.hro.system.estacion.dto.AsignarSubespecialidadesRequestDTO;
+import com.hro.system.estacion.dto.ClinicaFijaEstacionResponseDTO;
 import com.hro.system.estacion.dto.CrearEstacionRequestDTO;
 import com.hro.system.estacion.dto.EstacionAccesoResponseDTO;
 import com.hro.system.estacion.dto.EstacionResponseDTO;
 import com.hro.system.estacion.dto.EspecialidadActivaDTO;
 import com.hro.system.estacion.dto.SubespecialidadAsignadaDTO;
+import com.hro.system.estacion.service.ClinicaFijaEstacionService;
 import com.hro.system.estacion.service.EstacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +35,7 @@ import java.util.List;
 public class EstacionController {
 
     private final EstacionService estacionService;
+    private final ClinicaFijaEstacionService clinicaFijaService;
 
     @GetMapping
     @Operation(summary = "Listar estaciones",
@@ -103,6 +107,24 @@ public class EstacionController {
         return ResponseEntity.ok(ApiResponse.ok(
                 estacionService.asignarEspecialidades(id, dto.getEspecialidadIds()),
                 "Especialidades de la estación actualizadas"));
+    }
+
+    @GetMapping("/{id}/clinicas-fijas")
+    @Operation(summary = "Clínicas fijas de la estación",
+            description = "Clínica estable por especialidad. Si un turno nace con esta configuración, ya lleva clínica asignada.")
+    public ResponseEntity<ApiResponse<List<ClinicaFijaEstacionResponseDTO>>> listarClinicasFijas(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                clinicaFijaService.listar(id), "Clínicas fijas de la estación"));
+    }
+
+    @PutMapping("/{id}/clinicas-fijas")
+    @PreAuthorize("hasAnyRole('jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Reemplazar las clínicas fijas de la estación")
+    public ResponseEntity<ApiResponse<List<ClinicaFijaEstacionResponseDTO>>> guardarClinicasFijas(
+            @PathVariable Long id, @Valid @RequestBody AsignarClinicasFijasRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                clinicaFijaService.reemplazar(id, dto), "Clínicas fijas actualizadas"));
     }
 
     @PutMapping("/{id}/subespecialidades")

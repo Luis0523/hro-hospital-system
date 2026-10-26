@@ -1,4 +1,5 @@
 import { Button, EmptyState, Icon } from '@/shared/components/ui'
+import { ordenarClinicasPorUso } from './ordenClinicas'
 
 function conteo(valor) {
   return String(Math.max(0, Number(valor) || 0)).padStart(2, '0')
@@ -19,6 +20,8 @@ export default function DevolucionesClinicas({
   onDeshacer,
   procesandoId = null,
 }) {
+  const ordenadas = ordenarClinicasPorUso(clinicas)
+
   return (
     <section className="h-fit rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
       <div className="space-y-1">
@@ -38,7 +41,7 @@ export default function DevolucionesClinicas({
         </div>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {clinicas.map((clinica) => {
+          {ordenadas.map((clinica) => {
             const asignados = Number(clinica.asignados ?? 0)
             const devueltos = Number(clinica.devueltos ?? 0)
             const pendientes = Number(

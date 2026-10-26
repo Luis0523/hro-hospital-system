@@ -96,6 +96,7 @@ export const subespecialidadesMock = SUBESPECIALIDADES_BASE.map((sub) => ({ ...s
 const asignacionesPorFecha = new Map()
 const diasCerrados = new Set()
 let contadorAsignacion = 1
+export const clinicasFijasMock = []
 let contadorEspacio = 1000
 
 function listaDe(fecha) {
@@ -611,6 +612,41 @@ export function asignarEspecialidadesEstacionMock(id, especialidadIds) {
   return asignarSubespecialidadesEstacionMock(id, subIds)
 }
 
+export function listarClinicasFijasMock(estacionId) {
+  return clinicasFijasMock
+    .filter((item) => item.estacionId === Number(estacionId) && item.activo)
+    .map((item) => {
+      const especialidad = ESPECIALIDADES_BASE.find((e) => e.id === item.especialidadId)
+      const espacio = espaciosMock.find((e) => e.id === item.espacioFisicoId)
+      return {
+        id: item.id,
+        estacionId: item.estacionId,
+        especialidadId: item.especialidadId,
+        especialidadNombre: especialidad?.nombre ?? null,
+        espacioFisicoId: item.espacioFisicoId,
+        espacioNumero: espacio?.numero ?? null,
+        espacioNombre: espacio?.nombre ?? null,
+        nivel: espacio?.nivel ?? null,
+      }
+    })
+}
+
+export function guardarClinicasFijasMock(estacionId, asignaciones = []) {
+  for (let i = clinicasFijasMock.length - 1; i >= 0; i -= 1) {
+    if (clinicasFijasMock[i].estacionId === Number(estacionId)) clinicasFijasMock.splice(i, 1)
+  }
+  asignaciones.forEach((item, indice) => {
+    clinicasFijasMock.push({
+      id: `${estacionId}-${indice + 1}`,
+      estacionId: Number(estacionId),
+      especialidadId: item.especialidadId,
+      espacioFisicoId: item.espacioFisicoId,
+      activo: true,
+    })
+  })
+  return listarClinicasFijasMock(estacionId)
+}
+
 export function listarAccesosMock(estacionId, abiertos = false) {
   return accesosMockData
     .filter((a) => a.estacionId === Number(estacionId))
@@ -717,6 +753,7 @@ export function reiniciarJefeMock() {
   accesosMockData.splice(0, accesosMockData.length, ...ACCESOS_BASE.map((a) => ({ ...a })))
   espaciosMock.splice(0, espaciosMock.length, ...ESPACIOS_BASE.map((e) => ({ ...e })))
   contadorAsignacion = 1
+  clinicasFijasMock.length = 0
   contadorEspacio = 1000
   contadorHorario = 1
   contadorEstacion = ESTACIONES_BASE.length + 1

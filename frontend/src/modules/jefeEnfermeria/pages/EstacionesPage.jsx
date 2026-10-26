@@ -5,13 +5,17 @@ import Spinner from '@/shared/components/ui/Spinner.jsx'
 import Modal from '@/shared/components/ui/Modal.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
+import { filtrarClinicasPorNivel } from '@/shared/utils/nivelClinicas'
 import {
   actualizarEstacion,
   asignarEspecialidadesEstacion,
+  guardarClinicasFijas,
   crearEstacion,
   desactivarEstacion,
   listarAccesosEstacion,
   listarEspecialidades,
+  listarEspaciosFisicos,
+  listarClinicasFijas,
   listarEstaciones,
 } from '../api/jefeEnfermeriaApi'
 
@@ -45,6 +49,12 @@ export default function EstacionesPage() {
   const [seleccionadas, setSeleccionadas] = useState([])
 
   const [porDesactivar, setPorDesactivar] = useState(null)
+
+  const [gestionandoFijas, setGestionandoFijas] = useState(null)
+  const [fijasForm, setFijasForm] = useState({})
+  const [clinicasFijasDisponibles, setClinicasFijasDisponibles] = useState([])
+  const [cargandoFijas, setCargandoFijas] = useState(false)
+  const [guardandoFijas, setGuardandoFijas] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -146,6 +156,68 @@ export default function EstacionesPage() {
       .map((s) => s.especialidadId)
       .filter((id) => id != null)
     return [...new Set(ids)]
+  }
+
+  function especialidadesDe(estacion) {
+    const porId = new Map()
+    for (const sub of estacion?.subespecialidades ?? []) {
+      if (sub.especialidadId == null) continue
+      if (!porId.has(sub.especialidadId)) {
+        porId.set(sub.especialidadId, {
+          id: sub.especialidadId,
+          nombre: sub.especialidadNombre ?? sub.nombre ?? `Especialidad ${sub.especialidadId}`,
+        })
+      }
+    }
+    return [...porId.values()]
+  }
+
+  async function abrirFijas(estacion) {
+    setGestionandoFijas(estacion)
+    setCargandoFijas(true)
+    try {
+      const [fijas, espacios] = await Promise.all([
+        listarClinicasFijas(estacion.id),
+        listarEspaciosFisicos(),
+      ])
+      const disponibles = filtrarClinicasPorNivel(
+        Array.isArray(espacios) ? espacios : [],
+        estacion.id,
+      )
+      setClinicasFijasDisponibles(disponibles)
+      const porEspecialidad = {}
+      for (const item of Array.isArray(fijas) ? fijas : []) {
+        porEspecialidad[item.especialidadId] = item.espacioFisicoId ?? ''
+      }
+      setFijasForm(porEspecialidad)
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudieron cargar las clínicas fijas.')
+      setClinicasFijasDisponibles([])
+      setFijasForm({})
+    } finally {
+      setCargandoFijas(false)
+    }
+  }
+
+  async function guardarFijas(evento) {
+    evento.preventDefault()
+    if (!gestionandoFijas) return
+    setGuardandoFijas(true)
+    try {
+      const asignaciones = Object.entries(fijasForm)
+        .filter(([, espacioFisicoId]) => Boolean(espacioFisicoId))
+        .map(([especialidadId, espacioFisicoId]) => ({
+          especialidadId: Number(especialidadId),
+          espacioFisicoId,
+        }))
+      await guardarClinicasFijas(gestionandoFijas.id, asignaciones)
+      setGestionandoFijas(null)
+      mostrarToast({ tone: 'success', title: 'Clínicas fijas actualizadas' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudieron guardar las clínicas fijas.')
+    } finally {
+      setGuardandoFijas(false)
+    }
   }
 
   function abrirGestion(estacion) {
@@ -255,6 +327,9 @@ export default function EstacionesPage() {
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => abrirGestion(estacion)}>
                       Especialidades
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => abrirFijas(estacion)}>
+                      Clínicas fijas
                     </Button>
                     {estacion.activo && (
                       <Button size="sm" variant="danger" onClick={() => setPorDesactivar(estacion)}>
@@ -414,6 +489,83 @@ export default function EstacionesPage() {
                 </label>
               ))}
             </div>
+          )}
+        </form>
+      </Modal>
+
+      {/* Modal clínicas fijas */}
+      <Modal
+        open={Boolean(gestionandoFijas)}
+        onClose={() => {
+          if (!guardandoFijas) setGestionandoFijas(null)
+        }}
+        title={`Clínicas fijas — ${gestionandoFijas?.codigo ?? ''}`}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setGestionandoFijas(null)}
+              disabled={guardandoFijas}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-clinicas-fijas')?.requestSubmit()}
+              disabled={guardandoFijas || cargandoFijas}
+            >
+              {guardandoFijas ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        <form id="form-clinicas-fijas" onSubmit={guardarFijas} className="space-y-3">
+          <p className="text-body-sm text-on-surface-variant">
+            Asigne una clínica estable a cada especialidad. Si el turno nace con esta configuración,
+            ya lleva clínica y el ticket la mostrará.
+          </p>
+          {cargandoFijas ? (
+            <div className="flex justify-center py-6">
+              <Spinner label="Cargando clínicas…" />
+            </div>
+          ) : especialidadesDe(gestionandoFijas).length === 0 ? (
+            <p className="text-body-sm text-on-surface-variant">
+              La estación no tiene especialidades asignadas.
+            </p>
+          ) : (
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+              {especialidadesDe(gestionandoFijas).map((especialidad) => (
+                <label
+                  key={especialidad.id}
+                  className="grid gap-1 rounded-lg border border-outline-variant p-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center"
+                >
+                  <span className="text-body-sm font-semibold text-on-surface">
+                    {especialidad.nombre}
+                  </span>
+                  <select
+                    value={fijasForm[especialidad.id] ?? ''}
+                    onChange={(evento) =>
+                      setFijasForm((actual) => ({
+                        ...actual,
+                        [especialidad.id]: evento.target.value,
+                      }))
+                    }
+                    className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary-container"
+                  >
+                    <option value="">Sin clínica fija</option>
+                    {clinicasFijasDisponibles.map((clinica) => (
+                      <option key={clinica.id} value={clinica.id}>
+                        Clínica {clinica.numero} · {clinica.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+          {clinicasFijasDisponibles.length === 0 && !cargandoFijas && (
+            <p className="text-label-sm text-amber-700 dark:text-amber-300">
+              No hay clínicas disponibles para el nivel de esta estación.
+            </p>
           )}
         </form>
       </Modal>

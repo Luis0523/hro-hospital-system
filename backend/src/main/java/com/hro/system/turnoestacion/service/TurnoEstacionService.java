@@ -15,9 +15,11 @@ import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.context.EstacionContexto;
+import com.hro.system.estacion.entity.ClinicaFijaEstacion;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
+import com.hro.system.estacion.repository.ClinicaFijaEstacionRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
@@ -60,6 +62,7 @@ public class TurnoEstacionService {
     private final DevolucionClinicaRepository devolucionClinicaRepository;
     private final EstacionEnfermeriaRepository estacionRepository;
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
+    private final ClinicaFijaEstacionRepository clinicaFijaEstacionRepository;
     private final EspecialidadRepository especialidadRepository;
     private final EspacioFisicoRepository espacioFisicoRepository;
     private final AsignacionDiariaEspacioRepository asignacionDiariaEspacioRepository;
@@ -152,7 +155,12 @@ public class TurnoEstacionService {
 
         EspacioFisico espacio = dto.getEspacioFisicoId() != null
                 ? validarClinicaParaEspecialidad(dto.getEspacioFisicoId(), especialidad, dia)
-                : null;
+                : clinicaFijaEstacionRepository
+                        .findByEstacionIdAndEspecialidadIdAndActivoTrue(
+                                estacion.getId(), especialidad.getId())
+                        .map(ClinicaFijaEstacion::getEspacioFisico)
+                        .filter(e -> Boolean.TRUE.equals(e.getActivo()))
+                        .orElse(null);
 
         List<Object[]> filas = turnoRepository.asignarCorrelativos(
                 estacion.getId(), especialidad.getId(), dia);

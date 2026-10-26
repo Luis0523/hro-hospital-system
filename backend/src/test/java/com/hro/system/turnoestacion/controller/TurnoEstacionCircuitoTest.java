@@ -16,8 +16,10 @@ import com.hro.system.espacio.entity.AsignacionDiariaEspacio;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
+import com.hro.system.estacion.entity.ClinicaFijaEstacion;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
+import com.hro.system.estacion.repository.ClinicaFijaEstacionRepository;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
@@ -41,6 +43,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -68,6 +71,7 @@ class TurnoEstacionCircuitoTest {
     @Autowired private ExpedienteRepository expedienteRepository;
     @Autowired private UbicacionArchivoRepository ubicacionArchivoRepository;
     @Autowired private EstacionEnfermeriaRepository estacionRepository;
+    @Autowired private ClinicaFijaEstacionRepository clinicaFijaRepository;
     @Autowired private EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private SubespecialidadRepository subespecialidadRepository;
@@ -487,6 +491,53 @@ class TurnoEstacionCircuitoTest {
         JsonNode t5 = crearTurno(contexto, contexto.especialidad().getId(), usuario);
         assertThat(t5.get("numeroGeneral").asInt()).isEqualTo(4);
         assertThat(t5.get("correlativoEspecialidad").asInt()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("Configura clínicas fijas por especialidad desde la estación")
+    void configuraClinicasFijas() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String jefe = "jefe-" + UUID.randomUUID().toString().substring(0, 8);
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "asignaciones", List.of(Map.of(
+                        "especialidadId", contexto.especialidad().getId(),
+                        "espacioFisicoId", contexto.espacio().getId().toString()))));
+
+        mockMvc.perform(auth(put("/estaciones/" + contexto.estacion().getId() + "/clinicas-fijas"),
+                        "jefe_enfermeria", jefe, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].especialidadId").value(contexto.especialidad().getId()))
+                .andExpect(jsonPath("$.data[0].espacioFisicoId")
+                        .value(contexto.espacio().getId().toString()));
+
+        mockMvc.perform(auth(get("/estaciones/" + contexto.estacion().getId() + "/clinicas-fijas"),
+                        "jefe_enfermeria", jefe, contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("La clínica fija de la estación se asigna automáticamente al registrar")
+    void clinicaFijaSeAsignaAlCrear() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String enfermeria = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+
+        clinicaFijaRepository.save(ClinicaFijaEstacion.builder()
+                .estacion(contexto.estacion())
+                .especialidad(contexto.especialidad())
+                .espacioFisico(contexto.espacio())
+                .activo(true)
+                .build());
+
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), enfermeria);
+
+        assertThat(turno.get("espacioFisicoId").asText())
+                .isEqualTo(contexto.espacio().getId().toString());
+        assertThat(turno.get("espacioFisicoNumero").asText())
+                .isEqualTo(contexto.espacio().getNumero());
     }
 
     @Test

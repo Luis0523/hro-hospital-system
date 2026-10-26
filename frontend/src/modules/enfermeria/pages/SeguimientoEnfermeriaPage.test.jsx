@@ -41,7 +41,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     ).toBeInTheDocument()
     expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
     expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrado')
-    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('En clínica')
+    expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('Recibir/Repartir')
     expect(screen.queryByTestId('etapa-recibido')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()
   })
@@ -57,10 +57,14 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(screen.getByTestId('etapa-en_clinica'))
     await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByTestId('etapa-devuelto'))
-    expect(screen.queryByRole('button', { name: 'ONC-05, En clínica' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Devoluciones por clínica' })).toBeInTheDocument()
 
     const articulo = screen.getByRole('heading', { name: 'Clínica 2' }).closest('article')
@@ -191,11 +195,15 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'ONC-05, En clínica' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
+    ).toBeInTheDocument()
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'ONC-06, Registrado' }))
-    expect(await screen.findByRole('button', { name: 'ONC-06, En clínica' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'ONC-06, Recibir/Repartir' }),
+    ).toBeInTheDocument()
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
   }, 20000)
 
@@ -210,10 +218,10 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(screen.getByTestId('etapa-en_clinica'))
     await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    await screen.findByRole('button', { name: 'ONC-05, En clínica' })
+    await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' })
 
     await user.click(screen.getByRole('button', { name: 'Ver historial del turno' }))
-    expect(await screen.findByText('Registrado → En clínica')).toBeInTheDocument()
+    expect(await screen.findByText('Registrado → Recibir/Repartir')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Revertir' }))
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()

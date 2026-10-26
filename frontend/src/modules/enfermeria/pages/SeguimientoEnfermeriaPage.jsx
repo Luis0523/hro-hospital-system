@@ -233,6 +233,17 @@ export default function SeguimientoEnfermeriaPage() {
     return null
   }
 
+  function clinicaDeTurno(turno) {
+    if (!turno?.clinicaId) return null
+    return {
+      id: turno.clinicaId,
+      numero: turno.clinicaNumero ?? null,
+      nombre:
+        turno.clinicaNombre ??
+        (turno.clinicaNumero ? `Clínica ${turno.clinicaNumero}` : 'Clínica asignada'),
+    }
+  }
+
   function registrarConDobleEnter(accionNormal, accionPresentacion) {
     const ahora = Date.now()
     const pendiente = dobleEnterRef.current
@@ -285,14 +296,15 @@ export default function SeguimientoEnfermeriaPage() {
     })
 
     if (filtro === 'en_clinica') {
-      if (!clinicaDestino) {
+      const clinica = clinicaDeTurno(turno) ?? clinicaDestino
+      if (!clinica) {
         mostrarToast({
           tone: 'warning',
-          title: 'Seleccione primero una clínica física como destino.',
+          title: 'Seleccione una clínica física como destino.',
         })
         return
       }
-      asignarTurnoAClinica(turno, especialidadId, clinicaDestino)
+      asignarTurnoAClinica(turno, especialidadId, clinica)
       return
     }
 
@@ -363,14 +375,15 @@ export default function SeguimientoEnfermeriaPage() {
     }
 
     if (filtro === 'en_clinica') {
-      if (!clinicaDestino) {
+      const clinica = clinicaDeTurno(turno) ?? clinicaDestino
+      if (!clinica) {
         mostrarToast({
           tone: 'warning',
-          title: 'Seleccione primero una clínica física como destino.',
+          title: 'Seleccione una clínica física como destino.',
         })
         return
       }
-      asignarTurnoAClinica(turno, especialidadId, clinicaDestino)
+      asignarTurnoAClinica(turno, especialidadId, clinica)
       return
     }
 
@@ -426,7 +439,7 @@ export default function SeguimientoEnfermeriaPage() {
         imprimirTicketTurno({
           turno: creado.numeroGeneral,
           especialidad: especialidadNombre,
-          clinica: null,
+          clinica: creado.espacioFisicoNumero ?? creado.espacioFisicoNombre ?? null,
         }).catch(() => {
           mostrarToast({
             tone: 'warning',

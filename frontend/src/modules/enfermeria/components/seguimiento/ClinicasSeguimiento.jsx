@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Icon } from '@/shared/components/ui'
+import { ordenarClinicasPorUso } from './ordenClinicas'
 
 // Clínicas físicas con el conteo de expedientes que permanecen en cada una.
 // En modo en_clinica, la clínica elegida queda como destino de los turnos.
@@ -16,6 +17,7 @@ export default function ClinicasSeguimiento({
 }) {
   const botonesRef = useRef([])
   const esElegibleRef = useRef(esElegible)
+  const ordenadas = useMemo(() => ordenarClinicasPorUso(clinicas), [clinicas])
 
   useEffect(() => {
     esElegibleRef.current = esElegible
@@ -23,16 +25,16 @@ export default function ClinicasSeguimiento({
 
   useEffect(() => {
     if (focusToken === 0) return
-    const indice = clinicas.findIndex((clinica) => esElegibleRef.current(clinica))
+    const indice = ordenadas.findIndex((clinica) => esElegibleRef.current(clinica))
     if (indice >= 0) botonesRef.current[indice]?.focus()
-  }, [focusToken, clinicas])
+  }, [focusToken, ordenadas])
 
   const instruccion = modoCambio
     ? 'Elija la nueva clínica para el turno seleccionado'
     : modoRegistro
       ? 'Elija la clínica para registrar el turno'
       : modoAsignacion
-        ? 'Seleccione la clínica destino y luego marque los turnos registrados'
+        ? 'Seleccione una clínica si el turno no la tiene; si ya está asignada, se usará automáticamente'
         : 'Pulse una clínica para consultar su detalle'
 
   return (
@@ -48,8 +50,8 @@ export default function ClinicasSeguimiento({
         {mensaje && <p className="text-label-sm text-primary">{mensaje}</p>}
       </div>
 
-      <div className="mt-3 flex flex-col gap-2">
-        {clinicas.map((clinica, indice) => {
+      <div className="mt-3 flex max-h-[58vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
+        {ordenadas.map((clinica, indice) => {
           const conteo = clinica.expedientesEnClinica ?? 0
           const seleccionada = String(clinicaSeleccionadaId) === String(clinica.id)
           const elegible = esElegible(clinica)

@@ -17,6 +17,8 @@ import {
   eliminarAsignacionMock,
   guardarAsignacionMock,
   listarAccesosMock,
+  listarClinicasFijasMock,
+  guardarClinicasFijasMock,
   listarEspaciosFisicosMock,
   obtenerEspacioFisicoMock,
   actualizarEspacioFisicoMock,
@@ -198,6 +200,16 @@ export async function actualizarEstacion(id, datos) {
 export async function desactivarEstacion(id) {
   if (USE_MOCK) return desactivarEstacionMock(id)
   return desenvolver(await client.delete(`/estaciones/${id}`))
+}
+
+export async function listarClinicasFijas(estacionId) {
+  if (USE_MOCK) return listarClinicasFijasMock(estacionId)
+  return desenvolver(await client.get(`/estaciones/${estacionId}/clinicas-fijas`))
+}
+
+export async function guardarClinicasFijas(estacionId, asignaciones) {
+  if (USE_MOCK) return guardarClinicasFijasMock(estacionId, asignaciones)
+  return desenvolver(await client.put(`/estaciones/${estacionId}/clinicas-fijas`, { asignaciones }))
 }
 
 export async function asignarSubespecialidadesEstacion(id, subespecialidadIds) {

@@ -1,5 +1,6 @@
 import client from '@/shared/api/client'
 import { hoyIso } from '@/shared/utils/fecha'
+import { filtrarClinicasPorNivel } from '@/shared/utils/nivelClinicas'
 
 // En modo test siempre se usa el mock; en ejecución depende de VITE_USE_MOCK.
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
@@ -11,7 +12,7 @@ const ESTADOS_EN_CLINICA = new Set(['en_clinica', 'llamado', 'no_asistio', 'aten
 const NOMBRES_ESTADO = {
   registrado: 'Registrado',
   recibido: 'Recibido',
-  en_clinica: 'En clínica',
+  en_clinica: 'Recibir/Repartir',
   llamado: 'Llamado',
   no_asistio: 'No asistió',
   atendido: 'Atendido',
@@ -35,7 +36,7 @@ async function leerConReintento(url, config) {
 
 export const ETAPAS_SEGUIMIENTO = [
   { id: 'registrado', nombre: 'Registrado' },
-  { id: 'en_clinica', nombre: 'En clínica' },
+  { id: 'en_clinica', nombre: 'Recibir/Repartir' },
   { id: 'devuelto', nombre: 'Devuelto' },
   { id: 'archivo', nombre: 'Archivo' },
 ]
@@ -80,22 +81,6 @@ export const CLINICAS_SEGUIMIENTO = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => ({
   nombre: `Clínica ${id}`,
   nivel: id <= 4 ? 2 : 1,
 }))
-
-// Estaciones 1 y 2 trabajan con clínicas del nivel 2; las estaciones 3, 4 y 5
-// con las del nivel 1.
-const NIVEL_CLINICAS_POR_ESTACION = new Map([
-  [1, 2],
-  [2, 2],
-  [3, 1],
-  [4, 1],
-  [5, 1],
-])
-
-function filtrarClinicasPorNivel(clinicas, estacionId) {
-  const nivel = NIVEL_CLINICAS_POR_ESTACION.get(Number(estacionId))
-  if (!nivel) return clinicas
-  return clinicas.filter((clinica) => Number(clinica.nivel) === nivel)
-}
 
 // Configuración simulada de clínica por especialidad para el modo demo.
 const CLINICAS_POR_ESPECIALIDAD_MOCK = {
