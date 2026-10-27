@@ -1,8 +1,13 @@
 package com.hro.system.carnet.service;
 
+import com.hro.system.carnet.dto.CarnetMovimientoResponseDTO;
+import com.hro.system.carnet.dto.CarnetResponseDTO;
 import com.hro.system.carnet.dto.SalidaCarnetDTO;
+import com.hro.system.archivo.entity.SalidaArchivoHospital;
+import com.hro.system.archivo.repository.SalidaArchivoHospitalRepository;
 import com.hro.system.carnet.entity.Carnet;
 import com.hro.system.carnet.repository.CarnetRepository;
+import com.hro.system.reporte.FormatoExpediente;
 import com.hro.system.reporte.PlantillaExpedientesArchivados;
 import com.hro.system.reporte.PlantillaReportePdf;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +51,7 @@ public class ReporteSalidaCarnetsService {
     private static final Set<String> ESTADOS_SALIDA_ENFERMERIA = Set.of("salida_enfermeria");
 
     private final CarnetRepository carnetRepository;
+    private final SalidaArchivoHospitalRepository salidaArchivoHospitalRepository;
     private final PlantillaReportePdf plantilla;
     private final PlantillaExpedientesArchivados plantillaArchivados;
     private final com.hro.system.parametro.service.ParametroSistemaService parametros;
@@ -118,16 +124,17 @@ public class ReporteSalidaCarnetsService {
         LocalDate fecha = (fechaParam != null) ? fechaParam : LocalDate.now(ZONA_HORARIA);
         Long umbral = umbralActivo();
 
-        List<Carnet> pasivos = carnetRepository.listarPorFecha(fecha).stream()
-                .filter(carnet -> "pasivo".equals(clasificar(carnet.getNumeroExpediente(), umbral)))
-                .sorted(Comparator.comparingLong(c -> parseNumero(c.getNumeroExpediente())))
+        List<SalidaArchivoHospital> pasivos = salidaArchivoHospitalRepository
+                .findByFechaOrderByRegistradoEnDesc(fecha).stream()
+                .filter(salida -> "pasivo".equals(clasificar(salida.getNumeroExpediente(), umbral)))
+                .sorted(Comparator.comparingLong(s -> parseNumero(s.getNumeroExpediente())))
                 .toList();
 
         List<PlantillaExpedientesArchivados.Item> items = new java.util.ArrayList<>();
         int numero = 1;
-        for (Carnet carnet : pasivos) {
+        for (SalidaArchivoHospital salida : pasivos) {
             items.add(new PlantillaExpedientesArchivados.Item(
-                    numero++, carnet.getNumeroExpediente(), null));
+                    numero++, FormatoExpediente.formatear(salida.getNumeroExpediente()), null));
         }
 
         try {
@@ -200,6 +207,79 @@ public class ReporteSalidaCarnetsService {
     }
 
     // ------------------------------------------------------------------
+    // Trazabilidad de un expediente
+    // ------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public byte[] generarTrazabilidadPdf(CarnetResponseDTO carnet, String usuarioGenerador) {
+        List<List<String>> filas = new java.util.ArrayList<>();
+        int indice = 1;
+        for (CarnetMovimientoResponseDTO movimiento : carnet.getMovimientos()) {
+            filas.add(List.of(
+                    String.valueOf(indice++),
+                    formatearFechaHora(movimiento.getFechaMovimiento()),
+                    nvl(estadoLegible(movimiento.getEstadoNuevo())),
+                    nvl(movimiento.getUsuarioNombre()),
+                    nvl(movimiento.getObservacion())));
+        }
+
+        String clasificacion = nvl(carnet.getArchivo());
+        String detalle = "Expediente: " + FormatoExpediente.formatear(carnet.getNumeroExpediente())
+                + " · Paciente: " + nvl(carnet.getPacienteNombre())
+                + " · Estado actual: " + estadoLegible(carnet.getEstado())
+                + " · Clasificación: " + (clasificacion.isBlank() ? "sin clasificar" : clasificacion)
+                + " · Estación: " + nvl(carnet.getEstacionNombre());
+
+        PlantillaReportePdf.Reporte reporte = new PlantillaReportePdf.Reporte(
+                "TRAZABILIDAD DE EXPEDIENTE",
+                detalle,
+                "TRZ-" + FormatoExpediente.formatear(carnet.getNumeroExpediente()),
+                carnet.getFecha(),
+                OffsetDateTime.now(ZONA_HORARIA),
+                nvl(usuarioGenerador),
+                "Archivo / Registro Médico",
+                "Jefe de Archivo",
+                columnasTrazabilidad(),
+                filas,
+                filas.size(),
+                "Entrega - Archivo",
+                "Recibe - Jefatura de Archivo",
+                detalle);
+        return generar(reporte);
+    }
+
+    private static List<PlantillaReportePdf.Columna> columnasTrazabilidad() {
+        return List.of(
+                new PlantillaReportePdf.Columna("#", 0.4f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Fecha y hora", 1.3f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Estado", 1.3f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Encargado", 1.5f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Observación", 2.0f, PlantillaReportePdf.Alineacion.IZQUIERDA));
+    }
+
+    private static String estadoLegible(String estado) {
+        if (estado == null) {
+            return "";
+        }
+        return switch (estado) {
+            case "registrado" -> "Registrado";
+            case "no_localizado" -> "No localizado";
+            case "salida_archivo" -> "Salida de archivo";
+            case "salida_enfermeria" -> "Salida de enfermería";
+            case "resguardado" -> "Resguardado";
+            default -> estado;
+        };
+    }
+
+    private static String formatearFechaHora(OffsetDateTime instante) {
+        if (instante == null) {
+            return "";
+        }
+        return instante.atZoneSameInstant(ZONA_HORARIA)
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+    }
+
+    // ------------------------------------------------------------------
     // Apoyo
     // ------------------------------------------------------------------
 
@@ -235,7 +315,7 @@ public class ReporteSalidaCarnetsService {
         for (SalidaCarnetDTO item : items) {
             filas.add(List.of(
                     String.valueOf(indice++),
-                    nvl(item.numeroExpediente()),
+                    FormatoExpediente.formatear(item.numeroExpediente()),
                     nvl(item.pacienteNombre()),
                     nvl(item.especialidadNombre()),
                     nvl(item.hora())));

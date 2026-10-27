@@ -17,4 +17,7 @@ public class RegistrarSalidaArchivoHospitalRequestDTO {
 
     /** Opcional: por defecto, hoy (zona Guatemala). */
     private LocalDate fecha;
+
+    /** Marca la salida como perteneciente a la Clínica de la Mujer. */
+    private Boolean esClinicaMujer;
 }

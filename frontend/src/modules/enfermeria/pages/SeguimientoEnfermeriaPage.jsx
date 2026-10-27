@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, EmptyState, Select, Spinner } from '@/shared/components/ui'
+import { Alert, Button, EmptyState, Icon, Select, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
@@ -79,7 +79,26 @@ export default function SeguimientoEnfermeriaPage() {
   const [correlativoModal, setCorrelativoModal] = useState(null)
   const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
   const [flujoArchivoAbierto, setFlujoArchivoAbierto] = useState(false)
+  const [flujoOculto, setFlujoOculto] = useState(() => {
+    try {
+      return localStorage.getItem('hro_seguimiento_flujo_oculto') === 'true'
+    } catch {
+      return false
+    }
+  })
   const dobleEnterRef = useRef(null)
+
+  function alternarFlujo() {
+    setFlujoOculto((valor) => {
+      const nuevo = !valor
+      try {
+        localStorage.setItem('hro_seguimiento_flujo_oculto', String(nuevo))
+      } catch {
+        // sin storage: se ignora
+      }
+      return nuevo
+    })
+  }
 
   useEffect(() => {
     if (!correlativoModal) return undefined
@@ -439,7 +458,7 @@ export default function SeguimientoEnfermeriaPage() {
         imprimirTicketTurno({
           turno: creado.numeroGeneral,
           especialidad: especialidadNombre,
-          clinica: creado.espacioFisicoNumero ?? creado.espacioFisicoNombre ?? null,
+          clinica: creado.clinicaNumero ?? creado.clinicaNombre ?? null,
         }).catch(() => {
           mostrarToast({
             tone: 'warning',
@@ -681,41 +700,75 @@ export default function SeguimientoEnfermeriaPage() {
             />
           </div>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]">
-            <div className="grid gap-3 md:grid-cols-[130px_minmax(0,1fr)]">
-              <aside className="space-y-1.5 md:-ml-2">
-                <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                  Flujo de seguimiento
-                </h2>
-                <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
-              </aside>
-
-              <LibroSeguimiento
-                filas={filas}
-                seleccionId={seleccion ? `${seleccion.especialidadId}-${seleccion.numero}` : null}
-                filtro={filtro}
-                onSeleccionar={seleccionar}
-                onActivarEspecialidad={activarEspecialidad}
-                especialidadActivaId={seleccion?.especialidadId}
-                tipoRegistro={tipoRegistro}
-                onCambiarTipoRegistro={elegirTipoRegistro}
-                onIrACasillas={() => enfocarEspecialidad(filas[0]?.id)}
-                detalle={
-                  <DetalleTurno
-                    seleccion={seleccionCompleta}
-                    especialidadNombre={seleccionCompleta?.especialidadNombre}
-                    onRevertir={revertirSeleccionado}
-                  />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={alternarFlujo}
+                aria-expanded={!flujoOculto}
+                aria-controls="flujo-seguimiento"
+                title={
+                  flujoOculto
+                    ? 'Mostrar el flujo de seguimiento'
+                    : 'Ocultar el flujo de seguimiento'
                 }
-              />
+                className="flex h-9 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-label-md font-semibold text-on-surface-variant transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+              >
+                <Icon
+                  name={flujoOculto ? 'menu' : 'menu_open'}
+                  className="text-[20px]"
+                  aria-hidden="true"
+                />
+                {flujoOculto ? 'Mostrar flujo' : 'Ocultar flujo'}
+              </button>
             </div>
 
-            <ClinicasSeguimiento
-              clinicas={clinicas}
-              modoAsignacion={filtro === 'en_clinica'}
-              clinicaSeleccionadaId={clinicaDestino?.id}
-              onElegir={elegirClinica}
-            />
+            <div
+              className={`grid gap-3 ${flujoOculto ? '' : 'lg:grid-cols-[minmax(0,1fr)_250px]'}`}
+            >
+              <div
+                className={`grid gap-3 ${flujoOculto ? '' : 'md:grid-cols-[130px_minmax(0,1fr)]'}`}
+              >
+                {!flujoOculto && (
+                  <aside id="flujo-seguimiento" className="space-y-1.5 md:-ml-2">
+                    <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                      Flujo de seguimiento
+                    </h2>
+                    <EtapasSeguimiento
+                      conteos={conteos}
+                      filtro={filtro}
+                      onFiltrar={cambiarFiltro}
+                    />
+                  </aside>
+                )}
+
+                <LibroSeguimiento
+                  filas={filas}
+                  seleccionId={seleccion ? `${seleccion.especialidadId}-${seleccion.numero}` : null}
+                  filtro={filtro}
+                  onSeleccionar={seleccionar}
+                  onActivarEspecialidad={activarEspecialidad}
+                  especialidadActivaId={seleccion?.especialidadId}
+                  tipoRegistro={tipoRegistro}
+                  onCambiarTipoRegistro={elegirTipoRegistro}
+                  onIrACasillas={() => enfocarEspecialidad(filas[0]?.id)}
+                  detalle={
+                    <DetalleTurno
+                      seleccion={seleccionCompleta}
+                      especialidadNombre={seleccionCompleta?.especialidadNombre}
+                      onRevertir={revertirSeleccionado}
+                    />
+                  }
+                />
+              </div>
+
+              <ClinicasSeguimiento
+                clinicas={clinicas}
+                modoAsignacion={filtro === 'en_clinica'}
+                clinicaSeleccionadaId={clinicaDestino?.id}
+                onElegir={elegirClinica}
+              />
+            </div>
           </div>
         )}
       </main>

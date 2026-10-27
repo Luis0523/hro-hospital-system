@@ -19,7 +19,19 @@ export default function ListaSalidosHospital({
   onDescargarPdf,
 }) {
   const total = salidos.length
+  const totalClinicaMujer = salidos.filter((s) => s.esClinicaMujer).length
+  const totalActivos = salidos.filter((s) => s.clasificacion === 'activo').length
+  const totalPasivos = salidos.filter((s) => s.clasificacion === 'pasivo').length
   const vacio = total === 0 && pendientes.length === 0
+
+  function EtiquetaClinicaMujer() {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-label-sm font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-200">
+        <Icon name="female" className="text-[14px]" />
+        Clínica de la Mujer
+      </span>
+    )
+  }
 
   return (
     <section
@@ -32,6 +44,18 @@ export default function ListaSalidosHospital({
           <Icon name="task_alt" className="text-[20px] text-emerald-600" />
           {total} expediente{total === 1 ? '' : 's'} han salido de archivo
         </h2>
+        {totalClinicaMujer > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-label-sm font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-200">
+            <Icon name="female" className="text-[16px]" />
+            {totalClinicaMujer} de Clínica de la Mujer
+          </span>
+        )}
+        {total > 0 && (
+          <span className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-2 py-1 text-label-sm font-semibold text-on-surface-variant">
+            <span className="text-emerald-700 dark:text-emerald-300">{totalActivos} activos</span>
+            <span className="text-amber-700 dark:text-amber-300">{totalPasivos} pasivos</span>
+          </span>
+        )}
         <Button
           size="sm"
           variant="secondary"
@@ -67,7 +91,12 @@ export default function ListaSalidosHospital({
                       {formatearExpediente(p.numeroExpediente)}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-on-surface-variant">Consultando…</td>
+                  <td className="px-3 py-2">
+                    <span className="flex flex-wrap items-center gap-1.5 text-on-surface-variant">
+                      Consultando…
+                      {p.esClinicaMujer && <EtiquetaClinicaMujer />}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-center font-mono text-on-surface-variant">—</td>
                   <td className="px-3 py-2 text-right">
                     <Icon
@@ -84,7 +113,23 @@ export default function ListaSalidosHospital({
                       {formatearExpediente(s.numeroExpediente)}
                     </span>
                   </td>
-                  <td className="px-3 py-2 font-semibold text-on-surface">{s.pacienteNombre}</td>
+                  <td className="px-3 py-2 font-semibold text-on-surface">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {s.pacienteNombre}
+                      {s.esClinicaMujer && <EtiquetaClinicaMujer />}
+                      {s.clasificacion && (
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-label-sm font-bold ${
+                            s.clasificacion === 'activo'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200'
+                          }`}
+                        >
+                          {s.clasificacion === 'activo' ? 'Activo' : 'Pasivo'}
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-center font-mono text-on-surface-variant">
                     {horaDe(s.registradoEn)}
                   </td>

@@ -145,8 +145,8 @@ export default function CalendarioPage() {
     <section className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-headline-md text-hro-blue">Calendario institucional</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-headline-md text-primary">Calendario institucional</h2>
+          <p className="text-sm text-on-surface-variant">
             Administración de días no laborables, feriados y cierres institucionales.
           </p>
         </div>
@@ -187,7 +187,7 @@ export default function CalendarioPage() {
           />
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-700">Días no laborables del mes</h3>
+            <h3 className="text-sm font-semibold text-on-surface">Días no laborables del mes</h3>
             <ListaDiasNoLaborables
               dias={dias}
               onVer={abrirConsultar}

@@ -52,8 +52,8 @@ export default function AuditoriaPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Auditoría</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-headline-md text-primary">Auditoría</h2>
+        <p className="text-sm text-on-surface-variant">
           Consulta de trazabilidad de las operaciones realizadas en el sistema (solo lectura).
         </p>
       </header>
@@ -64,8 +64,8 @@ export default function AuditoriaPage() {
       </Alert>
 
       <Card className="space-y-4">
-        <h3 className="text-headline-sm text-slate-700">Funcionalidades previstas</h3>
-        <p className="text-sm text-slate-500">
+        <h3 className="text-headline-sm text-on-surface">Funcionalidades previstas</h3>
+        <p className="text-sm text-on-surface-variant">
           Estas capacidades forman parte del Panel de Administración y se habilitarán cuando la
           integración esté lista.
         </p>
@@ -74,13 +74,13 @@ export default function AuditoriaPage() {
           {FUNCIONALIDADES_PREVISTAS.map((funcionalidad) => (
             <li
               key={funcionalidad.titulo}
-              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              className="flex flex-col gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
             >
               <div className="flex items-center gap-2">
                 <Icon name={funcionalidad.icono} className="text-[22px] text-hro-celeste" />
-                <h4 className="text-sm font-semibold text-slate-700">{funcionalidad.titulo}</h4>
+                <h4 className="text-sm font-semibold text-on-surface">{funcionalidad.titulo}</h4>
               </div>
-              <p className="text-sm text-slate-500">{funcionalidad.descripcion}</p>
+              <p className="text-sm text-on-surface-variant">{funcionalidad.descripcion}</p>
               <span className="mt-auto inline-flex w-fit rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 {ESTADO_PENDIENTE}
               </span>

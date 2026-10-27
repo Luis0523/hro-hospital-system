@@ -43,20 +43,24 @@ export default function DiaNoLaborableForm({
     return (
       <dl className="space-y-3">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Fecha</dt>
-          <dd className="text-slate-700">{formatearFechaLarga(registro?.fecha)}</dd>
+          <dt className="text-xs uppercase tracking-wide text-on-surface-variant">Fecha</dt>
+          <dd className="text-on-surface">{formatearFechaLarga(registro?.fecha)}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Motivo</dt>
-          <dd className="text-slate-700">{registro?.motivo}</dd>
+          <dt className="text-xs uppercase tracking-wide text-on-surface-variant">Motivo</dt>
+          <dd className="text-on-surface">{registro?.motivo}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Registrado por</dt>
-          <dd className="text-slate-700">{registro?.creadoPorNombre || 'No disponible'}</dd>
+          <dt className="text-xs uppercase tracking-wide text-on-surface-variant">
+            Registrado por
+          </dt>
+          <dd className="text-on-surface">{registro?.creadoPorNombre || 'No disponible'}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-slate-500">Fecha de registro</dt>
-          <dd className="text-slate-700">
+          <dt className="text-xs uppercase tracking-wide text-on-surface-variant">
+            Fecha de registro
+          </dt>
+          <dd className="text-on-surface">
             {formatearFechaHora(registro?.creadoEn) || 'No disponible'}
           </dd>
         </div>

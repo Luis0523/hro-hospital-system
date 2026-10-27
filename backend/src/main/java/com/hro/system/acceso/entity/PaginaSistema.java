@@ -15,7 +15,8 @@ public enum PaginaSistema {
     COEX("coex", "Mesa COEX"),
     LIBRO_CITAS("libro_citas", "Libro de Citas"),
     ADMINISTRACION("administracion", "Panel de Administración"),
-    JEFE_ENFERMERIA("jefe_enfermeria", "Área Jefe de Enfermería");
+    JEFE_ENFERMERIA("jefe_enfermeria", "Área Jefe de Enfermería"),
+    JEFE_ARCHIVO("jefe_archivo", "Área Jefe de Archivo");
 
     private final String clave;
     private final String nombre;

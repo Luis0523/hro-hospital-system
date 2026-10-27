@@ -1,8 +1,10 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.dto.DashboardJefeArchivoDTO;
 import com.hro.system.archivo.dto.EstadisticasArchivoDTO;
 import com.hro.system.archivo.dto.EventoMovimientoDTO;
 import com.hro.system.archivo.service.ArchivoDashboardService;
+import com.hro.system.archivo.service.DashboardJefeArchivoService;
 import com.hro.system.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +27,7 @@ import java.time.LocalDate;
 public class ArchivoDashboardController {
 
     private final ArchivoDashboardService dashboardService;
+    private final DashboardJefeArchivoService dashboardJefeService;
 
     @GetMapping("/estadisticas")
     @Operation(summary = "Estadísticas del Dashboard de Archivo",
@@ -35,6 +39,17 @@ public class ArchivoDashboardController {
         return ResponseEntity.ok(ApiResponse.ok(
                 dashboardService.estadisticas(desde, hasta, subespecialidadId),
                 "Estadísticas de archivo obtenidas"));
+    }
+
+    @GetMapping("/jefe/estadisticas")
+    @PreAuthorize("hasAnyRole('jefe_archivo', 'archivo', 'administrador')")
+    @Operation(summary = "Estadísticas administrativas del Jefe de Archivo",
+            description = "Salidas del día por estación (con Clínica de la Mujer y clasificación activo/pasivo), expedientes por estado actual y resumen del Cuaderno Rojo.")
+    public ResponseEntity<ApiResponse<DashboardJefeArchivoDTO>> estadisticasJefe(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                dashboardJefeService.estadisticas(fecha),
+                "Estadísticas administrativas de archivo obtenidas"));
     }
 
     @GetMapping("/movimientos")

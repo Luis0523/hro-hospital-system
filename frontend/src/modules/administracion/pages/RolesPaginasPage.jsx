@@ -113,8 +113,8 @@ export default function RolesPaginasPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Roles y páginas</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-headline-md text-primary">Roles y páginas</h2>
+        <p className="text-sm text-on-surface-variant">
           Elija a qué páginas del SIGHO accede cada rol. Los roles se crean y administran en
           Keycloak; aquí solo se configuran sus páginas.
         </p>
@@ -161,7 +161,10 @@ export default function RolesPaginasPage() {
           <tbody>
             {filas.length === 0 ? (
               <tr>
-                <td colSpan={paginas.length + 2} className="px-4 py-6 text-center text-slate-500">
+                <td
+                  colSpan={paginas.length + 2}
+                  className="px-4 py-6 text-center text-on-surface-variant"
+                >
                   No hay roles configurados.
                 </td>
               </tr>
@@ -181,7 +184,12 @@ export default function RolesPaginasPage() {
                     </td>
                   ))}
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="primary" onClick={() => guardar(fila.rol)} disabled={guardando === fila.rol}>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => guardar(fila.rol)}
+                      disabled={guardando === fila.rol}
+                    >
                       {guardando === fila.rol ? 'Guardando…' : 'Guardar'}
                     </Button>
                   </td>

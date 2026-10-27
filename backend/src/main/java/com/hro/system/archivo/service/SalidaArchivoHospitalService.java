@@ -13,6 +13,7 @@ import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
+import com.hro.system.reporte.FormatoExpediente;
 import com.hro.system.reporte.PlantillaReportePdf;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
@@ -47,6 +48,7 @@ public class SalidaArchivoHospitalService {
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ExpedienteHroService expedienteHroService;
     private final PlantillaReportePdf plantilla;
+    private final com.hro.system.parametro.service.ParametroSistemaService parametros;
 
     @Transactional
     public SalidaArchivoHospitalResponseDTO registrar(RegistrarSalidaArchivoHospitalRequestDTO dto) {
@@ -76,6 +78,7 @@ public class SalidaArchivoHospitalService {
                 .estacion(estacion)
                 .numeroExpediente(numero)
                 .pacienteNombre(paciente.getNombreCompleto())
+                .esClinicaMujer(Boolean.TRUE.equals(dto.getEsClinicaMujer()))
                 .registradoPor(usuario)
                 .registradoEn(OffsetDateTime.now())
                 .build());
@@ -103,11 +106,15 @@ public class SalidaArchivoHospitalService {
 
         List<List<String>> filas = new ArrayList<>();
         int indice = 1;
+        Long umbral = umbralActivo();
         for (SalidaArchivoHospital s : lista) {
+            String clasificacion = clasificar(s.getNumeroExpediente(), umbral);
             filas.add(List.of(
                     String.valueOf(indice++),
-                    s.getNumeroExpediente(),
+                    FormatoExpediente.formatear(s.getNumeroExpediente()),
                     s.getPacienteNombre(),
+                    clasificacion != null ? clasificacion : "-",
+                    Boolean.TRUE.equals(s.isEsClinicaMujer()) ? "Sí" : "-",
                     formatearHora(s.getRegistradoEn())));
         }
 
@@ -143,9 +150,11 @@ public class SalidaArchivoHospitalService {
 
     private static List<PlantillaReportePdf.Columna> columnas() {
         return List.of(
-                new PlantillaReportePdf.Columna("#", 0.5f, PlantillaReportePdf.Alineacion.CENTRO),
-                new PlantillaReportePdf.Columna("Expediente", 1.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
-                new PlantillaReportePdf.Columna("Paciente", 2.6f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("#", 0.4f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Expediente", 1.1f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Paciente", 2.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
+                new PlantillaReportePdf.Columna("Clasificación", 0.9f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Mujer", 0.6f, PlantillaReportePdf.Alineacion.CENTRO),
                 new PlantillaReportePdf.Columna("Hora", 0.8f, PlantillaReportePdf.Alineacion.CENTRO));
     }
 
@@ -157,6 +166,8 @@ public class SalidaArchivoHospitalService {
                 .estacionNombre(s.getEstacion() != null ? s.getEstacion().getNombre() : null)
                 .numeroExpediente(s.getNumeroExpediente())
                 .pacienteNombre(s.getPacienteNombre())
+                .esClinicaMujer(s.isEsClinicaMujer())
+                .clasificacion(clasificar(s.getNumeroExpediente(), umbralActivo()))
                 .registradoPor(s.getRegistradoPor() != null ? s.getRegistradoPor().getNombreMostrar() : null)
                 .registradoEn(s.getRegistradoEn())
                 .build();
@@ -177,5 +188,26 @@ public class SalidaArchivoHospitalService {
 
     private static String nvl(String valor) {
         return valor == null ? "" : valor;
+    }
+
+    private Long umbralActivo() {
+        String valor = parametros.obtener(
+                com.hro.system.parametro.service.ParametroSistemaService.UMBRAL_ARCHIVO_ACTIVO, null);
+        try {
+            return (valor != null && !valor.isBlank()) ? Long.valueOf(valor.trim()) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String clasificar(String numeroExpediente, Long umbral) {
+        if (umbral == null || numeroExpediente == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(numeroExpediente.trim()) > umbral ? "activo" : "pasivo";
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

@@ -26,6 +26,11 @@ import {
   transicionCicloMock,
 } from './mockData'
 import { construirPdfResumen } from '../utils/pdfMock'
+import {
+  guardarCuadernoRojoMock,
+  listarCuadernoRojoMock,
+  obtenerCuadernoRojoMock,
+} from './cuadernoRojoMock'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 
@@ -286,4 +291,28 @@ export function noLocalizadoCiclo(cicloId, datos) {
 
 export function reintentarBusquedaCiclo(cicloId, datos) {
   return ejecutarTransicionCiclo(cicloId, 'reintentar-busqueda', datos)
+}
+
+// ---------------------------------------------------------------------------
+// Cuaderno Rojo: registro diario manual de Archivo (un registro por fecha).
+// ---------------------------------------------------------------------------
+
+export async function listarCuadernoRojo({ anio, mes } = {}) {
+  if (USE_MOCK) return listarCuadernoRojoMock({ anio, mes })
+
+  const respuesta = await client.get('/cuaderno-rojo', { params: { anio, mes } })
+  return respuesta?.data ?? []
+}
+
+export async function obtenerCuadernoRojo(fecha) {
+  if (USE_MOCK) return obtenerCuadernoRojoMock(fecha)
+
+  const respuesta = await client.get(`/cuaderno-rojo/${fecha}`)
+  return respuesta?.data ?? null
+}
+
+export async function guardarCuadernoRojo(fecha, datos) {
+  if (USE_MOCK) return guardarCuadernoRojoMock(fecha, datos)
+
+  return desenvolver(await client.put(`/cuaderno-rojo/${fecha}`, datos))
 }

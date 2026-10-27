@@ -46,7 +46,7 @@ describe('SeguimientoEnfermeriaDosPage', () => {
       }),
     ).toBeInTheDocument()
     expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
-    expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrado')
+    expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrar')
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()
   })
 

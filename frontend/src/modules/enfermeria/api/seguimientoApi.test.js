@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  adjuntarEspecialidadesFijas,
   avanzarTurno,
   cambiarClinicaTurno,
   contarExpedientesEnClinica,
@@ -90,6 +91,26 @@ describe('seguimientoApi', () => {
         item.asignaciones.some((asignacion) => asignacion.especialidadId === 'NEF'),
       ),
     ).toBe(false)
+  })
+
+  it('adjunta las especialidades fijas a cada clínica agrupando por espacio', () => {
+    const clinicas = [
+      { id: 'c-1', nombre: 'Clínica 1' },
+      { id: 'c-2', nombre: 'Clínica 2' },
+    ]
+    const fijas = [
+      { espacioFisicoId: 'c-1', especialidadId: 10, especialidadNombre: 'Ginecología' },
+      { espacioFisicoId: 'c-1', especialidadId: 11, especialidadNombre: 'Alto Riesgo' },
+      { espacioFisicoId: 'c-1', especialidadId: 10, especialidadNombre: 'Ginecología' },
+    ]
+
+    const resultado = adjuntarEspecialidadesFijas(clinicas, fijas)
+
+    expect(resultado[0].especialidadesFijas).toEqual([
+      { id: 10, nombre: 'Ginecología' },
+      { id: 11, nombre: 'Alto Riesgo' },
+    ])
+    expect(resultado[1].especialidadesFijas).toEqual([])
   })
 
   it('traduce los estados del backend a las etapas visuales', () => {

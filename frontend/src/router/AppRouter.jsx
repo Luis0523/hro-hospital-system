@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ArchivoPage from '@/modules/archivo/pages/ArchivoPage.jsx'
+import CuadernoRojoPage from '@/modules/archivo/pages/CuadernoRojoPage.jsx'
 import ConsolidadoArchivoPage from '@/modules/archivo/pages/ConsolidadoArchivoPage.jsx'
 import DashboardArchivoPage from '@/modules/archivo/pages/DashboardArchivoPage.jsx'
 import DepuracionExpedientesPage from '@/modules/archivo/pages/DepuracionExpedientesPage.jsx'
@@ -34,6 +35,7 @@ import CalendarioPage from '@/modules/administracion/pages/CalendarioPage.jsx'
 import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
 import AuditoriaPage from '@/modules/administracion/pages/AuditoriaPage.jsx'
 import JefeEnfermeriaLayout from '@/modules/jefeEnfermeria/JefeEnfermeriaLayout.jsx'
+import JefeArchivoLayout from '@/modules/jefeArchivo/JefeArchivoLayout.jsx'
 import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
 import EspecialidadesJefePage from '@/modules/jefeEnfermeria/pages/EspecialidadesPage.jsx'
 import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
@@ -97,9 +99,10 @@ export default function AppRouter() {
 
         <Route element={<RutaPorRol area="archivo" />}>
           <Route path="/archivo" element={<ArchivoPage />} />
+          <Route path="/archivo/cuaderno-rojo" element={<CuadernoRojoPage />} />
           <Route path="/archivo/salida" element={<SalidaArchivoPage />} />
           <Route path="/archivo/salida-hospital" element={<SalidaArchivoHospitalPage />} />
-          <Route path="/archivo/dashboard" element={<DashboardArchivoPage />} />
+          <Route path="/archivo/dashboard" element={<Navigate to="/jefe-archivo" replace />} />
           <Route path="/archivo/depuracion" element={<DepuracionExpedientesPage />} />
           <Route path="/archivo/consolidado" element={<ConsolidadoArchivoPage />} />
           <Route path="/archivo/salidas-externas" element={<SalidasExternasPage />} />
@@ -117,6 +120,13 @@ export default function AppRouter() {
             <Route path="reportes" element={<ReportesPage />} />
             <Route path="auditoria" element={<AuditoriaPage />} />
             <Route path="*" element={<Navigate to="/administracion" replace />} />
+          </Route>
+        </Route>
+
+        <Route element={<RutaPorRol areas={['jefe_archivo', 'administracion']} />}>
+          <Route path="/jefe-archivo" element={<JefeArchivoLayout />}>
+            <Route index element={<DashboardArchivoPage />} />
+            <Route path="*" element={<Navigate to="/jefe-archivo" replace />} />
           </Route>
         </Route>
 

@@ -254,14 +254,14 @@ export default function LibroSeguimiento({
           <EmptyState title="Sin resultados" description="No hay especialidades para mostrar." />
         ) : (
           filasVisibles.map((fila) => (
-            <div key={fila.id} className="grid gap-2 md:grid-cols-[165px_minmax(0,1fr)]">
+            <div key={fila.id} className="grid gap-2 md:grid-cols-[190px_minmax(0,1fr)]">
               <button
                 type="button"
                 data-especialidad-header="true"
                 data-especialidad-id={fila.id}
                 aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Presione Enter para ejecutar el siguiente paso.`}
                 onKeyDown={(evento) => manejarTeclaEspecialidad(evento, fila)}
-                className={`flex w-full flex-col justify-center rounded-lg border border-l-4 px-3 py-1.5 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 ${
+                className={`flex w-full flex-col justify-center gap-0.5 rounded-lg border border-l-4 px-3 py-2 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 ${
                   String(especialidadActivaId) === String(fila.id)
                     ? 'border-indigo-600 border-l-indigo-600 bg-indigo-500/20 ring-4 ring-indigo-500/60 shadow-popover dark:border-indigo-400 dark:border-l-indigo-400 dark:bg-indigo-500/25 dark:ring-indigo-400/60'
                     : 'border-outline-variant border-l-primary bg-surface-container-low'
@@ -270,8 +270,8 @@ export default function LibroSeguimiento({
                 <span
                   className={
                     accesible
-                      ? 'text-title-md font-bold text-on-surface'
-                      : 'text-label-md text-on-surface'
+                      ? 'text-headline-md font-bold leading-tight text-on-surface'
+                      : 'text-headline-sm font-bold leading-tight text-on-surface'
                   }
                 >
                   {fila.nombre}
@@ -279,8 +279,8 @@ export default function LibroSeguimiento({
                 <span
                   className={
                     accesible
-                      ? 'text-body-sm text-on-surface-variant'
-                      : 'text-label-sm text-on-surface-variant'
+                      ? 'text-body-md text-on-surface-variant'
+                      : 'text-body-sm text-on-surface-variant'
                   }
                 >
                   {fila.registrados} / {fila.maximo} registrados · Enter

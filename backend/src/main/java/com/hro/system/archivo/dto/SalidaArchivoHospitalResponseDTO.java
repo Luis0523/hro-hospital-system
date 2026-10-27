@@ -21,6 +21,9 @@ public class SalidaArchivoHospitalResponseDTO {
     private String estacionNombre;
     private String numeroExpediente;
     private String pacienteNombre;
+    private Boolean esClinicaMujer;
+    /** "activo" o "pasivo" según el umbral configurado; null si no se puede clasificar. */
+    private String clasificacion;
     private String registradoPor;
     private OffsetDateTime registradoEn;
 }

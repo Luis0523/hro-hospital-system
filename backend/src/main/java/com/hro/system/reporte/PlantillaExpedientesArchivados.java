@@ -56,7 +56,7 @@ public class PlantillaExpedientesArchivados {
     private static final float ALTO_ENC_EST = 15f;
     private static final float INICIO_TABLAS = ALTO_ENCABEZADO + ESPACIO_ANTES_TABLAS;
     private static final float INICIO_FILAS = INICIO_TABLAS + ALTO_ENC_EST;
-    private static final float ALTO_FILA = 15.5f;
+    private static final float ALTO_FILA = 12.6f;
 
     // ---- Firmas y pie (distancias medidas desde arriba) ----
     private static final float ALTO_FIRMAS = 74f;
@@ -66,10 +66,10 @@ public class PlantillaExpedientesArchivados {
     private static final float Y_INICIO_FIRMAS = FONDO - ALTO_FIRMAS;
     private static final float LIMITE_ULTIMA = Y_INICIO_FIRMAS - GAP_SEGURIDAD;
 
-    private static final int FILAS_POR_TABLA_NORMAL =
-            (int) Math.floor((LIMITE_NORMAL - INICIO_FILAS) / ALTO_FILA);
-    private static final int FILAS_POR_TABLA_ULTIMA =
-            (int) Math.floor((LIMITE_ULTIMA - INICIO_FILAS) / ALTO_FILA);
+    // La salida institucional usa exactamente 50 expedientes por columna
+    // (150 por hoja), incluidas las páginas con firmas.
+    private static final int FILAS_POR_TABLA_NORMAL = 50;
+    private static final int FILAS_POR_TABLA_ULTIMA = 50;
     private static final int CAPACIDAD_NORMAL = FILAS_POR_TABLA_NORMAL * 3;
     private static final int CAPACIDAD_ULTIMA = FILAS_POR_TABLA_ULTIMA * 3;
 

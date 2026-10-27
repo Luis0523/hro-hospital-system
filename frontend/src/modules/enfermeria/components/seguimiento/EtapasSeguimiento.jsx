@@ -2,12 +2,17 @@ import { ETAPAS_SEGUIMIENTO } from '../../api/seguimientoApi'
 import { estiloDeEtapa } from './estilosEtapas'
 
 // Columna vertical con el conteo por etapa; cada tarjeta funciona como filtro.
+const ETIQUETAS_ETAPA = {
+  registrado: 'Registrar',
+}
+
 export default function EtapasSeguimiento({ conteos, filtro, onFiltrar }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:flex md:flex-col">
       {ETAPAS_SEGUIMIENTO.map((etapa, indice) => {
         const estilo = estiloDeEtapa(etapa.id)
         const activa = filtro === etapa.id
+        const etiqueta = ETIQUETAS_ETAPA[etapa.id] ?? etapa.nombre
         return (
           <button
             key={etapa.id}
@@ -32,7 +37,7 @@ export default function EtapasSeguimiento({ conteos, filtro, onFiltrar }) {
               <span className={`h-1.5 w-1.5 rounded-full ${estilo.punto}`} />
             </div>
             <strong className="mt-0.5 block truncate text-[11px] leading-tight text-on-surface">
-              {etapa.nombre}
+              {etiqueta}
             </strong>
             <div className="mt-0.5 flex items-baseline gap-1">
               <span className={`text-label-md font-black ${estilo.texto}`}>

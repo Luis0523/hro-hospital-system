@@ -2,8 +2,9 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 
 // Encabezado compacto de la Estación de Archivo. El control de tema y los
 // datos del usuario viven en la barra lateral (ArchivoNavbar) para no ocupar
-// espacio en móvil; aquí solo queda el botón de menú y la marca SIGHO.
-export default function ArchivoHeader({ menuAbierto = false, onAlternarMenu }) {
+// espacio en móvil; aquí solo queda el botón de menú, la marca SIGHO y las
+// acciones propias de la pantalla (por ejemplo, fecha y estación).
+export default function ArchivoHeader({ menuAbierto = false, onAlternarMenu, acciones = null }) {
   return (
     <header className="sticky top-0 z-30 border-b border-outline-variant bg-surface-container-lowest/95 backdrop-blur">
       <div className="flex items-center gap-3 px-4 py-2.5">
@@ -28,6 +29,12 @@ export default function ArchivoHeader({ menuAbierto = false, onAlternarMenu }) {
             Estación de Archivo
           </h1>
         </div>
+
+        {acciones && (
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+            {acciones}
+          </div>
+        )}
       </div>
     </header>
   )

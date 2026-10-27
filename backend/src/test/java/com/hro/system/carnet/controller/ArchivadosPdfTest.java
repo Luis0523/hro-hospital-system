@@ -1,9 +1,7 @@
 package com.hro.system.carnet.controller;
 
-import com.hro.system.carnet.entity.Carnet;
-import com.hro.system.carnet.repository.CarnetRepository;
-import com.hro.system.clinica.entity.Especialidad;
-import com.hro.system.clinica.repository.EspecialidadRepository;
+import com.hro.system.archivo.entity.SalidaArchivoHospital;
+import com.hro.system.archivo.repository.SalidaArchivoHospitalRepository;
 import com.hro.system.parametro.service.ParametroSistemaService;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -19,15 +17,15 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * PDF de "EXPEDIENTES ARCHIVADOS": solo los carnets clasificados como pasivos
- * (número <= umbral) de la fecha, ordenados de menor a mayor.
+ * PDF de "EXPEDIENTES ARCHIVADOS": solo las salidas de archivo consultadas al
+ * hospital clasificadas como pasivas (número <= umbral) de la fecha, ordenadas
+ * de menor a mayor.
  */
 @SpringBootTest
 @ActiveProfiles("test-postgres")
@@ -38,16 +36,12 @@ class ArchivadosPdfTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private CarnetRepository carnetRepository;
-
-    @Autowired
-    private EspecialidadRepository especialidadRepository;
+    private SalidaArchivoHospitalRepository salidaRepository;
 
     @Autowired
     private ParametroSistemaService parametros;
 
     private LocalDate fecha;
-    private Especialidad especialidad;
 
     @BeforeEach
     void setUp() {
@@ -55,28 +49,16 @@ class ArchivadosPdfTest {
         int mes = 1 + (int) (Math.random() * 12);
         int dia = 1 + (int) (Math.random() * 27);
         fecha = LocalDate.of(2031, mes, dia);
-        carnetRepository.deleteAll(carnetRepository.listarPorFecha(fecha));
-
-        String suffix = UUID.randomUUID().toString().substring(0, 8);
-        especialidad = especialidadRepository.save(Especialidad.builder()
-                .nombre("Archivados " + suffix)
-                .activo(true)
-                .build());
+        salidaRepository.deleteAll(salidaRepository.findByFechaOrderByRegistradoEnDesc(fecha));
         parametros.guardar(ParametroSistemaService.UMBRAL_ARCHIVO_ACTIVO, "800050");
     }
 
     private void insertarCarnet(String numero) {
-        OffsetDateTime ahora = OffsetDateTime.now();
-        carnetRepository.save(Carnet.builder()
+        salidaRepository.save(SalidaArchivoHospital.builder()
                 .fecha(fecha)
-                .correlativo(carnetRepository.obtenerSiguienteCorrelativo(fecha, especialidad.getId()))
-                .especialidad(especialidad)
                 .numeroExpediente(numero)
                 .pacienteNombre("Paciente " + numero)
-                .estado("registrado")
-                .registradoEn(ahora)
-                .creadoEn(ahora)
-                .actualizadoEn(ahora)
+                .registradoEn(OffsetDateTime.now())
                 .build());
     }
 

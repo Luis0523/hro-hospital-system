@@ -5,6 +5,7 @@ describe('formatearExpediente', () => {
   it('separa los 2 últimos dígitos con guion', () => {
     expect(formatearExpediente('927581')).toBe('9275-81')
     expect(formatearExpediente('1234567')).toBe('12345-67')
+    expect(formatearExpediente('30954')).toBe('3095-4')
     expect(formatearExpediente('123')).toBe('1-23')
   })
 

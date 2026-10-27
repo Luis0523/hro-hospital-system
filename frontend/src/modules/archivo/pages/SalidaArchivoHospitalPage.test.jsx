@@ -11,6 +11,7 @@ vi.mock('@/modules/carnets/api/carnetsApi', () => ({
   listarEstaciones: vi.fn(() =>
     Promise.resolve([{ id: 1, codigo: 'EST-01', nombre: 'Estación 1' }]),
   ),
+  obtenerConfiguracionArchivo: vi.fn(() => Promise.resolve({ umbralActivo: 840999 })),
 }))
 
 function renderPagina() {

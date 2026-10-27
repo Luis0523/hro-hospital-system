@@ -10,6 +10,16 @@ const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 // Estado del mock (solo dev/test): lista en memoria por sesión.
 let mockSalidas = []
 
+const UMBRAL_MOCK = 840999
+
+function clasificarMock(numeroExpediente) {
+  try {
+    return Number.parseInt(numeroExpediente, 10) > UMBRAL_MOCK ? 'activo' : 'pasivo'
+  } catch {
+    return null
+  }
+}
+
 export async function listarSalidasHospital({ fecha, estacionId } = {}) {
   if (USE_MOCK) {
     return mockSalidas
@@ -25,7 +35,11 @@ export async function listarSalidasHospital({ fecha, estacionId } = {}) {
  * Registra una salida consultando al hospital (vía backend). Lanza error con
  * `status`: 404 expediente inexistente · 409 ya marcado · 502 integración.
  */
-export async function registrarSalidaHospital({ numeroExpediente, estacionId } = {}) {
+export async function registrarSalidaHospital({
+  numeroExpediente,
+  estacionId,
+  esClinicaMujer = false,
+} = {}) {
   if (USE_MOCK) {
     const nueva = {
       id: `s-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
@@ -33,13 +47,19 @@ export async function registrarSalidaHospital({ numeroExpediente, estacionId } =
       estacionId,
       numeroExpediente,
       pacienteNombre: 'Paciente de prueba',
+      esClinicaMujer: Boolean(esClinicaMujer),
+      clasificacion: clasificarMock(numeroExpediente),
       registradoEn: new Date().toISOString(),
     }
     mockSalidas = [nueva, ...mockSalidas]
     return nueva
   }
   return desenvolver(
-    await client.post('/salidas-archivo-hospital', { numeroExpediente, estacionId }),
+    await client.post('/salidas-archivo-hospital', {
+      numeroExpediente,
+      estacionId,
+      esClinicaMujer,
+    }),
   )
 }
 

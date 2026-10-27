@@ -23,14 +23,19 @@ export default function ListaDiasNoLaborables({ dias = [], onVer, onHabilitar })
       {dias.map((dia) => {
         const { anio, mes, dia: numeroDia } = desdeISO(dia.fecha)
         return (
-          <li key={dia.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-800">{formatearFechaLarga(dia.fecha)}</p>
-            <p className="text-xs text-slate-500">
+          <li
+            key={dia.id}
+            className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-on-surface">
+              {formatearFechaLarga(dia.fecha)}
+            </p>
+            <p className="text-xs text-on-surface-variant">
               {nombreDia(diaSemanaISO(anio, mes, numeroDia))}
             </p>
 
-            <p className="mt-2 break-words text-sm text-slate-700">{dia.motivo}</p>
-            <p className="mt-1 break-words text-xs text-slate-500">
+            <p className="mt-2 break-words text-sm text-on-surface">{dia.motivo}</p>
+            <p className="mt-1 break-words text-xs text-on-surface-variant">
               Registrado por: {dia.creadoPorNombre || 'No disponible'}
             </p>
 

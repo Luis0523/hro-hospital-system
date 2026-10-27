@@ -72,6 +72,7 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
         const nueva = await registrarSalidaHospital({
           numeroExpediente: item.numero,
           estacionId,
+          esClinicaMujer: item.esClinicaMujer,
         })
         setSalidas((prev) => [nueva, ...prev.filter((s) => s.id !== nueva.id)])
         setPendientes((prev) => prev.filter((p) => p.numeroExpediente !== item.numero))
@@ -109,7 +110,7 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
   }, [estacionId, cargar, mostrarToast])
 
   const agregar = useCallback(
-    (valor) => {
+    (valor, opciones = {}) => {
       const numero = String(valor ?? '').trim()
       if (!numero) return false
       if (!estacionId) {
@@ -124,9 +125,14 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
       enColaRef.current.add(numero)
       setPendientes((prev) => [
         ...prev,
-        { id: `tmp-${numero}`, numeroExpediente: numero, _procesando: true },
+        {
+          id: `tmp-${numero}`,
+          numeroExpediente: numero,
+          esClinicaMujer: Boolean(opciones.esClinicaMujer),
+          _procesando: true,
+        },
       ])
-      cola.current.push({ numero })
+      cola.current.push({ numero, esClinicaMujer: Boolean(opciones.esClinicaMujer) })
       vaciarCola()
       return true
     },

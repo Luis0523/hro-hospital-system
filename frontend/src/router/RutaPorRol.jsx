@@ -10,7 +10,7 @@ import Spinner from '@/shared/components/ui/Spinner.jsx'
  *
  * En modo mock/test no se aplica, para no romper el desarrollo ni las pruebas.
  */
-export default function RutaPorRol({ area }) {
+export default function RutaPorRol({ area, areas }) {
   const { autenticado, usuario, modoAuth } = useAuth()
   const { puedeAcceder, inicioSegunRol, cargando } = useAcceso()
   const location = useLocation()
@@ -28,7 +28,12 @@ export default function RutaPorRol({ area }) {
     )
   }
 
-  if (modoAuth === 'keycloak' && area && !puedeAcceder(usuario?.rol, area)) {
+  const areasPermitidas = areas ?? (area ? [area] : [])
+  const tieneAcceso =
+    areasPermitidas.length === 0 ||
+    areasPermitidas.some((clave) => puedeAcceder(usuario?.rol, clave))
+
+  if (modoAuth === 'keycloak' && !tieneAcceso) {
     const destino = inicioSegunRol(usuario?.rol)
     return <Navigate to={destino !== location.pathname ? destino : '/sin-acceso'} replace />
   }

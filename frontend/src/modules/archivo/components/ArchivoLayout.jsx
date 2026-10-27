@@ -8,7 +8,7 @@ import ArchivoNavbar from './ArchivoNavbar.jsx'
 // lateral izquierda colapsable (se oculta/despliega en móvil y escritorio) y
 // el cierre de sesión fijado al pie de la barra. En escritorio la barra
 // empuja el contenido; en móvil se muestra como panel superpuesto.
-export default function ArchivoLayout({ children }) {
+export default function ArchivoLayout({ children, acciones = null }) {
   const { identidad, identidadLista, suplanta } = useIdentidadEstacionArchivo()
   const usuarioArchivo = suplanta
     ? resolverUsuarioArchivo(identidad)
@@ -49,7 +49,11 @@ export default function ArchivoLayout({ children }) {
           menuAbierto ? 'md:pl-64' : ''
         }`}
       >
-        <ArchivoHeader menuAbierto={menuAbierto} onAlternarMenu={alternarMenu} />
+        <ArchivoHeader
+          menuAbierto={menuAbierto}
+          onAlternarMenu={alternarMenu}
+          acciones={acciones}
+        />
         {identidadLista ? children : null}
       </div>
     </div>

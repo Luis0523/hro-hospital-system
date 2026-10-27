@@ -351,33 +351,67 @@ function resumenClinicaMock(clinica, fecha) {
   }
 }
 
+/**
+ * Agrega a cada clínica las especialidades que tiene asignadas como clínica
+ * fija de la estación. Una misma clínica puede ser fija de varias
+ * especialidades, por eso se agrupan por `espacioFisicoId`.
+ */
+export function adjuntarEspecialidadesFijas(clinicas = [], fijas = []) {
+  const porClinica = new Map()
+  for (const item of Array.isArray(fijas) ? fijas : []) {
+    if (item?.espacioFisicoId == null || !item?.especialidadNombre) continue
+    const clave = String(item.espacioFisicoId)
+    const lista = porClinica.get(clave) ?? []
+    if (!lista.some((especialidad) => especialidad.id === item.especialidadId)) {
+      lista.push({
+        id: item.especialidadId ?? item.especialidadNombre,
+        nombre: item.especialidadNombre,
+      })
+    }
+    porClinica.set(clave, lista)
+  }
+
+  return (Array.isArray(clinicas) ? clinicas : []).map((clinica) => ({
+    ...clinica,
+    especialidadesFijas: porClinica.get(String(clinica.id)) ?? [],
+  }))
+}
+
 export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
   if (USE_MOCK) {
     await esperar()
-    return filtrarClinicasPorNivel(
-      CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha)),
-      estacionId,
+    return adjuntarEspecialidadesFijas(
+      filtrarClinicasPorNivel(
+        CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha)),
+        estacionId,
+      ),
+      [],
     )
   }
 
-  const resumen = desenvolver(
-    await leerConReintento('/turnos-estacion/clinicas/resumen', {
+  const [respuestaResumen, fijas] = await Promise.all([
+    leerConReintento('/turnos-estacion/clinicas/resumen', {
       params: { fecha, estacionId },
     }),
-  )
-  return filtrarClinicasPorNivel(
-    (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
-      id: clinica.espacioFisicoId,
-      numero: clinica.numero,
-      nivel: clinica.nivel,
-      nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
-      asignados: Number(clinica.asignados ?? 0),
-      devueltos: Number(clinica.devueltos ?? 0),
-      presentaciones: Number(clinica.presentaciones ?? 0),
-      expedientesEnClinica: Number(clinica.pendientes ?? 0),
-      ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
-    })),
-    estacionId,
+    estacionId != null
+      ? leerConReintento(`/estaciones/${estacionId}/clinicas-fijas`).catch(() => [])
+      : Promise.resolve([]),
+  ])
+  const resumen = desenvolver(respuestaResumen)
+  const clinicas = (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
+    id: clinica.espacioFisicoId,
+    numero: clinica.numero,
+    nivel: clinica.nivel,
+    nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
+    asignados: Number(clinica.asignados ?? 0),
+    devueltos: Number(clinica.devueltos ?? 0),
+    presentaciones: Number(clinica.presentaciones ?? 0),
+    expedientesEnClinica: Number(clinica.pendientes ?? 0),
+    ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
+  }))
+  return adjuntarEspecialidadesFijas(
+    filtrarClinicasPorNivel(clinicas, estacionId),
+    desenvolver(fijas),
   )
 }
 

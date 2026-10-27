@@ -41,13 +41,10 @@ describe('ArchivoNavbar — control claro/oscuro', () => {
 })
 
 describe('ArchivoNavbar — secciones', () => {
-  it('incluye el acceso al Dashboard de Archivo', () => {
+  it('no muestra el dashboard administrativo en la estación de Archivo', () => {
     renderNavbar()
 
-    expect(screen.getByRole('link', { name: /dashboard de archivo/i })).toHaveAttribute(
-      'href',
-      '/archivo/dashboard',
-    )
+    expect(screen.queryByRole('link', { name: /dashboard de archivo/i })).not.toBeInTheDocument()
   })
 })
 

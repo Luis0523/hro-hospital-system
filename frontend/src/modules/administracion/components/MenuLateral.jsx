@@ -23,7 +23,9 @@ export default function MenuLateral({ onNavegar }) {
       aria-label="Navegación del Panel de Administración"
       className="flex h-full flex-col gap-1 overflow-y-auto px-3 py-4"
     >
-      <p className="px-3 pb-2 text-label-sm uppercase tracking-wider text-slate-500">Secciones</p>
+      <p className="px-3 pb-2 text-label-sm uppercase tracking-wider text-on-surface-variant">
+        Secciones
+      </p>
 
       {ITEMS_ADMINISTRACION.map((item) => (
         <NavLink
@@ -33,7 +35,9 @@ export default function MenuLateral({ onNavegar }) {
           onClick={onNavegar}
           className={({ isActive }) =>
             `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue ${
-              isActive ? 'bg-hro-blue text-white' : 'text-slate-600 hover:bg-slate-100'
+              isActive
+                ? 'bg-hro-blue text-white'
+                : 'text-on-surface-variant hover:bg-surface-container'
             }`
           }
         >

@@ -50,7 +50,7 @@ export default function EspecialidadesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">Especialidades médicas registradas.</p>
+        <p className="text-sm text-on-surface-variant">Especialidades médicas registradas.</p>
         <Button onClick={gestion.abrirCrear}>
           <Icon name="add" className="text-[18px]" />
           Agregar

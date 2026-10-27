@@ -43,6 +43,10 @@ public class SalidaArchivoHospital {
     @Column(name = "paciente_nombre", nullable = false, length = 200)
     private String pacienteNombre;
 
+    @Column(name = "es_clinica_mujer", nullable = false)
+    @Builder.Default
+    private boolean esClinicaMujer = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registrado_por_id")
     private UsuarioReferencia registradoPor;

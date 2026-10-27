@@ -101,7 +101,7 @@ export default function EstacionesTab() {
         <button
           type="button"
           onClick={() => abrirSubespecialidades(fila)}
-          className="text-hro-blue hover:underline"
+          className="text-primary hover:underline"
         >
           {fila.subespecialidades?.length ?? 0} — Gestionar
         </button>
@@ -120,7 +120,7 @@ export default function EstacionesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-on-surface-variant">
           Puestos de enfermería. Cada estación agrupa las subespecialidades de su área y su tablero
           muestra solo esas.
         </p>
@@ -175,18 +175,20 @@ export default function EstacionesTab() {
         textoGuardar="Guardar"
       >
         <form id="form-catalogo" onSubmit={guardarSubespecialidades} className="space-y-3">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-on-surface-variant">
             Seleccione las subespecialidades que atenderá esta estación.
           </p>
-          {cargandoSubs && <p className="text-sm text-slate-500">Cargando subespecialidades…</p>}
+          {cargandoSubs && (
+            <p className="text-sm text-on-surface-variant">Cargando subespecialidades…</p>
+          )}
           {!cargandoSubs && subespecialidades.length === 0 && (
-            <p className="text-sm text-slate-500">No hay subespecialidades disponibles.</p>
+            <p className="text-sm text-on-surface-variant">No hay subespecialidades disponibles.</p>
           )}
           {!cargandoSubs &&
             subespecialidades.map((sub) => (
               <label
                 key={sub.id}
-                className="flex items-center gap-2 rounded border border-slate-200 p-2 text-sm"
+                className="flex items-center gap-2 rounded border border-outline-variant p-2 text-sm"
               >
                 <input
                   type="checkbox"

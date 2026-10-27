@@ -40,7 +40,7 @@ describe('SeguimientoEnfermeriaPage', () => {
       await screen.findByRole('heading', { name: 'Control de turnos y expedientes' }),
     ).toBeInTheDocument()
     expect(await screen.findByTestId('detalle-turno')).toBeInTheDocument()
-    expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrado')
+    expect(screen.getByTestId('etapa-registrado')).toHaveTextContent('Registrar')
     expect(screen.getByTestId('etapa-en_clinica')).toHaveTextContent('Recibir/Repartir')
     expect(screen.queryByTestId('etapa-recibido')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Clínicas físicas' })).toBeInTheDocument()

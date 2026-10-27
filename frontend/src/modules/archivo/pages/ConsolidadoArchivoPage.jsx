@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Alert, Button, Icon, Input, Spinner } from '@/shared/components/ui'
+import { useEffect, useState } from 'react'
+import { Alert, Button, Icon, Input, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
+import { obtenerCuadernoRojo } from '../api/archivoApi'
+import { obtenerEstadisticasJefe } from '../api/dashboardArchivoApi'
 import { descargarArchivadosPdf } from '../api/consolidadoArchivoApi'
 import { descargarBlob } from '../utils/descargarBlob'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
@@ -39,20 +41,57 @@ export default function ConsolidadoArchivoPage() {
 
   const { mostrarToast } = useToast()
   const [descargandoArchivados, setDescargandoArchivados] = useState(false)
+  const [progresoPdf, setProgresoPdf] = useState(0)
+  const [cuaderno, setCuaderno] = useState(null)
+  const [resumenSalidas, setResumenSalidas] = useState(null)
+
+  useEffect(() => {
+    let activo = true
+    Promise.all([obtenerCuadernoRojo(fecha), obtenerEstadisticasJefe({ fecha })])
+      .then(([registro, resumen]) => {
+        if (!activo) return
+        setCuaderno(registro)
+        setResumenSalidas(resumen)
+      })
+      .catch(() => {
+        if (!activo) return
+        setCuaderno(null)
+        setResumenSalidas(null)
+      })
+    return () => {
+      activo = false
+    }
+  }, [fecha])
 
   async function descargarArchivados() {
     setDescargandoArchivados(true)
+    setProgresoPdf(0)
+    const inicio = Date.now()
+    const simulacionMs = 2200
+    const timer = setInterval(() => {
+      const avance = Math.min(92, Math.round(((Date.now() - inicio) / simulacionMs) * 92))
+      setProgresoPdf((actual) => Math.max(actual, avance))
+    }, 50)
     try {
-      const blob = await descargarArchivadosPdf({ fecha })
-      descargarBlob(blob, `expedientes-archivados-${fecha}.pdf`)
+      const [blob] = await Promise.all([
+        descargarArchivadosPdf({ fecha }),
+        new Promise((resolver) => setTimeout(resolver, simulacionMs)),
+      ])
+      clearInterval(timer)
+      setProgresoPdf(100)
+      if (blob) descargarBlob(blob, `expedientes-archivados-${fecha}.pdf`)
+      await new Promise((resolver) => setTimeout(resolver, 400))
     } catch (fallo) {
+      clearInterval(timer)
       mostrarToast({
         tone: 'error',
         title: 'No se pudo generar el PDF',
         message: fallo?.message,
       })
     } finally {
+      clearInterval(timer)
       setDescargandoArchivados(false)
+      setProgresoPdf(0)
     }
   }
 
@@ -111,7 +150,15 @@ export default function ConsolidadoArchivoPage() {
                     <Icon name="refresh" className="text-[18px]" />
                     Actualizar
                   </Button>
-                  <Button onClick={descargarArchivados} disabled={descargandoArchivados}>
+                  <Button
+                    onClick={descargarArchivados}
+                    disabled={descargandoArchivados || (resumenSalidas?.totalSalidas ?? 0) === 0}
+                    title={
+                      (resumenSalidas?.totalSalidas ?? 0) === 0
+                        ? 'Registre salidas en Salida al Registro Médico para clasificar activos y pasivos'
+                        : undefined
+                    }
+                  >
                     <Icon name="picture_as_pdf" className="text-[18px]" />
                     {descargandoArchivados ? 'Generando…' : 'Expedientes archivados (PDF)'}
                   </Button>
@@ -133,6 +180,68 @@ export default function ConsolidadoArchivoPage() {
             )}
 
             {!cargando && !error && <ConsolidadoDiario consolidado={diario} />}
+
+            <section
+              aria-label="Clasificación de salidas del día"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+            >
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
+                <p className="text-label-md uppercase tracking-wide text-on-surface-variant">
+                  Clínica de la Mujer
+                </p>
+                <p className="text-metric-sub text-rose-600">
+                  {resumenSalidas?.totalClinicaMujer ?? 0}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
+                <p className="text-label-md uppercase tracking-wide text-on-surface-variant">
+                  Archivo activo
+                </p>
+                <p className="text-metric-sub text-emerald-700">
+                  {resumenSalidas?.totalActivos ?? 0}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
+                <p className="text-label-md uppercase tracking-wide text-on-surface-variant">
+                  Archivo pasivo
+                </p>
+                <p className="text-metric-sub text-amber-700">
+                  {resumenSalidas?.totalPasivos ?? 0}
+                </p>
+              </div>
+            </section>
+
+            <section
+              aria-label="Cuaderno Rojo del día"
+              className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card"
+            >
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-title-md text-on-surface">Cuaderno Rojo del día</h3>
+                <span className="text-label-sm text-on-surface-variant">
+                  {cuaderno ? 'Registro capturado' : 'Sin registro para la fecha'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ['Egresos hospitalarios', cuaderno?.egresosHospitalarios],
+                  ['Sobres emergencia', cuaderno?.sobresEmergencia],
+                  ['Sobres sellados', cuaderno?.sobresSellados],
+                  ['TIA', cuaderno?.tia],
+                ].map(([etiqueta, valor]) => (
+                  <div
+                    key={etiqueta}
+                    className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2"
+                  >
+                    <p className="text-label-sm font-semibold text-on-surface-variant">
+                      {etiqueta}
+                    </p>
+                    <p className="text-title-lg font-black tabular-nums text-on-surface">
+                      {valor ?? 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
           </>
         )}
 
@@ -184,6 +293,8 @@ export default function ConsolidadoArchivoPage() {
           </>
         )}
       </main>
+
+      <ModalGenerandoPdf abierto={descargandoArchivados} progreso={progresoPdf} />
     </ArchivoLayout>
   )
 }

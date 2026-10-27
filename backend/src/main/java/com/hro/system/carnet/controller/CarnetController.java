@@ -5,13 +5,16 @@ import com.hro.system.carnet.dto.CorregirEspecialidadRequestDTO;
 import com.hro.system.carnet.dto.RegistrarCarnetRequestDTO;
 import com.hro.system.carnet.dto.TransicionCarnetRequestDTO;
 import com.hro.system.carnet.service.CarnetService;
+import com.hro.system.carnet.service.ReporteSalidaCarnetsService;
 import com.hro.system.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class CarnetController {
 
     private final CarnetService carnetService;
+    private final ReporteSalidaCarnetsService reporteService;
 
     @PostMapping
     @Operation(summary = "Registrar carnet",
@@ -56,6 +60,19 @@ public class CarnetController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return ResponseEntity.ok(ApiResponse.ok(
                 carnetService.buscarPorExpediente(numeroExpediente, fecha), "Carnet obtenido"));
+    }
+
+    @GetMapping("/{id}/trazabilidad/pdf")
+    @Operation(summary = "PDF de trazabilidad del expediente",
+            description = "Genera un PDF con el expediente, paciente, clasificación activo/pasivo y cada movimiento con encargado y hora.")
+    public ResponseEntity<byte[]> trazabilidadPdf(@PathVariable UUID id) {
+        CarnetResponseDTO carnet = carnetService.obtener(id);
+        byte[] pdf = reporteService.generarTrazabilidadPdf(carnet, usuarioActual());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"trazabilidad-" + carnet.getNumeroExpediente() + ".pdf\"")
+                .body(pdf);
     }
 
     @GetMapping("/{id}")
@@ -110,5 +127,11 @@ public class CarnetController {
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         carnetService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok(null, "Carnet eliminado"));
+    }
+
+    private static String usuarioActual() {
+        return com.hro.system.auth.UsuarioContexto.actual()
+                .map(com.hro.system.auth.dto.IdentidadUsuario::nombreMostrar)
+                .orElse("-");
     }
 }

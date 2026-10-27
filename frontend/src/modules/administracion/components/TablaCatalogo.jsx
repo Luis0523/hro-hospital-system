@@ -9,7 +9,9 @@ function EstadoActivo({ activo }) {
   return (
     <span
       className={`inline-block rounded px-2.5 py-0.5 text-xs font-semibold ${
-        activoBool ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+        activoBool
+          ? 'bg-emerald-100 text-emerald-800'
+          : 'bg-surface-container-high text-on-surface-variant'
       }`}
     >
       {activoBool ? 'Activo' : 'Inactivo'}
@@ -104,14 +106,19 @@ export default function TablaCatalogo({
 
       <div data-testid="catalogo-movil" className="space-y-3 xl:hidden">
         {datos.map((fila) => (
-          <div key={fila.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div
+            key={fila.id}
+            className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
+          >
             <dl className="space-y-2">
               {columnas.map((columna) => (
                 <div key={columna.key} className="flex items-start justify-between gap-3">
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
+                  <dt className="text-xs uppercase tracking-wide text-on-surface-variant">
                     {columna.label}
                   </dt>
-                  <dd className="text-right text-sm text-slate-700">{valorCelda(fila, columna)}</dd>
+                  <dd className="text-right text-sm text-on-surface">
+                    {valorCelda(fila, columna)}
+                  </dd>
                 </div>
               ))}
             </dl>

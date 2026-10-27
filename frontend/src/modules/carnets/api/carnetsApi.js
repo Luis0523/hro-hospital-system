@@ -81,6 +81,11 @@ export async function descargarSalidaEnfermeriaCarnetsPdf({ fecha } = {}) {
   return client.get('/carnets/salida-enfermeria/pdf', { params: { fecha }, responseType: 'blob' })
 }
 
+/** Descarga el PDF de trazabilidad (movimientos, encargados y horas) de un carnet. */
+export async function descargarTrazabilidadCarnetPdf(id) {
+  return client.get(`/carnets/${id}/trazabilidad/pdf`, { responseType: 'blob' })
+}
+
 export async function obtenerCarnet(id) {
   return desenvolver(await client.get(`/carnets/${id}`))
 }

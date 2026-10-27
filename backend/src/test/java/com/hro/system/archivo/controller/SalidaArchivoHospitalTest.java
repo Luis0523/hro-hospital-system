@@ -89,6 +89,28 @@ class SalidaArchivoHospitalTest {
     }
 
     @Test
+    @DisplayName("Guarda la marca de Clínica de la Mujer para la estadística")
+    void guardaClinicaMujer() throws Exception {
+        String numero = "9" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(post("/salidas-archivo-hospital")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "arch-test-salida")
+                        .header("X-Usuario-Rol", "archivo")
+                        .header("X-Usuario-Nombre", "Archivo")
+                        .content("{\"numeroExpediente\":\"" + numero + "\",\"estacionId\":"
+                                + estacion.getId() + ",\"fecha\":\"" + fecha
+                                + "\",\"esClinicaMujer\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.esClinicaMujer").value(true));
+
+        mockMvc.perform(get("/salidas-archivo-hospital")
+                        .param("fecha", fecha.toString())
+                        .param("estacionId", String.valueOf(estacion.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].esClinicaMujer").value(true));
+    }
+
+    @Test
     @DisplayName("El mismo expediente en la misma estación/fecha es 409")
     void duplicado() throws Exception {
         String numero = "9" + (10000 + (int) (Math.random() * 80000));

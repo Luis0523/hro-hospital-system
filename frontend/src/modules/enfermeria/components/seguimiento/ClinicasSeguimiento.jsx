@@ -107,6 +107,21 @@ export default function ClinicasSeguimiento({
                         ? 'Pulse para fijar como clínica destino'
                         : 'Atención en consultorio'}
               </p>
+              {clinica.especialidadesFijas?.length > 0 && (
+                <p
+                  className="mt-1 flex items-center gap-1 text-label-md font-semibold text-primary"
+                  title={clinica.especialidadesFijas
+                    .map((especialidad) => especialidad.nombre)
+                    .join(' · ')}
+                >
+                  <Icon name="link" className="shrink-0 text-[14px]" />
+                  <span className="truncate">
+                    {clinica.especialidadesFijas
+                      .map((especialidad) => especialidad.nombre)
+                      .join(' · ')}
+                  </span>
+                </p>
+              )}
               <div className="mt-2 flex items-center gap-2">
                 <span className="inline-flex min-w-7 items-center justify-center rounded-md bg-surface-container-high px-1.5 py-0.5 text-label-md font-bold text-on-surface-variant">
                   {String(conteo).padStart(2, '0')}

@@ -27,7 +27,7 @@ export default function CalendarioNoLaborables({
   const porFecha = new Map(diasNoLaborables.map((dia) => [dia.fecha, dia]))
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
       <header className="mb-4 flex items-center justify-between gap-2">
         <Button
           variant="ghost"
@@ -38,7 +38,7 @@ export default function CalendarioNoLaborables({
         >
           <Icon name="chevron_left" className="text-[20px]" />
         </Button>
-        <p className="text-sm font-semibold text-slate-700">
+        <p className="text-sm font-semibold text-on-surface">
           {nombreMes(mes)} {anio}
         </p>
         <Button
@@ -56,7 +56,7 @@ export default function CalendarioNoLaborables({
         {NOMBRES_DIA_CORTO.map((dia) => (
           <div
             key={dia}
-            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
+            className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
           >
             {dia}
           </div>
@@ -89,7 +89,7 @@ export default function CalendarioNoLaborables({
               type="button"
               onClick={() => onSeleccionarDia?.(celda.iso)}
               aria-label={`Registrar día no laborable el ${formatearFechaLarga(celda.iso)}`}
-              className={`${CELDA_BASE} border-slate-200 bg-white text-slate-600 hover:border-hro-blue hover:bg-cyan-50`}
+              className={`${CELDA_BASE} border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-hro-blue hover:bg-surface-container`}
             >
               {celda.dia}
             </button>

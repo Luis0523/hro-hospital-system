@@ -66,8 +66,10 @@ export default function DashboardPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-headline-md text-hro-blue">Dashboard</h2>
-        <p className="text-sm text-slate-500">Resumen general del Panel de Administración.</p>
+        <h2 className="text-headline-md text-primary">Dashboard</h2>
+        <p className="text-sm text-on-surface-variant">
+          Resumen general del Panel de Administración.
+        </p>
       </header>
 
       <Alert tone="info" title="Indicadores operativos en espera de contrato backend">
@@ -85,7 +87,7 @@ export default function DashboardPage() {
             icono={indicador.icono}
             descripcion={indicador.descripcion}
           >
-            <p className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+            <p className="inline-flex items-center gap-2 rounded-lg bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface-variant">
               <Icon name="hourglass_empty" className="text-[16px]" />
               Pendiente de contrato backend
             </p>
@@ -100,7 +102,7 @@ export default function DashboardPage() {
           accion={
             <Link
               to="/administracion/calendario"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-hro-blue transition hover:bg-cyan-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+              className="inline-flex items-center gap-2 rounded-lg border border-outline bg-surface-container-lowest px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
             >
               <Icon name="calendar_month" className="text-[16px]" />
               Ver calendario
@@ -121,7 +123,7 @@ export default function DashboardPage() {
           )}
 
           {!cargando && !error && proximosDias.length === 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-on-surface-variant">
               No hay próximos días no laborables registrados.
             </p>
           )}
@@ -129,11 +131,11 @@ export default function DashboardPage() {
           {!cargando && !error && proximosDias.length > 0 && (
             <ul className="space-y-2">
               {proximosDias.map((dia) => (
-                <li key={dia.id} className="rounded-lg bg-slate-50 px-3 py-2">
-                  <p className="text-sm font-semibold text-slate-700">
+                <li key={dia.id} className="rounded-lg bg-surface-container-low px-3 py-2">
+                  <p className="text-sm font-semibold text-on-surface">
                     {formatearFechaLarga(dia.fecha)}
                   </p>
-                  <p className="break-words text-xs text-slate-500">{dia.motivo}</p>
+                  <p className="break-words text-xs text-on-surface-variant">{dia.motivo}</p>
                 </li>
               ))}
             </ul>

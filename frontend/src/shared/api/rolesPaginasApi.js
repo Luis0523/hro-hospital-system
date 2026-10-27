@@ -13,6 +13,7 @@ export const PAGINAS = [
   { clave: 'libro_citas', nombre: 'Libro de Citas' },
   { clave: 'administracion', nombre: 'Panel de Administración' },
   { clave: 'jefe_enfermeria', nombre: 'Área Jefe de Enfermería' },
+  { clave: 'jefe_archivo', nombre: 'Área Jefe de Archivo' },
 ]
 
 /** Mapeo por defecto (coincide con el seed de las migraciones V17/V20). */
@@ -22,6 +23,7 @@ export const MAPEO_DEFECTO = {
   medico: ['enfermeria'],
   personal_citas: ['libro_citas'],
   jefe_enfermeria: ['jefe_enfermeria'],
+  jefe_archivo: ['jefe_archivo'],
   administrador: [
     'archivo',
     'registro_carnets',
@@ -30,6 +32,7 @@ export const MAPEO_DEFECTO = {
     'libro_citas',
     'administracion',
     'jefe_enfermeria',
+    'jefe_archivo',
   ],
 }
 
@@ -42,6 +45,7 @@ export const RUTA_POR_AREA = {
   libro_citas: '/libro-citas',
   administracion: '/administracion',
   jefe_enfermeria: '/jefe-enfermeria',
+  jefe_archivo: '/jefe-archivo',
 }
 export const PRIORIDAD_AREAS = [
   'administracion',
@@ -51,6 +55,7 @@ export const PRIORIDAD_AREAS = [
   'libro_citas',
   'registro_carnets',
   'jefe_enfermeria',
+  'jefe_archivo',
 ]
 
 /**

@@ -45,7 +45,7 @@ export default function MedicosTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-on-surface-variant">
           Médicos especialistas activos. La desactivación es una baja lógica.
         </p>
         <Button onClick={gestion.abrirCrear}>

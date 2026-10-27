@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import { descargarSalidaCarnetsPdfPorIds } from '@/modules/carnets/api/carnetsApi'
@@ -38,6 +38,7 @@ export default function SalidaArchivoPage() {
   const [animandoIds, setAnimandoIds] = useState(() => new Set())
   const [ultimo, setUltimo] = useState(null)
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [progresoPdf, setProgresoPdf] = useState(0)
 
   // Reloj en vivo (hora local) para operar contra el sistema.
   const [ahora, setAhora] = useState(() => new Date())
@@ -83,17 +84,33 @@ export default function SalidaArchivoPage() {
     const ids = salidasSesion.map((carnet) => carnet.id)
     if (ids.length === 0) return
     setGenerandoPdf(true)
+    setProgresoPdf(0)
+    const inicio = Date.now()
+    const simulacionMs = 2200
+    const timer = setInterval(() => {
+      const avance = Math.min(92, Math.round(((Date.now() - inicio) / simulacionMs) * 92))
+      setProgresoPdf((actual) => Math.max(actual, avance))
+    }, 50)
     try {
-      const blob = await descargarSalidaCarnetsPdfPorIds(ids)
-      descargarBlob(blob, `reporte-salida-archivo-${fecha}.pdf`)
+      const [blob] = await Promise.all([
+        descargarSalidaCarnetsPdfPorIds(ids),
+        new Promise((resolver) => setTimeout(resolver, simulacionMs)),
+      ])
+      clearInterval(timer)
+      setProgresoPdf(100)
+      if (blob) descargarBlob(blob, `reporte-salida-archivo-${fecha}.pdf`)
+      await new Promise((resolver) => setTimeout(resolver, 400))
     } catch (fallo) {
+      clearInterval(timer)
       mostrarToast({
         tone: 'error',
         title: 'No se pudo generar el reporte',
         message: fallo?.message,
       })
     } finally {
+      clearInterval(timer)
       setGenerandoPdf(false)
+      setProgresoPdf(0)
     }
   }
 
@@ -170,6 +187,8 @@ export default function SalidaArchivoPage() {
           Recargar
         </button>
       </main>
+
+      <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </div>
   )
 }

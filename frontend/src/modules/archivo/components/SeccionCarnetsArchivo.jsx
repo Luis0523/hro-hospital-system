@@ -1,5 +1,13 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Alert, Button, EmptyState, Icon, Modal, Spinner } from '@/shared/components/ui'
+import {
+  Alert,
+  Button,
+  EmptyState,
+  Icon,
+  Modal,
+  ModalGenerandoPdf,
+  Spinner,
+} from '@/shared/components/ui'
 import {
   ETIQUETAS_ESTADO_CARNET,
   actualizarConfiguracionArchivo,
@@ -164,20 +172,37 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey, o
 
   const { mostrarToast } = useToast()
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [progresoPdf, setProgresoPdf] = useState(0)
 
   async function descargarReporteSalida() {
     setGenerandoPdf(true)
+    setProgresoPdf(0)
+    const inicio = Date.now()
+    const simulacionMs = 2200
+    const timer = setInterval(() => {
+      const avance = Math.min(92, Math.round(((Date.now() - inicio) / simulacionMs) * 92))
+      setProgresoPdf((actual) => Math.max(actual, avance))
+    }, 50)
     try {
-      const blob = await descargarSalidaCarnetsPdf({ fecha })
-      descargarBlob(blob, `reporte-salida-archivo-${fecha}.pdf`)
+      const [blob] = await Promise.all([
+        descargarSalidaCarnetsPdf({ fecha }),
+        new Promise((resolver) => setTimeout(resolver, simulacionMs)),
+      ])
+      clearInterval(timer)
+      setProgresoPdf(100)
+      if (blob) descargarBlob(blob, `reporte-salida-archivo-${fecha}.pdf`)
+      await new Promise((resolver) => setTimeout(resolver, 400))
     } catch (fallo) {
+      clearInterval(timer)
       mostrarToast?.({
         tone: 'error',
         title: 'No se pudo generar el reporte',
         message: fallo?.message,
       })
     } finally {
+      clearInterval(timer)
       setGenerandoPdf(false)
+      setProgresoPdf(0)
     }
   }
 
@@ -248,8 +273,8 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey, o
             Seguimiento de carnets
           </h2>
           <p className="text-body-sm text-on-surface-variant">
-            Registre la <strong>salida de archivo</strong> a medida que los expedientes salen;
-            luego se confirma la salida de enfermería y el resguardo.
+            Registre la <strong>salida de archivo</strong> a medida que los expedientes salen; luego
+            se confirma la salida de enfermería y el resguardo.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -552,6 +577,8 @@ export default function SeccionCarnetsArchivo({ fecha, estacionId, recargaKey, o
           />
         </label>
       </Modal>
+
+      <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </section>
   )
 }
