@@ -14,7 +14,7 @@ export const ITEMS_JEFE = [
     icono: 'schedule',
   },
   { to: '/jefe-enfermeria/estaciones', etiqueta: 'Estaciones', icono: 'point_of_sale' },
-  { to: '/jefe-enfermeria/reportes', etiqueta: 'Estadísticas', icono: 'monitoring' },
+  { to: '/jefe-enfermeria/reportes', etiqueta: 'Estadísticas y reportes', icono: 'monitoring' },
 ]
 
 export default function MenuLateralJefe({ onNavegar }) {

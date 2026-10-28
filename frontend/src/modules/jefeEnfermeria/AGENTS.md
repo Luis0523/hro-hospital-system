@@ -11,7 +11,7 @@ Rama de trabajo: `frontend-jefe-operativo`.
 | `/jefe-enfermeria` | `CroquisPage` | Asignación diaria de subespecialidad por espacio físico (sala); cobertura, cierre, duplicar y reasignación en caliente. |
 | `/jefe-enfermeria/horarios` | `HorariosPage` | CRUD de horario por subespecialidad (día, horas, capacidad, duración). |
 | `/jefe-enfermeria/estaciones` | `EstacionesPage` | Gestión de estaciones (subespecialidades a cargo) + bitácora como mini reportes. |
-| `/jefe-enfermeria/reportes` | `ReportesPage` | Citas por estado, demanda por especialidad, utilización de cupos. |
+| `/jefe-enfermeria/reportes` | `ReportesPage` | Estadísticas del día por estación: pacientes, presentaciones, privados de libertad, personal, Clínica de la Mujer, comparación por especialidad, reparto por clínica y PDFs consolidado/Archivo. |
 
 El layout (`JefeEnfermeriaLayout`) y el menú (`MenuLateralJefe`) son propios del área.
 
