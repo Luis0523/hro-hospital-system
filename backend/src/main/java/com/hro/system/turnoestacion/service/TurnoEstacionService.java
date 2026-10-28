@@ -17,7 +17,9 @@ import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.context.EstacionContexto;
 import com.hro.system.estacion.entity.ClinicaFijaEstacion;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
+import com.hro.system.estacion.entity.EstacionClinicaOrden;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
+import com.hro.system.estacion.repository.EstacionClinicaOrdenRepository;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.estacion.repository.ClinicaFijaEstacionRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
@@ -63,6 +65,7 @@ public class TurnoEstacionService {
     private final EstacionEnfermeriaRepository estacionRepository;
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     private final ClinicaFijaEstacionRepository clinicaFijaEstacionRepository;
+    private final EstacionClinicaOrdenRepository estacionClinicaOrdenRepository;
     private final EspecialidadRepository especialidadRepository;
     private final EspacioFisicoRepository espacioFisicoRepository;
     private final AsignacionDiariaEspacioRepository asignacionDiariaEspacioRepository;
@@ -579,7 +582,7 @@ public class TurnoEstacionService {
 
     @Transactional
     public ResumenClinicaDTO registrarDevolucionClinica(UUID espacioFisicoId, LocalDate fecha,
-                                                         Long estacionId) {
+                                                         Long estacionId, int cantidad) {
         LocalDate dia = fecha != null ? fecha : hoy();
         Long estacionRef = resolverEstacion(estacionId);
         if (estacionRef == null) {
@@ -599,18 +602,33 @@ public class TurnoEstacionService {
             throw new ConflictException("SIN_PENDIENTES",
                     "No hay pacientes pendientes de devolver en la clínica " + espacio.getNumero());
         }
+        if (cantidad < 1) {
+            throw new BusinessException("CANTIDAD_INVALIDA",
+                    "La cantidad a devolver debe ser mayor que cero");
+        }
+        if (cantidad > actual.getPendientes()) {
+            throw new ConflictException("CANTIDAD_EXCEDE_PENDIENTES",
+                    "Solo hay " + actual.getPendientes() + " paciente(s) pendiente(s) en la clínica "
+                            + espacio.getNumero());
+        }
 
-        DevolucionClinica devolucion = DevolucionClinica.builder()
-                .estacion(estacion)
-                .espacioFisico(espacio)
-                .fecha(dia)
-                .usuario(usuarioActual())
-                .creadoEn(OffsetDateTime.now())
-                .observacion("Devolución registrada desde seguimiento de enfermería")
-                .build();
-        devolucionClinicaRepository.saveAndFlush(devolucion);
-        log.info("Devolución agregada registrada: estación={} clínica={} fecha={}",
-                estacion.getId(), espacio.getNumero(), dia);
+        OffsetDateTime ahora = OffsetDateTime.now();
+        UsuarioReferencia usuario = usuarioActual();
+        List<DevolucionClinica> devolucionesNuevas = new ArrayList<>();
+        for (int i = 0; i < cantidad; i += 1) {
+            devolucionesNuevas.add(DevolucionClinica.builder()
+                    .estacion(estacion)
+                    .espacioFisico(espacio)
+                    .fecha(dia)
+                    .usuario(usuario)
+                    .creadoEn(ahora)
+                    .observacion("Devolución registrada desde seguimiento de enfermería")
+                    .build());
+        }
+        devolucionClinicaRepository.saveAll(devolucionesNuevas);
+        devolucionClinicaRepository.flush();
+        log.info("Devolución agregada registrada: estación={} clínica={} fecha={} cantidad={}",
+                estacion.getId(), espacio.getNumero(), dia, cantidad);
         return construirResumenClinicas(dia, estacion).stream()
                 .filter(item -> item.getEspacioFisicoId().equals(espacio.getId()))
                 .findFirst()
@@ -665,32 +683,45 @@ public class TurnoEstacionService {
                 .findByFechaAndEstacionIdAndRevertidoEnIsNull(dia, estacion.getId()).stream()
                 .collect(Collectors.groupingBy(devolucion -> devolucion.getEspacioFisico().getId()));
 
-        return espacioFisicoRepository.findByActivoTrue().stream()
-                .sorted(Comparator.comparing(EspacioFisico::getNumero,
-                        Comparator.nullsLast(String::compareTo)))
-                .map(espacio -> {
-                    long totalAsignados = asignados.getOrDefault(espacio.getId(), 0L);
-                    List<DevolucionClinica> devolucionesClinica = devoluciones
-                            .getOrDefault(espacio.getId(), List.of());
-                    long totalDevueltos = devolucionesClinica.size();
-                    OffsetDateTime ultima = devolucionesClinica.stream()
-                            .map(DevolucionClinica::getCreadoEn)
-                            .filter(Objects::nonNull)
-                            .max(Comparator.naturalOrder())
-                            .orElse(null);
-                    return ResumenClinicaDTO.builder()
-                            .espacioFisicoId(espacio.getId())
-                            .numero(espacio.getNumero())
-                            .nombre(espacio.getNombre())
-                            .nivel(espacio.getNivel())
-                            .asignados(totalAsignados)
-                            .devueltos(totalDevueltos)
-                            .pendientes(Math.max(0L, totalAsignados - totalDevueltos))
-                            .presentaciones(presentaciones.getOrDefault(espacio.getId(), 0L))
-                            .ultimaDevolucionEn(ultima)
-                            .build();
-                })
-                .toList();
+        Map<UUID, Integer> ordenes = estacionClinicaOrdenRepository
+                .findByEstacionIdOrderByOrdenAscIdAsc(estacion.getId()).stream()
+                .collect(Collectors.toMap(
+                        fila -> fila.getEspacioFisico().getId(),
+                        EstacionClinicaOrden::getOrden,
+                        (anterior, actual) -> actual));
+        List<EspacioFisico> espacios = new ArrayList<>(espacioFisicoRepository.findByActivoTrue());
+        espacios.sort(Comparator.comparing(
+                espacio -> espacio.getNumero() != null ? espacio.getNumero() : espacio.getNombre(),
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        espacios.sort(Comparator.comparing(
+                espacio -> ordenes.getOrDefault(espacio.getId(), Integer.MAX_VALUE)));
+
+        List<ResumenClinicaDTO> resultado = new ArrayList<>();
+        for (int indice = 0; indice < espacios.size(); indice += 1) {
+            EspacioFisico espacio = espacios.get(indice);
+            long totalAsignados = asignados.getOrDefault(espacio.getId(), 0L);
+            List<DevolucionClinica> devolucionesClinica = devoluciones
+                    .getOrDefault(espacio.getId(), List.of());
+            long totalDevueltos = devolucionesClinica.size();
+            OffsetDateTime ultima = devolucionesClinica.stream()
+                    .map(DevolucionClinica::getCreadoEn)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null);
+            resultado.add(ResumenClinicaDTO.builder()
+                    .espacioFisicoId(espacio.getId())
+                    .numero(espacio.getNumero())
+                    .nombre(espacio.getNombre())
+                    .nivel(espacio.getNivel())
+                    .orden(indice + 1)
+                    .asignados(totalAsignados)
+                    .devueltos(totalDevueltos)
+                    .pendientes(Math.max(0L, totalAsignados - totalDevueltos))
+                    .presentaciones(presentaciones.getOrDefault(espacio.getId(), 0L))
+                    .ultimaDevolucionEn(ultima)
+                    .build());
+        }
+        return resultado;
     }
 
     @Transactional(readOnly = true)

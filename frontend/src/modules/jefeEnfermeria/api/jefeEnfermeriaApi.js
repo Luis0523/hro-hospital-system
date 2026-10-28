@@ -19,6 +19,8 @@ import {
   listarAccesosMock,
   listarClinicasFijasMock,
   guardarClinicasFijasMock,
+  listarOrdenClinicasMock,
+  guardarOrdenClinicasMock,
   listarEspaciosFisicosMock,
   obtenerEspacioFisicoMock,
   actualizarEspacioFisicoMock,
@@ -210,6 +212,21 @@ export async function listarClinicasFijas(estacionId) {
 export async function guardarClinicasFijas(estacionId, asignaciones) {
   if (USE_MOCK) return guardarClinicasFijasMock(estacionId, asignaciones)
   return desenvolver(await client.put(`/estaciones/${estacionId}/clinicas-fijas`, { asignaciones }))
+}
+
+/** Orden configurado de las clínicas físicas para una estación. */
+export async function listarOrdenClinicas(estacionId, nivel) {
+  if (USE_MOCK) return listarOrdenClinicasMock(estacionId, nivel)
+  const params = nivel != null ? { nivel } : {}
+  return desenvolver(await client.get(`/estaciones/${estacionId}/clinicas-orden`, { params }))
+}
+
+/** Guarda las clínicas en el orden deseado (la primera se muestra primero). */
+export async function guardarOrdenClinicas(estacionId, espacioFisicoIds) {
+  if (USE_MOCK) return guardarOrdenClinicasMock(estacionId, espacioFisicoIds)
+  return desenvolver(
+    await client.put(`/estaciones/${estacionId}/clinicas-orden`, { espacioFisicoIds }),
+  )
 }
 
 export async function asignarSubespecialidadesEstacion(id, subespecialidadIds) {

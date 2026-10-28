@@ -482,14 +482,14 @@ export default function SeguimientoEnfermeriaPage() {
     enfocarEspecialidad(filas[0]?.id)
   }
 
-  async function registrarDevolucionEnClinica(clinica) {
+  async function registrarDevolucionEnClinica(clinica, cantidad = 1) {
     if (procesandoClinicaId != null) return
     setProcesandoClinicaId(clinica.id)
     try {
-      const resumen = await devolverClinica(clinica.id)
+      const resumen = await devolverClinica(clinica.id, cantidad)
       mostrarToast({
         tone: 'success',
-        title: `${clinica.nombre}: devolución registrada`,
+        title: `${clinica.nombre}: ${cantidad} devolución(es) registrada(s)`,
         message: `Pendientes: ${resumen?.pendientes ?? clinica.expedientesEnClinica ?? 0}`,
       })
     } catch (fallo) {

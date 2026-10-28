@@ -741,7 +741,40 @@ export function reporteUtilizacionCuposMock(
   }
 }
 
+const ordenClinicasPorEstacion = new Map()
+
+export function listarOrdenClinicasMock(estacionId, nivel) {
+  const espacios = espaciosMock
+    .filter((espacio) => !nivel || Number(espacio.nivel) === Number(nivel))
+    .map((espacio) => ({ ...espacio }))
+  const porId = new Map(espacios.map((espacio) => [String(espacio.id), espacio]))
+  const guardado = ordenClinicasPorEstacion.get(String(estacionId)) ?? []
+  const ordenados = []
+  for (const id of guardado) {
+    const espacio = porId.get(String(id))
+    if (!espacio) continue
+    ordenados.push(espacio)
+    porId.delete(String(id))
+  }
+  const restantes = [...porId.values()].sort((a, b) =>
+    String(a.numero).localeCompare(String(b.numero), 'es', { numeric: true }),
+  )
+  return [...ordenados, ...restantes].map((espacio, indice) => ({
+    espacioFisicoId: espacio.id,
+    numero: espacio.numero,
+    nombre: espacio.nombre,
+    nivel: espacio.nivel,
+    orden: indice + 1,
+  }))
+}
+
+export function guardarOrdenClinicasMock(estacionId, espacioFisicoIds = []) {
+  ordenClinicasPorEstacion.set(String(estacionId), [...espacioFisicoIds])
+  return listarOrdenClinicasMock(estacionId)
+}
+
 export function reiniciarJefeMock() {
+  ordenClinicasPorEstacion.clear()
   asignacionesPorFecha.clear()
   diasCerrados.clear()
   horariosMockData.length = 0

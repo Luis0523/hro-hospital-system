@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Icon } from '@/shared/components/ui'
-import { ordenarClinicasPorUso } from './ordenClinicas'
+import { ordenarClinicas } from './ordenClinicas'
 
 // Clínicas físicas con el conteo de expedientes que permanecen en cada una.
 // En modo en_clinica, la clínica elegida queda como destino de los turnos.
@@ -17,7 +17,7 @@ export default function ClinicasSeguimiento({
 }) {
   const botonesRef = useRef([])
   const esElegibleRef = useRef(esElegible)
-  const ordenadas = useMemo(() => ordenarClinicasPorUso(clinicas), [clinicas])
+  const ordenadas = useMemo(() => ordenarClinicas(clinicas), [clinicas])
 
   useEffect(() => {
     esElegibleRef.current = esElegible
@@ -107,16 +107,23 @@ export default function ClinicasSeguimiento({
                         ? 'Pulse para fijar como clínica destino'
                         : 'Atención en consultorio'}
               </p>
-              {clinica.especialidadesFijas?.length > 0 && (
+              {(clinica.especialidadesDelDia?.length > 0 ||
+                clinica.especialidadesFijas?.length > 0) && (
                 <p
                   className="mt-1 flex items-center gap-1 text-label-md font-semibold text-primary"
-                  title={clinica.especialidadesFijas
+                  title={(clinica.especialidadesDelDia?.length
+                    ? clinica.especialidadesDelDia
+                    : clinica.especialidadesFijas
+                  )
                     .map((especialidad) => especialidad.nombre)
                     .join(' · ')}
                 >
                   <Icon name="link" className="shrink-0 text-[14px]" />
                   <span className="truncate">
-                    {clinica.especialidadesFijas
+                    {(clinica.especialidadesDelDia?.length
+                      ? clinica.especialidadesDelDia
+                      : clinica.especialidadesFijas
+                    )
                       .map((especialidad) => especialidad.nombre)
                       .join(' · ')}
                   </span>

@@ -5,11 +5,13 @@ import Spinner from '@/shared/components/ui/Spinner.jsx'
 import Modal from '@/shared/components/ui/Modal.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import { useToast } from '@/shared/context/ToastContext.jsx'
-import { filtrarClinicasPorNivel } from '@/shared/utils/nivelClinicas'
+import { filtrarClinicasPorNivel, nivelClinicasPorEstacion } from '@/shared/utils/nivelClinicas'
 import {
   actualizarEstacion,
   asignarEspecialidadesEstacion,
   guardarClinicasFijas,
+  guardarOrdenClinicas,
+  listarOrdenClinicas,
   crearEstacion,
   desactivarEstacion,
   listarAccesosEstacion,
@@ -55,6 +57,11 @@ export default function EstacionesPage() {
   const [clinicasFijasDisponibles, setClinicasFijasDisponibles] = useState([])
   const [cargandoFijas, setCargandoFijas] = useState(false)
   const [guardandoFijas, setGuardandoFijas] = useState(false)
+
+  const [ordenandoClinicas, setOrdenandoClinicas] = useState(null)
+  const [ordenClinicas, setOrdenClinicas] = useState([])
+  const [cargandoOrden, setCargandoOrden] = useState(false)
+  const [guardandoOrden, setGuardandoOrden] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -220,6 +227,51 @@ export default function EstacionesPage() {
     }
   }
 
+  async function abrirOrdenClinicas(estacion) {
+    setOrdenandoClinicas(estacion)
+    setOrdenClinicas([])
+    setCargandoOrden(true)
+    try {
+      const nivel = nivelClinicasPorEstacion(estacion.id)
+      const lista = await listarOrdenClinicas(estacion.id, nivel ?? undefined)
+      setOrdenClinicas(Array.isArray(lista) ? lista : [])
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo cargar el orden de clínicas.')
+    } finally {
+      setCargandoOrden(false)
+    }
+  }
+
+  function moverClinica(indice, delta) {
+    setOrdenClinicas((actual) => {
+      const destino = indice + delta
+      if (destino < 0 || destino >= actual.length) return actual
+      const copia = [...actual]
+      const [movida] = copia.splice(indice, 1)
+      copia.splice(destino, 0, movida)
+      return copia
+    })
+  }
+
+  async function guardarOrden(evento) {
+    evento.preventDefault()
+    if (!ordenandoClinicas || guardandoOrden) return
+    setGuardandoOrden(true)
+    try {
+      const guardado = await guardarOrdenClinicas(
+        ordenandoClinicas.id,
+        ordenClinicas.map((clinica) => clinica.espacioFisicoId),
+      )
+      setOrdenClinicas(Array.isArray(guardado) ? guardado : ordenClinicas)
+      setOrdenandoClinicas(null)
+      mostrarToast({ tone: 'success', title: 'Orden de clínicas actualizado' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo guardar el orden de clínicas.')
+    } finally {
+      setGuardandoOrden(false)
+    }
+  }
+
   function abrirGestion(estacion) {
     setGestionando(estacion)
     setSeleccionadas(especialidadIdsDe(estacion))
@@ -330,6 +382,13 @@ export default function EstacionesPage() {
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => abrirFijas(estacion)}>
                       Clínicas fijas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => abrirOrdenClinicas(estacion)}
+                    >
+                      Ordenar clínicas
                     </Button>
                     {estacion.activo && (
                       <Button size="sm" variant="danger" onClick={() => setPorDesactivar(estacion)}>
@@ -566,6 +625,89 @@ export default function EstacionesPage() {
             <p className="text-label-sm text-amber-700 dark:text-amber-300">
               No hay clínicas disponibles para el nivel de esta estación.
             </p>
+          )}
+        </form>
+      </Modal>
+
+      {/* Modal orden de clínicas */}
+      <Modal
+        open={Boolean(ordenandoClinicas)}
+        onClose={() => {
+          if (!guardandoOrden) setOrdenandoClinicas(null)
+        }}
+        title={`Orden de clínicas — ${ordenandoClinicas?.codigo ?? ''}`}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setOrdenandoClinicas(null)}
+              disabled={guardandoOrden}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-orden-clinicas')?.requestSubmit()}
+              disabled={guardandoOrden || cargandoOrden}
+            >
+              {guardandoOrden ? 'Guardando…' : 'Guardar orden'}
+            </Button>
+          </>
+        }
+      >
+        <form id="form-orden-clinicas" onSubmit={guardarOrden} className="space-y-3">
+          <p className="text-body-sm text-on-surface-variant">
+            Use las flechas para definir en qué orden aparecerán las clínicas en Seguimiento de
+            turnos. Este orden es propio de la estación.
+          </p>
+          {cargandoOrden ? (
+            <div className="flex justify-center py-6">
+              <Spinner label="Cargando clínicas…" />
+            </div>
+          ) : ordenClinicas.length === 0 ? (
+            <p className="text-body-sm text-on-surface-variant">
+              No hay clínicas disponibles para el nivel de esta estación.
+            </p>
+          ) : (
+            <ol className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+              {ordenClinicas.map((clinica, indice) => (
+                <li
+                  key={clinica.espacioFisicoId}
+                  className="flex items-center gap-2 rounded-lg border border-outline-variant p-2"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-container text-label-sm font-bold text-on-surface-variant">
+                    {indice + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body-sm font-semibold text-on-surface">
+                      {clinica.numero ? `Clínica ${clinica.numero}` : clinica.nombre}
+                    </span>
+                    {clinica.nombre && clinica.numero && (
+                      <span className="block text-label-sm text-on-surface-variant">
+                        {clinica.nombre}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Subir ${clinica.nombre}`}
+                    onClick={() => moverClinica(indice, -1)}
+                    disabled={indice === 0 || guardandoOrden}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon name="arrow_upward" className="text-[18px]" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Bajar ${clinica.nombre}`}
+                    onClick={() => moverClinica(indice, 1)}
+                    disabled={indice === ordenClinicas.length - 1 || guardandoOrden}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon name="arrow_downward" className="text-[18px]" />
+                  </button>
+                </li>
+              ))}
+            </ol>
           )}
         </form>
       </Modal>

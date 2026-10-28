@@ -259,8 +259,13 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
   )
 
   const devolverClinica = useCallback(
-    async (espacioFisicoId) => {
-      const resumen = await registrarDevolucionClinica({ espacioFisicoId, estacionId, fecha })
+    async (espacioFisicoId, cantidad = 1) => {
+      const resumen = await registrarDevolucionClinica({
+        espacioFisicoId,
+        estacionId,
+        fecha,
+        cantidad,
+      })
       setClinicas((actual) => actualizarResumenClinica(actual, resumen))
       return resumen
     },

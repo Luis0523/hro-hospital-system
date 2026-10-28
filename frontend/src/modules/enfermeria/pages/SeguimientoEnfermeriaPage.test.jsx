@@ -67,19 +67,20 @@ describe('SeguimientoEnfermeriaPage', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Devoluciones por clínica' })).toBeInTheDocument()
 
-    const articulo = screen.getByRole('heading', { name: 'Clínica 2' }).closest('article')
+    const fila = screen.getByText('Clínica 2').closest('tr')
+    const celdas = () => within(fila).getAllByRole('cell')
     const valores = () =>
-      within(articulo)
-        .getAllByRole('definition')
-        .map((dd) => Number(dd.textContent))
+      celdas()
+        .slice(1, 4)
+        .map((celda) => Number(celda.textContent))
 
-    await user.click(within(articulo).getByRole('button', { name: 'Devolver 1' }))
-    await waitFor(() => expect(articulo).toHaveTextContent(/Devueltos\s*01/))
+    await user.click(within(fila).getByRole('button', { name: 'Restar 1' }))
+    await waitFor(() => expect(Number(celdas()[2].textContent)).toBe(1))
     const [asignados, devueltos, pendientes] = valores()
     expect(pendientes).toBe(asignados - devueltos)
 
-    await user.click(within(articulo).getByRole('button', { name: 'Deshacer' }))
-    await waitFor(() => expect(articulo).toHaveTextContent(/Devueltos\s*00/))
+    await user.click(within(fila).getByRole('button', { name: 'Deshacer' }))
+    await waitFor(() => expect(Number(celdas()[2].textContent)).toBe(0))
     expect(valores()[2]).toBe(valores()[0])
   }, 20000)
 

@@ -339,6 +339,7 @@ function resumenClinicaMock(clinica, fecha) {
   ).length
   return {
     ...clinica,
+    orden: Number(clinica.id),
     asignados,
     devueltos: devueltos.length,
     presentaciones,
@@ -377,31 +378,71 @@ export function adjuntarEspecialidadesFijas(clinicas = [], fijas = []) {
   }))
 }
 
+/** Agrega las especialidades que atienden hoy en cada clínica (asignación diaria). */
+export function adjuntarEspecialidadesDelDia(clinicas = [], vista = []) {
+  const porClinica = new Map()
+  for (const item of Array.isArray(vista) ? vista : []) {
+    const espacioId = item.espacioFisicoId ?? item.id
+    if (espacioId == null) continue
+    const clave = String(espacioId)
+    const lista = porClinica.get(clave) ?? []
+    for (const asignacion of item.asignaciones ?? []) {
+      const nombre = asignacion.especialidadNombre ?? asignacion.subespecialidadNombre
+      const id = asignacion.especialidadId ?? asignacion.subespecialidadId ?? nombre
+      if (nombre && !lista.some((especialidad) => String(especialidad.id) === String(id))) {
+        lista.push({ id, nombre })
+      }
+    }
+    porClinica.set(clave, lista)
+  }
+  return (Array.isArray(clinicas) ? clinicas : []).map((clinica) => ({
+    ...clinica,
+    especialidadesDelDia: porClinica.get(String(clinica.id)) ?? [],
+  }))
+}
+
 export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
   if (USE_MOCK) {
     await esperar()
-    return adjuntarEspecialidadesFijas(
+    const vistaMock = Object.entries(CLINICAS_POR_ESPECIALIDAD_MOCK).flatMap(
+      ([codigo, clinicaIds]) => {
+        const especialidad = ESPECIALIDADES_SEGUIMIENTO.find((item) => item.codigo === codigo)
+        return clinicaIds.map((id) => ({
+          espacioFisicoId: String(id),
+          asignaciones: [
+            {
+              especialidadId: especialidad?.id ?? codigo,
+              especialidadNombre: especialidad?.nombre ?? codigo,
+            },
+          ],
+        }))
+      },
+    )
+    const clinicas = adjuntarEspecialidadesFijas(
       filtrarClinicasPorNivel(
         CLINICAS_SEGUIMIENTO.map((clinica) => resumenClinicaMock(clinica, fecha)),
         estacionId,
       ),
       [],
     )
+    return adjuntarEspecialidadesDelDia(clinicas, vistaMock)
   }
 
-  const [respuestaResumen, fijas] = await Promise.all([
+  const [respuestaResumen, fijas, vista] = await Promise.all([
     leerConReintento('/turnos-estacion/clinicas/resumen', {
       params: { fecha, estacionId },
     }),
     estacionId != null
       ? leerConReintento(`/estaciones/${estacionId}/clinicas-fijas`).catch(() => [])
       : Promise.resolve([]),
+    listarAsignacionesClinicas(fecha).catch(() => []),
   ])
   const resumen = desenvolver(respuestaResumen)
   const clinicas = (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
     id: clinica.espacioFisicoId,
     numero: clinica.numero,
     nivel: clinica.nivel,
+    orden: Number(clinica.orden ?? 0),
     nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
     asignados: Number(clinica.asignados ?? 0),
     devueltos: Number(clinica.devueltos ?? 0),
@@ -409,9 +450,9 @@ export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
     expedientesEnClinica: Number(clinica.pendientes ?? 0),
     ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
   }))
-  return adjuntarEspecialidadesFijas(
-    filtrarClinicasPorNivel(clinicas, estacionId),
-    desenvolver(fijas),
+  return adjuntarEspecialidadesDelDia(
+    adjuntarEspecialidadesFijas(filtrarClinicasPorNivel(clinicas, estacionId), desenvolver(fijas)),
+    vista,
   )
 }
 
@@ -419,29 +460,41 @@ export async function registrarDevolucionClinica({
   espacioFisicoId,
   estacionId,
   fecha = hoyIso(),
+  cantidad = 1,
 } = {}) {
   if (USE_MOCK) {
     await esperar()
     const clinica = CLINICAS_SEGUIMIENTO.find((item) => String(item.id) === String(espacioFisicoId))
     if (!clinica) throw crearError('Clínica no encontrada', 404)
     const actual = resumenClinicaMock(clinica, fecha)
+    const total = Number(cantidad) || 1
+    if (total < 1) throw crearError('La cantidad debe ser mayor que cero', 422)
     if (actual.expedientesEnClinica <= 0) {
       throw crearError('No hay pacientes pendientes de devolver en esta clínica', 409)
     }
-    devolucionesClinicaMock.push({
-      id: contadorDevolucionMock++,
-      espacioFisicoId: clinica.id,
-      fecha,
-      creadoEn: new Date().toISOString(),
-      revertidoEn: null,
-    })
+    if (total > actual.expedientesEnClinica) {
+      throw crearError(
+        `Solo hay ${actual.expedientesEnClinica} paciente(s) pendiente(s) en esta clínica`,
+        409,
+      )
+    }
+    const ahora = new Date().toISOString()
+    for (let i = 0; i < total; i += 1) {
+      devolucionesClinicaMock.push({
+        id: contadorDevolucionMock++,
+        espacioFisicoId: clinica.id,
+        fecha,
+        creadoEn: ahora,
+        revertidoEn: null,
+      })
+    }
     return resumenClinicaMock(clinica, fecha)
   }
 
   const respuesta = await client.post(
     `/turnos-estacion/clinicas/${espacioFisicoId}/devoluciones`,
     {},
-    { params: { fecha, estacionId } },
+    { params: { fecha, estacionId, cantidad } },
   )
   return desenvolver(respuesta)
 }

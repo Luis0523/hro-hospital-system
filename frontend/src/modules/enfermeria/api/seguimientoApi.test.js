@@ -9,6 +9,7 @@ import {
   listarAsignacionesClinicas,
   listarClinicas,
   obtenerLibro,
+  registrarDevolucionClinica,
   registrarTurno,
   reiniciarSeguimientoMock,
 } from './seguimientoApi'
@@ -185,6 +186,21 @@ describe('seguimientoApi', () => {
     expect(archivo.etapa).toBe('archivo')
 
     await expect(avanzarTurno(registrado.id)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('registra varias devoluciones de una clínica en una sola llamada', async () => {
+    const clinicas = await listarClinicas()
+    const clinica = clinicas.find((item) => item.expedientesEnClinica >= 3)
+    expect(clinica).toBeTruthy()
+
+    const antes = clinica.devueltos
+    const resumen = await registrarDevolucionClinica({
+      espacioFisicoId: clinica.id,
+      cantidad: 3,
+    })
+
+    expect(resumen.devueltos).toBe(antes + 3)
+    expect(resumen.expedientesEnClinica).toBe(clinica.expedientesEnClinica - 3)
   })
 
   it('lista todas las clínicas sin limitarlas a cinco', async () => {

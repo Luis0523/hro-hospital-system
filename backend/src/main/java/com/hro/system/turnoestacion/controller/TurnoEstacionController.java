@@ -70,9 +70,11 @@ public class TurnoEstacionController {
             @PathVariable UUID espacioFisicoId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam(required = false) Long estacionId) {
+            @RequestParam(required = false) Long estacionId,
+            @RequestParam(defaultValue = "1") int cantidad) {
         return ResponseEntity.ok(ApiResponse.ok(
-                turnoEstacionService.registrarDevolucionClinica(espacioFisicoId, fecha, estacionId),
+                turnoEstacionService.registrarDevolucionClinica(
+                        espacioFisicoId, fecha, estacionId, cantidad),
                 "Devolución registrada"));
     }
 

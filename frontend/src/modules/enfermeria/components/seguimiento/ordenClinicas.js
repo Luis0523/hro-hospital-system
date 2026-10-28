@@ -1,8 +1,23 @@
-// Ordena las clínicas por uso del día:
-// 1) clínicas con pacientes asignados/pendientes,
-// 2) mayor número de pendientes,
-// 3) mayor número de asignados,
-// 4) nombre.
+function compararNumero(a, b) {
+  return String(a?.numero ?? a?.nombre ?? '').localeCompare(
+    String(b?.numero ?? b?.nombre ?? ''),
+    'es',
+    { numeric: true, sensitivity: 'base' },
+  )
+}
+
+// Orden configurado por el jefe de enfermería para la estación. El backend
+// envía `orden` (1 = primero); si no existe, se usa un orden natural.
+export function ordenarClinicas(clinicas = []) {
+  return [...clinicas].sort((a, b) => {
+    const ordenA = Number(a.orden ?? Number.MAX_SAFE_INTEGER)
+    const ordenB = Number(b.orden ?? Number.MAX_SAFE_INTEGER)
+    if (ordenA !== ordenB) return ordenA - ordenB
+    return compararNumero(a, b)
+  })
+}
+
+// Compatibilidad: orden por uso (se conserva para otros consumidores).
 export function ordenarClinicasPorUso(clinicas = []) {
   return [...clinicas].sort((a, b) => {
     const asignadosA = Number(a.asignados ?? 0)
@@ -15,6 +30,6 @@ export function ordenarClinicasPorUso(clinicas = []) {
     if (usadaA !== usadaB) return usadaA ? -1 : 1
     if (pendientesA !== pendientesB) return pendientesB - pendientesA
     if (asignadosA !== asignadosB) return asignadosB - asignadosA
-    return String(a.nombre ?? '').localeCompare(String(b.nombre ?? ''), 'es')
+    return compararNumero(a, b)
   })
 }

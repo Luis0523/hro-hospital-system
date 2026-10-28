@@ -17,6 +17,8 @@ public class ResumenClinicaDTO {
     private String numero;
     private String nombre;
     private Short nivel;
+    /** Posición configurada para la estación (1 = primera). */
+    private int orden;
     /** Turnos asignados a esta clínica durante la fecha. */
     private long asignados;
     /** Devoluciones registradas (sin incluir las deshechas). */
