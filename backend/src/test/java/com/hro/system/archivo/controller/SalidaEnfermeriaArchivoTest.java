@@ -1,5 +1,7 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.entity.SalidaEnfermeriaArchivo;
+import com.hro.system.archivo.repository.SalidaEnfermeriaArchivoRepository;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
@@ -22,7 +24,9 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,6 +40,7 @@ class SalidaEnfermeriaArchivoTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private EstacionEnfermeriaRepository estacionRepository;
     @Autowired private EspacioFisicoRepository espacioFisicoRepository;
+    @Autowired private SalidaEnfermeriaArchivoRepository salidaRepository;
     @MockBean private ExpedienteHroService expedienteHroService;
 
     private EstacionEnfermeria estacion;
@@ -121,6 +126,42 @@ class SalidaEnfermeriaArchivoTest {
                         .param("estacionId", String.valueOf(estacion.getId())))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    @DisplayName("Actualiza y elimina una salida registrada")
+    void actualizaYElimina() throws Exception {
+        String numero = "5" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(post("/salidas-enfermeria-archivo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content(body(numero, "normal")))
+                .andExpect(status().isOk());
+
+        SalidaEnfermeriaArchivo salida = salidaRepository
+                .findByFechaAndEstacionIdAndNumeroExpediente(fecha, estacion.getId(), numero)
+                .orElseThrow();
+
+        String nuevoNumero = "4" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(put("/salidas-enfermeria-archivo/{id}", salida.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content("{\"numeroExpediente\":\"" + nuevoNumero
+                                + "\",\"tipo\":\"personal\",\"primeraVez\":false"
+                                + ",\"clinicaPersonalId\":\"" + clinica.getId() + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.numeroExpediente").value(nuevoNumero))
+                .andExpect(jsonPath("$.data.tipo").value("personal"));
+
+        mockMvc.perform(delete("/salidas-enfermeria-archivo/{id}", salida.getId())
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería"))
+                .andExpect(status().isOk());
     }
 
     @Test

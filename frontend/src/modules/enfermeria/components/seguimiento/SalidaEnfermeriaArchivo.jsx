@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Button, Icon, Modal, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { formatearExpediente } from '@/shared/utils/expediente'
 import { descargarBlob } from '@/modules/archivo/utils/descargarBlob'
 import ModalGenerandoPdf from './ModalGenerandoPdf.jsx'
 import {
+  actualizarSalidaEnfermeriaArchivo,
   descargarSalidasEnfermeriaArchivoPdf,
+  eliminarSalidaEnfermeriaArchivo,
   listarSalidasEnfermeriaArchivo,
   registrarSalidaEnfermeriaArchivo,
 } from '../../api/salidaEnfermeriaArchivoApi'
@@ -50,6 +52,17 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
   const [error, setError] = useState(null)
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState(0)
+  const [busqueda, setBusqueda] = useState('')
+  const [editando, setEditando] = useState(null)
+  const [formEdicion, setFormEdicion] = useState({
+    numeroExpediente: '',
+    tipo: 'normal',
+    primeraVez: false,
+    clinicaPersonalId: '',
+  })
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [porEliminar, setPorEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
 
   async function cargar() {
     if (!estacionId) {
@@ -172,6 +185,81 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
     }
   }
 
+  const salidasFiltradas = useMemo(() => {
+    const consulta = busqueda.trim().toLowerCase()
+    if (!consulta) return salidas
+    return salidas.filter((salida) =>
+      [
+        salida.numeroExpediente,
+        formatearExpediente(salida.numeroExpediente),
+        salida.pacienteNombre,
+        nombreEtiqueta(salida.tipo),
+        salida.clinicaPersonalNombre,
+      ].some((valor) =>
+        String(valor ?? '')
+          .toLowerCase()
+          .includes(consulta),
+      ),
+    )
+  }, [salidas, busqueda])
+
+  function abrirEdicion(salida) {
+    setEditando(salida)
+    setFormEdicion({
+      numeroExpediente: salida.numeroExpediente ?? '',
+      tipo: salida.tipo ?? 'normal',
+      primeraVez: Boolean(salida.primeraVez),
+      clinicaPersonalId: salida.clinicaPersonalId ?? '',
+    })
+  }
+
+  async function guardarEdicion(evento) {
+    evento.preventDefault()
+    if (!editando || guardandoEdicion) return
+    setGuardandoEdicion(true)
+    try {
+      const actualizada = await actualizarSalidaEnfermeriaArchivo(editando.id, {
+        numeroExpediente: formEdicion.numeroExpediente,
+        tipo: formEdicion.tipo,
+        primeraVez: formEdicion.primeraVez,
+        clinicaPersonalId:
+          formEdicion.tipo === 'personal' ? formEdicion.clinicaPersonalId || null : null,
+      })
+      setSalidas((prev) =>
+        prev.map((salida) => (salida.id === actualizada.id ? actualizada : salida)),
+      )
+      setEditando(null)
+      mostrarToast({ tone: 'success', title: 'Salida actualizada' })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.status === 409 ? 'Expediente duplicado' : 'No se pudo actualizar',
+        message: fallo?.message,
+      })
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
+
+  async function confirmarEliminar() {
+    if (!porEliminar || eliminando) return
+    setEliminando(true)
+    try {
+      await eliminarSalidaEnfermeriaArchivo(porEliminar.id)
+      setSalidas((prev) => prev.filter((salida) => salida.id !== porEliminar.id))
+      setPorEliminar(null)
+      mostrarToast({ tone: 'info', title: 'Salida eliminada' })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo eliminar',
+        message: fallo?.message,
+      })
+    } finally {
+      setEliminando(false)
+    }
+  }
+
   return (
     <section className="h-fit rounded-2xl border border-outline-variant bg-surface-container-lowest p-3 shadow-card sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -278,6 +366,44 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
         )}
       </form>
 
+      <div className="mt-4">
+        <label
+          htmlFor="buscar-salida-enfermeria"
+          className="flex items-center gap-1 text-label-md font-bold uppercase tracking-wider text-on-surface-variant"
+        >
+          <Icon name="search" className="text-[18px] text-primary" />
+          Buscar en la lista
+        </label>
+        <div className="relative mt-2 flex items-center">
+          <Icon
+            name="search"
+            className="pointer-events-none absolute left-3 text-[20px] text-on-surface-variant"
+          />
+          <input
+            id="buscar-salida-enfermeria"
+            value={busqueda}
+            onChange={(evento) => setBusqueda(evento.target.value)}
+            placeholder="Expediente, paciente, etiqueta o clínica"
+            className="h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest pl-10 pr-10 text-body-md text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-container"
+            >
+              <Icon name="close" className="text-[18px]" />
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-label-sm text-on-surface-variant">
+          {busqueda
+            ? `${salidasFiltradas.length} de ${salidas.length} coincidencias`
+            : `${salidas.length} salida(s) registrada(s) para esta estación`}
+        </p>
+      </div>
+
       {error && (
         <div className="mt-3">
           <Alert tone="error" title="No se pudieron cargar las salidas">
@@ -314,7 +440,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                   </div>
                 </article>
               ))}
-              {salidas.map((salida) => (
+              {salidasFiltradas.map((salida) => (
                 <article
                   key={`salida-card-${salida.id}`}
                   className="rounded-xl border border-outline-variant bg-surface-container-low p-3"
@@ -350,18 +476,30 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                       </dd>
                     </div>
                   </dl>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => abrirEdicion(salida)}>
+                      <Icon name="edit" className="text-[16px]" />
+                      Editar
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => setPorEliminar(salida)}>
+                      <Icon name="delete" className="text-[16px]" />
+                      Eliminar
+                    </Button>
+                  </div>
                 </article>
               ))}
-              {salidas.length === 0 && pendientes.length === 0 && (
+              {salidasFiltradas.length === 0 && pendientes.length === 0 && (
                 <p className="rounded-xl border border-dashed border-outline-variant p-6 text-center text-body-sm text-on-surface-variant">
-                  Aún no hay salidas registradas para esta estación.
+                  {busqueda
+                    ? 'No hay coincidencias con la búsqueda.'
+                    : 'Aún no hay salidas registradas para esta estación.'}
                 </p>
               )}
             </div>
 
             <div className="hidden overflow-hidden rounded-xl border border-outline-variant sm:block">
               <div className="max-h-[52vh] overflow-auto">
-                <table className="w-full min-w-[680px] text-left text-sm">
+                <table className="w-full min-w-[860px] text-left text-sm">
                   <thead className="sticky top-0 bg-surface-container-low text-label-sm uppercase text-on-surface-variant">
                     <tr>
                       <th className="px-3 py-2">Expediente</th>
@@ -370,6 +508,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                       <th className="px-3 py-2 text-center">Primera vez</th>
                       <th className="px-3 py-2">Clínica (Personal)</th>
                       <th className="px-3 py-2 text-center">Hora</th>
+                      <th className="px-3 py-2 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/60">
@@ -392,9 +531,10 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                         <td className="px-3 py-2 text-center text-on-surface-variant">—</td>
                         <td className="px-3 py-2 text-on-surface-variant">—</td>
                         <td className="px-3 py-2 text-center text-on-surface-variant">—</td>
+                        <td className="px-3 py-2 text-right text-on-surface-variant">—</td>
                       </tr>
                     ))}
-                    {salidas.map((salida) => (
+                    {salidasFiltradas.map((salida) => (
                       <tr key={salida.id}>
                         <td className="px-3 py-2 font-mono text-title-md font-bold text-primary">
                           {formatearExpediente(salida.numeroExpediente)}
@@ -418,12 +558,34 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                         <td className="px-3 py-2 text-center font-mono text-on-surface-variant">
                           {horaDe(salida.registradoEn)}
                         </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              aria-label={`Editar ${formatearExpediente(salida.numeroExpediente)}`}
+                              onClick={() => abrirEdicion(salida)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container"
+                            >
+                              <Icon name="edit" className="text-[18px]" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Eliminar ${formatearExpediente(salida.numeroExpediente)}`}
+                              onClick={() => setPorEliminar(salida)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300 text-rose-600 transition hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                            >
+                              <Icon name="delete" className="text-[18px]" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
-                    {salidas.length === 0 && pendientes.length === 0 && (
+                    {salidasFiltradas.length === 0 && pendientes.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-on-surface-variant">
-                          Aún no hay salidas registradas para esta estación.
+                        <td colSpan={7} className="px-3 py-8 text-center text-on-surface-variant">
+                          {busqueda
+                            ? 'No hay coincidencias con la búsqueda.'
+                            : 'Aún no hay salidas registradas para esta estación.'}
                         </td>
                       </tr>
                     )}
@@ -434,6 +596,141 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
           </>
         )}
       </div>
+
+      <Modal
+        open={Boolean(editando)}
+        onClose={() => {
+          if (!guardandoEdicion) setEditando(null)
+        }}
+        title="Editar salida de Enfermería"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setEditando(null)}
+              disabled={guardandoEdicion}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-editar-salida')?.requestSubmit()}
+              disabled={guardandoEdicion}
+            >
+              {guardandoEdicion ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </>
+        }
+      >
+        <form id="form-editar-salida" onSubmit={guardarEdicion} className="space-y-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Número de expediente
+            </span>
+            <input
+              value={formEdicion.numeroExpediente}
+              onChange={(evento) =>
+                setFormEdicion((actual) => ({
+                  ...actual,
+                  numeroExpediente: evento.target.value,
+                }))
+              }
+              inputMode="numeric"
+              autoComplete="off"
+              required
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Etiqueta
+            </span>
+            <select
+              value={formEdicion.tipo}
+              onChange={(evento) =>
+                setFormEdicion((actual) => ({
+                  ...actual,
+                  tipo: evento.target.value,
+                  clinicaPersonalId:
+                    evento.target.value === 'personal' ? actual.clinicaPersonalId : '',
+                }))
+              }
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            >
+              {ETIQUETAS.map((etiqueta) => (
+                <option key={etiqueta.id} value={etiqueta.id}>
+                  {etiqueta.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {formEdicion.tipo === 'personal' && (
+            <label className="flex flex-col gap-1">
+              <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+                Clínica
+              </span>
+              <select
+                value={formEdicion.clinicaPersonalId}
+                onChange={(evento) =>
+                  setFormEdicion((actual) => ({
+                    ...actual,
+                    clinicaPersonalId: evento.target.value,
+                  }))
+                }
+                required
+                className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+              >
+                <option value="">Seleccione clínica…</option>
+                {clinicas.map((clinica) => (
+                  <option key={clinica.id} value={clinica.id}>
+                    {clinica.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="inline-flex cursor-pointer items-center gap-2 text-body-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={formEdicion.primeraVez}
+              onChange={(evento) =>
+                setFormEdicion((actual) => ({
+                  ...actual,
+                  primeraVez: evento.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded accent-primary"
+            />
+            Primera vez
+          </label>
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(porEliminar)}
+        onClose={() => {
+          if (!eliminando) setPorEliminar(null)
+        }}
+        title="Eliminar salida"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPorEliminar(null)} disabled={eliminando}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando…' : 'Sí, eliminar'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          ¿Eliminar la salida del expediente{' '}
+          <strong>{formatearExpediente(porEliminar?.numeroExpediente)}</strong>
+          {porEliminar?.pacienteNombre ? ` (${porEliminar.pacienteNombre})` : ''}?
+        </p>
+      </Modal>
 
       <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </section>

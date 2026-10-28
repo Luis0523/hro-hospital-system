@@ -1,5 +1,6 @@
 package com.hro.system.archivo.service;
 
+import com.hro.system.archivo.dto.ActualizarSalidaEnfermeriaArchivoRequestDTO;
 import com.hro.system.archivo.dto.RegistrarSalidaEnfermeriaArchivoRequestDTO;
 import com.hro.system.archivo.dto.SalidaEnfermeriaArchivoResponseDTO;
 import com.hro.system.archivo.entity.SalidaEnfermeriaArchivo;
@@ -107,6 +108,52 @@ public class SalidaEnfermeriaArchivoService {
         log.info("Salida Enfermería -> Archivo registrada: exp {} estación {} tipo {}",
                 numero, estacion.getCodigo(), tipo);
         return map(salida);
+    }
+
+    @Transactional
+    public SalidaEnfermeriaArchivoResponseDTO actualizar(
+            UUID id, ActualizarSalidaEnfermeriaArchivoRequestDTO dto) {
+        SalidaEnfermeriaArchivo salida = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SalidaEnfermeriaArchivo", "id", id));
+
+        String numero = dto.getNumeroExpediente().trim();
+        if (!numero.equals(salida.getNumeroExpediente())) {
+            repository.findByFechaAndEstacionIdAndNumeroExpediente(
+                            salida.getFecha(), salida.getEstacion().getId(), numero)
+                    .filter(existente -> !existente.getId().equals(id))
+                    .ifPresent(existente -> {
+                        throw new ConflictException("SALIDA_DUPLICADA",
+                                "El expediente ya fue registrado como salida de enfermería a archivo.");
+                    });
+            PacienteHroDTO paciente = expedienteHroService.consultar(numero);
+            salida.setNumeroExpediente(numero);
+            salida.setPacienteNombre(paciente.getNombreCompleto());
+        }
+
+        String tipo = normalizarTipo(dto.getTipo());
+        EspacioFisico clinicaPersonal = null;
+        if ("personal".equals(tipo)) {
+            if (dto.getClinicaPersonalId() == null) {
+                throw new BusinessException("CLINICA_PERSONAL_REQUERIDA",
+                        "Seleccione la clínica para el expediente de tipo Personal.");
+            }
+            clinicaPersonal = espacioFisicoRepository.findById(dto.getClinicaPersonalId())
+                    .filter(espacio -> Boolean.TRUE.equals(espacio.getActivo()))
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "EspacioFisico", "id", dto.getClinicaPersonalId()));
+        }
+
+        salida.setTipo(tipo);
+        salida.setPrimeraVez(Boolean.TRUE.equals(dto.getPrimeraVez()));
+        salida.setClinicaPersonal(clinicaPersonal);
+        return map(repository.save(salida));
+    }
+
+    @Transactional
+    public void eliminar(UUID id) {
+        SalidaEnfermeriaArchivo salida = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SalidaEnfermeriaArchivo", "id", id));
+        repository.delete(salida);
     }
 
     @Transactional(readOnly = true)
