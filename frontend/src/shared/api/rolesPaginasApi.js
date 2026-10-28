@@ -60,10 +60,12 @@ export const PRIORIDAD_AREAS = [
 
 /**
  * Pantalla inicial específica por rol (tiene prioridad sobre la prioridad de áreas).
- * Enfermería entra directo al registro de carnets.
  */
 export const INICIO_POR_ROL = {
-  enfermeria: '/enfermeria/carnets',
+  enfermeria: '/seguimiento-enfermeria',
+  archivo: '/archivo/salida-hospital',
+  jefe_enfermeria: '/jefe-enfermeria',
+  jefe_archivo: '/jefe-archivo',
 }
 
 /** Pantalla inicial de un rol a partir de un mapeo rol → páginas dado. */

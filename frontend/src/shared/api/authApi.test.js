@@ -56,10 +56,11 @@ describe('usuarioDesdeToken', () => {
 
 describe('inicioPorRol', () => {
   it('mapea cada rol a su pantalla', () => {
-    expect(inicioPorRol('archivo')).toBe('/archivo')
-    expect(inicioPorRol('enfermeria')).toBe('/enfermeria')
+    expect(inicioPorRol('archivo')).toBe('/archivo/salida-hospital')
+    expect(inicioPorRol('enfermeria')).toBe('/seguimiento-enfermeria')
     expect(inicioPorRol('administrador')).toBe('/administracion')
     expect(inicioPorRol('jefe_enfermeria')).toBe('/jefe-enfermeria')
+    expect(inicioPorRol('jefe_archivo')).toBe('/jefe-archivo')
     expect(inicioPorRol(undefined)).toBe('/enfermeria')
   })
 })

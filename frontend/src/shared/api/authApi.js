@@ -25,14 +25,18 @@ function esRolOperativo(rol) {
 export function inicioPorRol(rol) {
   switch (rol) {
     case 'archivo':
-      return '/archivo'
+      return '/archivo/salida-hospital'
     case 'administrador':
       return '/administracion'
     case 'jefe_enfermeria':
       return '/jefe-enfermeria'
+    case 'jefe_archivo':
+      return '/jefe-archivo'
     case 'enfermeria':
     case 'medico':
+      return '/seguimiento-enfermeria'
     case 'personal_citas':
+      return '/libro-citas'
     default:
       return '/enfermeria'
   }
@@ -89,9 +93,7 @@ async function pedirToken(cuerpo) {
   const datos = await respuesta.json().catch(() => ({}))
 
   if (!respuesta.ok || !datos.access_token) {
-    const error = new Error(
-      datos.error_description || datos.error || 'No se pudo iniciar sesión',
-    )
+    const error = new Error(datos.error_description || datos.error || 'No se pudo iniciar sesión')
     error.status = respuesta.status
     throw error
   }
