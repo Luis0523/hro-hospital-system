@@ -1,5 +1,6 @@
 import client from '@/shared/api/client'
 import { construirPdfSimple } from '@/modules/archivo/utils/pdfMock'
+import { formatearExpediente } from '@/shared/utils/expediente'
 
 const USE_MOCK = import.meta.env.MODE === 'test' || import.meta.env.VITE_USE_MOCK !== 'false'
 const desenvolver = (respuesta) => respuesta?.data ?? respuesta
@@ -79,16 +80,16 @@ export async function registrarSalidaEnfermeriaArchivo({
 
 export async function descargarSalidasEnfermeriaArchivoPdf({ fecha, estacionId } = {}) {
   if (USE_MOCK) {
-    const filas = salidasMock.filter(
-      (s) => s.fecha === fecha && String(s.estacionId) === String(estacionId),
-    )
+    const filas = salidasMock
+      .filter((s) => s.fecha === fecha && String(s.estacionId) === String(estacionId))
+      .sort((a, b) => new Date(a.registradoEn) - new Date(b.registradoEn))
     return construirPdfSimple([
       'HOSPITAL REGIONAL DE OCCIDENTE',
       'CONTROL DE SALIDA DE ENFERMERÍA A ARCHIVO',
       `Fecha: ${fecha ?? ''}`,
       ...filas.map(
         (s, indice) =>
-          `${indice + 1}. ${s.numeroExpediente} · ${s.pacienteNombre} · ${ETIQUETAS[s.tipo] ?? 'Normal'} · Primera vez: ${s.primeraVez ? 'Sí' : 'No'}`,
+          `${indice + 1}. ${formatearExpediente(s.numeroExpediente)} · ${s.pacienteNombre} · ${ETIQUETAS[s.tipo] ?? 'Normal'} · Primera vez: ${s.primeraVez ? 'Sí' : 'No'}`,
       ),
     ])
   }

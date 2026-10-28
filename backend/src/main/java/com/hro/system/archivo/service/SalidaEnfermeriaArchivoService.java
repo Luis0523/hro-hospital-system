@@ -15,6 +15,7 @@ import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
+import com.hro.system.reporte.FormatoExpediente;
 import com.hro.system.reporte.PlantillaReportePdf;
 import com.hro.system.turnoestacion.entity.TurnoEstacion;
 import com.hro.system.turnoestacion.repository.TurnoEstacionRepository;
@@ -31,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -128,8 +130,12 @@ public class SalidaEnfermeriaArchivoService {
         EstacionEnfermeria estacionEntidad = estacionRepository.findById(estacion)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "EstacionEnfermeria", "id", estacion));
-        List<SalidaEnfermeriaArchivo> lista = repository
-                .findByFechaAndEstacionIdOrderByRegistradoEnDesc(fecha, estacion);
+        // En el PDF se listan del más antiguo al más reciente (orden de registro).
+        List<SalidaEnfermeriaArchivo> lista = new ArrayList<>(repository
+                .findByFechaAndEstacionIdOrderByRegistradoEnDesc(fecha, estacion));
+        lista.sort(Comparator.comparing(
+                SalidaEnfermeriaArchivo::getRegistradoEn,
+                Comparator.nullsLast(Comparator.naturalOrder())));
 
         Map<String, String> especialidades = turnoEstacionRepository
                 .findByFechaAndEstacionIdAndActivoTrueOrderByNumeroGeneralAsc(fecha, estacion).stream()
@@ -150,7 +156,7 @@ public class SalidaEnfermeriaArchivoService {
             }
             filas.add(List.of(
                     String.valueOf(indice++),
-                    salida.getNumeroExpediente(),
+                    FormatoExpediente.formatear(salida.getNumeroExpediente()),
                     salida.getPacienteNombre(),
                     area,
                     etiquetaTipo(salida.getTipo()),
