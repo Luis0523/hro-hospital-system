@@ -1,5 +1,6 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.dto.ActualizarSalidaEnfermeriaArchivoRequestDTO;
 import com.hro.system.archivo.dto.RegistrarSalidaEnfermeriaArchivoRequestDTO;
 import com.hro.system.archivo.dto.SalidaEnfermeriaArchivoResponseDTO;
 import com.hro.system.archivo.service.SalidaEnfermeriaArchivoService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/salidas-enfermeria-archivo")
@@ -37,6 +39,24 @@ public class SalidaEnfermeriaArchivoController {
             @Valid @RequestBody RegistrarSalidaEnfermeriaArchivoRequestDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok(
                 service.registrar(dto), "Salida de Enfermería a Archivo registrada"));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Actualizar una salida de Enfermería a Archivo")
+    public ResponseEntity<ApiResponse<SalidaEnfermeriaArchivoResponseDTO>> actualizar(
+            @PathVariable UUID id,
+            @Valid @RequestBody ActualizarSalidaEnfermeriaArchivoRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.actualizar(id, dto), "Salida de Enfermería a Archivo actualizada"));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Eliminar una salida de Enfermería a Archivo")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        service.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Salida de Enfermería a Archivo eliminada"));
     }
 
     @GetMapping

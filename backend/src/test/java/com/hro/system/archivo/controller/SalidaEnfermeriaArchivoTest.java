@@ -1,5 +1,6 @@
 package com.hro.system.archivo.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
@@ -22,8 +23,10 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,6 +40,7 @@ class SalidaEnfermeriaArchivoTest {
     @Autowired private EstacionEnfermeriaRepository estacionRepository;
     @Autowired private EspacioFisicoRepository espacioFisicoRepository;
     @MockBean private ExpedienteHroService expedienteHroService;
+    @Autowired private ObjectMapper objectMapper;
 
     private EstacionEnfermeria estacion;
     private EspacioFisico clinica;
@@ -121,6 +125,38 @@ class SalidaEnfermeriaArchivoTest {
                         .param("estacionId", String.valueOf(estacion.getId())))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    @DisplayName("Actualiza la etiqueta y elimina la salida")
+    void actualizaYElimina() throws Exception {
+        String numero = "5" + (10000 + (int) (Math.random() * 80000));
+        String respuesta = mockMvc.perform(post("/salidas-enfermeria-archivo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content(body(numero, "normal")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(respuesta).get("data").get("id").asText();
+
+        mockMvc.perform(put("/salidas-enfermeria-archivo/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content("{\"numeroExpediente\":\"" + numero
+                                + "\",\"tipo\":\"clinica_mujer\",\"primeraVez\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tipo").value("clinica_mujer"))
+                .andExpect(jsonPath("$.data.primeraVez").value(false));
+
+        mockMvc.perform(delete("/salidas-enfermeria-archivo/" + id)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería"))
+                .andExpect(status().isOk());
     }
 
     @Test

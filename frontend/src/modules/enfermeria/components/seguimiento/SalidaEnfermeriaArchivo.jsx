@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Button, Icon, Modal, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { formatearExpediente } from '@/shared/utils/expediente'
 import { descargarBlob } from '@/modules/archivo/utils/descargarBlob'
 import ModalGenerandoPdf from './ModalGenerandoPdf.jsx'
 import {
+  actualizarSalidaEnfermeriaArchivo,
   descargarSalidasEnfermeriaArchivoPdf,
+  eliminarSalidaEnfermeriaArchivo,
   listarSalidasEnfermeriaArchivo,
   registrarSalidaEnfermeriaArchivo,
 } from '../../api/salidaEnfermeriaArchivoApi'
@@ -15,6 +17,7 @@ const ETIQUETAS = [
   { id: 'privado_libertad', nombre: 'Privado de libertad', icono: 'lock' },
   { id: 'personal', nombre: 'Personal', icono: 'badge' },
   { id: 'presentacion', nombre: 'Presentación', icono: 'gavel' },
+  { id: 'clinica_mujer', nombre: 'Clínica de la Mujer', icono: 'female' },
 ]
 
 const ESTILO_ETIQUETA = {
@@ -22,6 +25,7 @@ const ESTILO_ETIQUETA = {
   privado_libertad: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200',
   personal: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   presentacion: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
+  clinica_mujer: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200',
 }
 
 function horaDe(valor) {
@@ -37,6 +41,30 @@ function nombreEtiqueta(tipo) {
   return ETIQUETAS.find((etiqueta) => etiqueta.id === tipo)?.nombre ?? 'Normal'
 }
 
+function normalizarBusqueda(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]/g, '')
+    .toLowerCase()
+}
+
+function coincideSalida(salida, termino) {
+  if (!termino) return true
+  const texto = normalizarBusqueda(
+    [
+      salida.numeroExpediente,
+      formatearExpediente(salida.numeroExpediente),
+      salida.pacienteNombre,
+      nombreEtiqueta(salida.tipo),
+      salida.clinicaPersonalNombre,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  )
+  return texto.includes(termino)
+}
+
 export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = [] }) {
   const { mostrarToast } = useToast()
   const inputRef = useRef(null)
@@ -50,6 +78,17 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
   const [error, setError] = useState(null)
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState(0)
+  const [busqueda, setBusqueda] = useState('')
+  const [salidaEditando, setSalidaEditando] = useState(null)
+  const [formEdicion, setFormEdicion] = useState(null)
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [porEliminar, setPorEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+
+  const salidasFiltradas = useMemo(() => {
+    const termino = normalizarBusqueda(busqueda)
+    return salidas.filter((salida) => coincideSalida(salida, termino))
+  }, [salidas, busqueda])
 
   async function cargar() {
     if (!estacionId) {
@@ -122,6 +161,88 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
       })
     } finally {
       setPendientes((prev) => prev.filter((item) => item !== numero))
+    }
+  }
+
+  function abrirEdicion(salida) {
+    setSalidaEditando(salida)
+    setFormEdicion({
+      numeroExpediente: salida.numeroExpediente,
+      tipo: salida.tipo,
+      primeraVez: Boolean(salida.primeraVez),
+      clinicaPersonalId: salida.clinicaPersonalId ?? '',
+    })
+  }
+
+  function cerrarEdicion() {
+    if (guardandoEdicion) return
+    setSalidaEditando(null)
+    setFormEdicion(null)
+  }
+
+  async function guardarEdicion(evento) {
+    evento.preventDefault()
+    if (!salidaEditando || !formEdicion || guardandoEdicion) return
+    if (formEdicion.tipo === 'personal' && !formEdicion.clinicaPersonalId) {
+      mostrarToast({
+        tone: 'warning',
+        title: 'Seleccione la clínica para el expediente Personal.',
+      })
+      return
+    }
+    setGuardandoEdicion(true)
+    try {
+      const actualizada = await actualizarSalidaEnfermeriaArchivo(salidaEditando.id, {
+        numeroExpediente: formEdicion.numeroExpediente.trim(),
+        tipo: formEdicion.tipo,
+        primeraVez: formEdicion.primeraVez,
+        clinicaPersonalId: formEdicion.tipo === 'personal' ? formEdicion.clinicaPersonalId : null,
+      })
+      setSalidas((actuales) =>
+        actuales.map((salida) =>
+          String(salida.id) === String(actualizada.id) ? actualizada : salida,
+        ),
+      )
+      setSalidaEditando(null)
+      setFormEdicion(null)
+      mostrarToast({
+        tone: 'success',
+        title: 'Expediente actualizado',
+        message: formatearExpediente(actualizada.numeroExpediente),
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.status === 409 ? 'Expediente duplicado' : 'No se pudo actualizar',
+        message: fallo?.message,
+      })
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
+
+  async function confirmarEliminar() {
+    if (!porEliminar || eliminando) return
+    setEliminando(true)
+    try {
+      await eliminarSalidaEnfermeriaArchivo(porEliminar.id)
+      setSalidas((actuales) =>
+        actuales.filter((salida) => String(salida.id) !== String(porEliminar.id)),
+      )
+      mostrarToast({
+        tone: 'info',
+        title: 'Expediente eliminado',
+        message: formatearExpediente(porEliminar.numeroExpediente),
+      })
+      setPorEliminar(null)
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo eliminar',
+        message: fallo?.message,
+      })
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -278,6 +399,34 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
         )}
       </form>
 
+      <div className="mt-4 rounded-xl border border-outline-variant bg-surface-container-low p-2.5">
+        <label
+          htmlFor="buscar-salida-enfermeria"
+          className="mb-1.5 flex items-center gap-1 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant"
+        >
+          <Icon name="search" className="text-[16px] text-primary" />
+          Buscar archivo
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="buscar-salida-enfermeria"
+            aria-label="Buscar archivo"
+            value={busqueda}
+            onChange={(evento) => setBusqueda(evento.target.value)}
+            placeholder="Expediente, paciente o etiqueta"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          {busqueda && (
+            <Button variant="ghost" size="sm" onClick={() => setBusqueda('')}>
+              Limpiar
+            </Button>
+          )}
+          <span className="whitespace-nowrap text-label-sm text-on-surface-variant">
+            {salidasFiltradas.length} de {salidas.length}
+          </span>
+        </div>
+      </div>
+
       {error && (
         <div className="mt-3">
           <Alert tone="error" title="No se pudieron cargar las salidas">
@@ -314,7 +463,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                   </div>
                 </article>
               ))}
-              {salidas.map((salida) => (
+              {salidasFiltradas.map((salida) => (
                 <article
                   key={`salida-card-${salida.id}`}
                   className="rounded-xl border border-outline-variant bg-surface-container-low p-3"
@@ -350,11 +499,33 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                       </dd>
                     </div>
                   </dl>
+                  <div className="mt-2 flex justify-end gap-1.5 border-t border-outline-variant pt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => abrirEdicion(salida)}
+                      aria-label={`Editar ${formatearExpediente(salida.numeroExpediente)}`}
+                    >
+                      <Icon name="edit" className="text-[16px]" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setPorEliminar(salida)}
+                      aria-label={`Eliminar ${formatearExpediente(salida.numeroExpediente)}`}
+                    >
+                      <Icon name="delete" className="text-[16px]" />
+                      Eliminar
+                    </Button>
+                  </div>
                 </article>
               ))}
-              {salidas.length === 0 && pendientes.length === 0 && (
+              {salidasFiltradas.length === 0 && pendientes.length === 0 && (
                 <p className="rounded-xl border border-dashed border-outline-variant p-6 text-center text-body-sm text-on-surface-variant">
-                  Aún no hay salidas registradas para esta estación.
+                  {busqueda
+                    ? 'No hay archivos que coincidan con la búsqueda.'
+                    : 'Aún no hay salidas registradas para esta estación.'}
                 </p>
               )}
             </div>
@@ -370,6 +541,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                       <th className="px-3 py-2 text-center">Primera vez</th>
                       <th className="px-3 py-2">Clínica (Personal)</th>
                       <th className="px-3 py-2 text-center">Hora</th>
+                      <th className="px-3 py-2 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/60">
@@ -394,7 +566,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                         <td className="px-3 py-2 text-center text-on-surface-variant">—</td>
                       </tr>
                     ))}
-                    {salidas.map((salida) => (
+                    {salidasFiltradas.map((salida) => (
                       <tr key={salida.id}>
                         <td className="px-3 py-2 font-mono text-title-md font-bold text-primary">
                           {formatearExpediente(salida.numeroExpediente)}
@@ -418,12 +590,36 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
                         <td className="px-3 py-2 text-center font-mono text-on-surface-variant">
                           {horaDe(salida.registradoEn)}
                         </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => abrirEdicion(salida)}
+                              aria-label={`Editar ${formatearExpediente(salida.numeroExpediente)}`}
+                            >
+                              <Icon name="edit" className="text-[16px]" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => setPorEliminar(salida)}
+                              aria-label={`Eliminar ${formatearExpediente(salida.numeroExpediente)}`}
+                            >
+                              <Icon name="delete" className="text-[16px]" />
+                              Eliminar
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
-                    {salidas.length === 0 && pendientes.length === 0 && (
+                    {salidasFiltradas.length === 0 && pendientes.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-on-surface-variant">
-                          Aún no hay salidas registradas para esta estación.
+                        <td colSpan={7} className="px-3 py-8 text-center text-on-surface-variant">
+                          {busqueda
+                            ? 'No hay archivos que coincidan con la búsqueda.'
+                            : 'Aún no hay salidas registradas para esta estación.'}
                         </td>
                       </tr>
                     )}
@@ -434,6 +630,126 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
           </>
         )}
       </div>
+
+      <Modal
+        open={Boolean(salidaEditando)}
+        onClose={cerrarEdicion}
+        title="Editar expediente"
+        footer={
+          <>
+            <Button variant="secondary" onClick={cerrarEdicion} disabled={guardandoEdicion}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="form-editar-salida" disabled={guardandoEdicion}>
+              {guardandoEdicion ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </>
+        }
+      >
+        {formEdicion && (
+          <form id="form-editar-salida" onSubmit={guardarEdicion} className="space-y-3">
+            <label className="block space-y-1">
+              <span className="text-label-sm font-semibold text-on-surface">
+                Número de expediente
+              </span>
+              <input
+                value={formEdicion.numeroExpediente}
+                onChange={(evento) =>
+                  setFormEdicion((actual) => ({
+                    ...actual,
+                    numeroExpediente: evento.target.value,
+                  }))
+                }
+                inputMode="numeric"
+                className="h-10 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 font-mono text-body-md text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-label-sm font-semibold text-on-surface">Etiqueta</span>
+              <select
+                value={formEdicion.tipo}
+                onChange={(evento) =>
+                  setFormEdicion((actual) => ({
+                    ...actual,
+                    tipo: evento.target.value,
+                    clinicaPersonalId:
+                      evento.target.value === 'personal' ? actual.clinicaPersonalId : '',
+                  }))
+                }
+                className="h-10 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                {ETIQUETAS.map((etiqueta) => (
+                  <option key={etiqueta.id} value={etiqueta.id}>
+                    {etiqueta.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {formEdicion.tipo === 'personal' && (
+              <label className="block space-y-1">
+                <span className="text-label-sm font-semibold text-on-surface">Clínica</span>
+                <select
+                  value={formEdicion.clinicaPersonalId}
+                  onChange={(evento) =>
+                    setFormEdicion((actual) => ({
+                      ...actual,
+                      clinicaPersonalId: evento.target.value,
+                    }))
+                  }
+                  className="h-10 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Seleccione clínica…</option>
+                  {clinicas.map((clinica) => (
+                    <option key={clinica.id} value={clinica.id}>
+                      {clinica.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-label-md font-semibold text-on-surface">
+              <input
+                type="checkbox"
+                checked={formEdicion.primeraVez}
+                onChange={(evento) =>
+                  setFormEdicion((actual) => ({
+                    ...actual,
+                    primeraVez: evento.target.checked,
+                  }))
+                }
+                className="h-4 w-4 rounded accent-primary"
+              />
+              Primera vez
+            </label>
+            <p className="text-label-sm text-on-surface-variant">
+              Paciente actual: {salidaEditando?.pacienteNombre ?? '—'}
+            </p>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(porEliminar)}
+        onClose={() => {
+          if (!eliminando) setPorEliminar(null)
+        }}
+        title="Eliminar expediente"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPorEliminar(null)} disabled={eliminando}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando…' : 'Eliminar'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          ¿Eliminar la salida del expediente{' '}
+          <strong>{formatearExpediente(porEliminar?.numeroExpediente ?? '')}</strong>?
+        </p>
+      </Modal>
 
       <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </section>

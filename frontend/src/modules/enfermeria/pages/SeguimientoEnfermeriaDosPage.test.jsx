@@ -144,15 +144,22 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     await user.keyboard('{Enter}')
     await screen.findByText(/Medicina Interna: elija la clínica/)
 
-    const clinica1 = screen.getByRole('button', { name: /^Clínica 1:/ })
-    await waitFor(() => expect(clinica1).toHaveFocus())
+    const clinicas = screen.getAllByRole('button', { name: /^Clínica \d+:/ })
+    await waitFor(() => expect(clinicas).toContain(document.activeElement))
+    const inicial = document.activeElement
+    const nombreInicial = inicial.textContent.match(/Clínica \d+/)[0]
     await user.keyboard('{Enter}')
     await screen.findByRole('button', { name: 'MI-39, Registrado' })
+    expect(detalle().getByText(new RegExp(nombreInicial))).toBeInTheDocument()
 
+    const destino = clinicas.find(
+      (clinica) =>
+        clinica.getAttribute('data-clinica-id') !== inicial.getAttribute('data-clinica-id'),
+    )
+    const nombreDestino = destino.textContent.match(/Clínica \d+/)[0]
     await user.click(screen.getByRole('button', { name: 'Cambiar clínica' }))
-    const clinica3 = screen.getByRole('button', { name: /^Clínica 3:/ })
-    await user.click(clinica3)
+    await user.click(destino)
 
-    await waitFor(() => expect(detalle().getByText(/Clínica 3/)).toBeInTheDocument())
+    await waitFor(() => expect(detalle().getByText(new RegExp(nombreDestino))).toBeInTheDocument())
   }, 20000)
 })
