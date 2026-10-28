@@ -57,8 +57,17 @@ export default function SeguimientoEnfermeriaDosPage() {
   const [cargandoEstaciones, setCargandoEstaciones] = useState(true)
   const [errorEstaciones, setErrorEstaciones] = useState(null)
 
-  const { libro, clinicas, error, recargar, registrar, avanzar, revertir, cambiarClinica } =
-    useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
+  const {
+    libro,
+    clinicas,
+    error,
+    recargar,
+    registrar,
+    avanzar,
+    revertir,
+    cambiarClinica,
+    cambiarTipoRegistro,
+  } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
 
   const [seleccion, setSeleccion] = useState(null)
   const [filtro, setFiltro] = useState(null)
@@ -400,13 +409,9 @@ export default function SeguimientoEnfermeriaDosPage() {
     if (!filtro) return
 
     if (filtro === 'registrado') {
-      if (turno) {
-        mostrarToast({
-          tone: 'info',
-          title: `El turno ${etiquetaTurno(codigo, numero)} ya está registrado.`,
-        })
-        return
-      }
+      // Si ya está registrado, la selección habilita el editor de su tipo de
+      // registro en el detalle del turno.
+      if (turno) return
       const especialidad = especialidades.find((item) => String(item.id) === String(especialidadId))
       if (especialidad) iniciarRegistro(especialidad, numero)
       return
@@ -557,6 +562,26 @@ export default function SeguimientoEnfermeriaDosPage() {
         title: `${etiquetaTurno(actualizado.codigo, actualizado.numero)} · ${nombreEtapa(
           actualizado.etapa,
         )}`,
+      })
+    })
+  }
+
+  function cambiarTipoRegistroSeleccionado(tipo) {
+    const turno = seleccionCompleta?.turno
+    if (!turno) return
+    ejecutarAccion(async () => {
+      const actualizado = await cambiarTipoRegistro(turno.id, tipo)
+      setSeleccion({
+        especialidadId: actualizado.especialidadId ?? seleccionCompleta.especialidadId,
+        codigo: actualizado.codigo ?? seleccionCompleta.codigo,
+        numero: actualizado.numero ?? seleccionCompleta.numero,
+      })
+      mostrarToast({
+        tone: 'success',
+        title: `${etiquetaTurno(
+          actualizado.codigo ?? seleccionCompleta.codigo,
+          actualizado.numero ?? seleccionCompleta.numero,
+        )} · ${tipo ? nombreTipoRegistro(tipo) : 'Sin marca de registro'}`,
       })
     })
   }
@@ -758,6 +783,7 @@ export default function SeguimientoEnfermeriaDosPage() {
                     especialidadNombre={seleccionCompleta?.especialidadNombre}
                     onRevertir={revertirSeleccionado}
                     onCambiarClinica={iniciarCambioClinica}
+                    onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
                   />
                 }
               />

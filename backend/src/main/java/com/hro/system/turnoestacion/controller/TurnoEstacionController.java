@@ -121,6 +121,16 @@ public class TurnoEstacionController {
                 turnoEstacionService.cambiarClinica(id, dto), "Clínica actualizada"));
     }
 
+    @PutMapping("/{id}/tipo-registro")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Actualizar tipo de registro",
+            description = "Cambia la marca presentación / privado de libertad mientras el turno está en registrado. Enviar tipoRegistro nulo quita la marca.")
+    public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> actualizarTipoRegistro(
+            @PathVariable UUID id, @Valid @RequestBody ActualizarTipoRegistroRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.actualizarTipoRegistro(id, dto), "Tipo de registro actualizado"));
+    }
+
     @PostMapping("/{id}/vincular-expediente")
     @PreAuthorize("hasAnyRole('medico', 'administrador')")
     @Operation(summary = "Vincular expediente (médico)",

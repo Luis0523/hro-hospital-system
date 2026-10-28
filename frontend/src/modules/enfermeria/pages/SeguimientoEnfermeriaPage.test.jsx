@@ -83,7 +83,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(valores()[2]).toBe(valores()[0])
   }, 20000)
 
-  it('permite un solo tipo de registro y no lo edita después de registrar', async () => {
+  it('permite cambiar el tipo de registro de un turno ya registrado', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -109,9 +109,25 @@ describe('SeguimientoEnfermeriaPage', () => {
     })
     expect(casilla.className).toContain('ring-rose-500')
     expect(casilla.className).not.toContain('ring-fuchsia-400')
-    expect(screen.queryByTestId('editor-tipo-registro')).not.toBeInTheDocument()
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /^Oncología\./ })).toHaveFocus())
+    const editor = () => within(screen.getByTestId('editor-tipo-registro'))
+    expect(editor().getByRole('button', { name: 'Privado de libertad' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(editor().getByRole('button', { name: 'Presentación' }))
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Registrado, presentación' }),
+    ).toBeInTheDocument()
+    expect(editor().getByRole('button', { name: 'Presentación' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(editor().getByRole('button', { name: 'Sin marca' }))
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
+
     expect(presentacion()).toHaveAttribute('aria-pressed', 'false')
     expect(privado()).toHaveAttribute('aria-pressed', 'false')
   }, 20000)

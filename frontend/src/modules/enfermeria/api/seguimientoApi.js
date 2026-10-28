@@ -543,6 +543,32 @@ export async function registrarTurno({
   return turno
 }
 
+// Cambia la marca (presentación / privado de libertad) de un turno ya
+// registrado. Enviar null quita la marca.
+export async function actualizarTipoRegistroTurno(id, tipoRegistro) {
+  const tipo = normalizarTipoRegistro(tipoRegistro)
+
+  if (USE_MOCK) {
+    await esperar()
+    const turno = turnos.get(id)
+    if (!turno) throw crearError('Turno no encontrado', 404)
+    if (turno.etapa !== 'registrado') {
+      throw crearError('Solo se puede cambiar el tipo de registro en Registrado', 409)
+    }
+    turno.tipoRegistro = tipo
+    turno.actualizadoEn = new Date().toISOString()
+    return copiarTurno(turno)
+  }
+
+  const respuesta = await client.put(`/turnos-estacion/${id}/tipo-registro`, {
+    tipoRegistro: tipo,
+  })
+  const data = desenvolver(respuesta)
+  if (tipo) tiposPorTurno.set(data.id, tipo)
+  else tiposPorTurno.delete(data.id)
+  return normalizarTurno(data)
+}
+
 function rutaSiguiente(estadoBackend, clinicaId, observacion) {
   switch (estadoBackend) {
     case 'registrado':

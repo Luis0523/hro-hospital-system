@@ -66,6 +66,7 @@ export default function SeguimientoEnfermeriaPage() {
     registrar,
     avanzar,
     revertir,
+    cambiarTipoRegistro,
     devolverClinica,
     deshacerDevolucion,
   } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
@@ -365,13 +366,9 @@ export default function SeguimientoEnfermeriaPage() {
     if (!filtro) return
 
     if (filtro === 'registrado') {
-      if (turno) {
-        mostrarToast({
-          tone: 'info',
-          title: `El turno ${etiquetaTurno(codigo, numero)} ya está registrado.`,
-        })
-        return
-      }
+      // Si ya está registrado, la selección habilita el editor de su tipo de
+      // registro en el detalle del turno.
+      if (turno) return
       registrarDirecto(especialidadId, codigo, numero)
       return
     }
@@ -557,6 +554,26 @@ export default function SeguimientoEnfermeriaPage() {
         title: `${etiquetaTurno(actualizado.codigo, actualizado.numero)} · ${nombreEtapa(
           actualizado.etapa,
         )}`,
+      })
+    })
+  }
+
+  function cambiarTipoRegistroSeleccionado(tipo) {
+    const turno = seleccionCompleta?.turno
+    if (!turno) return
+    ejecutarAccion(async () => {
+      const actualizado = await cambiarTipoRegistro(turno.id, tipo)
+      setSeleccion({
+        especialidadId: actualizado.especialidadId ?? seleccionCompleta.especialidadId,
+        codigo: actualizado.codigo ?? seleccionCompleta.codigo,
+        numero: actualizado.numero ?? seleccionCompleta.numero,
+      })
+      mostrarToast({
+        tone: 'success',
+        title: `${etiquetaTurno(
+          actualizado.codigo ?? seleccionCompleta.codigo,
+          actualizado.numero ?? seleccionCompleta.numero,
+        )} · ${tipo ? nombreTipoRegistro(tipo) : 'Sin marca de registro'}`,
       })
     })
   }
@@ -757,6 +774,7 @@ export default function SeguimientoEnfermeriaPage() {
                       seleccion={seleccionCompleta}
                       especialidadNombre={seleccionCompleta?.especialidadNombre}
                       onRevertir={revertirSeleccionado}
+                      onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
                     />
                   }
                 />

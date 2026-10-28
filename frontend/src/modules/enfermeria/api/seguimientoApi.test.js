@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  actualizarTipoRegistroTurno,
   adjuntarEspecialidadesFijas,
   avanzarTurno,
   cambiarClinicaTurno,
@@ -59,6 +60,28 @@ describe('seguimientoApi', () => {
     const oncologia = libro.especialidades.find((especialidad) => especialidad.codigo === 'ONC')
     expect(oncologia.turnos.find((item) => item.numero === 5)).toMatchObject({
       tipoRegistro: 'privado_libertad',
+    })
+  })
+
+  it('actualiza o quita el tipo de registro de un turno registrado', async () => {
+    const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
+
+    const actualizado = await actualizarTipoRegistroTurno(turno.id, 'presentacion')
+    expect(actualizado.tipoRegistro).toBe('presentacion')
+
+    const cambiado = await actualizarTipoRegistroTurno(turno.id, 'privado_libertad')
+    expect(cambiado.tipoRegistro).toBe('privado_libertad')
+
+    const sinMarca = await actualizarTipoRegistroTurno(turno.id, null)
+    expect(sinMarca.tipoRegistro).toBeNull()
+
+    const libro = await obtenerLibro()
+    const oncologia = libro.especialidades.find((especialidad) => especialidad.codigo === 'ONC')
+    expect(oncologia.turnos.find((item) => item.numero === 5).tipoRegistro).toBeNull()
+
+    await avanzarTurno(turno.id, { clinicaId: 3 })
+    await expect(actualizarTipoRegistroTurno(turno.id, 'presentacion')).rejects.toMatchObject({
+      status: 409,
     })
   })
 

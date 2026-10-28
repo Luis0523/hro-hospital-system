@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  actualizarTipoRegistroTurno,
   avanzarTurno,
   cambiarClinicaTurno,
   deshacerDevolucionClinica,
@@ -111,9 +112,11 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
   const [cargando, setCargando] = useState(Boolean(estacionId))
   const [error, setError] = useState(null)
   const colaRef = useRef(new Map())
+  const cargaRef = useRef(0)
 
   const cargar = useCallback(
     async ({ silencioso = false } = {}) => {
+      const cargaId = ++cargaRef.current
       if (!estacionId) {
         setLibro(null)
         setClinicas([])
@@ -129,14 +132,16 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
       try {
         const libroCargado = await obtenerLibro(estacionId, fecha)
         const clinicasCargadas = await listarClinicas({ estacionId, fecha })
+        if (cargaId !== cargaRef.current) return
         setLibro(libroCargado)
         setClinicas(Array.isArray(clinicasCargadas) ? clinicasCargadas : [])
       } catch (fallo) {
+        if (cargaId !== cargaRef.current) return
         if (!silencioso) {
           setError(fallo?.message ?? 'No fue posible cargar el libro de turnos.')
         }
       } finally {
-        if (!silencioso) setCargando(false)
+        if (cargaId === cargaRef.current && !silencioso) setCargando(false)
       }
     },
     [estacionId, fecha],
@@ -243,6 +248,16 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     [cargar, encolar],
   )
 
+  const cambiarTipoRegistro = useCallback(
+    async (id, tipoRegistro) => {
+      const turno = await encolar(id, () => actualizarTipoRegistroTurno(id, tipoRegistro))
+      setLibro((actual) => reemplazarTurno(actual, turno))
+      cargar({ silencioso: true })
+      return turno
+    },
+    [cargar, encolar],
+  )
+
   const devolverClinica = useCallback(
     async (espacioFisicoId) => {
       const resumen = await registrarDevolucionClinica({ espacioFisicoId, estacionId, fecha })
@@ -273,6 +288,7 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     avanzar,
     revertir,
     cambiarClinica,
+    cambiarTipoRegistro,
     devolverClinica,
     deshacerDevolucion,
   }

@@ -280,6 +280,34 @@ public class TurnoEstacionService {
     }
 
     @Transactional
+    public TurnoEstacionResponseDTO actualizarTipoRegistro(UUID id, ActualizarTipoRegistroRequestDTO dto) {
+        TurnoEstacion turno = cargar(id);
+        validarAccesoEstacion(turno);
+        if (turno.getEstado() != EstadoTurnoEstacion.registrado) {
+            throw new ConflictException("TIPO_REGISTRO_NO_PERMITIDO",
+                    "Solo se puede cambiar el tipo de registro mientras el turno está en 'registrado'");
+        }
+
+        String anterior = turno.getTipoRegistro();
+        String nuevo = normalizarTipoRegistro(dto.getTipoRegistro());
+        if (Objects.equals(anterior, nuevo)) {
+            return toDTO(turno, true);
+        }
+
+        turno.setTipoRegistro(nuevo);
+        turno.setActualizadoEn(OffsetDateTime.now());
+        turnoRepository.save(turno);
+        registrarMovimiento(turno, turno.getEstado(), turno.getEstado(), usuarioActual(), null,
+                "Tipo de registro cambiado de " + nombreTipoRegistro(anterior)
+                        + " a " + nombreTipoRegistro(nuevo));
+        return toDTO(turno, true);
+    }
+
+    private String nombreTipoRegistro(String tipo) {
+        return tipo != null ? tipo : "sin marca";
+    }
+
+    @Transactional
     public TurnoEstacionResponseDTO vincularExpediente(UUID id, VincularExpedienteRequestDTO dto) {
         TurnoEstacion turno = cargar(id);
         validarAccesoEstacion(turno);

@@ -5,6 +5,7 @@ import {
   nombreEstadoBackend,
   obtenerHistorialTurno,
 } from '../../api/seguimientoApi'
+import EditorTipoRegistro from './EditorTipoRegistro'
 import { estiloDeEtapa } from './estilosEtapas'
 
 function formatearFechaHora(valor) {
@@ -31,6 +32,7 @@ export default function DetalleTurno({
   especialidadNombre,
   onRevertir,
   onCambiarClinica,
+  onCambiarTipoRegistro,
 }) {
   const [historialAbierto, setHistorialAbierto] = useState(false)
   const [historial, setHistorial] = useState(null)
@@ -98,6 +100,7 @@ export default function DetalleTurno({
   const estadoTurno = turno?.estadoBackend ?? turno?.etapa
   const mostrarCambiarClinica =
     Boolean(onCambiarClinica) && ['registrado', 'recibido'].includes(estadoTurno)
+  const mostrarEditorTipo = Boolean(onCambiarTipoRegistro) && turno?.etapa === 'registrado'
 
   return (
     <div
@@ -153,6 +156,8 @@ export default function DetalleTurno({
           )}
         </div>
       </div>
+
+      {mostrarEditorTipo && <EditorTipoRegistro turno={turno} onCambiar={onCambiarTipoRegistro} />}
 
       {historialAbierto && (
         <div className="mt-2 space-y-1.5 border-t border-outline-variant pt-2">
