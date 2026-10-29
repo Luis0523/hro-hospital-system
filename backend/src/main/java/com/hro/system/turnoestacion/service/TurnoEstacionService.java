@@ -59,6 +59,14 @@ public class TurnoEstacionService {
 
     private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Guatemala");
 
+    /**
+     * Roles que pueden consultar u operar cualquier estación, no solo la de su
+     * sesión. Permite que jefatura y administración impriman consolidados de
+     * otras estaciones sin cambiar la estación activa.
+     */
+    private static final Set<String> ROLES_CUALQUIER_ESTACION =
+            Set.of("jefe_enfermeria", "administrador");
+
     private final TurnoEstacionRepository turnoRepository;
     private final TurnoEstacionMovimientoRepository movimientoRepository;
     private final DevolucionClinicaRepository devolucionClinicaRepository;
@@ -970,11 +978,24 @@ public class TurnoEstacionService {
     }
 
     private void validarAccesoEstacion(Long estacionId) {
+        // Jefatura de enfermería y administración pueden consultar cualquier
+        // estación (por ejemplo, imprimir el consolidado de otra área).
+        if (puedeOperarCualquierEstacion()) {
+            return;
+        }
         Optional<Long> estacionSesion = EstacionContexto.idActual();
         if (estacionSesion.isPresent() && !estacionSesion.get().equals(estacionId)) {
             throw new BusinessException("ESTACION_INCORRECTA",
                     "La estación indicada no coincide con la estación de la sesión");
         }
+    }
+
+    private static boolean puedeOperarCualquierEstacion() {
+        return UsuarioContexto.actual()
+                .map(identidad -> identidad.rolPrincipal())
+                .map(rol -> rol == null ? "" : rol.toLowerCase(Locale.ROOT))
+                .map(ROLES_CUALQUIER_ESTACION::contains)
+                .orElse(false);
     }
 
     private Long resolverEstacion(Long estacionId) {

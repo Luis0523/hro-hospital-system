@@ -624,6 +624,33 @@ class TurnoEstacionCircuitoTest {
     }
 
     @Test
+    @DisplayName("Jefatura y administración consultan clínicas de cualquier estación")
+    void resumenClinicasDeOtraEstacionParaJefaturaYAdmin() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String usuario = "jefe-" + UUID.randomUUID().toString().substring(0, 8);
+        Long otraEstacionSesion = contexto.estacion().getId() + 999_999L;
+
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "administrador", usuario,
+                        otraEstacionSesion)
+                        .param("fecha", HOY.toString())
+                        .param("estacionId", String.valueOf(contexto.estacion().getId())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "jefe_enfermeria", usuario,
+                        otraEstacionSesion)
+                        .param("fecha", HOY.toString())
+                        .param("estacionId", String.valueOf(contexto.estacion().getId())))
+                .andExpect(status().isOk());
+
+        // El rol operativo de enfermería sigue limitado a su estación de sesión.
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria", usuario,
+                        otraEstacionSesion)
+                        .param("fecha", HOY.toString())
+                        .param("estacionId", String.valueOf(contexto.estacion().getId())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("No se puede vincular expediente antes de enviar el turno a la clínica")
     void vinculacionRequiereClinica() throws Exception {
         Contexto contexto = crearContexto(null);
