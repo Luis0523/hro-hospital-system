@@ -65,6 +65,7 @@ export default function SeguimientoEnfermeriaDosPage() {
     registrar,
     avanzar,
     revertir,
+    eliminar,
     cambiarClinica,
     cambiarTipoRegistro,
   } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
@@ -586,6 +587,20 @@ export default function SeguimientoEnfermeriaDosPage() {
     })
   }
 
+  async function eliminarSeleccionado(id, motivo) {
+    try {
+      await eliminar(id, motivo)
+      setSeleccion(null)
+      mostrarToast({ tone: 'info', title: 'Registro eliminado. La casilla quedó en blanco.' })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo eliminar el registro.',
+      })
+      throw fallo
+    }
+  }
+
   function revertirSeleccionado() {
     if (!seleccionCompleta?.turno) return
     ejecutarAccion(async () => {
@@ -784,6 +799,7 @@ export default function SeguimientoEnfermeriaDosPage() {
                     onRevertir={revertirSeleccionado}
                     onCambiarClinica={iniciarCambioClinica}
                     onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
+                    onEliminar={eliminarSeleccionado}
                   />
                 }
               />

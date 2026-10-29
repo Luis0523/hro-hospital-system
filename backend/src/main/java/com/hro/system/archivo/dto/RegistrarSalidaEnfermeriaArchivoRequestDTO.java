@@ -19,6 +19,13 @@ public class RegistrarSalidaEnfermeriaArchivoRequestDTO {
 
     private Boolean primeraVez;
 
+    /**
+     * Nombre capturado manualmente cuando el expediente físico no coincide con
+     * el paciente devuelto por el HRO. Si viene, se usa tal cual y no se
+     * consulta el expediente en la API del hospital.
+     */
+    private String pacienteNombre;
+
     /** Requerida cuando el tipo es personal. */
     private UUID clinicaPersonalId;
 }

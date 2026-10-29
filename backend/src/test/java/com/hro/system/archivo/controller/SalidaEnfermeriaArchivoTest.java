@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -162,6 +163,26 @@ class SalidaEnfermeriaArchivoTest {
                         .header("X-Usuario-Rol", "enfermeria")
                         .header("X-Usuario-Nombre", "Enfermería"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Registra con nombre manual sin consultar el HRO")
+    void registraConNombreManual() throws Exception {
+        String numero = "9" + (10000 + (int) (Math.random() * 80000));
+        String nombreManual = "Paciente Antiguo Sin Coincidencia";
+
+        mockMvc.perform(post("/salidas-enfermeria-archivo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content("{\"numeroExpediente\":\"" + numero + "\",\"estacionId\":"
+                                + estacion.getId() + ",\"fecha\":\"" + fecha
+                                + "\",\"tipo\":\"normal\",\"pacienteNombre\":\"" + nombreManual + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pacienteNombre").value(nombreManual));
+
+        verifyNoInteractions(expedienteHroService);
     }
 
     @Test

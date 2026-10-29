@@ -57,6 +57,24 @@ describe('salidaEnfermeriaArchivoApi', () => {
     expect(lista).toHaveLength(0)
   })
 
+  it('registra y corrige un nombre capturado manualmente', async () => {
+    const creada = await registrarSalidaEnfermeriaArchivo({
+      numeroExpediente: '999999',
+      pacienteNombre: '  Nombre Manual  ',
+      estacionId,
+      fecha,
+      tipo: 'normal',
+    })
+    expect(creada.pacienteNombre).toBe('Nombre Manual')
+
+    const actualizada = await actualizarSalidaEnfermeriaArchivo(creada.id, {
+      numeroExpediente: '999999',
+      pacienteNombre: 'Nombre Corregido',
+      tipo: 'normal',
+    })
+    expect(actualizada.pacienteNombre).toBe('Nombre Corregido')
+  })
+
   it('rechaza cambiar el expediente a uno ya registrado', async () => {
     await registrarSalidaEnfermeriaArchivo({
       numeroExpediente: '111111',

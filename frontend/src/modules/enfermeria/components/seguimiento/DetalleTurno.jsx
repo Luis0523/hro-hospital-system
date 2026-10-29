@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Icon } from '@/shared/components/ui'
+import { Button, Icon, Modal } from '@/shared/components/ui'
 import {
   ETAPAS_SEGUIMIENTO,
   nombreEstadoBackend,
@@ -33,11 +33,15 @@ export default function DetalleTurno({
   onRevertir,
   onCambiarClinica,
   onCambiarTipoRegistro,
+  onEliminar,
 }) {
   const [historialAbierto, setHistorialAbierto] = useState(false)
   const [historial, setHistorial] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [errorHistorial, setErrorHistorial] = useState(null)
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
+  const [motivoEliminar, setMotivoEliminar] = useState('')
+  const [eliminando, setEliminando] = useState(false)
 
   const turno = seleccion?.turno ?? null
   const turnoId = turno?.id ?? null
@@ -47,6 +51,25 @@ export default function DetalleTurno({
     setHistorial(null)
     setErrorHistorial(null)
   }, [turnoId])
+
+  useEffect(() => {
+    setConfirmandoEliminar(false)
+    setMotivoEliminar('')
+  }, [turnoId])
+
+  async function confirmarEliminar() {
+    if (!turno || eliminando) return
+    setEliminando(true)
+    try {
+      await onEliminar?.(turno.id, motivoEliminar.trim() || undefined)
+      setConfirmandoEliminar(false)
+      setMotivoEliminar('')
+    } catch {
+      // El contenedor muestra el error; se mantiene el modal abierto.
+    } finally {
+      setEliminando(false)
+    }
+  }
 
   async function alternarHistorial() {
     if (!turno) return
@@ -101,6 +124,7 @@ export default function DetalleTurno({
   const mostrarCambiarClinica =
     Boolean(onCambiarClinica) && ['registrado', 'recibido'].includes(estadoTurno)
   const mostrarEditorTipo = Boolean(onCambiarTipoRegistro) && turno?.etapa === 'registrado'
+  const puedeEliminar = Boolean(onEliminar) && turno?.etapa === 'registrado'
 
   return (
     <div
@@ -134,6 +158,12 @@ export default function DetalleTurno({
             <Button variant="secondary" size="sm" onClick={onRevertir}>
               <Icon name="undo" className="text-[16px]" />
               Revertir
+            </Button>
+          )}
+          {puedeEliminar && (
+            <Button variant="danger" size="sm" onClick={() => setConfirmandoEliminar(true)}>
+              <Icon name="delete" className="text-[16px]" />
+              Eliminar registro
             </Button>
           )}
           {turno && (
@@ -201,6 +231,44 @@ export default function DetalleTurno({
             ))}
         </div>
       )}
+
+      <Modal
+        open={confirmandoEliminar}
+        onClose={() => {
+          if (!eliminando) setConfirmandoEliminar(false)
+        }}
+        title="Eliminar registro"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmandoEliminar(false)}
+              disabled={eliminando}
+            >
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando…' : 'Sí, eliminar'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          ¿Eliminar el turno <strong>{id}</strong>? La casilla quedará en blanco. Solo se puede si
+          no tiene paciente ni expediente vinculado.
+        </p>
+        <label className="mt-3 flex flex-col gap-1">
+          <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+            Motivo (opcional)
+          </span>
+          <input
+            value={motivoEliminar}
+            onChange={(evento) => setMotivoEliminar(evento.target.value)}
+            autoComplete="off"
+            className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+          />
+        </label>
+      </Modal>
     </div>
   )
 }

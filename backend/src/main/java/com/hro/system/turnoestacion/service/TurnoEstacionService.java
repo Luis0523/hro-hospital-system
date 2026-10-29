@@ -473,17 +473,22 @@ public class TurnoEstacionService {
                     "El turno no se puede revertir desde el estado '" + turno.getEstado() + "'");
         }
 
-        TurnoEstacionMovimiento ultimo = movimientoRepository
-                .findFirstByTurnoEstacionIdAndEstadoNuevoAndEstadoAnteriorNotOrderByFechaMovimientoDescIdDesc(
-                        turno.getId(), turno.getEstado(), turno.getEstado())
+        EstadoTurnoEstacion actualEstado = turno.getEstado();
+        // Se toma el último movimiento hacia el estado actual que sea una
+        // transición válida hacia adelante. Así se ignoran los movimientos de
+        // reversiones previas (que van del estado actual hacia uno anterior),
+        // evitando que revertir dos veces oscile entre los mismos estados.
+        EstadoTurnoEstacion anterior = movimientoRepository
+                .findByTurnoEstacionIdOrderByFechaMovimientoDescIdDesc(turno.getId())
+                .stream()
+                .filter(movimiento -> movimiento.getEstadoNuevo() == actualEstado)
+                .map(TurnoEstacionMovimiento::getEstadoAnterior)
+                .filter(Objects::nonNull)
+                .filter(estado -> estado != actualEstado)
+                .filter(estado -> estado.puedeTransicionarA(actualEstado))
+                .findFirst()
                 .orElseThrow(() -> new ConflictException("SIN_ESTADO_ANTERIOR",
                         "No hay un estado anterior para revertir"));
-
-        EstadoTurnoEstacion anterior = ultimo.getEstadoAnterior();
-        if (anterior == null || anterior == turno.getEstado()) {
-            throw new ConflictException("SIN_ESTADO_ANTERIOR",
-                    "No hay un estado anterior para revertir");
-        }
 
         EstadoTurnoEstacion actual = turno.getEstado();
         switch (actual) {

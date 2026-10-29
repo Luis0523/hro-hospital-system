@@ -32,6 +32,7 @@ export async function registrarSalidaEnfermeriaArchivo({
   tipo = 'normal',
   primeraVez = false,
   clinicaPersonalId = null,
+  pacienteNombre,
 } = {}) {
   if (USE_MOCK) {
     const numero = String(numeroExpediente ?? '').trim()
@@ -55,7 +56,7 @@ export async function registrarSalidaEnfermeriaArchivo({
       fecha,
       estacionId,
       numeroExpediente: numero,
-      pacienteNombre: 'Paciente de prueba',
+      pacienteNombre: String(pacienteNombre ?? '').trim() || 'Paciente de prueba',
       tipo,
       primeraVez,
       clinicaPersonalId,
@@ -108,9 +109,11 @@ export async function actualizarSalidaEnfermeriaArchivo(id, datos = {}) {
     if (tipo === 'personal' && !datos.clinicaPersonalId) {
       throw new Error('Seleccione la clínica para el expediente de tipo Personal.')
     }
+    const nombreManual = String(datos.pacienteNombre ?? '').trim()
     const nueva = {
       ...actual,
       numeroExpediente: numero,
+      pacienteNombre: nombreManual || actual.pacienteNombre,
       tipo,
       primeraVez: Boolean(datos.primeraVez),
       clinicaPersonalId: tipo === 'personal' ? datos.clinicaPersonalId : null,

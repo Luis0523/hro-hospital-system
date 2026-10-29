@@ -56,11 +56,15 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
   const [editando, setEditando] = useState(null)
   const [formEdicion, setFormEdicion] = useState({
     numeroExpediente: '',
+    pacienteNombre: '',
     tipo: 'normal',
     primeraVez: false,
     clinicaPersonalId: '',
   })
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [manualAbierto, setManualAbierto] = useState(false)
+  const [formManual, setFormManual] = useState({ numeroExpediente: '', pacienteNombre: '' })
+  const [guardandoManual, setGuardandoManual] = useState(false)
   const [porEliminar, setPorEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
 
@@ -138,6 +142,66 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
     }
   }
 
+  function abrirManual() {
+    setFormManual({ numeroExpediente: query.trim(), pacienteNombre: '' })
+    setManualAbierto(true)
+  }
+
+  async function registrarManual(evento) {
+    evento.preventDefault()
+    if (guardandoManual) return
+    const numero = formManual.numeroExpediente.trim()
+    const nombre = formManual.pacienteNombre.trim()
+    if (!numero || !nombre) {
+      mostrarToast({
+        tone: 'warning',
+        title: 'Ingrese el número de expediente y el nombre completo.',
+      })
+      return
+    }
+    if (!estacionId) {
+      mostrarToast({ tone: 'warning', title: 'Seleccione la estación antes de registrar.' })
+      return
+    }
+    if (tipo === 'personal' && !clinicaPersonalId) {
+      mostrarToast({
+        tone: 'warning',
+        title: 'Seleccione la clínica para el expediente Personal.',
+      })
+      return
+    }
+    setGuardandoManual(true)
+    try {
+      const nueva = await registrarSalidaEnfermeriaArchivo({
+        numeroExpediente: numero,
+        pacienteNombre: nombre,
+        estacionId,
+        fecha,
+        tipo,
+        primeraVez,
+        clinicaPersonalId: tipo === 'personal' ? clinicaPersonalId : null,
+      })
+      setSalidas((prev) => [nueva, ...prev])
+      setPrimeraVez(false)
+      setQuery('')
+      setManualAbierto(false)
+      setFormManual({ numeroExpediente: '', pacienteNombre: '' })
+      mostrarToast({
+        tone: 'success',
+        title: `${formatearExpediente(numero)} · ${nombreEtiqueta(tipo)} (manual)`,
+        message: 'Salida registrada con nombre capturado manualmente.',
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.status === 409 ? 'Expediente ya registrado' : 'No se pudo registrar',
+        message: fallo?.message,
+      })
+    } finally {
+      setGuardandoManual(false)
+    }
+  }
+
   async function descargarPdf() {
     if (generandoPdf) return
     setGenerandoPdf(true)
@@ -207,6 +271,7 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
     setEditando(salida)
     setFormEdicion({
       numeroExpediente: salida.numeroExpediente ?? '',
+      pacienteNombre: salida.pacienteNombre ?? '',
       tipo: salida.tipo ?? 'normal',
       primeraVez: Boolean(salida.primeraVez),
       clinicaPersonalId: salida.clinicaPersonalId ?? '',
@@ -217,9 +282,12 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
     evento.preventDefault()
     if (!editando || guardandoEdicion) return
     setGuardandoEdicion(true)
+    const nombreEditado =
+      formEdicion.pacienteNombre.trim() !== String(editando.pacienteNombre ?? '').trim()
     try {
       const actualizada = await actualizarSalidaEnfermeriaArchivo(editando.id, {
         numeroExpediente: formEdicion.numeroExpediente,
+        pacienteNombre: nombreEditado ? formEdicion.pacienteNombre.trim() : undefined,
         tipo: formEdicion.tipo,
         primeraVez: formEdicion.primeraVez,
         clinicaPersonalId:
@@ -271,15 +339,21 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
             Registre el expediente por número, elija su etiqueta y genere el reporte del día.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={descargarPdf}
-          disabled={generandoPdf || salidas.length === 0}
-        >
-          <Icon name="picture_as_pdf" className="text-[18px]" />
-          {generandoPdf ? 'Generando…' : `Generar reporte (${salidas.length})`}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={abrirManual}>
+            <Icon name="edit_note" className="text-[18px]" />
+            Registro manual
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={descargarPdf}
+            disabled={generandoPdf || salidas.length === 0}
+          >
+            <Icon name="picture_as_pdf" className="text-[18px]" />
+            {generandoPdf ? 'Generando…' : `Generar reporte (${salidas.length})`}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl border border-outline-variant bg-surface-container-low p-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:p-2">
@@ -643,6 +717,26 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
 
           <label className="flex flex-col gap-1">
             <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Nombre completo
+            </span>
+            <input
+              value={formEdicion.pacienteNombre}
+              onChange={(evento) =>
+                setFormEdicion((actual) => ({
+                  ...actual,
+                  pacienteNombre: evento.target.value,
+                }))
+              }
+              autoComplete="off"
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+            <span className="text-label-sm text-on-surface-variant">
+              Si lo corrige aquí, se guarda manualmente y no se consulta el expediente en el HRO.
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
               Etiqueta
             </span>
             <select
@@ -730,6 +824,75 @@ export default function SalidaEnfermeriaArchivo({ estacionId, fecha, clinicas = 
           <strong>{formatearExpediente(porEliminar?.numeroExpediente)}</strong>
           {porEliminar?.pacienteNombre ? ` (${porEliminar.pacienteNombre})` : ''}?
         </p>
+      </Modal>
+
+      <Modal
+        open={manualAbierto}
+        onClose={() => {
+          if (!guardandoManual) setManualAbierto(false)
+        }}
+        title="Registro manual de salida"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setManualAbierto(false)}
+              disabled={guardandoManual}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-salida-manual')?.requestSubmit()}
+              disabled={guardandoManual}
+            >
+              {guardandoManual ? 'Guardando…' : 'Registrar salida'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-body-sm text-on-surface-variant">
+          Úselo cuando el expediente físico no coincida con el paciente del HRO. El nombre se guarda
+          solo para el listado y el reporte de esta salida.
+        </p>
+        <form id="form-salida-manual" onSubmit={registrarManual} className="mt-3 space-y-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Número de expediente
+            </span>
+            <input
+              value={formManual.numeroExpediente}
+              onChange={(evento) =>
+                setFormManual((actual) => ({
+                  ...actual,
+                  numeroExpediente: evento.target.value,
+                }))
+              }
+              inputMode="numeric"
+              autoComplete="off"
+              required
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Nombre completo
+            </span>
+            <input
+              value={formManual.pacienteNombre}
+              onChange={(evento) =>
+                setFormManual((actual) => ({ ...actual, pacienteNombre: evento.target.value }))
+              }
+              autoComplete="off"
+              required
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+          </label>
+          <p className="text-label-sm text-on-surface-variant">
+            Etiqueta: <strong>{nombreEtiqueta(tipo)}</strong>
+            {tipo === 'personal' && clinicaPersonalId ? ` · Clínica ${clinicaPersonalId}` : ''}
+            {primeraVez ? ' · Primera vez' : ''}
+          </p>
+        </form>
       </Modal>
 
       <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
