@@ -1,6 +1,7 @@
 package com.hro.system.archivo.service;
 
 import com.hro.system.archivo.dto.DashboardJefeArchivoDTO;
+import com.hro.system.archivo.entity.EtiquetaArchivo;
 import com.hro.system.archivo.entity.RegistroCuadernoRojo;
 import com.hro.system.archivo.entity.SalidaArchivoHospital;
 import com.hro.system.archivo.repository.RegistroCuadernoRojoRepository;
@@ -14,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,65 +50,55 @@ public class DashboardJefeArchivoService {
         Long umbral = umbralActivo();
 
         List<SalidaArchivoHospital> salidas = salidaRepository.findByFechaOrderByRegistradoEnDesc(fecha);
-        Map<Long, long[]> porEstacion = new LinkedHashMap<>();
-        Map<Long, String> nombres = new LinkedHashMap<>();
-        Map<String, Long> conteoEtiquetas = new LinkedHashMap<>();
-        Map<String, Integer> ordenEtiquetas = new HashMap<>();
+
         long totalClinicaMujer = 0;
         long totalActivos = 0;
         long totalPasivos = 0;
-
+        Map<Long, List<SalidaArchivoHospital>> agrupadas = new LinkedHashMap<>();
         for (SalidaArchivoHospital salida : salidas) {
             Long estacionId = salida.getEstacion() != null ? salida.getEstacion().getId() : null;
-            long[] contadores = porEstacion.computeIfAbsent(estacionId, k -> new long[4]);
-            contadores[0]++;
+            agrupadas.computeIfAbsent(estacionId, k -> new ArrayList<>()).add(salida);
+
             if (salida.isEsClinicaMujer()) {
-                contadores[1]++;
                 totalClinicaMujer++;
             }
             String clasificacion = clasificar(salida.getNumeroExpediente(), umbral);
             if ("activo".equals(clasificacion)) {
-                contadores[2]++;
                 totalActivos++;
             } else if ("pasivo".equals(clasificacion)) {
-                contadores[3]++;
                 totalPasivos++;
-            }
-            if (estacionId != null && salida.getEstacion().getNombre() != null) {
-                nombres.putIfAbsent(estacionId, salida.getEstacion().getNombre());
-            }
-
-            String nombreEtiqueta = salida.getEtiqueta() != null
-                    ? salida.getEtiqueta().getNombre()
-                    : (salida.isEsClinicaMujer() ? "Clínica de la Mujer" : "Sin etiqueta");
-            conteoEtiquetas.merge(nombreEtiqueta, 1L, Long::sum);
-            if (salida.getEtiqueta() != null) {
-                ordenEtiquetas.putIfAbsent(nombreEtiqueta,
-                        salida.getEtiqueta().getOrden() != null
-                                ? salida.getEtiqueta().getOrden()
-                                : Integer.MAX_VALUE);
             }
         }
 
-        List<DashboardJefeArchivoDTO.EtiquetaTotal> porEtiqueta = conteoEtiquetas.entrySet().stream()
-                .sorted(Comparator
-                        .comparingInt((Map.Entry<String, Long> e) -> "Sin etiqueta".equals(e.getKey())
-                                ? Integer.MAX_VALUE
-                                : ordenEtiquetas.getOrDefault(e.getKey(), Integer.MAX_VALUE))
-                        .thenComparing(Map.Entry::getKey))
-                .map(e -> new DashboardJefeArchivoDTO.EtiquetaTotal(e.getKey(), e.getValue()))
-                .toList();
+        List<DashboardJefeArchivoDTO.EtiquetaTotal> porEtiqueta = contarEtiquetas(salidas);
 
-        List<DashboardJefeArchivoDTO.EstacionSalidaTotal> porEstacionList = porEstacion.entrySet().stream()
-                .map(entry -> new DashboardJefeArchivoDTO.EstacionSalidaTotal(
-                        entry.getKey(),
-                        nombres.get(entry.getKey()),
-                        entry.getValue()[0],
-                        entry.getValue()[1],
-                        entry.getValue()[2],
-                        entry.getValue()[3]))
-                .sorted((a, b) -> Long.compare(b.total(), a.total()))
-                .toList();
+        List<DashboardJefeArchivoDTO.EstacionSalidaTotal> porEstacionList = new ArrayList<>();
+        for (Map.Entry<Long, List<SalidaArchivoHospital>> entry : agrupadas.entrySet()) {
+            List<SalidaArchivoHospital> grupo = entry.getValue();
+            String estacionNombre = grupo.stream()
+                    .map(SalidaArchivoHospital::getEstacion)
+                    .filter(e -> e != null && e.getNombre() != null)
+                    .map(e -> e.getNombre())
+                    .findFirst()
+                    .orElse(null);
+            long clinicaMujer = grupo.stream().filter(SalidaArchivoHospital::isEsClinicaMujer).count();
+            long activos = grupo.stream()
+                    .filter(s -> "activo".equals(clasificar(s.getNumeroExpediente(), umbral)))
+                    .count();
+            long pasivos = grupo.stream()
+                    .filter(s -> "pasivo".equals(clasificar(s.getNumeroExpediente(), umbral)))
+                    .count();
+            porEstacionList.add(new DashboardJefeArchivoDTO.EstacionSalidaTotal(
+                    entry.getKey(),
+                    estacionNombre,
+                    grupo.size(),
+                    clinicaMujer,
+                    activos,
+                    pasivos,
+                    contarEtiquetas(grupo)));
+        }
+        porEstacionList.sort(Comparator.comparingLong(
+                DashboardJefeArchivoDTO.EstacionSalidaTotal::total).reversed());
 
         Map<String, Long> estados = new LinkedHashMap<>();
         for (String estado : ESTADOS) {
@@ -140,6 +131,52 @@ public class DashboardJefeArchivoService {
                         cuaderno != null ? cuaderno.getSobresSellados() : 0,
                         cuaderno != null ? cuaderno.getTia() : 0,
                         cuaderno != null));
+    }
+
+    /** Cuenta las salidas por etiqueta, ordenadas por el orden del catálogo. */
+    private static List<DashboardJefeArchivoDTO.EtiquetaTotal> contarEtiquetas(
+            List<SalidaArchivoHospital> salidas) {
+        Map<String, ConteoEtiqueta> conteos = new LinkedHashMap<>();
+        for (SalidaArchivoHospital salida : salidas) {
+            EtiquetaArchivo etiqueta = salida.getEtiqueta();
+            String nombre = etiqueta != null
+                    ? etiqueta.getNombre()
+                    : (salida.isEsClinicaMujer() ? "Clínica de la Mujer" : "Sin etiqueta");
+            String codigo = etiqueta != null
+                    ? etiqueta.getCodigo()
+                    : (salida.isEsClinicaMujer() ? EtiquetaArchivoService.CODIGO_CLINICA_MUJER : null);
+            String color = etiqueta != null
+                    ? etiqueta.getColor()
+                    : (salida.isEsClinicaMujer() ? "rose" : "slate");
+            int orden = (etiqueta != null && etiqueta.getOrden() != null)
+                    ? etiqueta.getOrden()
+                    : (salida.isEsClinicaMujer() ? 10 : Integer.MAX_VALUE);
+            String clave = codigo != null ? codigo : nombre;
+            ConteoEtiqueta conteo = conteos.computeIfAbsent(
+                    clave, k -> new ConteoEtiqueta(nombre, codigo, color, orden));
+            conteo.total++;
+        }
+        return conteos.values().stream()
+                .sorted(Comparator.comparingInt((ConteoEtiqueta c) -> c.orden)
+                        .thenComparing(c -> c.nombre))
+                .map(c -> new DashboardJefeArchivoDTO.EtiquetaTotal(
+                        c.nombre, c.codigo, c.color, c.total))
+                .toList();
+    }
+
+    private static final class ConteoEtiqueta {
+        private final String nombre;
+        private final String codigo;
+        private final String color;
+        private final int orden;
+        private long total;
+
+        private ConteoEtiqueta(String nombre, String codigo, String color, int orden) {
+            this.nombre = nombre;
+            this.codigo = codigo;
+            this.color = color;
+            this.orden = orden;
+        }
     }
 
     private Long umbralActivo() {

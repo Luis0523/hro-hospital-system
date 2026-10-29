@@ -39,6 +39,18 @@ describe('AppRouter · rutas nuevas de Archivo', () => {
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
   })
 
+  it('/archivo/reportes muestra los reportes diarios y su acceso en el navbar', async () => {
+    renderRuta('/archivo/reportes')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Reportes diarios de Archivo', level: 2 }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /reportes diarios/i })).toHaveAttribute(
+      'href',
+      '/archivo/reportes',
+    )
+  })
+
   it('/archivo/consolidado muestra el consolidado y su acceso en el navbar', () => {
     renderRuta('/archivo/consolidado')
 

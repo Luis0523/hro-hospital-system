@@ -8,8 +8,10 @@ import {
   obtenerConfiguracionArchivo,
 } from '@/modules/carnets/api/carnetsApi'
 import { formatearExpediente } from '@/shared/utils/expediente'
-import { descargarSalidasHospitalPdf } from '../api/salidaArchivoHospitalApi'
+import { descargarSalidasHospitalPdf, listarSalidasHospital } from '../api/salidaArchivoHospitalApi'
 import { descargarBlob } from '../utils/descargarBlob'
+import { agruparEtiquetasPorEstacion, contarEtiquetasSalidas } from '../utils/etiquetasSalida'
+import { clasesEtiqueta, fondoEtiqueta } from '../utils/coloresEtiqueta'
 import { useDashboardJefeArchivo } from '../hooks/useDashboardJefeArchivo'
 
 function Donut({ titulo, partes, centro }) {
@@ -77,6 +79,52 @@ function Donut({ titulo, partes, centro }) {
   )
 }
 
+function ResumenEtiquetas({ etiquetas = [], total = 0 }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-title-sm font-semibold text-on-surface">Salidas por etiqueta</p>
+        <span className="text-label-sm text-on-surface-variant">
+          {etiquetas.length} etiqueta{etiquetas.length === 1 ? '' : 's'}
+        </span>
+      </div>
+      {etiquetas.length === 0 ? (
+        <p className="text-body-sm text-on-surface-variant">
+          No hay salidas registradas para la fecha seleccionada.
+        </p>
+      ) : (
+        <ul className="space-y-2.5">
+          {etiquetas.map((etiqueta) => {
+            const clave = etiqueta.codigo ?? etiqueta.etiqueta
+            const porcentaje = total > 0 ? Math.round((etiqueta.total / total) * 100) : 0
+            return (
+              <li key={clave}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-1.5 text-label-md text-on-surface">
+                    <span
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${fondoEtiqueta(etiqueta.color)}`}
+                    />
+                    <span className="truncate">{etiqueta.etiqueta}</span>
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums text-on-surface">
+                    {etiqueta.total}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+                  <div
+                    className={`h-full rounded-full ${fondoEtiqueta(etiqueta.color)}`}
+                    style={{ width: `${porcentaje}%` }}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function Metrica({ etiqueta, valor, icono, tono = 'text-primary' }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card">
@@ -101,6 +149,23 @@ export default function DashboardArchivoPage() {
   const [umbral, setUmbral] = useState(null)
   const [generandoTrazabilidad, setGenerandoTrazabilidad] = useState(false)
   const [progresoTrazabilidad, setProgresoTrazabilidad] = useState(0)
+  const [salidasDia, setSalidasDia] = useState([])
+
+  // Se usa como respaldo para desglosar etiquetas por estación cuando el
+  // backend todavía no las incluye en el resumen administrativo.
+  useEffect(() => {
+    let activo = true
+    listarSalidasHospital({ fecha })
+      .then((lista) => {
+        if (activo) setSalidasDia(Array.isArray(lista) ? lista : [])
+      })
+      .catch(() => {
+        if (activo) setSalidasDia([])
+      })
+    return () => {
+      activo = false
+    }
+  }, [fecha])
 
   useEffect(() => {
     obtenerConfiguracionArchivo()
@@ -272,6 +337,12 @@ export default function DashboardArchivoPage() {
 
   const porEstacion = estadisticas?.porEstacion ?? []
   const porEstado = estadisticas?.porEstado ?? []
+  const porEtiqueta =
+    salidasDia.length > 0 ? contarEtiquetasSalidas(salidasDia) : (estadisticas?.porEtiqueta ?? [])
+  const etiquetasPorEstacion = agruparEtiquetasPorEstacion(salidasDia)
+  const totalSalidas = estadisticas?.totalSalidas ?? salidasDia.length
+  const sinEtiqueta = porEtiqueta.find((etiqueta) => !etiqueta.codigo)?.total ?? 0
+  const totalConEtiqueta = Math.max(0, totalSalidas - sinEtiqueta)
   const cuaderno = estadisticas?.cuadernoRojo
 
   return (
@@ -427,15 +498,11 @@ export default function DashboardArchivoPage() {
         <div className="space-y-5">
           <section aria-label="Resumen de salidas">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Metrica etiqueta="Salidas del día" valor={totalSalidas} icono="outbound" />
               <Metrica
-                etiqueta="Salidas del día"
-                valor={estadisticas.totalSalidas ?? 0}
-                icono="outbound"
-              />
-              <Metrica
-                etiqueta="Clínica de la Mujer"
-                valor={estadisticas.totalClinicaMujer ?? 0}
-                icono="female"
+                etiqueta="Con etiqueta"
+                valor={totalConEtiqueta}
+                icono="label"
                 tono="text-rose-600"
               />
               <Metrica
@@ -454,28 +521,10 @@ export default function DashboardArchivoPage() {
           </section>
 
           <section aria-label="Gráficas del día" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Donut
-              titulo="Clínica de la Mujer"
-              centro={estadisticas.totalSalidas ?? 0}
-              partes={[
-                {
-                  etiqueta: 'Clínica de la Mujer',
-                  valor: estadisticas.totalClinicaMujer ?? 0,
-                  color: '#e11d48',
-                },
-                {
-                  etiqueta: 'Otras estaciones',
-                  valor: Math.max(
-                    0,
-                    (estadisticas.totalSalidas ?? 0) - (estadisticas.totalClinicaMujer ?? 0),
-                  ),
-                  color: '#3b82f6',
-                },
-              ]}
-            />
+            <ResumenEtiquetas etiquetas={porEtiqueta} total={totalSalidas} />
             <Donut
               titulo="Activo vs pasivo"
-              centro={estadisticas.totalSalidas ?? 0}
+              centro={totalSalidas}
               partes={[
                 { etiqueta: 'Activo', valor: estadisticas.totalActivos ?? 0, color: '#10b981' },
                 { etiqueta: 'Pasivo', valor: estadisticas.totalPasivos ?? 0, color: '#f59e0b' },
@@ -501,43 +550,62 @@ export default function DashboardArchivoPage() {
                     <tr>
                       <th className="px-3 py-2">Estación</th>
                       <th className="px-3 py-2 text-center">Total</th>
-                      <th className="px-3 py-2 text-center">Mujer</th>
+                      <th className="px-3 py-2">Etiquetas</th>
                       <th className="px-3 py-2 text-center">Activos</th>
                       <th className="px-3 py-2 text-center">Pasivos</th>
                       <th className="px-3 py-2 text-right">Reporte</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/60">
-                    {porEstacion.map((fila) => (
-                      <tr key={fila.estacionId ?? 'sin-estacion'}>
-                        <td className="px-3 py-2 font-semibold text-on-surface">
-                          {fila.estacionNombre ?? 'Sin estación'}
-                        </td>
-                        <td className="px-3 py-2 text-center font-bold tabular-nums">
-                          {fila.total ?? 0}
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-rose-600">
-                          {fila.clinicaMujer ?? 0}
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-emerald-700">
-                          {fila.activos ?? 0}
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-amber-700">
-                          {fila.pasivos ?? 0}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => descargarReporte(fila.estacionId)}
-                            disabled={generando || fila.estacionId == null}
-                          >
-                            <Icon name="picture_as_pdf" className="text-[16px]" />
-                            PDF
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {porEstacion.map((fila) => {
+                      const etiquetasFila = fila.porEtiqueta?.length
+                        ? fila.porEtiqueta
+                        : (etiquetasPorEstacion.get(fila.estacionId ?? 'sin-estacion') ?? [])
+                      return (
+                        <tr key={fila.estacionId ?? 'sin-estacion'}>
+                          <td className="px-3 py-2 font-semibold text-on-surface">
+                            {fila.estacionNombre ?? 'Sin estación'}
+                          </td>
+                          <td className="px-3 py-2 text-center font-bold tabular-nums">
+                            {fila.total ?? 0}
+                          </td>
+                          <td className="px-3 py-2">
+                            {etiquetasFila.length ? (
+                              <div className="flex flex-wrap gap-1">
+                                {etiquetasFila.map((etiqueta) => (
+                                  <span
+                                    key={etiqueta.codigo ?? etiqueta.etiqueta}
+                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-label-sm font-semibold ${clasesEtiqueta(etiqueta.color)}`}
+                                  >
+                                    {etiqueta.etiqueta}
+                                    <span className="tabular-nums">{etiqueta.total}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-on-surface-variant">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center tabular-nums text-emerald-700">
+                            {fila.activos ?? 0}
+                          </td>
+                          <td className="px-3 py-2 text-center tabular-nums text-amber-700">
+                            {fila.pasivos ?? 0}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => descargarReporte(fila.estacionId)}
+                              disabled={generando || fila.estacionId == null}
+                            >
+                              <Icon name="picture_as_pdf" className="text-[16px]" />
+                              PDF
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

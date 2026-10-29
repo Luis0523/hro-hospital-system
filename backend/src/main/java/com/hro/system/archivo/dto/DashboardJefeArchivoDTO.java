@@ -26,14 +26,20 @@ public record DashboardJefeArchivoDTO(
             long total,
             long clinicaMujer,
             long activos,
-            long pasivos
+            long pasivos,
+            /** Totales por etiqueta dentro de la estación. */
+            List<EtiquetaTotal> porEtiqueta
     ) {
     }
 
     public record EstadoTotal(String estado, long total) {
     }
 
-    public record EtiquetaTotal(String etiqueta, long total) {
+    /**
+     * Total de salidas de una etiqueta. `codigo` y `color` permiten pintar la
+     * etiqueta en la interfaz; para "Sin etiqueta" el código es null.
+     */
+    public record EtiquetaTotal(String etiqueta, String codigo, String color, long total) {
     }
 
     public record CuadernoRojoResumen(

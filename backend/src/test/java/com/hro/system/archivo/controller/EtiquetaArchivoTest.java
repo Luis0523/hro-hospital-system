@@ -153,6 +153,15 @@ class EtiquetaArchivoTest {
                         .param("estacionId", String.valueOf(estacion.getId())))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+
+        mockMvc.perform(get("/archivo/jefe/estadisticas")
+                        .param("fecha", fecha.toString())
+                        .header("X-Usuario-Id", "jefe-archivo-test")
+                        .header("X-Usuario-Rol", "jefe_archivo")
+                        .header("X-Usuario-Nombre", "Jefe Archivo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.porEtiqueta[?(@.codigo == '" + codigo + "')]").isNotEmpty())
+                .andExpect(jsonPath("$.data.porEstacion[0].porEtiqueta").isArray());
     }
 
     @Test

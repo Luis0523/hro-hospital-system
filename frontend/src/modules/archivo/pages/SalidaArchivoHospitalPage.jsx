@@ -23,6 +23,13 @@ function abreviarEstacion(estacion) {
   return `${sinPrefijo.slice(0, 11).trimEnd()}…`
 }
 
+// Los <option> nativos no heredan bien los colores del tema; se fijan con las
+// variables CSS para que el desplegable sea oscuro/claro como el resto.
+const ESTILO_OPCION_ESTACION = {
+  backgroundColor: 'rgb(var(--hro-surface-container-lowest))',
+  color: 'rgb(var(--hro-on-surface))',
+}
+
 // POS de salidas de archivo consultadas DIRECTAMENTE al hospital (Registro
 // Médico). El listado es compartido por estación: varios operadores de la misma
 // estación ven y marcan lo mismo. No depende de los carnets de enfermería.
@@ -129,13 +136,16 @@ export default function SalidaArchivoHospitalPage() {
             ? `${estacion.codigo ? `${estacion.codigo} · ` : ''}${estacion.nombre ?? ''}`
             : 'Seleccione la estación'
         }
-        className={`h-8 w-full min-w-0 truncate rounded-md bg-transparent text-label-sm font-semibold outline-none ${
+        style={{ colorScheme: esOscuro ? 'dark' : 'light' }}
+        className={`h-8 w-full min-w-0 truncate rounded-md bg-surface-container-lowest text-label-sm font-semibold outline-none ${
           estacion ? 'text-on-surface' : 'text-amber-800 dark:text-amber-200'
         }`}
       >
-        <option value="">Sin estación…</option>
+        <option value="" style={ESTILO_OPCION_ESTACION}>
+          Sin estación…
+        </option>
         {estaciones.map((e) => (
-          <option key={e.id} value={e.id}>
+          <option key={e.id} value={e.id} style={ESTILO_OPCION_ESTACION}>
             {abreviarEstacion(e)}
           </option>
         ))}

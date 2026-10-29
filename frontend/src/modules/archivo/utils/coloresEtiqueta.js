@@ -48,3 +48,19 @@ export function clasesEtiqueta(color, tipo = 'chip') {
 }
 
 export const COLORES_ETIQUETA = Object.keys(CLASES_COLOR_ETIQUETA)
+
+// Fondos sólidos para barras y puntos en reportes.
+const FONDOS_COLOR = {
+  primary: 'bg-primary',
+  rose: 'bg-rose-500',
+  blue: 'bg-blue-500',
+  amber: 'bg-amber-500',
+  emerald: 'bg-emerald-500',
+  violet: 'bg-violet-500',
+  teal: 'bg-teal-500',
+  slate: 'bg-slate-500',
+}
+
+export function fondoEtiqueta(color) {
+  return FONDOS_COLOR[color] ?? FONDOS_COLOR.primary
+}

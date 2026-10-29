@@ -18,6 +18,7 @@ export const SECCIONES_ARCHIVO = [
     etiqueta: 'Salida al Registro Médico',
     icono: 'local_hospital',
   },
+  { to: '/archivo/reportes', etiqueta: 'Reportes diarios', icono: 'summarize' },
   { to: '/archivo/cuaderno-rojo', etiqueta: 'Cuaderno Rojo', icono: 'menu_book' },
   { to: '/archivo/depuracion', etiqueta: 'Depuración de expedientes', icono: 'delete_sweep' },
   { to: '/archivo/consolidado', etiqueta: 'Consolidado', icono: 'insights' },

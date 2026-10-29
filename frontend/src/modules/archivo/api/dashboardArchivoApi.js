@@ -2,6 +2,7 @@ import client from '@/shared/api/client'
 import { mapearEstadisticasArchivo, mapearEventoMovimiento } from './archivoMappers'
 import { estadisticasArchivoMock, movimientosArchivoMock } from './dashboardMock'
 import { listarSalidasHospital } from './salidaArchivoHospitalApi'
+import { contarEtiquetasSalidas } from '../utils/etiquetasSalida'
 import { obtenerCuadernoRojo } from './archivoApi'
 import { listarCarnets, obtenerConfiguracionArchivo } from '@/modules/carnets/api/carnetsApi'
 
@@ -81,6 +82,7 @@ async function estadisticasJefeDesdeEndpoints(fecha) {
   const umbral = config?.umbralActivo ?? null
   const dia = fecha || new Date().toISOString().slice(0, 10)
   const mapaEstaciones = new Map()
+  const salidasPorEstacion = new Map()
 
   for (const salida of salidas ?? []) {
     const clave = salida.estacionId ?? 'sin-estacion'
@@ -91,6 +93,7 @@ async function estadisticasJefeDesdeEndpoints(fecha) {
       clinicaMujer: 0,
       activos: 0,
       pasivos: 0,
+      porEtiqueta: [],
     }
     fila.total += 1
     if (salida.esClinicaMujer) fila.clinicaMujer += 1
@@ -99,9 +102,18 @@ async function estadisticasJefeDesdeEndpoints(fecha) {
     if (clasificacion === 'activo') fila.activos += 1
     if (clasificacion === 'pasivo') fila.pasivos += 1
     mapaEstaciones.set(clave, fila)
+
+    const grupo = salidasPorEstacion.get(clave) ?? []
+    grupo.push(salida)
+    salidasPorEstacion.set(clave, grupo)
   }
 
-  const porEstacion = [...mapaEstaciones.values()].sort((a, b) => b.total - a.total)
+  const porEstacion = [...mapaEstaciones.entries()]
+    .map(([clave, fila]) => ({
+      ...fila,
+      porEtiqueta: contarEtiquetasSalidas(salidasPorEstacion.get(clave)),
+    }))
+    .sort((a, b) => b.total - a.total)
   const conteoEstados = Object.fromEntries(ORDEN_ESTADOS_CARNET.map((estado) => [estado, 0]))
   for (const carnet of carnets ?? []) {
     if (carnet?.estado in conteoEstados) conteoEstados[carnet.estado] += 1
@@ -114,6 +126,7 @@ async function estadisticasJefeDesdeEndpoints(fecha) {
     totalActivos: porEstacion.reduce((total, fila) => total + fila.activos, 0),
     totalPasivos: porEstacion.reduce((total, fila) => total + fila.pasivos, 0),
     porEstacion,
+    porEtiqueta: contarEtiquetasSalidas(salidas),
     porEstado: ORDEN_ESTADOS_CARNET.map((estado) => ({ estado, total: conteoEstados[estado] })),
     cuadernoRojo: {
       fecha: dia,
@@ -125,7 +138,6 @@ async function estadisticasJefeDesdeEndpoints(fecha) {
     },
   }
 }
-
 function clasificarExpediente(numeroExpediente, umbral) {
   if (umbral == null || numeroExpediente == null) return null
   const numero = Number.parseInt(numeroExpediente, 10)
@@ -143,6 +155,11 @@ function estadisticasJefeMock({ fecha } = {}) {
       clinicaMujer: 4,
       activos: 7,
       pasivos: 5,
+      porEtiqueta: [
+        { etiqueta: 'Clínica de la Mujer', codigo: 'clinica_mujer', color: 'rose', total: 4 },
+        { etiqueta: 'Cardiología', codigo: 'cardiologia', color: 'blue', total: 2 },
+        { etiqueta: 'Sin etiqueta', codigo: null, color: 'slate', total: 6 },
+      ],
     },
     {
       estacionId: 2,
@@ -151,6 +168,10 @@ function estadisticasJefeMock({ fecha } = {}) {
       clinicaMujer: 1,
       activos: 3,
       pasivos: 5,
+      porEtiqueta: [
+        { etiqueta: 'Clínica de la Mujer', codigo: 'clinica_mujer', color: 'rose', total: 1 },
+        { etiqueta: 'Sin etiqueta', codigo: null, color: 'slate', total: 7 },
+      ],
     },
     {
       estacionId: 3,
@@ -159,6 +180,10 @@ function estadisticasJefeMock({ fecha } = {}) {
       clinicaMujer: 2,
       activos: 2,
       pasivos: 3,
+      porEtiqueta: [
+        { etiqueta: 'Clínica de la Mujer', codigo: 'clinica_mujer', color: 'rose', total: 2 },
+        { etiqueta: 'Sin etiqueta', codigo: null, color: 'slate', total: 3 },
+      ],
     },
   ]
   return {
@@ -168,6 +193,11 @@ function estadisticasJefeMock({ fecha } = {}) {
     totalActivos: 12,
     totalPasivos: 13,
     porEstacion,
+    porEtiqueta: [
+      { etiqueta: 'Clínica de la Mujer', codigo: 'clinica_mujer', color: 'rose', total: 7 },
+      { etiqueta: 'Cardiología', codigo: 'cardiologia', color: 'blue', total: 2 },
+      { etiqueta: 'Sin etiqueta', codigo: null, color: 'slate', total: 16 },
+    ],
     porEstado: [
       { estado: 'registrado', total: 18 },
       { estado: 'no_localizado', total: 2 },
