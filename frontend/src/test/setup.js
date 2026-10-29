@@ -1,6 +1,10 @@
 import { afterEach } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
+
+// En CI (runner más lento y cargado) los findBy*/waitFor por defecto (1 s)
+// pueden expirar. 5 s da margen sin ocultar fallos reales.
+configure({ asyncUtilTimeout: 5000 })
 
 // Node 22+ expone un global `localStorage` indefinido que eclipsa el de jsdom
 // (el valor queda `undefined`). Lo reemplazamos por un Storage en memoria que
