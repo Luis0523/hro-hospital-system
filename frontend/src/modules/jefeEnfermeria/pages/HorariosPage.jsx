@@ -29,6 +29,7 @@ export default function HorariosPage() {
   const [areaId, setAreaId] = useState(null)
   const [horarios, setHorarios] = useState([])
   const [cargando, setCargando] = useState(false)
+  const [cargandoEspecialidades, setCargandoEspecialidades] = useState(true)
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(null)
   const [guardando, setGuardando] = useState(false)
@@ -39,14 +40,21 @@ export default function HorariosPage() {
       .then((lista) => {
         const items = Array.isArray(lista) ? lista : []
         setEspecialidades(items)
-        if (items.length > 0) setEspecialidadId((actual) => actual || String(items[0].id))
+        if (items.length > 0) {
+          // Marca carga antes de cambiar la especialidad para no mostrar el
+          // estado vacío un instante antes de que el efecto cargue sus horarios.
+          setCargando(true)
+          setEspecialidadId((actual) => actual || String(items[0].id))
+        }
       })
       .catch(() => setEspecialidades([]))
+      .finally(() => setCargandoEspecialidades(false))
   }, [])
 
   const cargarHorarios = useCallback(async (idArea) => {
     if (!idArea) {
       setHorarios([])
+      setCargando(false)
       return
     }
     setCargando(true)
@@ -83,6 +91,7 @@ export default function HorariosPage() {
         setAreaId(null)
         setHorarios([])
         setError(fallo?.message || 'No se pudieron cargar los horarios.')
+        setCargando(false)
       })
     return () => {
       activo = false
@@ -198,7 +207,7 @@ export default function HorariosPage() {
         </Alert>
       )}
 
-      {cargando ? (
+      {cargando || cargandoEspecialidades ? (
         <div className="flex justify-center py-16">
           <Spinner label="Cargando horarios…" />
         </div>
