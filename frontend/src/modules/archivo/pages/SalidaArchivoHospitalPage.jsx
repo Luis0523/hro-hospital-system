@@ -4,13 +4,23 @@ import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useTema } from '@/shared/context/ThemeContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
-import { listarEstaciones, obtenerConfiguracionArchivo } from '@/modules/carnets/api/carnetsApi'
+import { listarEstaciones } from '@/modules/carnets/api/carnetsApi'
 import { descargarBlob } from '../utils/descargarBlob'
 import { useSalidaArchivoHospital } from '../hooks/useSalidaArchivoHospital'
 import { useEtiquetasEstacion } from '../hooks/useEtiquetasEstacion'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import BuscadorSalidaHospital from '../components/salida/BuscadorSalidaHospital.jsx'
 import ListaSalidosHospital from '../components/salida/ListaSalidosHospital.jsx'
+import ModalRegistroManual from '../components/salida/ModalRegistroManual.jsx'
+
+// Nombre corto para la barra superior: evita que el selector ocupe dos líneas.
+// Se puede ver el nombre completo en el title del control.
+function abreviarEstacion(estacion) {
+  const nombre = String(estacion?.nombre ?? estacion?.codigo ?? '').trim()
+  const sinPrefijo = nombre.replace(/^estaci[oó]n(\s+de)?\s+/i, '')
+  if (sinPrefijo.length <= 12) return sinPrefijo
+  return `${sinPrefijo.slice(0, 11).trimEnd()}…`
+}
 
 // POS de salidas de archivo consultadas DIRECTAMENTE al hospital (Registro
 // Médico). El listado es compartido por estación: varios operadores de la misma
@@ -21,15 +31,24 @@ export default function SalidaArchivoHospitalPage() {
   const { tema, alternarTema } = useTema()
   const esOscuro = tema === 'oscuro'
   const [estaciones, setEstaciones] = useState([])
-  const [umbral, setUmbral] = useState(null)
   const [fecha, setFecha] = useState(hoyIso)
   const [query, setQuery] = useState('')
   const [etiquetaId, setEtiquetaId] = useState('')
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState(0)
+  const [registroManualAbierto, setRegistroManualAbierto] = useState(false)
 
-  const { salidas, pendientes, cargando, error, cola, inputRef, agregar, generarPdf } =
-    useSalidaArchivoHospital({ fecha, estacionId: estacion?.id })
+  const {
+    salidas,
+    pendientes,
+    cargando,
+    error,
+    cola,
+    inputRef,
+    agregar,
+    registrarManual,
+    generarPdf,
+  } = useSalidaArchivoHospital({ fecha, estacionId: estacion?.id })
   const { etiquetas, cargando: cargandoEtiquetas } = useEtiquetasEstacion(estacion?.id)
 
   // Al cambiar de estación se limpia la etiqueta elegida (pertenece a otra config).
@@ -41,10 +60,6 @@ export default function SalidaArchivoHospitalPage() {
     listarEstaciones()
       .then((lista) => setEstaciones(Array.isArray(lista) ? lista : []))
       .catch(() => setEstaciones([]))
-
-    obtenerConfiguracionArchivo()
-      .then((config) => setUmbral(config?.umbralActivo ?? null))
-      .catch(() => setUmbral(null))
   }, [])
 
   function manejarCambioEstacion(evento) {
@@ -96,28 +111,31 @@ export default function SalidaArchivoHospitalPage() {
 
   const selectorEstacion = (
     <label
-      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 ${
+      className={`inline-flex max-w-[7rem] items-center gap-1 rounded-lg border px-1.5 py-1 sm:max-w-[10rem] sm:px-2 ${
         estacion
           ? 'border-outline-variant bg-surface-container-lowest'
           : 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40'
       }`}
     >
-      <Icon name="local_hospital" className="text-[18px] text-primary" />
+      <Icon name="local_hospital" className="shrink-0 text-[18px] text-primary" />
       <span className="sr-only">Estación</span>
       <select
         value={estacion?.id ?? ''}
         onChange={manejarCambioEstacion}
         aria-label="Estación de la salida"
-        title={estacion ? 'Estación seleccionada' : 'Seleccione la estación'}
-        className={`h-8 rounded-md bg-transparent text-label-sm font-semibold outline-none ${
+        title={
+          estacion
+            ? `${estacion.codigo ? `${estacion.codigo} · ` : ''}${estacion.nombre ?? ''}`
+            : 'Seleccione la estación'
+        }
+        className={`h-8 w-full min-w-0 truncate rounded-md bg-transparent text-label-sm font-semibold outline-none ${
           estacion ? 'text-on-surface' : 'text-amber-800 dark:text-amber-200'
         }`}
       >
         <option value="">Sin estación…</option>
         {estaciones.map((e) => (
           <option key={e.id} value={e.id}>
-            {e.codigo ? `${e.codigo} · ` : ''}
-            {e.nombre}
+            {abreviarEstacion(e)}
           </option>
         ))}
       </select>
@@ -130,14 +148,17 @@ export default function SalidaArchivoHospitalPage() {
         <>
           {selectorEstacion}
 
-          <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1">
-            <Icon name="calendar_today" className="text-[18px] text-primary" />
+          <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-1.5 py-1 sm:px-2">
+            <Icon
+              name="calendar_today"
+              className="hidden text-[18px] text-primary sm:inline-block"
+            />
             <input
               type="date"
               value={fecha}
               onChange={(evento) => setFecha(evento.target.value)}
               aria-label="Fecha de la salida"
-              className="h-8 rounded-md bg-transparent text-label-sm font-semibold outline-none"
+              className="h-8 w-[6.6rem] rounded-md bg-transparent text-xs font-semibold outline-none sm:w-auto sm:text-label-sm"
             />
           </label>
 
@@ -155,16 +176,6 @@ export default function SalidaArchivoHospitalPage() {
       }
     >
       <main className="mx-auto w-full max-w-6xl space-y-4 px-4 py-4">
-        <h1 className="text-headline-sm font-bold text-on-surface">
-          Salida de archivo (Registro Médico)
-        </h1>
-
-        <p className="text-body-sm text-on-surface-variant">
-          Clasificación automática activo/pasivo
-          {umbral != null ? ` · umbral ${umbral}` : ''}: los expedientes con número mayor al umbral
-          son archivo activo; los menores o iguales son archivo pasivo.
-        </p>
-
         {!estacion && (
           <Alert tone="warning" title="Seleccione la estación">
             Elija su estación arriba para registrar salidas y ver el listado compartido.
@@ -186,6 +197,7 @@ export default function SalidaArchivoHospitalPage() {
           etiquetaId={etiquetaId}
           onCambiarEtiqueta={setEtiquetaId}
           cargandoEtiquetas={cargandoEtiquetas}
+          onAbrirRegistroManual={() => setRegistroManualAbierto(true)}
         />
 
         {error && (
@@ -205,6 +217,24 @@ export default function SalidaArchivoHospitalPage() {
           />
         )}
       </main>
+
+      <ModalRegistroManual
+        abierto={registroManualAbierto}
+        onCerrar={() => setRegistroManualAbierto(false)}
+        onRegistrado={() => {
+          setRegistroManualAbierto(false)
+          inputRef.current?.focus()
+          mostrarToast({ tone: 'success', title: 'Expediente registrado manualmente' })
+        }}
+        etiqueta={etiquetas.find((e) => String(e.id) === String(etiquetaId)) ?? null}
+        onGuardar={({ numeroExpediente, pacienteNombre }) =>
+          registrarManual({
+            numeroExpediente,
+            pacienteNombre,
+            etiqueta: etiquetas.find((e) => String(e.id) === String(etiquetaId)) ?? null,
+          })
+        }
+      />
 
       <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </ArchivoLayout>

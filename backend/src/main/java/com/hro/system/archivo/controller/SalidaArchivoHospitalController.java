@@ -1,6 +1,7 @@
 package com.hro.system.archivo.controller;
 
 import com.hro.system.archivo.dto.RegistrarSalidaArchivoHospitalRequestDTO;
+import com.hro.system.archivo.dto.RegistrarSalidaArchivoManualRequestDTO;
 import com.hro.system.archivo.dto.SalidaArchivoHospitalResponseDTO;
 import com.hro.system.archivo.service.SalidaArchivoHospitalService;
 import com.hro.system.auth.UsuarioContexto;
@@ -41,6 +42,16 @@ public class SalidaArchivoHospitalController {
             @Valid @RequestBody RegistrarSalidaArchivoHospitalRequestDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok(
                 service.registrar(dto), "Salida de archivo registrada"));
+    }
+
+    @PostMapping("/manual")
+    @PreAuthorize("hasAnyRole('archivo', 'administrador')")
+    @Operation(summary = "Registrar una salida manual (sin consultar al hospital)",
+            description = "Para expedientes que el API del hospital no reconoce. Guarda número y nombre en el listado compartido de la estación; no consulta ni actualiza el hospital. 409 si el expediente ya fue marcado.")
+    public ResponseEntity<ApiResponse<SalidaArchivoHospitalResponseDTO>> registrarManual(
+            @Valid @RequestBody RegistrarSalidaArchivoManualRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                service.registrarManual(dto), "Salida de archivo registrada manualmente"));
     }
 
     @GetMapping

@@ -69,6 +69,46 @@ export async function registrarSalidaHospital({
   )
 }
 
+/**
+ * Registro manual para expedientes que el API del hospital no reconoce.
+ * NO consulta ni actualiza el hospital: solo guarda el número y el nombre en
+ * el listado compartido de la estación (y por tanto en el reporte).
+ */
+export async function registrarSalidaManual({
+  numeroExpediente,
+  pacienteNombre,
+  estacionId,
+  etiqueta = null,
+} = {}) {
+  const idEtiqueta = Number(etiqueta?.id)
+  const etiquetaId = Number.isFinite(idEtiqueta) ? idEtiqueta : null
+
+  if (USE_MOCK) {
+    const nueva = {
+      id: `m-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+      fecha: new Date().toISOString().slice(0, 10),
+      estacionId,
+      numeroExpediente,
+      pacienteNombre,
+      etiqueta: etiqueta ? { ...etiqueta } : null,
+      esClinicaMujer: etiqueta?.codigo === 'clinica_mujer',
+      clasificacion: null,
+      manual: true,
+      registradoEn: new Date().toISOString(),
+    }
+    mockSalidas = [nueva, ...mockSalidas]
+    return nueva
+  }
+  return desenvolver(
+    await client.post('/salidas-archivo-hospital/manual', {
+      numeroExpediente,
+      pacienteNombre,
+      estacionId,
+      ...(etiquetaId ? { etiquetaId } : {}),
+    }),
+  )
+}
+
 export async function descargarSalidasHospitalPdf({ fecha, estacionId } = {}) {
   if (USE_MOCK) {
     return construirPdfSimple([

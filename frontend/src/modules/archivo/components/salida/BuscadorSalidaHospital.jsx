@@ -16,6 +16,7 @@ export default function BuscadorSalidaHospital({
   etiquetaId = '',
   onCambiarEtiqueta,
   cargandoEtiquetas = false,
+  onAbrirRegistroManual,
 }) {
   function manejarEnvio(evento) {
     evento.preventDefault()
@@ -93,6 +94,23 @@ export default function BuscadorSalidaHospital({
             Buscar y registrar
           </Button>
         </div>
+
+        {onAbrirRegistroManual && (
+          <div>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onAbrirRegistroManual}
+              disabled={disabled}
+              title="Registrar un expediente que el API del hospital no reconoce"
+              className="min-h-9"
+            >
+              <Icon name="edit_note" className="text-[16px]" />
+              Registrar manualmente
+            </Button>
+          </div>
+        )}
 
         {cola > 0 && (
           <p

@@ -19,6 +19,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -108,6 +110,33 @@ class SalidaArchivoHospitalTest {
                         .param("estacionId", String.valueOf(estacion.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].esClinicaMujer").value(true));
+    }
+
+    @Test
+    @DisplayName("El registro manual no consulta al hospital y aparece en el listado")
+    void registroManualNoConsultaHospital() throws Exception {
+        String numero = "6" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(post("/salidas-archivo-hospital/manual")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "arch-test-salida")
+                        .header("X-Usuario-Rol", "archivo")
+                        .header("X-Usuario-Nombre", "Archivo")
+                        .content("{\"numeroExpediente\":\"" + numero + "\",\"pacienteNombre\":"
+                                + "\"Paciente Registrado Manualmente\",\"estacionId\":"
+                                + estacion.getId() + ",\"fecha\":\"" + fecha + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.numeroExpediente").value(numero))
+                .andExpect(jsonPath("$.data.pacienteNombre")
+                        .value("Paciente Registrado Manualmente"));
+
+        verify(expedienteHroService, never()).consultar(anyString());
+
+        mockMvc.perform(get("/salidas-archivo-hospital")
+                        .param("fecha", fecha.toString())
+                        .param("estacionId", String.valueOf(estacion.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].pacienteNombre")
+                        .value("Paciente Registrado Manualmente"));
     }
 
     @Test

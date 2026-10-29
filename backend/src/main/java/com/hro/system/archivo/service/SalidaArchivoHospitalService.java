@@ -2,6 +2,7 @@ package com.hro.system.archivo.service;
 
 import com.hro.system.archivo.dto.EtiquetaArchivoResumenDTO;
 import com.hro.system.archivo.dto.RegistrarSalidaArchivoHospitalRequestDTO;
+import com.hro.system.archivo.dto.RegistrarSalidaArchivoManualRequestDTO;
 import com.hro.system.archivo.dto.SalidaArchivoHospitalResponseDTO;
 import com.hro.system.archivo.entity.EtiquetaArchivo;
 import com.hro.system.archivo.entity.SalidaArchivoHospital;
@@ -102,6 +103,51 @@ public class SalidaArchivoHospitalService {
                 .build());
 
         log.info("Salida de archivo (hospital) registrada: exp {} estación {} usuario {}",
+                numero, estacion.getCodigo(), usuario != null ? usuario.getId() : null);
+        return map(salida);
+    }
+
+    /**
+     * Registro manual para expedientes que el API del hospital no reconoce.
+     * No consulta ni actualiza el hospital: guarda el número y el nombre tal
+     * como los escribe el operador, para el listado y el reporte del día.
+     */
+    @Transactional
+    public SalidaArchivoHospitalResponseDTO registrarManual(RegistrarSalidaArchivoManualRequestDTO dto) {
+        LocalDate fecha = (dto.getFecha() != null) ? dto.getFecha() : LocalDate.now(ZONA_HORARIA);
+        Long estacionId = (dto.getEstacionId() != null)
+                ? dto.getEstacionId()
+                : EstacionContexto.idActual().orElse(null);
+        if (estacionId == null) {
+            throw new BusinessException("Seleccione la estación antes de registrar la salida.");
+        }
+        EstacionEnfermeria estacion = estacionRepository.findById(estacionId)
+                .orElseThrow(() -> new ResourceNotFoundException("EstacionEnfermeria", "id", estacionId));
+
+        String numero = dto.getNumeroExpediente().trim();
+        repository.findByFechaAndEstacionIdAndNumeroExpediente(fecha, estacionId, numero)
+                .ifPresent(existente -> {
+                    throw new ConflictException("SALIDA_DUPLICADA",
+                            "El expediente ya fue marcado como salida en esta estación.");
+                });
+
+        EtiquetaArchivo etiqueta = etiquetaService.resolverParaSalida(estacionId, dto.getEtiquetaId());
+        boolean esClinicaMujer = (etiqueta != null)
+                && EtiquetaArchivoService.CODIGO_CLINICA_MUJER.equals(etiqueta.getCodigo());
+
+        UsuarioReferencia usuario = usuarioActual();
+        SalidaArchivoHospital salida = repository.save(SalidaArchivoHospital.builder()
+                .fecha(fecha)
+                .estacion(estacion)
+                .numeroExpediente(numero)
+                .pacienteNombre(dto.getPacienteNombre().trim())
+                .etiqueta(etiqueta)
+                .esClinicaMujer(esClinicaMujer)
+                .registradoPor(usuario)
+                .registradoEn(OffsetDateTime.now())
+                .build());
+
+        log.info("Salida de archivo MANUAL registrada: exp {} estación {} usuario {}",
                 numero, estacion.getCodigo(), usuario != null ? usuario.getId() : null);
         return map(salida);
     }

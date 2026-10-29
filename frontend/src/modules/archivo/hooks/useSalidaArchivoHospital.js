@@ -4,6 +4,7 @@ import {
   descargarSalidasHospitalPdf,
   listarSalidasHospital,
   registrarSalidaHospital,
+  registrarSalidaManual,
 } from '../api/salidaArchivoHospitalApi'
 
 // Registro de salidas de archivo consultando DIRECTAMENTE al hospital. El listado
@@ -140,6 +141,29 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
     [estacionId, vaciarCola, mostrarToast],
   )
 
+  // Registro manual: no entra a la cola ni consulta al hospital.
+  const registrarManual = useCallback(
+    async ({ numeroExpediente, pacienteNombre, etiqueta = null }) => {
+      const numero = String(numeroExpediente ?? '').trim()
+      const nombre = String(pacienteNombre ?? '').trim()
+      if (!numero || !nombre) {
+        throw new Error('Complete el número de expediente y el nombre completo.')
+      }
+      if (!estacionId) {
+        throw new Error('Seleccione la estación antes de registrar.')
+      }
+      const nueva = await registrarSalidaManual({
+        numeroExpediente: numero,
+        pacienteNombre: nombre,
+        estacionId,
+        etiqueta,
+      })
+      setSalidas((prev) => [nueva, ...prev.filter((s) => s.id !== nueva.id)])
+      return nueva
+    },
+    [estacionId],
+  )
+
   const generarPdf = useCallback(async () => {
     if (!estacionId || salidas.length === 0) return null
     try {
@@ -163,6 +187,7 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
     cola: pendientes.length,
     inputRef,
     agregar,
+    registrarManual,
     recargar: () => cargar(true),
     generarPdf,
     enfocar,
