@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Alert, Icon, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, Modal, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useTema } from '@/shared/context/ThemeContext.jsx'
+import { formatearExpediente } from '@/shared/utils/expediente'
 import { hoyIso } from '@/shared/utils/fecha'
 import { listarEstaciones } from '@/modules/carnets/api/carnetsApi'
 import { descargarBlob } from '../utils/descargarBlob'
@@ -45,6 +46,8 @@ export default function SalidaArchivoHospitalPage() {
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState(0)
   const [registroManualAbierto, setRegistroManualAbierto] = useState(false)
+  const [porEliminar, setPorEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const {
     salidas,
@@ -55,6 +58,7 @@ export default function SalidaArchivoHospitalPage() {
     inputRef,
     agregar,
     registrarManual,
+    eliminar,
     generarPdf,
   } = useSalidaArchivoHospital({ fecha, estacionId: estacion?.id })
   const { etiquetas, cargando: cargandoEtiquetas } = useEtiquetasEstacion(estacion?.id)
@@ -114,6 +118,24 @@ export default function SalidaArchivoHospitalPage() {
       clearInterval(timer)
       setGenerandoPdf(false)
       setProgresoPdf(0)
+    }
+  }
+
+  async function confirmarEliminar() {
+    if (!porEliminar || eliminando) return
+    setEliminando(true)
+    try {
+      await eliminar(porEliminar.id)
+      setPorEliminar(null)
+      mostrarToast({ tone: 'info', title: 'Registro eliminado del listado' })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo eliminar',
+        message: fallo?.message,
+      })
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -225,6 +247,7 @@ export default function SalidaArchivoHospitalPage() {
             pendientes={pendientes}
             generandoPdf={generandoPdf}
             onDescargarPdf={descargarPdf}
+            onEliminar={setPorEliminar}
           />
         )}
       </main>
@@ -246,6 +269,33 @@ export default function SalidaArchivoHospitalPage() {
           })
         }
       />
+
+      <Modal
+        open={Boolean(porEliminar)}
+        onClose={() => {
+          if (!eliminando) setPorEliminar(null)
+        }}
+        title="Eliminar salida de archivo"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPorEliminar(null)} disabled={eliminando}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando…' : 'Sí, eliminar'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          ¿Eliminar el expediente{' '}
+          <strong>{formatearExpediente(porEliminar?.numeroExpediente)}</strong>
+          {porEliminar?.pacienteNombre ? ` (${porEliminar.pacienteNombre})` : ''} del listado?
+        </p>
+        <p className="mt-2 text-label-sm text-on-surface-variant">
+          Se quitará del listado y del reporte de esta estación. No afecta al hospital.
+        </p>
+      </Modal>
 
       <ModalGenerandoPdf abierto={generandoPdf} progreso={progresoPdf} />
     </ArchivoLayout>

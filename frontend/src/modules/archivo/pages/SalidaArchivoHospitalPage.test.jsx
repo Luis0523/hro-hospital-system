@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { reiniciarSalidasHospitalMock } from '../api/salidaArchivoHospitalApi'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { EstacionProvider } from '@/shared/context/EstacionContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
@@ -34,6 +35,7 @@ function renderPagina() {
 describe('SalidaArchivoHospitalPage', () => {
   beforeEach(() => {
     localStorage.clear()
+    reiniciarSalidasHospitalMock()
   })
 
   it('muestra el encabezado y pide seleccionar la estación', async () => {
@@ -68,5 +70,28 @@ describe('SalidaArchivoHospitalPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByLabelText(/número de expediente/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/nombre completo/i)).toBeInTheDocument()
+  })
+
+  it('elimina un registro desde la tabla con confirmación', async () => {
+    localStorage.setItem(
+      'hro_estacion',
+      JSON.stringify({ id: 1, codigo: 'EST-01', nombre: 'Estación 1' }),
+    )
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByRole('button', { name: /registrar manualmente/i }))
+    await user.type(screen.getByLabelText(/número de expediente/i), '123456')
+    await user.type(screen.getByLabelText(/nombre completo/i), 'Paciente Para Eliminar')
+    await user.click(screen.getByRole('button', { name: /^registrar$/i }))
+
+    expect(await screen.findByText('Paciente Para Eliminar')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^eliminar /i }))
+    await user.click(await screen.findByRole('button', { name: /sí, eliminar/i }))
+
+    await waitFor(() =>
+      expect(screen.queryByText('Paciente Para Eliminar')).not.toBeInTheDocument(),
+    )
   })
 })

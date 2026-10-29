@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Salidas de archivo consultadas al Registro Médico (API del hospital).
@@ -52,6 +53,15 @@ public class SalidaArchivoHospitalController {
             @Valid @RequestBody RegistrarSalidaArchivoManualRequestDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok(
                 service.registrarManual(dto), "Salida de archivo registrada manualmente"));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('archivo', 'administrador')")
+    @Operation(summary = "Eliminar una salida de archivo registrada por error",
+            description = "Borra la fila del listado compartido de la estación y deja de aparecer en el reporte. No afecta al hospital.")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        service.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Salida de archivo eliminada"));
     }
 
     @GetMapping

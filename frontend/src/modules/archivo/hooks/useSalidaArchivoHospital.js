@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
   descargarSalidasHospitalPdf,
+  eliminarSalidaHospital,
   listarSalidasHospital,
   registrarSalidaHospital,
   registrarSalidaManual,
@@ -164,6 +165,11 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
     [estacionId],
   )
 
+  const eliminar = useCallback(async (id) => {
+    await eliminarSalidaHospital(id)
+    setSalidas((prev) => prev.filter((salida) => salida.id !== id))
+  }, [])
+
   const generarPdf = useCallback(async () => {
     if (!estacionId || salidas.length === 0) return null
     try {
@@ -188,6 +194,7 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
     inputRef,
     agregar,
     registrarManual,
+    eliminar,
     recargar: () => cargar(true),
     generarPdf,
     enfocar,

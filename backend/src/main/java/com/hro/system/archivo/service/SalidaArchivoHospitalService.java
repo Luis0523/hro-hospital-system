@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Registro de salidas de archivo consultadas DIRECTAMENTE al API del hospital
@@ -150,6 +151,15 @@ public class SalidaArchivoHospitalService {
         log.info("Salida de archivo MANUAL registrada: exp {} estación {} usuario {}",
                 numero, estacion.getCodigo(), usuario != null ? usuario.getId() : null);
         return map(salida);
+    }
+
+    @Transactional
+    public void eliminar(UUID id) {
+        SalidaArchivoHospital salida = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "SalidaArchivoHospital", "id", id));
+        repository.delete(salida);
+        log.info("Salida de archivo eliminada: id {} exp {}", id, salida.getNumeroExpediente());
     }
 
     @Transactional(readOnly = true)

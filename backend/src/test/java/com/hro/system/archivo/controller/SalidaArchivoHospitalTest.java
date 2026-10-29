@@ -1,5 +1,7 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.entity.SalidaArchivoHospital;
+import com.hro.system.archivo.repository.SalidaArchivoHospitalRepository;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.integracion.dto.PacienteHroDTO;
@@ -18,10 +20,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,6 +44,8 @@ class SalidaArchivoHospitalTest {
     private MockMvc mockMvc;
     @Autowired
     private EstacionEnfermeriaRepository estacionRepository;
+    @Autowired
+    private SalidaArchivoHospitalRepository salidaRepository;
 
     @MockBean
     private ExpedienteHroService expedienteHroService;
@@ -156,6 +162,39 @@ class SalidaArchivoHospitalTest {
                         .header("X-Usuario-Nombre", "Archivo")
                         .content(body(numero)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("Elimina una salida del listado y 404 al repetir")
+    void eliminaSalida() throws Exception {
+        String numero = "5" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(post("/salidas-archivo-hospital/manual")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "arch-test-salida")
+                        .header("X-Usuario-Rol", "archivo")
+                        .header("X-Usuario-Nombre", "Archivo")
+                        .content("{\"numeroExpediente\":\"" + numero + "\",\"pacienteNombre\":"
+                                + "\"Paciente Para Eliminar\",\"estacionId\":" + estacion.getId()
+                                + ",\"fecha\":\"" + fecha + "\"}"))
+                .andExpect(status().isOk());
+
+        SalidaArchivoHospital salida = salidaRepository
+                .findByFechaAndEstacionIdAndNumeroExpediente(fecha, estacion.getId(), numero)
+                .orElseThrow();
+
+        mockMvc.perform(delete("/salidas-archivo-hospital/" + salida.getId())
+                        .header("X-Usuario-Id", "arch-test-salida")
+                        .header("X-Usuario-Rol", "archivo")
+                        .header("X-Usuario-Nombre", "Archivo"))
+                .andExpect(status().isOk());
+
+        assertThat(salidaRepository.findById(salida.getId())).isEmpty();
+
+        mockMvc.perform(delete("/salidas-archivo-hospital/" + salida.getId())
+                        .header("X-Usuario-Id", "arch-test-salida")
+                        .header("X-Usuario-Rol", "archivo")
+                        .header("X-Usuario-Nombre", "Archivo"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

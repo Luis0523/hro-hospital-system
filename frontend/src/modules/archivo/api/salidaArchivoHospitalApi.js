@@ -109,6 +109,20 @@ export async function registrarSalidaManual({
   )
 }
 
+/** Elimina una salida registrada por error del listado compartido. */
+export async function eliminarSalidaHospital(id) {
+  if (USE_MOCK) {
+    mockSalidas = mockSalidas.filter((salida) => salida.id !== id)
+    return { id }
+  }
+  return desenvolver(await client.delete(`/salidas-archivo-hospital/${id}`))
+}
+
+/** Solo para pruebas: deja el mock como al cargar la página. */
+export function reiniciarSalidasHospitalMock() {
+  mockSalidas = []
+}
+
 export async function descargarSalidasHospitalPdf({ fecha, estacionId } = {}) {
   if (USE_MOCK) {
     return construirPdfSimple([
