@@ -21,6 +21,9 @@ public class SalidaArchivoHospitalResponseDTO {
     private String estacionNombre;
     private String numeroExpediente;
     private String pacienteNombre;
+    /** Etiqueta operativa asociada (null si no se marcó ninguna). */
+    private EtiquetaArchivoResumenDTO etiqueta;
+    /** Compatibilidad histórica: true cuando la etiqueta es Clínica de la Mujer. */
     private Boolean esClinicaMujer;
     /** "activo" o "pasivo" según el umbral configurado; null si no se puede clasificar. */
     private String clasificacion;

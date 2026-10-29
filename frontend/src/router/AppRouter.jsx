@@ -36,6 +36,7 @@ import ReportesPage from '@/modules/administracion/pages/ReportesPage.jsx'
 import AuditoriaPage from '@/modules/administracion/pages/AuditoriaPage.jsx'
 import JefeEnfermeriaLayout from '@/modules/jefeEnfermeria/JefeEnfermeriaLayout.jsx'
 import JefeArchivoLayout from '@/modules/jefeArchivo/JefeArchivoLayout.jsx'
+import EtiquetasArchivoPage from '@/modules/jefeArchivo/pages/EtiquetasArchivoPage.jsx'
 import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
 import EspecialidadesJefePage from '@/modules/jefeEnfermeria/pages/EspecialidadesPage.jsx'
 import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
@@ -126,6 +127,7 @@ export default function AppRouter() {
         <Route element={<RutaPorRol areas={['jefe_archivo', 'administracion']} />}>
           <Route path="/jefe-archivo" element={<JefeArchivoLayout />}>
             <Route index element={<DashboardArchivoPage />} />
+            <Route path="etiquetas" element={<EtiquetasArchivoPage />} />
             <Route path="*" element={<Navigate to="/jefe-archivo" replace />} />
           </Route>
         </Route>

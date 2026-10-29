@@ -75,7 +75,9 @@ public class PlantillaReportePdf {
             String responsableEntrega,
             String responsableRecibe,
             String observaciones,
-            boolean incluirFirmas
+            boolean incluirFirmas,
+            /** Líneas de resumen opcionales bajo el panel de datos (p. ej. totales por etiqueta). */
+            List<String> resumenEncabezado
     ) {
         /** Reporte con el bloque de firmas (comportamiento histórico). */
         public Reporte(String titulo, String subtitulo, String idDocumento, LocalDate fecha,
@@ -83,7 +85,19 @@ public class PlantillaReportePdf {
                        List<Columna> columnas, List<List<String>> filas, long total,
                        String responsableEntrega, String responsableRecibe, String observaciones) {
             this(titulo, subtitulo, idDocumento, fecha, generadoEn, generadoPor, origen, destino,
-                    columnas, filas, total, responsableEntrega, responsableRecibe, observaciones, true);
+                    columnas, filas, total, responsableEntrega, responsableRecibe, observaciones,
+                    true, List.of());
+        }
+
+        /** Reporte con control explícito de firmas y sin resumen de encabezado. */
+        public Reporte(String titulo, String subtitulo, String idDocumento, LocalDate fecha,
+                       OffsetDateTime generadoEn, String generadoPor, String origen, String destino,
+                       List<Columna> columnas, List<List<String>> filas, long total,
+                       String responsableEntrega, String responsableRecibe, String observaciones,
+                       boolean incluirFirmas) {
+            this(titulo, subtitulo, idDocumento, fecha, generadoEn, generadoPor, origen, destino,
+                    columnas, filas, total, responsableEntrega, responsableRecibe, observaciones,
+                    incluirFirmas, List.of());
         }
     }
 
@@ -91,6 +105,7 @@ public class PlantillaReportePdf {
         try (PDDocument doc = new PDDocument()) {
             PDPageState page = nuevaPagina(doc);
             page.y = dibujarEncabezadoCompleto(doc, page.stream, r);
+            page.y = dibujarResumenEncabezado(page.stream, r.resumenEncabezado(), page.y);
             page.y = dibujarTablaEncabezado(page.stream, r, page.y);
 
             List<Float> anchos = calcularAnchos(r.columnas());
@@ -208,6 +223,33 @@ public class PlantillaReportePdf {
         }
 
         return y - panelH - 10f;
+    }
+
+    /**
+     * Resumen opcional bajo el panel de datos (por ejemplo, totales por
+     * etiqueta). No dibuja nada si la lista está vacía.
+     */
+    private float dibujarResumenEncabezado(PDPageContentStream cs, List<String> lineas, float y)
+            throws IOException {
+        if (lineas == null || lineas.isEmpty()) {
+            return y;
+        }
+        float alto = lineas.size() * 12f + 8f;
+        cs.setNonStrokingColor(PANEL);
+        cs.addRect(MARGEN, y - alto, CONTENT_W, alto);
+        cs.fill();
+        cs.setStrokingColor(BORDE);
+        cs.setLineWidth(0.5f);
+        cs.addRect(MARGEN, y - alto, CONTENT_W, alto);
+        cs.stroke();
+
+        float ty = y - 13f;
+        for (String linea : lineas) {
+            escribir(cs, F_NORMAL, 8.5f, TEXTO, "- " + nvl(linea), MARGEN + 8f, ty,
+                    CONTENT_W - 16f, Alineacion.IZQUIERDA);
+            ty -= 12f;
+        }
+        return y - alto - 8f;
     }
 
     private float dibujarEncabezadoResumido(PDPageContentStream cs, Reporte r) throws IOException {

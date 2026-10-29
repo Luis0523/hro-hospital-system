@@ -18,6 +18,9 @@ public class RegistrarSalidaArchivoHospitalRequestDTO {
     /** Opcional: por defecto, hoy (zona Guatemala). */
     private LocalDate fecha;
 
-    /** Marca la salida como perteneciente a la Clínica de la Mujer. */
+    /** Etiqueta configurada para la estación (opcional, una sola). */
+    private Long etiquetaId;
+
+    /** Compatibilidad: marca la salida como Clínica de la Mujer si el cliente aún no envía etiquetaId. */
     private Boolean esClinicaMujer;
 }

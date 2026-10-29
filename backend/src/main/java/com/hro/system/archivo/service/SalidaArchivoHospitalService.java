@@ -1,7 +1,9 @@
 package com.hro.system.archivo.service;
 
+import com.hro.system.archivo.dto.EtiquetaArchivoResumenDTO;
 import com.hro.system.archivo.dto.RegistrarSalidaArchivoHospitalRequestDTO;
 import com.hro.system.archivo.dto.SalidaArchivoHospitalResponseDTO;
+import com.hro.system.archivo.entity.EtiquetaArchivo;
 import com.hro.system.archivo.entity.SalidaArchivoHospital;
 import com.hro.system.archivo.repository.SalidaArchivoHospitalRepository;
 import com.hro.system.auth.UsuarioContexto;
@@ -28,7 +30,11 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Registro de salidas de archivo consultadas DIRECTAMENTE al API del hospital
@@ -47,6 +53,7 @@ public class SalidaArchivoHospitalService {
     private final EstacionEnfermeriaRepository estacionRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ExpedienteHroService expedienteHroService;
+    private final EtiquetaArchivoService etiquetaService;
     private final PlantillaReportePdf plantilla;
     private final com.hro.system.parametro.service.ParametroSistemaService parametros;
 
@@ -69,6 +76,16 @@ public class SalidaArchivoHospitalService {
                             "El expediente ya fue marcado como salida en esta estación.");
                 });
 
+        // Etiqueta configurada para la estación (opcional). Se valida antes de
+        // consultar al hospital para no registrar salidas con datos inválidos.
+        EtiquetaArchivo etiqueta = etiquetaService.resolverParaSalida(estacionId, dto.getEtiquetaId());
+        if (etiqueta == null && Boolean.TRUE.equals(dto.getEsClinicaMujer())) {
+            etiqueta = etiquetaService.resolverClinicaMujer();
+        }
+        boolean esClinicaMujer = (etiqueta != null)
+                ? EtiquetaArchivoService.CODIGO_CLINICA_MUJER.equals(etiqueta.getCodigo())
+                : Boolean.TRUE.equals(dto.getEsClinicaMujer());
+
         // Consulta DIRECTA al API del hospital (404 si no existe, 502 si falla).
         PacienteHroDTO paciente = expedienteHroService.consultar(numero);
 
@@ -78,7 +95,8 @@ public class SalidaArchivoHospitalService {
                 .estacion(estacion)
                 .numeroExpediente(numero)
                 .pacienteNombre(paciente.getNombreCompleto())
-                .esClinicaMujer(Boolean.TRUE.equals(dto.getEsClinicaMujer()))
+                .etiqueta(etiqueta)
+                .esClinicaMujer(esClinicaMujer)
                 .registradoPor(usuario)
                 .registradoEn(OffsetDateTime.now())
                 .build());
@@ -114,7 +132,7 @@ public class SalidaArchivoHospitalService {
                     FormatoExpediente.formatear(s.getNumeroExpediente()),
                     s.getPacienteNombre(),
                     clasificacion != null ? clasificacion : "-",
-                    Boolean.TRUE.equals(s.isEsClinicaMujer()) ? "Sí" : "-",
+                    nombreEtiqueta(s),
                     formatearHora(s.getRegistradoEn())));
         }
 
@@ -138,7 +156,9 @@ public class SalidaArchivoHospitalService {
                 lista.size(),
                 "Entrega - Archivo",
                 "Recibe - Consulta Externa",
-                "");
+                "",
+                true,
+                resumenEtiquetas(lista));
         try {
             return plantilla.generar(reporte);
         } catch (IOException e) {
@@ -154,8 +174,40 @@ public class SalidaArchivoHospitalService {
                 new PlantillaReportePdf.Columna("Expediente", 1.1f, PlantillaReportePdf.Alineacion.IZQUIERDA),
                 new PlantillaReportePdf.Columna("Paciente", 2.2f, PlantillaReportePdf.Alineacion.IZQUIERDA),
                 new PlantillaReportePdf.Columna("Clasificación", 0.9f, PlantillaReportePdf.Alineacion.CENTRO),
-                new PlantillaReportePdf.Columna("Mujer", 0.6f, PlantillaReportePdf.Alineacion.CENTRO),
+                new PlantillaReportePdf.Columna("Etiqueta", 1.3f, PlantillaReportePdf.Alineacion.IZQUIERDA),
                 new PlantillaReportePdf.Columna("Hora", 0.8f, PlantillaReportePdf.Alineacion.CENTRO));
+    }
+
+    private static String nombreEtiqueta(SalidaArchivoHospital s) {
+        if (s.getEtiqueta() != null) {
+            return s.getEtiqueta().getNombre();
+        }
+        return Boolean.TRUE.equals(s.isEsClinicaMujer()) ? "Clínica de la Mujer" : "-";
+    }
+
+    /**
+     * Totales por etiqueta para el encabezado del PDF. Se ordenan por el orden
+     * del catálogo y "Sin etiqueta" queda al final.
+     */
+    private static List<String> resumenEtiquetas(List<SalidaArchivoHospital> lista) {
+        Map<String, Integer> conteos = new LinkedHashMap<>();
+        Map<String, Integer> ordenes = new HashMap<>();
+        for (SalidaArchivoHospital s : lista) {
+            String nombre = nombreEtiqueta(s);
+            conteos.merge(nombre, 1, Integer::sum);
+            if (s.getEtiqueta() != null) {
+                ordenes.putIfAbsent(nombre,
+                        s.getEtiqueta().getOrden() != null ? s.getEtiqueta().getOrden() : Integer.MAX_VALUE);
+            }
+        }
+        return conteos.entrySet().stream()
+                .sorted(Comparator
+                        .comparingInt((Map.Entry<String, Integer> e) -> "Sin etiqueta".equals(e.getKey())
+                                ? Integer.MAX_VALUE
+                                : ordenes.getOrDefault(e.getKey(), Integer.MAX_VALUE))
+                        .thenComparing(Map.Entry::getKey))
+                .map(e -> e.getKey() + ": " + e.getValue())
+                .toList();
     }
 
     private SalidaArchivoHospitalResponseDTO map(SalidaArchivoHospital s) {
@@ -166,11 +218,24 @@ public class SalidaArchivoHospitalService {
                 .estacionNombre(s.getEstacion() != null ? s.getEstacion().getNombre() : null)
                 .numeroExpediente(s.getNumeroExpediente())
                 .pacienteNombre(s.getPacienteNombre())
+                .etiqueta(resumenEtiqueta(s.getEtiqueta()))
                 .esClinicaMujer(s.isEsClinicaMujer())
                 .clasificacion(clasificar(s.getNumeroExpediente(), umbralActivo()))
                 .registradoPor(s.getRegistradoPor() != null ? s.getRegistradoPor().getNombreMostrar() : null)
                 .registradoEn(s.getRegistradoEn())
                 .build();
+    }
+
+    private static EtiquetaArchivoResumenDTO resumenEtiqueta(EtiquetaArchivo etiqueta) {
+        if (etiqueta == null) {
+            return null;
+        }
+        return new EtiquetaArchivoResumenDTO(
+                etiqueta.getId(),
+                etiqueta.getCodigo(),
+                etiqueta.getNombre(),
+                etiqueta.getIcono(),
+                etiqueta.getColor());
     }
 
     private UsuarioReferencia usuarioActual() {

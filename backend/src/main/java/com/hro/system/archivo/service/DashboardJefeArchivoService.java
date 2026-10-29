@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +51,8 @@ public class DashboardJefeArchivoService {
         List<SalidaArchivoHospital> salidas = salidaRepository.findByFechaOrderByRegistradoEnDesc(fecha);
         Map<Long, long[]> porEstacion = new LinkedHashMap<>();
         Map<Long, String> nombres = new LinkedHashMap<>();
+        Map<String, Long> conteoEtiquetas = new LinkedHashMap<>();
+        Map<String, Integer> ordenEtiquetas = new HashMap<>();
         long totalClinicaMujer = 0;
         long totalActivos = 0;
         long totalPasivos = 0;
@@ -72,7 +76,27 @@ public class DashboardJefeArchivoService {
             if (estacionId != null && salida.getEstacion().getNombre() != null) {
                 nombres.putIfAbsent(estacionId, salida.getEstacion().getNombre());
             }
+
+            String nombreEtiqueta = salida.getEtiqueta() != null
+                    ? salida.getEtiqueta().getNombre()
+                    : (salida.isEsClinicaMujer() ? "Clínica de la Mujer" : "Sin etiqueta");
+            conteoEtiquetas.merge(nombreEtiqueta, 1L, Long::sum);
+            if (salida.getEtiqueta() != null) {
+                ordenEtiquetas.putIfAbsent(nombreEtiqueta,
+                        salida.getEtiqueta().getOrden() != null
+                                ? salida.getEtiqueta().getOrden()
+                                : Integer.MAX_VALUE);
+            }
         }
+
+        List<DashboardJefeArchivoDTO.EtiquetaTotal> porEtiqueta = conteoEtiquetas.entrySet().stream()
+                .sorted(Comparator
+                        .comparingInt((Map.Entry<String, Long> e) -> "Sin etiqueta".equals(e.getKey())
+                                ? Integer.MAX_VALUE
+                                : ordenEtiquetas.getOrDefault(e.getKey(), Integer.MAX_VALUE))
+                        .thenComparing(Map.Entry::getKey))
+                .map(e -> new DashboardJefeArchivoDTO.EtiquetaTotal(e.getKey(), e.getValue()))
+                .toList();
 
         List<DashboardJefeArchivoDTO.EstacionSalidaTotal> porEstacionList = porEstacion.entrySet().stream()
                 .map(entry -> new DashboardJefeArchivoDTO.EstacionSalidaTotal(
@@ -108,6 +132,7 @@ public class DashboardJefeArchivoService {
                 totalPasivos,
                 porEstacionList,
                 porEstado,
+                porEtiqueta,
                 new DashboardJefeArchivoDTO.CuadernoRojoResumen(
                         fecha,
                         cuaderno != null ? cuaderno.getEgresosHospitalarios() : 0,

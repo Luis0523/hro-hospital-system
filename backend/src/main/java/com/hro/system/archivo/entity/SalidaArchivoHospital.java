@@ -43,6 +43,12 @@ public class SalidaArchivoHospital {
     @Column(name = "paciente_nombre", nullable = false, length = 200)
     private String pacienteNombre;
 
+    /** Etiqueta elegida por el operador (opcional, una sola por salida). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "etiqueta_id")
+    private EtiquetaArchivo etiqueta;
+
+    /** Compatibilidad histórica: se mantiene sincronizado con la etiqueta Clínica de la Mujer. */
     @Column(name = "es_clinica_mujer", nullable = false)
     @Builder.Default
     private boolean esClinicaMujer = false;

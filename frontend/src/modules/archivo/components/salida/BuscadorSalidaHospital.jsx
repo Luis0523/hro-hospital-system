@@ -1,4 +1,5 @@
 import { Button, Icon } from '@/shared/components/ui'
+import SelectorEtiquetasSalida from './SelectorEtiquetasSalida.jsx'
 
 // Buscador de la salida consultada al hospital: al escribir el número y presionar
 // Enter o el botón "Buscar y registrar", se consulta al API del hospital (a
@@ -11,8 +12,10 @@ export default function BuscadorSalidaHospital({
   onAgregar,
   disabled = false,
   cola = 0,
-  esClinicaMujer = false,
-  onCambiarClinicaMujer,
+  etiquetas = [],
+  etiquetaId = '',
+  onCambiarEtiqueta,
+  cargandoEtiquetas = false,
 }) {
   function manejarEnvio(evento) {
     evento.preventDefault()
@@ -34,35 +37,13 @@ export default function BuscadorSalidaHospital({
           Expediente (consulta al Registro Médico)
         </label>
 
-        <label
-          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition ${
-            esClinicaMujer
-              ? 'border-rose-400 bg-rose-50 dark:border-rose-700 dark:bg-rose-950/40'
-              : 'border-outline-variant bg-surface-container-low'
-          } ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:border-rose-300'}`}
-        >
-          <input
-            type="checkbox"
-            checked={esClinicaMujer}
-            onChange={(evento) => onCambiarClinicaMujer?.(evento.target.checked)}
-            disabled={disabled}
-            className="h-5 w-5 shrink-0 rounded accent-rose-600"
-            aria-describedby="salida-hosp-clinica-mujer-ayuda"
-          />
-          <span className="flex min-w-0 flex-col">
-            <span className="flex items-center gap-1.5 text-label-md font-bold text-on-surface">
-              <Icon name="female" className="text-[18px] text-rose-600 dark:text-rose-300" />
-              Clínica de la Mujer
-            </span>
-            <span
-              id="salida-hosp-clinica-mujer-ayuda"
-              className="text-label-sm text-on-surface-variant"
-            >
-              Active esta casilla si el expediente pertenece a la Clínica de la Mujer. Se guardará
-              para la estadística diaria.
-            </span>
-          </span>
-        </label>
+        <SelectorEtiquetasSalida
+          etiquetas={etiquetas}
+          etiquetaId={etiquetaId}
+          onCambiar={onCambiarEtiqueta}
+          disabled={disabled}
+          cargando={cargandoEtiquetas}
+        />
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex flex-1 items-center">
