@@ -13,7 +13,7 @@ export default function EspecialidadesPage() {
           Interna usa 100 y las demás 18 por defecto; puede ajustarlo cuando lo necesite.
         </p>
       </header>
-      <EspecialidadesTab />
+      <EspecialidadesTab conBuscador />
     </section>
   )
 }
