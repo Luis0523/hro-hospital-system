@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   actualizarSalidaEnfermeriaArchivo,
+  construirPayloadSalidaEnfermeria,
   eliminarSalidaEnfermeriaArchivo,
   listarSalidasEnfermeriaArchivo,
   registrarSalidaEnfermeriaArchivo,
@@ -55,6 +56,24 @@ describe('salidaEnfermeriaArchivoApi', () => {
 
     const lista = await listarSalidasEnfermeriaArchivo({ fecha, estacionId })
     expect(lista).toHaveLength(0)
+  })
+
+  it('incluye el nombre manual en el payload real y lo omite si viene vacío', () => {
+    const manual = construirPayloadSalidaEnfermeria({
+      numeroExpediente: '999999',
+      estacionId,
+      fecha,
+      pacienteNombre: '  Nombre Manual  ',
+    })
+    expect(manual.pacienteNombre).toBe('Nombre Manual')
+
+    const automatico = construirPayloadSalidaEnfermeria({
+      numeroExpediente: '888888',
+      estacionId,
+      fecha,
+      pacienteNombre: '   ',
+    })
+    expect(automatico).not.toHaveProperty('pacienteNombre')
   })
 
   it('registra y corrige un nombre capturado manualmente', async () => {

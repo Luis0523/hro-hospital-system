@@ -14,6 +14,28 @@ const ETIQUETAS = {
 
 let salidasMock = []
 
+/** Payload del alta real. Incluye el nombre manual solo si viene informado. */
+export function construirPayloadSalidaEnfermeria({
+  numeroExpediente,
+  estacionId,
+  fecha,
+  tipo = 'normal',
+  primeraVez = false,
+  clinicaPersonalId = null,
+  pacienteNombre,
+} = {}) {
+  const nombre = String(pacienteNombre ?? '').trim()
+  return {
+    numeroExpediente,
+    estacionId,
+    fecha,
+    tipo,
+    primeraVez,
+    clinicaPersonalId,
+    ...(nombre ? { pacienteNombre: nombre } : {}),
+  }
+}
+
 export async function listarSalidasEnfermeriaArchivo({ fecha, estacionId } = {}) {
   if (USE_MOCK) {
     return salidasMock
@@ -68,14 +90,18 @@ export async function registrarSalidaEnfermeriaArchivo({
     return nueva
   }
   return desenvolver(
-    await client.post('/salidas-enfermeria-archivo', {
-      numeroExpediente,
-      estacionId,
-      fecha,
-      tipo,
-      primeraVez,
-      clinicaPersonalId,
-    }),
+    await client.post(
+      '/salidas-enfermeria-archivo',
+      construirPayloadSalidaEnfermeria({
+        numeroExpediente,
+        estacionId,
+        fecha,
+        tipo,
+        primeraVez,
+        clinicaPersonalId,
+        pacienteNombre,
+      }),
+    ),
   )
 }
 
