@@ -17,6 +17,7 @@ import ModalRegistroManual from '../components/salida/ModalRegistroManual.jsx'
 // Se puede ver el nombre completo en el title del control.
 function abreviarEstacion(estacion) {
   const nombre = String(estacion?.nombre ?? estacion?.codigo ?? '').trim()
+  if (nombre.length <= 12) return nombre
   const sinPrefijo = nombre.replace(/^estaci[oó]n(\s+de)?\s+/i, '')
   if (sinPrefijo.length <= 12) return sinPrefijo
   return `${sinPrefijo.slice(0, 11).trimEnd()}…`
