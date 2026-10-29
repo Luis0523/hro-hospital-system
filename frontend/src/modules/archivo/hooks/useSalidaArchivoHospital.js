@@ -72,7 +72,7 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
         const nueva = await registrarSalidaHospital({
           numeroExpediente: item.numero,
           estacionId,
-          esClinicaMujer: item.esClinicaMujer,
+          etiqueta: item.etiqueta,
         })
         setSalidas((prev) => [nueva, ...prev.filter((s) => s.id !== nueva.id)])
         setPendientes((prev) => prev.filter((p) => p.numeroExpediente !== item.numero))
@@ -123,16 +123,17 @@ export function useSalidaArchivoHospital({ fecha, estacionId } = {}) {
       }
       if (enColaRef.current.has(numero)) return false
       enColaRef.current.add(numero)
+      const etiqueta = opciones.etiqueta ?? null
       setPendientes((prev) => [
         ...prev,
         {
           id: `tmp-${numero}`,
           numeroExpediente: numero,
-          esClinicaMujer: Boolean(opciones.esClinicaMujer),
+          etiqueta,
           _procesando: true,
         },
       ])
-      cola.current.push({ numero, esClinicaMujer: Boolean(opciones.esClinicaMujer) })
+      cola.current.push({ numero, etiqueta })
       vaciarCola()
       return true
     },

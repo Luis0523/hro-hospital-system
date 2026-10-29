@@ -38,8 +38,12 @@ export async function listarSalidasHospital({ fecha, estacionId } = {}) {
 export async function registrarSalidaHospital({
   numeroExpediente,
   estacionId,
-  esClinicaMujer = false,
+  etiqueta = null,
 } = {}) {
+  const idEtiqueta = Number(etiqueta?.id)
+  const etiquetaId = Number.isFinite(idEtiqueta) ? idEtiqueta : null
+  const esClinicaMujer = etiqueta?.codigo === 'clinica_mujer'
+
   if (USE_MOCK) {
     const nueva = {
       id: `s-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
@@ -47,7 +51,8 @@ export async function registrarSalidaHospital({
       estacionId,
       numeroExpediente,
       pacienteNombre: 'Paciente de prueba',
-      esClinicaMujer: Boolean(esClinicaMujer),
+      etiqueta: etiqueta ? { ...etiqueta } : null,
+      esClinicaMujer,
       clasificacion: clasificarMock(numeroExpediente),
       registradoEn: new Date().toISOString(),
     }
@@ -58,6 +63,7 @@ export async function registrarSalidaHospital({
     await client.post('/salidas-archivo-hospital', {
       numeroExpediente,
       estacionId,
+      ...(etiquetaId ? { etiquetaId } : {}),
       esClinicaMujer,
     }),
   )

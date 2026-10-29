@@ -700,6 +700,23 @@ export async function avanzarTurno(id, { clinicaId, estadoBackend, observacion }
   return normalizarTurno(desenvolver(respuesta))
 }
 
+// Elimina un turno registrado por error para dejar la casilla en blanco.
+// El backend solo lo permite en estado `registrado` y sin paciente/expediente.
+export async function eliminarTurno(id, motivo) {
+  if (USE_MOCK) {
+    await esperar()
+    const turno = turnos.get(id)
+    if (!turno) throw crearError('Turno no encontrado', 404)
+    if (turno.etapa !== 'registrado') {
+      throw crearError('Solo se puede eliminar un turno en estado Registrado', 409)
+    }
+    turnos.delete(id)
+    return { id, motivo: motivo ?? null }
+  }
+
+  return desenvolver(await client.delete(`/turnos-estacion/${id}`, { data: { motivo } }))
+}
+
 /** Asigna o cambia la clínica sin avanzar el estado (solo registrado/recibido). */
 export async function cambiarClinicaTurno(id, espacioFisicoId) {
   if (USE_MOCK) {
@@ -791,15 +808,21 @@ export async function revertirTurno(id) {
     return copiarTurno(turno)
   }
 
-  // Si el backend está en en_clinica, la UI unificada necesita retroceder dos
-  // pasos internos (en_clinica -> recibido -> registrado) para verse en Registrado.
-  const detalle = desenvolver(await leerConReintento(`/turnos-estacion/${id}`))
-  const veces = detalle?.estado === 'en_clinica' ? 2 : 1
-  let respuesta
-  for (let paso = 0; paso < veces; paso += 1) {
-    respuesta = await client.post(`/turnos-estacion/${id}/revertir`)
+  // La UI agrupa recibido/en_clinica/llamado/no_asistio/atendido en la etapa
+  // "En clínica", así que se revierte hasta salir de esa etapa visible
+  // (normalmente hasta Registrado). Se corta si el estado se repite para no
+  // insistir contra un backend que no avance.
+  let turno = null
+  const vistos = new Set()
+  for (let paso = 0; paso < 6; paso += 1) {
+    const respuesta = await client.post(`/turnos-estacion/${id}/revertir`)
+    turno = normalizarTurno(desenvolver(respuesta))
+    const estado = turno.estadoBackend
+    if (etapaDesdeEstado(estado) !== 'en_clinica') break
+    if (estado && vistos.has(estado)) break
+    if (estado) vistos.add(estado)
   }
-  return normalizarTurno(desenvolver(respuesta))
+  return turno
 }
 
 /** Cuenta los expedientes que permanecen en cada clínica para el libro cargado. */

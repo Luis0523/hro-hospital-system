@@ -260,6 +260,51 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(screen.getByRole('combobox', { name: /clínica/i })).toBeInTheDocument()
   })
 
+  it('abre el registro manual de salida a Archivo', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-archivo'))
+    await user.click(await screen.findByRole('button', { name: 'Registro manual' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Registro manual de salida' })
+    expect(within(dialogo).getByLabelText('Número de expediente')).toBeInTheDocument()
+    expect(within(dialogo).getByLabelText('Nombre completo')).toBeInTheDocument()
+  }, 20000)
+
+  it('elimina un registro erróneo y deja la casilla en blanco', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-registrado'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar registro' }))
+    await user.click(await screen.findByRole('button', { name: 'Sí, eliminar' }))
+
+    expect(await screen.findByRole('button', { name: 'ONC-05, sin registro' })).toBeInTheDocument()
+  }, 20000)
+
+  it('revierte un turno enviado a clínica y lo deja en Registrado', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-registrado'))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, sin registro' }))
+    await screen.findByRole('button', { name: 'ONC-05, Registrado' })
+
+    await user.click(screen.getByTestId('etapa-en_clinica'))
+    await user.click(screen.getByRole('button', { name: /^Clínica 2:/ }))
+    await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
+    expect(
+      await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Revertir' }))
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
+  }, 20000)
+
   it('filtra por etapa sin controles de búsqueda ni registro', async () => {
     const user = userEvent.setup()
     renderPagina()

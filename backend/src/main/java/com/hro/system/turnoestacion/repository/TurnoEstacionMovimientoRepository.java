@@ -13,6 +13,8 @@ public interface TurnoEstacionMovimientoRepository extends JpaRepository<TurnoEs
 
     List<TurnoEstacionMovimiento> findByTurnoEstacionIdOrderByFechaMovimientoAscIdAsc(UUID turnoEstacionId);
 
+    List<TurnoEstacionMovimiento> findByTurnoEstacionIdOrderByFechaMovimientoDescIdDesc(UUID turnoEstacionId);
+
     Optional<TurnoEstacionMovimiento> findFirstByTurnoEstacionIdAndEstadoNuevoAndEstadoAnteriorNotOrderByFechaMovimientoDescIdDesc(
             UUID turnoEstacionId,
             com.hro.system.turnoestacion.entity.EstadoTurnoEstacion estadoNuevo,

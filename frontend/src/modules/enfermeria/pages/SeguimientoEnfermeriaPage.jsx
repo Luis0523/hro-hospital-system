@@ -66,6 +66,7 @@ export default function SeguimientoEnfermeriaPage() {
     registrar,
     avanzar,
     revertir,
+    eliminar,
     cambiarTipoRegistro,
     devolverClinica,
     deshacerDevolucion,
@@ -592,6 +593,20 @@ export default function SeguimientoEnfermeriaPage() {
     })
   }
 
+  async function eliminarSeleccionado(id, motivo) {
+    try {
+      await eliminar(id, motivo)
+      setSeleccion(null)
+      mostrarToast({ tone: 'info', title: 'Registro eliminado. La casilla quedó en blanco.' })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo eliminar el registro.',
+      })
+      throw fallo
+    }
+  }
+
   function elegirClinica(clinica) {
     if (filtro === 'en_clinica') {
       const misma = String(clinicaDestino?.id) === String(clinica.id)
@@ -775,6 +790,7 @@ export default function SeguimientoEnfermeriaPage() {
                       especialidadNombre={seleccionCompleta?.especialidadNombre}
                       onRevertir={revertirSeleccionado}
                       onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
+                      onEliminar={eliminarSeleccionado}
                     />
                   }
                 />

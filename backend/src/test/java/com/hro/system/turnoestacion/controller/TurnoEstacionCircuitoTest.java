@@ -424,6 +424,39 @@ class TurnoEstacionCircuitoTest {
     }
 
     @Test
+    @DisplayName("Revertir dos veces desde en_clinica vuelve a registrado sin oscilar")
+    void revierteDesdeEnClinicaHastaRegistrado() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String usuario = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), usuario);
+        UUID turnoId = UUID.fromString(turno.get("id").asText());
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("recibido"));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/asignar-clinica"),
+                        "enfermeria", usuario, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", contexto.espacio().getId().toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("en_clinica"));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/revertir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("recibido"));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/revertir"), "enfermeria", usuario,
+                        contexto.estacion().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado").value("registrado"));
+    }
+
+    @Test
     @DisplayName("Al agotarse el tope de la especialidad responde 409 y no consume el número general")
     void topeCorrelativoNoConsumeNumeroGeneral() throws Exception {
         Contexto contexto = crearContexto(1);

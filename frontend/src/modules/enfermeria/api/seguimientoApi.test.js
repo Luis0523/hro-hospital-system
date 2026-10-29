@@ -5,6 +5,7 @@ import {
   avanzarTurno,
   cambiarClinicaTurno,
   contarExpedientesEnClinica,
+  eliminarTurno,
   etapaDesdeEstado,
   listarAsignacionesClinicas,
   listarClinicas,
@@ -12,6 +13,7 @@ import {
   registrarDevolucionClinica,
   registrarTurno,
   reiniciarSeguimientoMock,
+  revertirTurno,
 } from './seguimientoApi'
 
 beforeEach(() => {
@@ -186,6 +188,35 @@ describe('seguimientoApi', () => {
     expect(archivo.etapa).toBe('archivo')
 
     await expect(avanzarTurno(registrado.id)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('elimina un turno registrado y deja el correlativo libre', async () => {
+    const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
+    expect(turno.etapa).toBe('registrado')
+
+    await eliminarTurno(turno.id, 'Registrado por error')
+
+    const libro = await obtenerLibro()
+    const oncologia = libro.especialidades.find((especialidad) => especialidad.codigo === 'ONC')
+    expect(oncologia.turnos.find((item) => item.numero === 5)).toBeUndefined()
+
+    const reutilizado = await registrarTurno({ codigo: 'ONC', numero: 5 })
+    expect(reutilizado).toMatchObject({ etapa: 'registrado', numero: 5 })
+  })
+
+  it('no permite eliminar un turno que ya salió de Registrado', async () => {
+    const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
+    await avanzarTurno(turno.id, { clinicaId: 3 })
+
+    await expect(eliminarTurno(turno.id)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('revierte un turno en clínica a Registrado', async () => {
+    const turno = await registrarTurno({ codigo: 'ONC', numero: 5 })
+    await avanzarTurno(turno.id, { clinicaId: 3 })
+
+    const revertido = await revertirTurno(turno.id)
+    expect(revertido).toMatchObject({ etapa: 'registrado', clinicaId: null })
   })
 
   it('registra varias devoluciones de una clínica en una sola llamada', async () => {

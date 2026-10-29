@@ -4,6 +4,7 @@ import {
   avanzarTurno,
   cambiarClinicaTurno,
   deshacerDevolucionClinica,
+  eliminarTurno,
   listarClinicas,
   registrarDevolucionClinica,
   obtenerLibro,
@@ -238,6 +239,16 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     [cargar, encolar],
   )
 
+  const eliminar = useCallback(
+    async (id, motivo) => {
+      const resultado = await encolar(id, () => eliminarTurno(id, motivo))
+      setLibro((actual) => quitarTurno(actual, id))
+      cargar({ silencioso: true })
+      return resultado
+    },
+    [cargar, encolar],
+  )
+
   const cambiarClinica = useCallback(
     async (id, espacioFisicoId) => {
       const turno = await encolar(id, () => cambiarClinicaTurno(id, espacioFisicoId))
@@ -292,6 +303,7 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     registrar,
     avanzar,
     revertir,
+    eliminar,
     cambiarClinica,
     cambiarTipoRegistro,
     devolverClinica,

@@ -34,22 +34,65 @@ describe('BuscadorSalidaHospital', () => {
     expect(onAgregar).toHaveBeenCalledWith('9876-54')
   })
 
-  it('permite marcar la salida como Clínica de la Mujer', async () => {
+  it('muestra las etiquetas de la estación y selecciona una', async () => {
     const user = userEvent.setup()
-    const onCambiarClinicaMujer = vi.fn()
+    const onCambiarEtiqueta = vi.fn()
+    const etiquetas = [
+      {
+        id: 7,
+        codigo: 'clinica_mujer',
+        nombre: 'Clínica de la Mujer',
+        descripcion: 'Se guardará para la estadística diaria.',
+        icono: 'female',
+        color: 'rose',
+      },
+    ]
 
     render(
       <BuscadorSalidaHospital
         value=""
         onChange={() => {}}
         onAgregar={() => true}
-        esClinicaMujer={false}
-        onCambiarClinicaMujer={onCambiarClinicaMujer}
+        etiquetas={etiquetas}
+        etiquetaId=""
+        onCambiarEtiqueta={onCambiarEtiqueta}
       />,
     )
 
-    await user.click(screen.getByRole('checkbox', { name: /clínica de la mujer/i }))
+    await user.click(screen.getByRole('radio', { name: /clínica de la mujer/i }))
 
-    expect(onCambiarClinicaMujer).toHaveBeenCalledWith(true)
+    expect(onCambiarEtiqueta).toHaveBeenCalledWith(7)
+  })
+
+  it('permite quitar la etiqueta seleccionada', async () => {
+    const user = userEvent.setup()
+    const onCambiarEtiqueta = vi.fn()
+    const etiquetas = [
+      {
+        id: 7,
+        codigo: 'clinica_mujer',
+        nombre: 'Clínica de la Mujer',
+        descripcion: 'Se guardará para la estadística diaria.',
+        icono: 'female',
+        color: 'rose',
+      },
+    ]
+
+    render(
+      <BuscadorSalidaHospital
+        value=""
+        onChange={() => {}}
+        onAgregar={() => true}
+        etiquetas={etiquetas}
+        etiquetaId={7}
+        onCambiarEtiqueta={onCambiarEtiqueta}
+      />,
+    )
+
+    expect(screen.getByText(/se guardará para la estadística diaria/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: /clínica de la mujer/i }))
+
+    expect(onCambiarEtiqueta).toHaveBeenCalledWith('')
   })
 })

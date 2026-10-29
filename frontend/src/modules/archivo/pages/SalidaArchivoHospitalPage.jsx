@@ -7,6 +7,7 @@ import { hoyIso } from '@/shared/utils/fecha'
 import { listarEstaciones, obtenerConfiguracionArchivo } from '@/modules/carnets/api/carnetsApi'
 import { descargarBlob } from '../utils/descargarBlob'
 import { useSalidaArchivoHospital } from '../hooks/useSalidaArchivoHospital'
+import { useEtiquetasEstacion } from '../hooks/useEtiquetasEstacion'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import BuscadorSalidaHospital from '../components/salida/BuscadorSalidaHospital.jsx'
 import ListaSalidosHospital from '../components/salida/ListaSalidosHospital.jsx'
@@ -23,12 +24,18 @@ export default function SalidaArchivoHospitalPage() {
   const [umbral, setUmbral] = useState(null)
   const [fecha, setFecha] = useState(hoyIso)
   const [query, setQuery] = useState('')
-  const [esClinicaMujer, setEsClinicaMujer] = useState(false)
+  const [etiquetaId, setEtiquetaId] = useState('')
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState(0)
 
   const { salidas, pendientes, cargando, error, cola, inputRef, agregar, generarPdf } =
     useSalidaArchivoHospital({ fecha, estacionId: estacion?.id })
+  const { etiquetas, cargando: cargandoEtiquetas } = useEtiquetasEstacion(estacion?.id)
+
+  // Al cambiar de estación se limpia la etiqueta elegida (pertenece a otra config).
+  useEffect(() => {
+    setEtiquetaId('')
+  }, [estacion?.id])
 
   useEffect(() => {
     listarEstaciones()
@@ -168,11 +175,17 @@ export default function SalidaArchivoHospitalPage() {
           value={query}
           onChange={setQuery}
           inputRef={inputRef}
-          onAgregar={(valor) => agregar(valor, { esClinicaMujer })}
+          onAgregar={(valor) =>
+            agregar(valor, {
+              etiqueta: etiquetas.find((e) => String(e.id) === String(etiquetaId)) ?? null,
+            })
+          }
           disabled={!estacion}
           cola={cola}
-          esClinicaMujer={esClinicaMujer}
-          onCambiarClinicaMujer={setEsClinicaMujer}
+          etiquetas={etiquetas}
+          etiquetaId={etiquetaId}
+          onCambiarEtiqueta={setEtiquetaId}
+          cargandoEtiquetas={cargandoEtiquetas}
         />
 
         {error && (

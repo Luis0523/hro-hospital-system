@@ -1,5 +1,6 @@
 import { Button, Icon } from '@/shared/components/ui'
 import { formatearExpediente } from '@/shared/utils/expediente'
+import { clasesEtiqueta } from '../../utils/coloresEtiqueta'
 
 function horaDe(instante) {
   if (!instante) return ''
@@ -8,6 +9,51 @@ function horaDe(instante) {
     minute: '2-digit',
     hour12: false,
   })
+}
+
+/** Etiqueta de una salida, con compatibilidad para el campo histórico esClinicaMujer. */
+export function etiquetaDeSalida(salida) {
+  if (salida?.etiqueta) return salida.etiqueta
+  if (salida?.esClinicaMujer) {
+    return {
+      id: 'clinica_mujer',
+      codigo: 'clinica_mujer',
+      nombre: 'Clínica de la Mujer',
+      icono: 'female',
+      color: 'rose',
+    }
+  }
+  return null
+}
+
+function EtiquetaChip({ etiqueta, className = '' }) {
+  if (!etiqueta) return null
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-label-sm font-bold ${clasesEtiqueta(
+        etiqueta.color,
+      )} ${className}`}
+    >
+      <Icon name={etiqueta.icono || 'label'} className="text-[14px]" />
+      {etiqueta.nombre}
+    </span>
+  )
+}
+
+function resumenPorEtiqueta(salidos) {
+  const mapa = new Map()
+  for (const salida of salidos) {
+    const etiqueta = etiquetaDeSalida(salida)
+    if (!etiqueta) continue
+    const clave = etiqueta.codigo ?? etiqueta.nombre
+    const actual = mapa.get(clave)
+    mapa.set(clave, {
+      etiqueta,
+      total: (actual?.total ?? 0) + 1,
+      orden: etiqueta.orden ?? Number.MAX_SAFE_INTEGER,
+    })
+  }
+  return [...mapa.values()].sort((a, b) => a.orden - b.orden)
 }
 
 // Lista COMPARTIDA (por estación) de expedientes que han salido de archivo
@@ -19,19 +65,10 @@ export default function ListaSalidosHospital({
   onDescargarPdf,
 }) {
   const total = salidos.length
-  const totalClinicaMujer = salidos.filter((s) => s.esClinicaMujer).length
+  const resumenEtiquetas = resumenPorEtiqueta(salidos)
   const totalActivos = salidos.filter((s) => s.clasificacion === 'activo').length
   const totalPasivos = salidos.filter((s) => s.clasificacion === 'pasivo').length
   const vacio = total === 0 && pendientes.length === 0
-
-  function EtiquetaClinicaMujer() {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-label-sm font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-200">
-        <Icon name="female" className="text-[14px]" />
-        Clínica de la Mujer
-      </span>
-    )
-  }
 
   return (
     <section
@@ -44,12 +81,17 @@ export default function ListaSalidosHospital({
           <Icon name="task_alt" className="text-[20px] text-emerald-600" />
           {total} expediente{total === 1 ? '' : 's'} han salido de archivo
         </h2>
-        {totalClinicaMujer > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-label-sm font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-200">
-            <Icon name="female" className="text-[16px]" />
-            {totalClinicaMujer} de Clínica de la Mujer
+
+        {resumenEtiquetas.map(({ etiqueta, total: cantidad }) => (
+          <span
+            key={etiqueta.codigo ?? etiqueta.nombre}
+            className="inline-flex items-center gap-1 rounded-md bg-surface-container-low px-2 py-1 text-label-sm font-semibold text-on-surface-variant"
+          >
+            <EtiquetaChip etiqueta={etiqueta} />
+            {cantidad}
           </span>
-        )}
+        ))}
+
         {total > 0 && (
           <span className="inline-flex items-center gap-2 rounded-md bg-surface-container-high px-2 py-1 text-label-sm font-semibold text-on-surface-variant">
             <span className="text-emerald-700 dark:text-emerald-300">{totalActivos} activos</span>
@@ -94,7 +136,7 @@ export default function ListaSalidosHospital({
                   <td className="px-3 py-2">
                     <span className="flex flex-wrap items-center gap-1.5 text-on-surface-variant">
                       Consultando…
-                      {p.esClinicaMujer && <EtiquetaClinicaMujer />}
+                      <EtiquetaChip etiqueta={etiquetaDeSalida(p)} />
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center font-mono text-on-surface-variant">—</td>
@@ -116,7 +158,7 @@ export default function ListaSalidosHospital({
                   <td className="px-3 py-2 font-semibold text-on-surface">
                     <span className="flex flex-wrap items-center gap-1.5">
                       {s.pacienteNombre}
-                      {s.esClinicaMujer && <EtiquetaClinicaMujer />}
+                      <EtiquetaChip etiqueta={etiquetaDeSalida(s)} />
                       {s.clasificacion && (
                         <span
                           className={`inline-flex items-center rounded-md px-2 py-0.5 text-label-sm font-bold ${

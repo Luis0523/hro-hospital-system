@@ -16,6 +16,8 @@ public record DashboardJefeArchivoDTO(
         long totalPasivos,
         List<EstacionSalidaTotal> porEstacion,
         List<EstadoTotal> porEstado,
+        /** Totales del día por etiqueta configurable (preparado para estadísticas). */
+        List<EtiquetaTotal> porEtiqueta,
         CuadernoRojoResumen cuadernoRojo
 ) {
     public record EstacionSalidaTotal(
@@ -29,6 +31,9 @@ public record DashboardJefeArchivoDTO(
     }
 
     public record EstadoTotal(String estado, long total) {
+    }
+
+    public record EtiquetaTotal(String etiqueta, long total) {
     }
 
     public record CuadernoRojoResumen(

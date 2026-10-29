@@ -91,13 +91,17 @@ public class SalidaEnfermeriaArchivoService {
                             "EspacioFisico", "id", dto.getClinicaPersonalId()));
         }
 
-        PacienteHroDTO paciente = expedienteHroService.consultar(numero);
+        String pacienteNombre = nombreManual(dto.getPacienteNombre());
+        if (pacienteNombre == null) {
+            PacienteHroDTO paciente = expedienteHroService.consultar(numero);
+            pacienteNombre = paciente.getNombreCompleto();
+        }
 
         SalidaEnfermeriaArchivo salida = repository.save(SalidaEnfermeriaArchivo.builder()
                 .fecha(fecha)
                 .estacion(estacion)
                 .numeroExpediente(numero)
-                .pacienteNombre(paciente.getNombreCompleto())
+                .pacienteNombre(pacienteNombre)
                 .tipo(tipo)
                 .primeraVez(Boolean.TRUE.equals(dto.getPrimeraVez()))
                 .clinicaPersonal(clinicaPersonal)
@@ -117,6 +121,7 @@ public class SalidaEnfermeriaArchivoService {
                 .orElseThrow(() -> new ResourceNotFoundException("SalidaEnfermeriaArchivo", "id", id));
 
         String numero = dto.getNumeroExpediente().trim();
+        String pacienteNombreManual = nombreManual(dto.getPacienteNombre());
         if (!numero.equals(salida.getNumeroExpediente())) {
             repository.findByFechaAndEstacionIdAndNumeroExpediente(
                             salida.getFecha(), salida.getEstacion().getId(), numero)
@@ -125,9 +130,15 @@ public class SalidaEnfermeriaArchivoService {
                         throw new ConflictException("SALIDA_DUPLICADA",
                                 "El expediente ya fue registrado como salida de enfermería a archivo.");
                     });
-            PacienteHroDTO paciente = expedienteHroService.consultar(numero);
             salida.setNumeroExpediente(numero);
-            salida.setPacienteNombre(paciente.getNombreCompleto());
+            if (pacienteNombreManual != null) {
+                salida.setPacienteNombre(pacienteNombreManual);
+            } else {
+                PacienteHroDTO paciente = expedienteHroService.consultar(numero);
+                salida.setPacienteNombre(paciente.getNombreCompleto());
+            }
+        } else if (pacienteNombreManual != null) {
+            salida.setPacienteNombre(pacienteNombreManual);
         }
 
         String tipo = normalizarTipo(dto.getTipo());
@@ -275,6 +286,10 @@ public class SalidaEnfermeriaArchivoService {
             throw new BusinessException("TIPO_SALIDA_INVALIDO", "Tipo de salida inválido: " + valor);
         }
         return tipo;
+    }
+
+    private static String nombreManual(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     private static String areaDesdeEstacion(EstacionEnfermeria estacion) {
