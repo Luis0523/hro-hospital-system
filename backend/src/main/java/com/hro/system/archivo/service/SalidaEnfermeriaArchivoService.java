@@ -48,7 +48,7 @@ public class SalidaEnfermeriaArchivoService {
 
     private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Guatemala");
     private static final Set<String> TIPOS = Set.of(
-            "normal", "privado_libertad", "personal", "presentacion");
+            "normal", "privado_libertad", "personal", "presentacion", "clinica_mujer");
 
     private final SalidaEnfermeriaArchivoRepository repository;
     private final EstacionEnfermeriaRepository estacionRepository;
@@ -302,6 +302,7 @@ public class SalidaEnfermeriaArchivoService {
             case "privado_libertad" -> "Privado de libertad";
             case "personal" -> "Personal";
             case "presentacion" -> "Presentación";
+            case "clinica_mujer" -> "Clínica de la Mujer";
             default -> "Normal";
         };
     }

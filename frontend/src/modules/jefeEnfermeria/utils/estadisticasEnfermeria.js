@@ -9,6 +9,7 @@ const ETAPAS = [
 
 const TIPOS_SALIDA = [
   { id: 'normal', nombre: 'Normal' },
+  { id: 'clinica_mujer', nombre: 'Clínica de la Mujer' },
   { id: 'personal', nombre: 'Personal' },
   { id: 'presentacion', nombre: 'Presentación' },
   { id: 'privado_libertad', nombre: 'Privado de libertad' },

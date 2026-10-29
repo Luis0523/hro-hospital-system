@@ -10,7 +10,7 @@ public class ActualizarSalidaEnfermeriaArchivoRequestDTO {
     @NotBlank(message = "El número de expediente es obligatorio")
     private String numeroExpediente;
 
-    /** normal, privado_libertad, personal o presentacion. */
+    /** normal, privado_libertad, personal, presentacion o clinica_mujer. */
     private String tipo;
 
     private Boolean primeraVez;

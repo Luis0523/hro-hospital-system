@@ -7,6 +7,7 @@ const desenvolver = (respuesta) => respuesta?.data ?? respuesta
 
 const ETIQUETAS = {
   normal: 'Normal',
+  clinica_mujer: 'Clínica de la Mujer',
   privado_libertad: 'Privado de libertad',
   personal: 'Personal',
   presentacion: 'Presentación',

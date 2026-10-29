@@ -14,6 +14,7 @@ import {
 
 const ETIQUETAS = [
   { id: 'normal', nombre: 'Normal', icono: 'description' },
+  { id: 'clinica_mujer', nombre: 'Clínica de la Mujer', icono: 'female' },
   { id: 'privado_libertad', nombre: 'Privado de libertad', icono: 'lock' },
   { id: 'personal', nombre: 'Personal', icono: 'badge' },
   { id: 'presentacion', nombre: 'Presentación', icono: 'gavel' },
@@ -21,6 +22,7 @@ const ETIQUETAS = [
 
 const ESTILO_ETIQUETA = {
   normal: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+  clinica_mujer: 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-200',
   privado_libertad: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200',
   personal: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   presentacion: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',

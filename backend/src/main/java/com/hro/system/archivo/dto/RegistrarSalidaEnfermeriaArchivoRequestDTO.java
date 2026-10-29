@@ -14,7 +14,7 @@ public class RegistrarSalidaEnfermeriaArchivoRequestDTO {
     private Long estacionId;
     private LocalDate fecha;
 
-    /** normal, privado_libertad, personal o presentacion. */
+    /** normal, privado_libertad, personal, presentacion o clinica_mujer. */
     private String tipo;
 
     private Boolean primeraVez;

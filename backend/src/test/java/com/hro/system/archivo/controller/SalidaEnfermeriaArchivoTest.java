@@ -186,6 +186,20 @@ class SalidaEnfermeriaArchivoTest {
     }
 
     @Test
+    @DisplayName("Registra la etiqueta Clínica de la Mujer")
+    void registraClinicaMujer() throws Exception {
+        String numero = "3" + (10000 + (int) (Math.random() * 80000));
+        mockMvc.perform(post("/salidas-enfermeria-archivo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Usuario-Id", "enf-test-salida")
+                        .header("X-Usuario-Rol", "enfermeria")
+                        .header("X-Usuario-Nombre", "Enfermería")
+                        .content(body(numero, "clinica_mujer")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tipo").value("clinica_mujer"));
+    }
+
+    @Test
     @DisplayName("Personal exige clínica")
     void personalExigeClinica() throws Exception {
         String numero = "6" + (10000 + (int) (Math.random() * 80000));
