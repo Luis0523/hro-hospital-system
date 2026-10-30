@@ -784,6 +784,7 @@ export default function SeguimientoEnfermeriaPage() {
                   tipoRegistro={tipoRegistro}
                   onCambiarTipoRegistro={elegirTipoRegistro}
                   onIrACasillas={() => enfocarEspecialidad(filas[0]?.id)}
+                  clinicaSeleccionadaId={filtro === 'en_clinica' ? clinicaDestino?.id : null}
                   detalle={
                     <DetalleTurno
                       seleccion={seleccionCompleta}

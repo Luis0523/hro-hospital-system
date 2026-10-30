@@ -18,6 +18,7 @@ function CasillaTurno({
   onSeleccionar,
   casillaRef,
   accesible = false,
+  clinicaSeleccionadaId = null,
 }) {
   const estilo = estiloDeEtapa(turno?.etapa)
   const brillo = estiloRegistro(turno)
@@ -28,6 +29,11 @@ function CasillaTurno({
     Boolean(filtro) &&
     filtro !== 'registrado' &&
     (!turno || (turno.etapa !== etapaObjetivo && turno.etapa !== filtro))
+  const enClinicaSeleccionada =
+    filtro === 'en_clinica' &&
+    clinicaSeleccionadaId != null &&
+    turno?.clinicaId != null &&
+    String(turno.clinicaId) === String(clinicaSeleccionadaId)
 
   return (
     <button
@@ -45,7 +51,10 @@ function CasillaTurno({
         seleccionada
           ? 'z-10 outline outline-4 outline-offset-2 outline-indigo-600 ring-2 ring-indigo-500/60 dark:outline-indigo-400 dark:ring-indigo-400/50'
           : ''
-      } ${atenuada ? 'opacity-25' : ''}`}
+      } ${atenuada ? 'opacity-25' : ''} ${enClinicaSeleccionada ? 'opacity-20 grayscale' : ''}`}
+      title={
+        enClinicaSeleccionada ? 'Este turno ya está asignado a la clínica seleccionada' : undefined
+      }
     >
       {numero}
       {turno && (
@@ -71,6 +80,7 @@ export default function LibroSeguimiento({
   enfoqueTipo = 0,
   enfoqueCasillas = 0,
   onIrACasillas,
+  clinicaSeleccionadaId = null,
   detalle = null,
 }) {
   const primeraCasillaRef = useRef(null)
@@ -305,6 +315,7 @@ export default function LibroSeguimiento({
                     seleccionada={seleccionId === `${fila.id}-${numero}`}
                     onSeleccionar={onSeleccionar}
                     accesible={accesible}
+                    clinicaSeleccionadaId={clinicaSeleccionadaId}
                     casillaRef={
                       primerVacio?.especialidadId === fila.id && primerVacio?.numero === numero
                         ? primeraCasillaRef

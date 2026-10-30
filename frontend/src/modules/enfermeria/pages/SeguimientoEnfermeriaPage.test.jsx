@@ -212,15 +212,17 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'ONC-05, Registrado' }))
-    expect(
-      await screen.findByRole('button', { name: 'ONC-05, Recibir/Repartir' }),
-    ).toBeInTheDocument()
+    const primerAsignado = await screen.findByRole('button', {
+      name: 'ONC-05, Recibir/Repartir',
+    })
+    expect(primerAsignado.className).toContain('opacity-20')
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'ONC-06, Registrado' }))
-    expect(
-      await screen.findByRole('button', { name: 'ONC-06, Recibir/Repartir' }),
-    ).toBeInTheDocument()
+    const segundoAsignado = await screen.findByRole('button', {
+      name: 'ONC-06, Recibir/Repartir',
+    })
+    expect(segundoAsignado.className).toContain('opacity-20')
     expect(clinica).toHaveAttribute('aria-pressed', 'true')
   }, 20000)
 
