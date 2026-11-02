@@ -12,8 +12,8 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-lowest px-4 py-3 md:px-6">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-outline-variant bg-surface-container-lowest px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onAbrirMenu}
@@ -25,13 +25,16 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
           <Icon name="menu" className="text-[24px]" />
         </button>
 
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-container text-on-primary">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-container text-on-primary sm:h-10 sm:w-10">
           <Icon name="local_hospital" className="text-[24px]" />
         </span>
 
         <div className="min-w-0 leading-tight">
           <p className="text-label-sm uppercase tracking-widest text-primary">SIGHO</p>
-          <h1 className="truncate text-headline-sm uppercase tracking-tight text-on-surface">
+          <p className="truncate text-title-sm font-semibold text-on-surface sm:hidden">
+            Jefatura
+          </p>
+          <h1 className="hidden truncate text-headline-sm uppercase tracking-tight text-on-surface sm:block">
             Jefatura Operativa de Enfermería
           </h1>
           <p className="hidden text-label-sm uppercase tracking-widest text-on-surface-variant sm:block">
@@ -40,19 +43,19 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="min-w-0 text-right leading-tight">
+      <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+        <div className="min-w-0 max-w-[8rem] text-right leading-tight sm:max-w-none">
           <p className="truncate text-title-sm text-on-surface" title={usuario?.nombre}>
             {usuario?.nombre}
           </p>
           <p
-            className="truncate text-label-sm uppercase text-on-surface-variant"
+            className="hidden truncate text-label-sm uppercase text-on-surface-variant sm:block"
             title={usuario?.rol}
           >
             {usuario?.rol}
           </p>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-primary">
+        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-primary sm:flex">
           <Icon name="person" className="text-[20px]" />
         </span>
         <button
