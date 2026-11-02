@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
@@ -27,13 +27,13 @@ describe('DepuracionExpedientesPage', () => {
     reiniciarDepuracionesMock()
   })
 
-  it('muestra el título y la bitácora vacía', () => {
+  it('muestra el título y la bitácora vacía tras cargar', async () => {
     renderPage()
 
     expect(
       screen.getByRole('heading', { name: 'Depuración de expedientes', level: 2 }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/aún no hay expedientes depurados hoy/i)).toBeInTheDocument()
+    expect(await screen.findByText(/aún no hay expedientes depurados hoy/i)).toBeInTheDocument()
   })
 
   it('busca al escribir, muestra el paciente y permite marcar como depurado', async () => {
@@ -47,7 +47,9 @@ describe('DepuracionExpedientesPage', () => {
     await user.click(screen.getByRole('button', { name: /marcar como depurado/i }))
 
     await screen.findByText(/expediente depurado/i)
-    expect(await screen.findByText(EXPEDIENTE.numeroExpediente)).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('table')).getByText(EXPEDIENTE.numeroExpediente),
+    ).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText(/total: 1/i)).toBeInTheDocument())
   })
 })

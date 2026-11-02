@@ -1,6 +1,7 @@
 import client from '@/shared/api/client'
 import { buscarPacientePorExpediente } from './archivoApi'
 import { mapearDepuracion } from './archivoMappers'
+import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
 import {
   buscarExpedienteDepuracionMock,
   crearDepuracionMock,
@@ -65,10 +66,13 @@ export async function marcarDepurado({ numeroExpediente, motivo } = {}) {
   return mapearDepuracion(datos)
 }
 
-// Bitácora de depuraciones del día (fecha por defecto: hoy).
+// Bitácora de depuraciones del día operativo del hospital (fecha por defecto:
+// hoy en America/Guatemala).
 export async function listarDepuraciones({ fecha } = {}) {
-  if (USE_MOCK) return listarDepuracionesMock({ fecha }).map(mapearDepuracion)
+  const dia = fecha ?? hoyIsoGuatemala()
 
-  const lista = desenvolver(await client.get('/expedientes/depuracion', { params: { fecha } }))
+  if (USE_MOCK) return listarDepuracionesMock({ fecha: dia }).map(mapearDepuracion)
+
+  const lista = desenvolver(await client.get('/expedientes/depuracion', { params: { fecha: dia } }))
   return (lista ?? []).map(mapearDepuracion)
 }

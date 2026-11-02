@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { hoyIso } from '@/shared/utils/fecha'
+import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
 import { expedientesMock } from './mockData'
-import { reiniciarDepuracionesMock } from './depuracionMock'
+import {
+  crearDepuracionMock,
+  listarDepuracionesMock,
+  reiniciarDepuracionesMock,
+} from './depuracionMock'
 import {
   buscarExpedienteParaDepurar,
   listarDepuraciones,
@@ -35,7 +39,7 @@ describe('depuracionArchivoApi (mock)', () => {
     expect(registro).toMatchObject({ numeroExpediente: EXISTENTE, motivo: 'Extraviado' })
     expect(registro.depuradoEn).toBeTruthy()
 
-    const bitacora = await listarDepuraciones({ fecha: hoyIso() })
+    const bitacora = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
     expect(bitacora).toHaveLength(1)
     expect(bitacora[0].numeroExpediente).toBe(EXISTENTE)
   })
@@ -59,5 +63,12 @@ describe('depuracionArchivoApi (mock)', () => {
     await expect(marcarDepurado({ numeroExpediente: 'NO-EXISTE' })).rejects.toMatchObject({
       status: 404,
     })
+  })
+
+  it('registra la baja mock con el día operativo de Guatemala', async () => {
+    const registro = crearDepuracionMock({ numeroExpediente: EXISTENTE })
+
+    expect(registro.fecha).toBe(hoyIsoGuatemala())
+    expect(listarDepuracionesMock({ fecha: hoyIsoGuatemala() })).toContainEqual(registro)
   })
 })

@@ -19,16 +19,16 @@ export default function TarjetaConfirmacionDepurar({
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Icon name="person_search" className="text-[22px]" />
         </span>
-        <dl className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-label-sm uppercase text-on-surface-variant">Paciente</dt>
-            <dd className="truncate font-semibold text-on-surface">
+        <dl className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <dt className="shrink-0 text-label-sm uppercase text-on-surface-variant">Paciente</dt>
+            <dd className="min-w-0 break-words font-semibold text-on-surface sm:text-right">
               {expediente.pacienteNombre || 'Paciente sin nombre'}
             </dd>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-label-sm uppercase text-on-surface-variant">Expediente</dt>
-            <dd className="font-mono font-bold text-primary">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <dt className="shrink-0 text-label-sm uppercase text-on-surface-variant">Expediente</dt>
+            <dd className="min-w-0 break-words font-mono font-bold text-primary sm:text-right">
               {formatearExpediente(expediente.numeroExpediente)}
             </dd>
           </div>

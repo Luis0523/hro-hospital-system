@@ -1,4 +1,4 @@
-import { hoyIso } from '@/shared/utils/fecha'
+import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
 import { expedientesMock, USUARIO_ARCHIVO_MOCK } from './mockData'
 
 // Datos simulados del módulo de Depuración de expedientes (baja lógica).
@@ -63,7 +63,7 @@ export function crearDepuracionMock({ numeroExpediente, motivo } = {}) {
     motivo: motivo ?? null,
     usuarioNombre: USUARIO_ARCHIVO_MOCK,
     depuradoEn: new Date().toISOString(),
-    fecha: hoyIso(),
+    fecha: hoyIsoGuatemala(),
   }
   depuraciones.unshift(registro)
   return registro
@@ -71,7 +71,7 @@ export function crearDepuracionMock({ numeroExpediente, motivo } = {}) {
 
 // Bitácora del día (o de la fecha indicada). Más recientes primero.
 export function listarDepuracionesMock({ fecha } = {}) {
-  const objetivo = fecha ?? hoyIso()
+  const objetivo = fecha ?? hoyIsoGuatemala()
   return depuraciones.filter((registro) => registro.fecha === objetivo)
 }
 

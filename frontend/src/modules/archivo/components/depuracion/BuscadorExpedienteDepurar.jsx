@@ -43,14 +43,15 @@ export default function BuscadorExpedienteDepurar({
             enterKeyHint="done"
             placeholder="Ej. EXP-2024-035"
             aria-describedby="numero-expediente-ayuda"
-            className="h-16 w-full rounded-lg bg-surface-container-low pl-14 pr-12 text-[26px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20"
+            aria-busy={procesando}
+            className="h-16 w-full rounded-lg bg-surface-container-low pl-14 pr-12 text-[26px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition placeholder:text-[18px] placeholder:tracking-normal focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20 sm:placeholder:text-[22px]"
           />
           {numero && (
             <button
               type="button"
               onClick={() => onCambio('')}
               aria-label="Limpiar campo"
-              className="absolute right-3 flex items-center justify-center rounded-full p-2 text-on-surface-variant transition hover:text-on-surface"
+              className="absolute right-1 flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-low"
             >
               <Icon name="backspace" className="text-[22px]" />
             </button>
