@@ -203,6 +203,17 @@ export async function buscarPacientePorDpi(dpi) {
   return mapearPaciente(desenvolver(await client.get(`/pacientes/dpi/${dpi}`)))
 }
 
+// Consulta mínima del paciente por UUID (GET /pacientes/{id}). Se usa para
+// mostrar el nombre del propietario del expediente; no se exponen más datos.
+export async function buscarPacientePorId(pacienteId) {
+  if (USE_MOCK) {
+    return pacienteDesdeExpedienteMock(
+      expedientesMock.find((expediente) => expediente.pacienteId === Number(pacienteId)),
+    )
+  }
+  return mapearPaciente(desenvolver(await client.get(`/pacientes/${pacienteId}`)))
+}
+
 // ---------------------------------------------------------------------------
 // Resumen operativo diario y actas de recepción (SCRUM-96).
 // El backend es la fuente de verdad; estos métodos solo consumen su contrato.

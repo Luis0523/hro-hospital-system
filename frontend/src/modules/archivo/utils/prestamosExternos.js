@@ -147,6 +147,28 @@ export function interpretarExpedienteManual(valor) {
   return { valido: true, numero, presentacion: limpio, error: null }
 }
 
+/**
+ * Resuelve el número normalizado que representa una captura de la interfaz.
+ *
+ * - Con `presentacion` (ingreso manual con guion): se interpreta y se devuelve
+ *   el número sin guion, conservando la representación solo para mostrar.
+ * - Sin `presentacion` (teclado/escáner): se valida que sean solo dígitos.
+ *
+ * Devuelve `null` cuando la captura no es válida; la validación de mensajes
+ * sigue a cargo de la API de préstamos.
+ */
+export function resolverNumeroExpedienteCapturado(numeroExpediente, presentacion = null) {
+  const presentacionLimpia = presentacion == null ? '' : limpiarEntradaCodigo(presentacion)
+
+  if (presentacionLimpia) {
+    const manual = interpretarExpedienteManual(presentacionLimpia)
+    return manual.valido ? manual.numero : null
+  }
+
+  const validacion = validarNumeroExpediente(numeroExpediente)
+  return validacion.valido ? validacion.valor : null
+}
+
 function validarTextoLibre(valor, maximo, minimo = MIN_LONGITUD_TEXTO) {
   const limpio = valor == null ? '' : reemplazarCaracteresDeControl(String(valor)).trim()
   const normalizado = limpio.replace(/\s+/g, ' ')

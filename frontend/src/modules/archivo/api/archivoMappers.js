@@ -52,10 +52,14 @@ export function mapearExpedienteBusqueda(dto) {
   if (!dto) return null
   return {
     id: dto.id,
+    pacienteId: dto.pacienteId ?? null,
     numeroExpediente: dto.numeroExpediente ?? null,
     codigo: dto.numeroExpediente ?? null,
     ubicacionBase: dto.ubicacionBase ?? null,
     activo: dto.activo ?? null,
+    // Baja lógica: `depurado = true` significa que ya no existe en el sistema.
+    depurado: dto.depurado ?? null,
+    depuradoEn: dto.depuradoEn ?? null,
   }
 }
 

@@ -5,7 +5,11 @@ import {
   formatearFechaGuatemala,
   formatearFechaHoraGuatemala,
 } from '../../utils/fechaGuatemala'
-import { numeroExpedienteVisible } from '../../utils/prestamosExternos'
+import {
+  MODO_VERIFICACION_DESHABILITADA,
+  MODO_VERIFICACION_REAL,
+} from '../../api/verificacionExpedienteApi'
+import { normalizarNumeroExpediente, numeroExpedienteVisible } from '../../utils/prestamosExternos'
 
 const VISTAS_UI = [
   { id: VISTA_TODOS, etiqueta: 'Todos' },
@@ -60,6 +64,19 @@ function fechaDevolucionVisible(registro) {
 }
 
 /**
+ * Nombre del paciente dueño del expediente, si se resolvió en esta sesión.
+ * En simulación se indica que no se verificó; con verificación real, que no
+ * está disponible. Nunca se usa `personaRetira` como sustituto.
+ */
+function textoPaciente(registro, nombresPacientes, modoVerificacion) {
+  const clave = normalizarNumeroExpediente(registro.numeroExpediente)
+  const entrada = nombresPacientes?.[clave]
+
+  if (entrada?.nombre) return entrada.nombre
+  return modoVerificacion === MODO_VERIFICACION_REAL ? 'no disponible' : 'no verificado'
+}
+
+/**
  * Listado de movimientos de salidas externas.
  * Componente presentacional: recibe los registros ya filtrados y ordenados por
  * el hook (Todos / Pendientes / Devueltos + búsqueda local).
@@ -74,6 +91,8 @@ export default function TablaMovimientosExternos({
   errorCarga = null,
   onReintentar,
   hoy,
+  nombresPacientes = {},
+  modoVerificacion = MODO_VERIFICACION_DESHABILITADA,
 }) {
   const hayBusqueda = busquedaLocal.trim().length > 0
   const mostrarAnterior = vista === VISTA_PENDIENTES
@@ -207,8 +226,13 @@ export default function TablaMovimientosExternos({
                 <tbody className="divide-y divide-outline-variant/60">
                   {registros.map((registro) => (
                     <tr key={registro.id} className="align-top hover:bg-surface-container-low/60">
-                      <td className="whitespace-nowrap px-3 py-3 font-mono font-bold text-on-surface">
-                        {numeroExpedienteVisible(registro)}
+                      <td className="px-3 py-3">
+                        <p className="whitespace-nowrap font-mono font-bold text-on-surface">
+                          {numeroExpedienteVisible(registro)}
+                        </p>
+                        <p className="mt-0.5 break-words text-label-sm font-normal text-on-surface-variant">
+                          Paciente: {textoPaciente(registro, nombresPacientes, modoVerificacion)}
+                        </p>
                       </td>
                       <td className="px-3 py-3 font-medium text-on-surface">
                         {registro.personaRetira}
@@ -238,9 +262,14 @@ export default function TablaMovimientosExternos({
                 <li key={registro.id}>
                   <article className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <p className="font-mono text-title-md font-bold text-on-surface">
-                        {numeroExpedienteVisible(registro)}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="font-mono text-title-md font-bold text-on-surface">
+                          {numeroExpedienteVisible(registro)}
+                        </p>
+                        <p className="mt-0.5 break-words text-label-sm text-on-surface-variant">
+                          Paciente: {textoPaciente(registro, nombresPacientes, modoVerificacion)}
+                        </p>
+                      </div>
                       <EstadoMovimiento
                         registro={registro}
                         mostrarAnterior={mostrarAnterior}

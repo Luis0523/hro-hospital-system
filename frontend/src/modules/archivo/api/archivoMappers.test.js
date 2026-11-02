@@ -127,11 +127,27 @@ describe('archivoMappers', () => {
 
     expect(expediente).toEqual({
       id: '3f1c-uuid',
+      pacienteId: '9b2a-uuid',
       numeroExpediente: 'EXP-2024-035',
       codigo: 'EXP-2024-035',
       ubicacionBase: { id: 12, pasillo: 'B', estante: '14', balda: '3' },
       activo: true,
+      depurado: null,
+      depuradoEn: null,
     })
+  })
+
+  it('conserva la marca de baja lógica del expediente', () => {
+    const expediente = mapearExpedienteBusqueda({
+      id: '3f1c-uuid',
+      numeroExpediente: 'EXP-2024-035',
+      activo: true,
+      depurado: true,
+      depuradoEn: '2026-10-01T09:00:00',
+    })
+
+    expect(expediente.depurado).toBe(true)
+    expect(expediente.depuradoEn).toBe('2026-10-01T09:00:00')
   })
 
   it('formatea la ubicación base omitiendo campos ausentes', () => {

@@ -12,13 +12,41 @@ vi.mock('../api/salidasExternasApi', async (importOriginal) => {
   }
 })
 
+vi.mock('../api/verificacionExpedienteApi', async (importOriginal) => {
+  const modulo = await importOriginal()
+  return {
+    ...modulo,
+    verificarExistenciaExpediente: vi.fn(modulo.verificarExistenciaExpediente),
+  }
+})
+
+vi.mock('../api/nombrePacienteExpedienteApi', async (importOriginal) => {
+  const modulo = await importOriginal()
+  return {
+    ...modulo,
+    obtenerNombrePacienteDeExpediente: vi.fn(modulo.obtenerNombrePacienteDeExpediente),
+  }
+})
+
 import { CODIGO_ENTRADA_INVALIDA, CODIGO_YA_DEVUELTO } from '../api/salidasExternasApi'
+import {
+  CODIGO_EXPEDIENTE_NO_ENCONTRADO,
+  CODIGO_VERIFICACION_FALLIDA,
+  MODO_VERIFICACION_DESHABILITADA,
+  MODO_VERIFICACION_REAL,
+  VERIFICACION_DESHABILITADA,
+  VERIFICACION_ENCONTRADO,
+  VERIFICACION_ERROR_CONEXION,
+  VERIFICACION_NO_ENCONTRADO,
+  verificarExistenciaExpediente,
+} from '../api/verificacionExpedienteApi'
 import {
   listarHistorial,
   listarPendientes as listarPendientesMock,
   registrarDevolucion,
   registrarPrestamo,
 } from '../api/salidasExternasApi'
+import { obtenerNombrePacienteDeExpediente } from '../api/nombrePacienteExpedienteApi'
 import { reiniciarSalidasExternasMock } from '../api/salidasExternasMock'
 import { useSalidasExternas } from './useSalidasExternas'
 
@@ -41,6 +69,27 @@ function numeros(lista) {
   return lista.map((registro) => registro.numeroExpediente)
 }
 
+function promesaDiferida() {
+  let resolver
+  const promesa = new Promise((res) => {
+    resolver = res
+  })
+  return { promesa, resolver }
+}
+
+function completarPrestamo(result, numero = '927581', persona = 'Ana Ramírez') {
+  act(() => {
+    result.current.setPersonaRetira(persona)
+    result.current.setMotivo('Investigación universitaria')
+    result.current.setNumeroPrestamo(numero)
+  })
+}
+
+function activarVerificacionReal() {
+  vi.stubEnv('VITE_VERIFICACION_EXPEDIENTES', 'true')
+  vi.stubEnv('VITE_USE_MOCK', 'false')
+}
+
 async function montar(opciones) {
   const utilidades = renderHook(() => useSalidasExternas(opciones))
   await waitFor(() => expect(utilidades.result.current.cargando).toBe(false))
@@ -54,10 +103,23 @@ describe('useSalidasExternas', () => {
     vi.setSystemTime(new Date(HOY))
     vi.clearAllMocks()
     reiniciarSalidasExternasMock()
+
+    // Por defecto la verificación está deshabilitada: los casos reales se
+    // activan explícitamente con `vi.stubEnv` y su propio mock.
+    verificarExistenciaExpediente.mockReset()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_DESHABILITADA,
+      modo: MODO_VERIFICACION_DESHABILITADA,
+      expediente: null,
+    })
+
+    obtenerNombrePacienteDeExpediente.mockReset()
+    obtenerNombrePacienteDeExpediente.mockResolvedValue({ estado: 'no_verificado', nombre: null })
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllEnvs()
   })
 
   it('inicia en modo préstamo, vista Todos y sin registros', async () => {
@@ -641,5 +703,200 @@ describe('useSalidasExternas', () => {
     })
 
     expect(result.current.ultimaAccion.tipo).toBe('prestamo')
+  })
+
+  it('en modo simulación registra sin bloquear y deja constancia de que no verificó', async () => {
+    const { result } = await montar()
+
+    expect(result.current.modoVerificacion).toBe(MODO_VERIFICACION_DESHABILITADA)
+
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.errorPrestamo).toBeNull()
+    expect(result.current.registros).toHaveLength(1)
+    // Tras el registro la captura se limpia y con ella la constancia anterior.
+    expect(result.current.verificacionPrestamo).toBeNull()
+    expect(result.current.verificandoPrestamo).toBe(false)
+    expect(verificarExistenciaExpediente).toHaveBeenCalledTimes(1)
+    expect(verificarExistenciaExpediente).toHaveBeenCalledWith('927581')
+  })
+
+  it('con verificación real y expediente existente registra el préstamo', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_ENCONTRADO,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: { numeroExpediente: '927581' },
+    })
+
+    const { result } = await montar()
+    expect(result.current.modoVerificacion).toBe(MODO_VERIFICACION_REAL)
+
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(verificarExistenciaExpediente).toHaveBeenCalledWith('927581')
+    expect(result.current.errorPrestamo).toBeNull()
+    expect(result.current.exitoPrestamo).toContain('9275-81')
+    expect(result.current.registros).toHaveLength(1)
+  })
+
+  it('no registra cuando el expediente no existe en el sistema', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_NO_ENCONTRADO,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: null,
+    })
+
+    const { result } = await montar()
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.errorPrestamo.codigo).toBe(CODIGO_EXPEDIENTE_NO_ENCONTRADO)
+    expect(result.current.registros).toEqual([])
+    expect(await listarHistorial()).toHaveLength(0)
+    // Se conserva la captura para corregir el número.
+    expect(result.current.numeroPrestamo).toBe('927581')
+  })
+
+  it('no registra si el servidor no pudo verificar el expediente', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_ERROR_CONEXION,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: null,
+      status: null,
+    })
+
+    const { result } = await montar()
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.errorPrestamo.codigo).toBe(CODIGO_VERIFICACION_FALLIDA)
+    expect(result.current.errorPrestamo.motivo).toBe('conexion')
+    expect(result.current.registros).toEqual([])
+  })
+
+  it('descarta la respuesta de verificación de un número que ya cambió', async () => {
+    activarVerificacionReal()
+    const diferida = promesaDiferida()
+    verificarExistenciaExpediente.mockReturnValueOnce(diferida.promesa)
+
+    const { result } = await montar()
+    completarPrestamo(result, '927581')
+
+    let registrando
+    act(() => {
+      registrando = result.current.guardarPrestamo()
+    })
+
+    await waitFor(() => expect(verificarExistenciaExpediente).toHaveBeenCalledTimes(1))
+
+    // El operador cambia de expediente mientras la verificación está en curso.
+    act(() => {
+      result.current.setNumeroPrestamo('111111')
+    })
+
+    await act(async () => {
+      diferida.resolver({
+        estado: VERIFICACION_ENCONTRADO,
+        modo: MODO_VERIFICACION_REAL,
+        expediente: { numeroExpediente: '927581' },
+      })
+      await registrando
+    })
+
+    expect(result.current.registros).toEqual([])
+    expect(result.current.errorPrestamo).toBeNull()
+    expect(result.current.verificandoPrestamo).toBe(false)
+  })
+
+  it('un doble Enter ejecuta una sola verificación y un solo registro', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_ENCONTRADO,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: { numeroExpediente: '927581' },
+    })
+
+    const { result } = await montar()
+    completarPrestamo(result)
+
+    await act(async () => {
+      await Promise.all([result.current.guardarPrestamo(), result.current.guardarPrestamo()])
+    })
+
+    expect(verificarExistenciaExpediente).toHaveBeenCalledTimes(1)
+    expect(result.current.registros).toHaveLength(1)
+  })
+
+  it('agrega el nombre del paciente cuando la consulta complementaria responde', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_ENCONTRADO,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: { numeroExpediente: '927581', pacienteId: 'uuid-paciente' },
+    })
+    obtenerNombrePacienteDeExpediente.mockResolvedValue({
+      estado: 'disponible',
+      nombre: 'María Ejemplo López',
+    })
+
+    const { result } = await montar()
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.errorPrestamo).toBeNull()
+    expect(result.current.registros).toHaveLength(1)
+    expect(obtenerNombrePacienteDeExpediente).toHaveBeenCalledWith('927581', 'uuid-paciente')
+
+    await waitFor(() =>
+      expect(result.current.nombresPacientes['927581']?.nombre).toBe('María Ejemplo López'),
+    )
+  })
+
+  it('no bloquea el préstamo si falla la consulta del nombre', async () => {
+    activarVerificacionReal()
+    verificarExistenciaExpediente.mockResolvedValue({
+      estado: VERIFICACION_ENCONTRADO,
+      modo: MODO_VERIFICACION_REAL,
+      expediente: { numeroExpediente: '927581', pacienteId: 'uuid-paciente' },
+    })
+    obtenerNombrePacienteDeExpediente.mockRejectedValue(new Error('fallo del nombre'))
+
+    const { result } = await montar()
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.errorPrestamo).toBeNull()
+    expect(result.current.registros).toHaveLength(1)
+    await waitFor(() => expect(obtenerNombrePacienteDeExpediente).toHaveBeenCalled())
+    expect(result.current.nombresPacientes).toEqual({})
+  })
+
+  it('en simulación no consulta el nombre del paciente', async () => {
+    const { result } = await montar()
+    completarPrestamo(result)
+    await act(async () => {
+      await result.current.guardarPrestamo()
+    })
+
+    expect(result.current.registros).toHaveLength(1)
+    expect(obtenerNombrePacienteDeExpediente).not.toHaveBeenCalled()
+    expect(result.current.nombresPacientes).toEqual({})
   })
 })

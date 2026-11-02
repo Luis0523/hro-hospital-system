@@ -250,14 +250,17 @@ export default function SalidasExternasPage() {
                 guardando={salidas.guardandoPrestamo}
                 error={salidas.errorPrestamo}
                 exito={salidas.exitoPrestamo}
+                verificando={salidas.verificandoPrestamo}
+                verificacion={salidas.verificacionPrestamo}
+                modoVerificacion={salidas.modoVerificacion}
               />
 
-              <div className="flex justify-end">
+              <div className="w-full">
                 <button
                   type="button"
                   onClick={() => setRecuperacionAbierta(true)}
                   disabled={operacionEnCurso}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg !bg-red-600 px-5 py-3 text-sm font-semibold !text-white transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg !bg-red-600 px-5 py-3 text-sm font-semibold !text-white transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Icon name="restore" className="text-[20px]" />
                   Recuperar préstamo pendiente
@@ -293,6 +296,8 @@ export default function SalidasExternasPage() {
           errorCarga={salidas.errorCarga}
           onReintentar={salidas.recargar}
           hoy={salidas.hoy}
+          nombresPacientes={salidas.nombresPacientes}
+          modoVerificacion={salidas.modoVerificacion}
         />
 
         <section

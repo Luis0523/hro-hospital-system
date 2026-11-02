@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Icon, Input } from '@/shared/components/ui'
 import { CODIGO_ENTRADA_INVALIDA, CODIGO_PRESTAMO_DUPLICADO } from '../../api/salidasExternasApi'
+import {
+  CODIGO_EXPEDIENTE_NO_ENCONTRADO,
+  CODIGO_VERIFICACION_FALLIDA,
+  MODO_VERIFICACION_DESHABILITADA,
+  MODO_VERIFICACION_NO_DISPONIBLE,
+  MODO_VERIFICACION_REAL,
+  VERIFICACION_ENCONTRADO,
+} from '../../api/verificacionExpedienteApi'
 import { formatearFechaHoraGuatemala } from '../../utils/fechaGuatemala'
 import { numeroExpedienteVisible } from '../../utils/prestamosExternos'
 
@@ -33,6 +41,22 @@ function describirError(error) {
     }
   }
 
+  if (error.codigo === CODIGO_EXPEDIENTE_NO_ENCONTRADO) {
+    return {
+      tone: 'error',
+      title: 'Expediente no encontrado',
+      detalle: error.mensaje,
+    }
+  }
+
+  if (error.codigo === CODIGO_VERIFICACION_FALLIDA) {
+    return {
+      tone: 'error',
+      title: 'No se pudo verificar',
+      detalle: error.mensaje,
+    }
+  }
+
   return { tone: 'error', title: 'No se pudo registrar', detalle: error.mensaje }
 }
 
@@ -61,6 +85,9 @@ export default function PanelPrestamo({
   guardando = false,
   error = null,
   exito = null,
+  verificando = false,
+  verificacion = null,
+  modoVerificacion = MODO_VERIFICACION_DESHABILITADA,
 }) {
   const numeroRef = useRef(null)
   const manualRef = useRef(null)
@@ -96,7 +123,7 @@ export default function PanelPrestamo({
 
   function manejarEnvio(evento) {
     evento.preventDefault()
-    if (guardando) return
+    if (guardando || verificando) return
     onRegistrar()
   }
 
@@ -137,6 +164,12 @@ export default function PanelPrestamo({
   const aviso = describirError(error)
   const detalle = aviso?.registro ? detalleDuplicado(aviso.registro) : null
   const numeroManualInvalido = manualAbierto && numeroExpediente.endsWith('-')
+  const mensajeVerificacion = verificando
+    ? 'Verificando existencia del expediente…'
+    : verificacion?.modo === MODO_VERIFICACION_REAL &&
+        verificacion.estado === VERIFICACION_ENCONTRADO
+      ? 'Expediente confirmado en el sistema.'
+      : null
 
   return (
     <section
@@ -158,7 +191,12 @@ export default function PanelPrestamo({
         </div>
       </header>
 
-      <form onSubmit={manejarEnvio} className="mt-4 space-y-4" noValidate aria-busy={guardando}>
+      <form
+        onSubmit={manejarEnvio}
+        className="mt-4 space-y-4"
+        noValidate
+        aria-busy={guardando || verificando}
+      >
         <div>
           <Input
             id="salidas-externas-persona"
@@ -274,17 +312,41 @@ export default function PanelPrestamo({
               El guion no puede quedar al final del número.
             </p>
           )}
+
+          {modoVerificacion !== MODO_VERIFICACION_REAL && (
+            <p className="mt-1 flex items-start gap-1 text-label-sm text-on-surface-variant">
+              <Icon name="info" className="mt-[1px] text-[14px] text-secondary" />
+              {modoVerificacion === MODO_VERIFICACION_NO_DISPONIBLE
+                ? 'Verificación no disponible: el expediente no se confirmará contra la base de datos.'
+                : 'Modo simulación: la existencia del expediente no se verifica contra la base de datos.'}
+            </p>
+          )}
+
+          {mensajeVerificacion && (
+            <p
+              role="status"
+              aria-live="polite"
+              className={`mt-1 flex items-center gap-1 text-label-sm ${
+                verificacion?.estado === VERIFICACION_ENCONTRADO
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-on-surface-variant'
+              }`}
+            >
+              <Icon name={verificando ? 'hourglass_top' : 'check_circle'} className="text-[16px]" />
+              {mensajeVerificacion}
+            </p>
+          )}
         </div>
 
         <Button
           type="submit"
           size="lg"
-          disabled={guardando}
+          disabled={guardando || verificando}
           className="min-h-[52px] w-full sm:w-auto"
-          aria-busy={guardando}
+          aria-busy={guardando || verificando}
         >
           <Icon name={guardando ? 'hourglass_top' : 'check_circle'} className="text-[20px]" />
-          {guardando ? 'Registrando…' : 'Registrar préstamo'}
+          {verificando ? 'Verificando…' : guardando ? 'Registrando…' : 'Registrar préstamo'}
         </Button>
       </form>
 

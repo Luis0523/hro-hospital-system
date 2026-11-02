@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FormularioRecuperacion from './FormularioRecuperacion.jsx'
 
@@ -333,5 +333,31 @@ describe('máscaras de fecha y hora', () => {
     expect(horaInput()).toHaveAttribute('inputmode', 'numeric')
     expect(fechaInput()).toHaveAttribute('placeholder', 'DD/MM/AAAA')
     expect(horaInput()).toHaveAttribute('placeholder', 'HH:mm')
+  })
+
+  it('limita la altura y desplaza verticalmente en pantallas pequeñas', () => {
+    abrir()
+
+    const scroll = screen.getByTestId('recuperacion-scroll')
+
+    expect(scroll).toHaveClass('max-h-[calc(100dvh-9rem)]')
+    expect(scroll).toHaveClass('overflow-y-auto')
+    expect(scroll).not.toHaveClass('overflow-x-auto')
+
+    // Campos, validaciones y ambos botones quedan dentro del área desplazable.
+    expect(within(scroll).getByLabelText('Número de expediente a recuperar')).toBeInTheDocument()
+    expect(within(scroll).getByLabelText('Fecha original de salida')).toBeInTheDocument()
+    expect(within(scroll).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
+    expect(within(scroll).getByRole('button', { name: 'Recuperar préstamo' })).toBeInTheDocument()
+  })
+
+  it('cierra con la tecla Escape', async () => {
+    const props = propiedades()
+    const usuario = userEvent.setup()
+    render(<FormularioRecuperacion {...props} />)
+
+    await usuario.keyboard('{Escape}')
+
+    expect(props.onCerrar).toHaveBeenCalled()
   })
 })

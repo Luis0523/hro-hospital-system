@@ -65,6 +65,28 @@ describe('SalidasExternasPage', () => {
     expect(screen.getByRole('heading', { name: 'Estación de Archivo' })).toBeInTheDocument()
   })
 
+  it('el botón de recuperación ocupa el ancho del formulario sin crecer de alto', async () => {
+    await montar()
+
+    const boton = screen.getByRole('button', { name: 'Recuperar préstamo pendiente' })
+
+    // Mismo ancho útil que el panel de préstamo; sin reinicio a ancho de texto
+    // en escritorio y sin desbordamiento en móvil.
+    expect(boton).toHaveClass('w-full')
+    expect(boton.className).not.toContain('sm:w-auto')
+    expect(boton).toHaveClass('min-h-12')
+
+    // La altura estándar del botón grande y el contenedor no lo empujan al
+    // extremo derecho del formulario.
+    const contenedor = boton.parentElement
+    expect(contenedor.className).not.toContain('justify-end')
+    expect(contenedor).toHaveClass('w-full')
+
+    // Formulario y botón comparten la misma columna de ancho completo.
+    const panel = screen.getByRole('heading', { name: 'Nuevo préstamo' }).closest('section')
+    expect(panel.parentElement).toBe(contenedor.parentElement)
+  })
+
   it('mantiene visible el aviso de simulación', async () => {
     await montar()
 
@@ -133,6 +155,22 @@ describe('SalidasExternasPage', () => {
     const historial = await listarHistorial()
     expect(historial).toHaveLength(1)
     expect(historial[0].numeroExpediente).toBe('927581')
+  })
+
+  it('indica el paciente como no verificado en la tabla cuando se simula', async () => {
+    const usuario = userEvent.setup()
+    await montar()
+
+    await llenarFormulario(usuario)
+    await usuario.type(screen.getByLabelText('Número de expediente'), '927581{Enter}')
+    await screen.findByText('Préstamo guardado')
+
+    const tabla = screen.getByRole('table')
+    expect(within(tabla).getByText('Paciente: no verificado')).toBeInTheDocument()
+    // El nombre de quien retira no se usa como paciente propietario.
+    expect(within(tabla).queryByText('Paciente: Ana Ramírez')).not.toBeInTheDocument()
+    // No se agregan datos personales adicionales.
+    expect(within(tabla).queryByText(/DPI/i)).not.toBeInTheDocument()
   })
 
   it('permite registrar dos expedientes consecutivos para la misma persona', async () => {

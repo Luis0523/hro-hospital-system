@@ -5,6 +5,7 @@ import {
   buscarExpedientePorCodigo,
   buscarPacientePorDpi,
   buscarPacientePorExpediente,
+  buscarPacientePorId,
   checkInExpediente,
   crearActaRecepcion,
   crearExpediente,
@@ -78,6 +79,14 @@ describe('archivoApi (mock)', () => {
     const actualizado = await marcarNoLocalizado(3)
 
     expect(actualizado.estado).toBe('no_localizado')
+  })
+
+  it('busca el paciente por id para el nombre del propietario', async () => {
+    const paciente = await buscarPacientePorId(1)
+
+    expect(paciente.nombreCompleto).toBe('María Fernanda López García')
+    expect(paciente.numeroExpediente).toBe('EXP-2024-035')
+    expect(await buscarPacientePorId(999)).toBeNull()
   })
 
   it('busca por código escaneado', async () => {

@@ -281,142 +281,150 @@ export default function FormularioRecuperacion({
 
   return (
     <Modal open={abierto} onClose={cerrar} title="Recuperar préstamo pendiente" size="md">
-      <p className="text-body-sm text-on-surface-variant">
-        Utilice esta opción únicamente para volver a registrar un expediente que figura como
-        pendiente en un reporte anterior. La fecha y la hora deben ser las originales del préstamo.
-      </p>
+      {/* Altura limitada al viewport (incluido el teclado virtual en móvil) y
+          scroll vertical propio; el título del modal queda fijo arriba. */}
+      <div
+        data-testid="recuperacion-scroll"
+        className="max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain pr-1"
+      >
+        <p className="text-body-sm text-on-surface-variant">
+          Utilice esta opción únicamente para volver a registrar un expediente que figura como
+          pendiente en un reporte anterior. La fecha y la hora deben ser las originales del
+          préstamo.
+        </p>
 
-      <form onSubmit={manejarEnvio} className="mt-4 space-y-3" noValidate aria-busy={recuperando}>
-        <div>
-          <div className="flex items-center gap-1 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">
-            <Icon name="badge" className="text-[18px] text-primary" />
-            <label htmlFor="recuperacion-expediente">Número de expediente a recuperar</label>
-          </div>
-          <input
-            id="recuperacion-expediente"
-            name="numeroExpedienteRecuperado"
-            ref={expedienteRef}
-            value={numeroExpediente}
-            onChange={(evento) => setNumeroExpediente(evento.target.value)}
-            onFocus={(evento) => evento.target.select()}
-            placeholder="Escriba o escanee el expediente"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={30}
-            className="mt-2 h-14 w-full rounded-lg bg-surface-container-low px-4 text-[22px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            id="recuperacion-persona"
-            name="personaRetiraRecuperada"
-            label="Persona que retiró"
-            value={personaRetira}
-            onChange={(evento) => setPersonaRetira(evento.target.value)}
-            placeholder="Nombre completo"
-            autoComplete="off"
-            maxLength={120}
-          />
-          <Input
-            id="recuperacion-motivo"
-            name="motivoRecuperado"
-            label="Motivo"
-            value={motivo}
-            onChange={(evento) => setMotivo(evento.target.value)}
-            placeholder="Tesis, investigación, revisión…"
-            autoComplete="off"
-            maxLength={120}
-          />
-
-          <div className="block space-y-1">
-            <label
-              htmlFor="recuperacion-fecha"
-              className="block text-sm font-medium text-on-surface"
-            >
-              Fecha original de salida
-            </label>
+        <form onSubmit={manejarEnvio} className="mt-4 space-y-3" noValidate aria-busy={recuperando}>
+          <div>
+            <div className="flex items-center gap-1 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">
+              <Icon name="badge" className="text-[18px] text-primary" />
+              <label htmlFor="recuperacion-expediente">Número de expediente a recuperar</label>
+            </div>
             <input
-              id="recuperacion-fecha"
-              name="fechaSalidaRecuperada"
-              ref={fechaRef}
-              value={fechaTexto}
-              onChange={manejarCambioFecha}
-              onKeyDown={manejarTeclaFecha}
-              placeholder="DD/MM/AAAA"
+              id="recuperacion-expediente"
+              name="numeroExpedienteRecuperado"
+              ref={expedienteRef}
+              value={numeroExpediente}
+              onChange={(evento) => setNumeroExpediente(evento.target.value)}
+              onFocus={(evento) => evento.target.select()}
+              placeholder="Escriba o escanee el expediente"
               inputMode="numeric"
               autoComplete="off"
-              maxLength={10}
-              aria-describedby="recuperacion-fecha-ayuda"
-              className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
+              maxLength={30}
+              className="mt-2 h-14 w-full rounded-lg bg-surface-container-low px-4 text-[22px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20"
             />
-            <span id="recuperacion-fecha-ayuda" className="block text-xs text-on-surface-variant">
-              Escriba solo dígitos: las barras se colocan solas (ejemplo 01/11/2026).
-            </span>
           </div>
 
-          <div className="block space-y-1">
-            <label
-              htmlFor="recuperacion-hora"
-              className="block text-sm font-medium text-on-surface"
-            >
-              Hora original de salida
-            </label>
-            <input
-              id="recuperacion-hora"
-              name="horaSalidaRecuperada"
-              ref={horaRef}
-              value={horaTexto}
-              onChange={manejarCambioHora}
-              onKeyDown={manejarTeclaHora}
-              placeholder="HH:mm"
-              inputMode="numeric"
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              id="recuperacion-persona"
+              name="personaRetiraRecuperada"
+              label="Persona que retiró"
+              value={personaRetira}
+              onChange={(evento) => setPersonaRetira(evento.target.value)}
+              placeholder="Nombre completo"
               autoComplete="off"
-              maxLength={5}
-              aria-describedby="recuperacion-hora-ayuda"
-              className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
+              maxLength={120}
             />
-            <span id="recuperacion-hora-ayuda" className="block text-xs text-on-surface-variant">
-              Formato de 24 horas: HH:mm (ejemplo 09:15).
-            </span>
+            <Input
+              id="recuperacion-motivo"
+              name="motivoRecuperado"
+              label="Motivo"
+              value={motivo}
+              onChange={(evento) => setMotivo(evento.target.value)}
+              placeholder="Tesis, investigación, revisión…"
+              autoComplete="off"
+              maxLength={120}
+            />
+
+            <div className="block space-y-1">
+              <label
+                htmlFor="recuperacion-fecha"
+                className="block text-sm font-medium text-on-surface"
+              >
+                Fecha original de salida
+              </label>
+              <input
+                id="recuperacion-fecha"
+                name="fechaSalidaRecuperada"
+                ref={fechaRef}
+                value={fechaTexto}
+                onChange={manejarCambioFecha}
+                onKeyDown={manejarTeclaFecha}
+                placeholder="DD/MM/AAAA"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={10}
+                aria-describedby="recuperacion-fecha-ayuda"
+                className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
+              />
+              <span id="recuperacion-fecha-ayuda" className="block text-xs text-on-surface-variant">
+                Escriba solo dígitos: las barras se colocan solas (ejemplo 01/11/2026).
+              </span>
+            </div>
+
+            <div className="block space-y-1">
+              <label
+                htmlFor="recuperacion-hora"
+                className="block text-sm font-medium text-on-surface"
+              >
+                Hora original de salida
+              </label>
+              <input
+                id="recuperacion-hora"
+                name="horaSalidaRecuperada"
+                ref={horaRef}
+                value={horaTexto}
+                onChange={manejarCambioHora}
+                onKeyDown={manejarTeclaHora}
+                placeholder="HH:mm"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={5}
+                aria-describedby="recuperacion-hora-ayuda"
+                className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary-container focus:ring-2 focus:ring-secondary-fixed-dim"
+              />
+              <span id="recuperacion-hora-ayuda" className="block text-xs text-on-surface-variant">
+                Formato de 24 horas: HH:mm (ejemplo 09:15).
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2" aria-live="polite">
-          {errorLocal && (
-            <Alert tone="warning" title="Faltan datos">
-              <p>{errorLocal}</p>
-            </Alert>
-          )}
-          {error && (
-            <Alert tone="error" title="No se pudo recuperar el préstamo">
-              <p>{error.mensaje}</p>
-            </Alert>
-          )}
-        </div>
+          <div className="space-y-2" aria-live="polite">
+            {errorLocal && (
+              <Alert tone="warning" title="Faltan datos">
+                <p>{errorLocal}</p>
+              </Alert>
+            )}
+            {error && (
+              <Alert tone="error" title="No se pudo recuperar el préstamo">
+                <p>{error.mensaje}</p>
+              </Alert>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            onClick={cerrar}
-            disabled={recuperando}
-            className="w-full sm:w-auto"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            size="lg"
-            disabled={recuperando}
-            className="min-h-[52px] w-full !bg-red-600 !text-white hover:brightness-110 sm:w-auto"
-          >
-            <Icon name={recuperando ? 'hourglass_top' : 'restore'} className="text-[20px]" />
-            {recuperando ? 'Recuperando…' : 'Recuperar préstamo'}
-          </Button>
-        </div>
-      </form>
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={cerrar}
+              disabled={recuperando}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={recuperando}
+              className="min-h-[52px] w-full !bg-red-600 !text-white hover:brightness-110 sm:w-auto"
+            >
+              <Icon name={recuperando ? 'hourglass_top' : 'restore'} className="text-[20px]" />
+              {recuperando ? 'Recuperando…' : 'Recuperar préstamo'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </Modal>
   )
 }

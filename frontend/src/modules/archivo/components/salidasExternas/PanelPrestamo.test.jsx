@@ -3,6 +3,13 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PanelPrestamo from './PanelPrestamo.jsx'
 import { CODIGO_ENTRADA_INVALIDA, CODIGO_PRESTAMO_DUPLICADO } from '../../api/salidasExternasApi'
+import {
+  CODIGO_EXPEDIENTE_NO_ENCONTRADO,
+  CODIGO_VERIFICACION_FALLIDA,
+  MODO_VERIFICACION_NO_DISPONIBLE,
+  MODO_VERIFICACION_REAL,
+  VERIFICACION_ENCONTRADO,
+} from '../../api/verificacionExpedienteApi'
 
 function propiedades(overrides = {}) {
   return {
@@ -157,6 +164,89 @@ describe('PanelPrestamo', () => {
     rerender(<PanelPrestamo {...propiedades({ numeroExpediente: '', guardando: false })} />)
 
     expect(screen.getByLabelText('Número de expediente')).toHaveFocus()
+  })
+
+  it('advierte en modo simulación que la existencia no se verificó', () => {
+    render(<PanelPrestamo {...propiedades()} />)
+
+    expect(
+      screen.getByText(/Modo simulación: la existencia del expediente no se verifica/),
+    ).toBeInTheDocument()
+  })
+
+  it('advierte cuando la verificación no está disponible', () => {
+    render(
+      <PanelPrestamo {...propiedades({ modoVerificacion: MODO_VERIFICACION_NO_DISPONIBLE })} />,
+    )
+
+    expect(screen.getByText(/Verificación no disponible/)).toBeInTheDocument()
+  })
+
+  it('no muestra el aviso de simulación cuando la verificación es real', () => {
+    render(<PanelPrestamo {...propiedades({ modoVerificacion: MODO_VERIFICACION_REAL })} />)
+
+    expect(screen.queryByText(/Modo simulación/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Verificación no disponible/)).not.toBeInTheDocument()
+  })
+
+  it('muestra un estado discreto mientras verifica el expediente', () => {
+    render(
+      <PanelPrestamo
+        {...propiedades({ verificando: true, modoVerificacion: MODO_VERIFICACION_REAL })}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Verificando existencia del expediente…')
+    expect(screen.getByRole('button', { name: 'Verificando…' })).toBeDisabled()
+  })
+
+  it('confirma el expediente cuando la verificación real lo encontró', () => {
+    render(
+      <PanelPrestamo
+        {...propiedades({
+          modoVerificacion: MODO_VERIFICACION_REAL,
+          verificacion: { estado: VERIFICACION_ENCONTRADO, modo: MODO_VERIFICACION_REAL },
+        })}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Expediente confirmado en el sistema.')
+  })
+
+  it('muestra el expediente no encontrado sin registrar', () => {
+    render(
+      <PanelPrestamo
+        {...propiedades({
+          error: {
+            codigo: CODIGO_EXPEDIENTE_NO_ENCONTRADO,
+            status: 404,
+            mensaje: 'No se encontró un expediente con ese número en el sistema.',
+          },
+        })}
+      />,
+    )
+
+    const alerta = screen.getByRole('alert')
+    expect(alerta).toHaveTextContent('Expediente no encontrado')
+    expect(alerta).toHaveTextContent('No se encontró un expediente con ese número en el sistema.')
+  })
+
+  it('distingue el fallo de verificación del expediente inexistente', () => {
+    render(
+      <PanelPrestamo
+        {...propiedades({
+          error: {
+            codigo: CODIGO_VERIFICACION_FALLIDA,
+            status: null,
+            mensaje: 'No se pudo verificar el expediente con el servidor. Intente de nuevo.',
+          },
+        })}
+      />,
+    )
+
+    const alerta = screen.getByRole('alert')
+    expect(alerta).toHaveTextContent('No se pudo verificar')
+    expect(alerta).not.toHaveTextContent('Expediente no encontrado')
   })
 
   it('no reenfoca cuando el registro falló', () => {

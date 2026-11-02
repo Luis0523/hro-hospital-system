@@ -21,7 +21,23 @@ import {
   registrarRecuperado as registrarRecuperadoApi,
   revertirUltimaAccion as revertirUltimaAccionApi,
 } from '../api/salidasExternasApi'
-import { buscarRegistros, numeroExpedienteVisible } from '../utils/prestamosExternos'
+import {
+  listarNombresPacientesEnCache,
+  obtenerNombrePacienteDeExpediente,
+} from '../api/nombrePacienteExpedienteApi'
+import {
+  MODO_VERIFICACION_REAL,
+  errorDeVerificacion,
+  obtenerModoVerificacion,
+  verificacionBloqueaRegistro,
+  verificarExistenciaExpediente,
+} from '../api/verificacionExpedienteApi'
+import {
+  buscarRegistros,
+  normalizarNumeroExpediente,
+  numeroExpedienteVisible,
+  resolverNumeroExpedienteCapturado,
+} from '../utils/prestamosExternos'
 import { useDiaOperativo } from './useDiaOperativo'
 
 export const MODO_PRESTAMO = 'prestamo'
@@ -54,6 +70,7 @@ function describirError(fallo, mensajePorDefecto) {
     mensaje: fallo?.message || mensajePorDefecto,
     campo: fallo?.data?.campo ?? null,
     registro: fallo?.data?.registro ?? null,
+    motivo: fallo?.data?.motivo ?? null,
   }
 }
 
@@ -165,12 +182,44 @@ export function useSalidasExternas({ operador = null } = {}) {
   const [errorPrestamo, setErrorPrestamo] = useState(null)
   const [exitoPrestamo, setExitoPrestamo] = useState(null)
 
+  // Verificación de existencia (independiente de la persistencia simulada).
+  const [verificandoPrestamo, setVerificandoPrestamo] = useState(false)
+  const [verificacionPrestamo, setVerificacionPrestamo] = useState(null)
+  const modoVerificacion = useMemo(() => obtenerModoVerificacion(), [])
+
   const guardandoPrestamoRef = useRef(false)
+  // Huella de la captura vigente: sirve para descartar la respuesta de una
+  // verificación que terminó después de que el operador cambió el número.
+  const numeroPrestamoRef = useRef('')
+  const presentacionPrestamoRef = useRef(null)
+  const verificacionRef = useRef(0)
+
+  // Nombre del paciente dueño del expediente, solo como dato complementario de
+  // lectura. Se conserva en memoria durante la sesión; nunca bloquea el préstamo.
+  const [nombresPacientes, setNombresPacientes] = useState(() => listarNombresPacientesEnCache())
+
+  const resolverNombrePaciente = useCallback(async (numero, pacienteId) => {
+    try {
+      const resultado = await obtenerNombrePacienteDeExpediente(numero, pacienteId)
+      if (!resultado?.nombre) return
+      const clave = normalizarNumeroExpediente(numero)
+      setNombresPacientes((previo) => ({ ...previo, [clave]: resultado }))
+    } catch {
+      // Consulta complementaria: un fallo nunca afecta el préstamo registrado.
+    }
+  }, [])
 
   // El ingreso manual (con guion) fija también la representación visible.
   const cambiarNumeroPrestamo = useCallback((valor, presentacion = null) => {
-    setNumeroPrestamo(String(valor ?? ''))
-    setPresentacionPrestamo(presentacion ? String(presentacion) : null)
+    const siguiente = String(valor ?? '')
+    const siguientePresentacion = presentacion ? String(presentacion) : null
+
+    numeroPrestamoRef.current = siguiente
+    presentacionPrestamoRef.current = siguientePresentacion
+    verificacionRef.current += 1
+    setNumeroPrestamo(siguiente)
+    setPresentacionPrestamo(siguientePresentacion)
+    setVerificacionPrestamo(null)
   }, [])
 
   const guardarPrestamo = useCallback(async () => {
@@ -181,8 +230,45 @@ export function useSalidasExternas({ operador = null } = {}) {
     setGuardandoPrestamo(true)
     setErrorPrestamo(null)
     setExitoPrestamo(null)
+    setVerificacionPrestamo(null)
+
+    // Captura exacta que se está enviando. Si el operador la cambia mientras
+    // se verifica, la respuesta ya no aplica y no se registra nada.
+    const numeroCapturado = numeroPrestamo
+    const presentacionCapturada = presentacionPrestamo
+    const numeroVerificado = resolverNumeroExpedienteCapturado(
+      numeroCapturado,
+      presentacionCapturada,
+    )
+    let pacienteIdVerificado = null
 
     try {
+      if (modoVerificacion === MODO_VERIFICACION_REAL && numeroVerificado) {
+        const intento = verificacionRef.current + 1
+        verificacionRef.current = intento
+        setVerificandoPrestamo(true)
+
+        const resultado = await verificarExistenciaExpediente(numeroVerificado)
+
+        const capturaVigente =
+          intento === verificacionRef.current &&
+          numeroPrestamoRef.current === numeroCapturado &&
+          presentacionPrestamoRef.current === presentacionCapturada
+
+        // Respuesta obsoleta: otro número está en pantalla. No se registra.
+        if (!capturaVigente) return
+
+        setVerificacionPrestamo(resultado)
+        if (verificacionBloqueaRegistro(resultado)) {
+          throw errorDeVerificacion(resultado)
+        }
+        pacienteIdVerificado = resultado.expediente?.pacienteId ?? null
+      } else if (numeroVerificado) {
+        // Sin verificación real (mock o deshabilitada): solo se deja constancia
+        // del modo. La existencia NO se confirma contra la base de datos.
+        setVerificacionPrestamo(await verificarExistenciaExpediente(numeroVerificado))
+      }
+
       const creado = await registrarPrestamoApi({
         numeroExpediente: numeroPrestamo,
         presentacion: presentacionPrestamo,
@@ -196,12 +282,19 @@ export function useSalidasExternas({ operador = null } = {}) {
       setExitoPrestamo(`Préstamo registrado para el expediente ${numeroExpedienteVisible(creado)}.`)
       await refrescarUltimaAccion()
       await cargar()
+
+      // Complementario y posterior al registro: si falla, el préstamo sigue
+      // siendo válido y la tabla muestra "no disponible".
+      if (modoVerificacion === MODO_VERIFICACION_REAL && pacienteIdVerificado) {
+        void resolverNombrePaciente(numeroVerificado, pacienteIdVerificado)
+      }
     } catch (fallo) {
       // Se conserva todo lo escrito para que el operador corrija y reintente.
       setErrorPrestamo(describirError(fallo, 'No se pudo registrar el préstamo.'))
     } finally {
       guardandoPrestamoRef.current = false
       setGuardandoPrestamo(false)
+      setVerificandoPrestamo(false)
     }
   }, [
     numeroPrestamo,
@@ -209,8 +302,10 @@ export function useSalidasExternas({ operador = null } = {}) {
     personaRetira,
     motivo,
     operador,
+    modoVerificacion,
     cargar,
     refrescarUltimaAccion,
+    resolverNombrePaciente,
     cambiarNumeroPrestamo,
   ])
 
@@ -475,6 +570,10 @@ export function useSalidasExternas({ operador = null } = {}) {
     guardandoPrestamo,
     errorPrestamo,
     exitoPrestamo,
+    verificandoPrestamo,
+    verificacionPrestamo,
+    modoVerificacion,
+    nombresPacientes,
 
     // Devolución
     numeroDevolucion,

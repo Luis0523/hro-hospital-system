@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TablaMovimientosExternos from './TablaMovimientosExternos.jsx'
+import { MODO_VERIFICACION_REAL } from '../../api/verificacionExpedienteApi'
 
 const HOY = '2026-11-02'
 
@@ -245,5 +246,108 @@ describe('TablaMovimientosExternos', () => {
     expect(within(listado).getByText('Devuelto')).toBeInTheDocument()
     expect(within(listado).getByText('02/11/2026 09:00')).toBeInTheDocument()
     expect(within(listado).getByText('02/11/2026 12:00')).toBeInTheDocument()
+  })
+
+  it('en simulación indica que el paciente no se verificó (tabla y tarjetas)', () => {
+    render(<TablaMovimientosExternos {...propiedades({ registros: [registro()] })} />)
+
+    const tabla = screen.getByRole('table')
+    const listado = screen.getByRole('list', { name: 'Movimientos de expedientes' })
+
+    expect(within(tabla).getByText('Paciente: no verificado')).toBeInTheDocument()
+    expect(within(listado).getByText('Paciente: no verificado')).toBeInTheDocument()
+  })
+
+  it('muestra el nombre del paciente resuelto en esta sesión', () => {
+    render(
+      <TablaMovimientosExternos
+        {...propiedades({
+          registros: [registro()],
+          nombresPacientes: {
+            927581: { estado: 'disponible', nombre: 'María Ejemplo López' },
+          },
+        })}
+      />,
+    )
+
+    const tabla = screen.getByRole('table')
+    const listado = screen.getByRole('list', { name: 'Movimientos de expedientes' })
+
+    expect(within(tabla).getByText('Paciente: María Ejemplo López')).toBeInTheDocument()
+    expect(within(listado).getByText('Paciente: María Ejemplo López')).toBeInTheDocument()
+    // El número sigue siendo el dato principal de la fila.
+    expect(within(tabla).getByText('9275-81')).toBeInTheDocument()
+  })
+
+  it('con verificación real sin nombre resuelto indica no disponible', () => {
+    render(
+      <TablaMovimientosExternos
+        {...propiedades({
+          registros: [registro()],
+          modoVerificacion: MODO_VERIFICACION_REAL,
+        })}
+      />,
+    )
+
+    expect(
+      within(screen.getByRole('table')).getByText('Paciente: no disponible'),
+    ).toBeInTheDocument()
+  })
+
+  it('no confunde a la persona que retira con el paciente propietario', () => {
+    render(
+      <TablaMovimientosExternos
+        {...propiedades({
+          registros: [registro({ personaRetira: 'Ana Ramírez' })],
+          modoVerificacion: MODO_VERIFICACION_REAL,
+        })}
+      />,
+    )
+
+    const tabla = screen.getByRole('table')
+    expect(within(tabla).queryByText('Paciente: Ana Ramírez')).not.toBeInTheDocument()
+    expect(within(tabla).getByText('Paciente: no disponible')).toBeInTheDocument()
+  })
+
+  it('permite que un nombre largo envuelva sin desbordar', () => {
+    const nombreLargo =
+      'María de los Ángeles Fernanda del Rosario López de la Cruz y Martínez de León'
+    render(
+      <TablaMovimientosExternos
+        {...propiedades({
+          registros: [registro()],
+          nombresPacientes: { 927581: { estado: 'disponible', nombre: nombreLargo } },
+        })}
+      />,
+    )
+
+    const linea = within(screen.getByRole('table')).getByText(`Paciente: ${nombreLargo}`)
+    expect(linea).toHaveClass('break-words')
+    expect(linea).toHaveClass('text-label-sm')
+  })
+
+  it('mantiene el nombre en las tres vistas', () => {
+    for (const vista of ['todos', 'pendientes', 'devueltos']) {
+      const { unmount } = render(
+        <TablaMovimientosExternos
+          {...propiedades({
+            vista,
+            registros: [
+              registro({
+                fechaDevolucion: vista === 'devueltos' ? '2026-11-02T18:00:00.000Z' : null,
+              }),
+            ],
+            nombresPacientes: {
+              927581: { estado: 'disponible', nombre: 'María Ejemplo López' },
+            },
+          })}
+        />,
+      )
+
+      expect(
+        within(screen.getByRole('table')).getByText('Paciente: María Ejemplo López'),
+      ).toBeInTheDocument()
+      unmount()
+    }
   })
 })

@@ -51,6 +51,26 @@ describe('reporteSalidasExternas', () => {
     expect(escaparHtml(null)).toBe('')
   })
 
+  it('no imprime el nombre del paciente ni otros datos personales', () => {
+    const html = construirHtmlReporteSalidasExternas({
+      registros: [
+        registro({
+          pacienteNombre: 'María Ejemplo López',
+          pacienteDpi: '1234567890101',
+          telefono: '5555-5555',
+        }),
+      ],
+      fecha: '2026-11-02',
+      instanteCorte: CORTE,
+      generadoPor: 'Personal de Archivo',
+    })
+
+    expect(html).not.toContain('María Ejemplo López')
+    expect(html).not.toContain('1234567890101')
+    expect(html).not.toContain('5555-5555')
+    expect(html).toContain('9275-81')
+  })
+
   it('incluye encabezado, dos apartados, firmas y pie institucional', () => {
     const html = construirHtmlReporteSalidasExternas({
       registros: [registro()],

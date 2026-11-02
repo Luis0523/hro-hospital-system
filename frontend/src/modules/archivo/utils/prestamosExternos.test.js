@@ -20,6 +20,7 @@ import {
   obtenerHistorial,
   obtenerPendientes,
   ordenarPorMovimientoReciente,
+  resolverNumeroExpedienteCapturado,
   ultimoMovimientoDe,
   validarMotivo,
   validarNumeroExpediente,
@@ -474,6 +475,20 @@ describe('captura y presentación del expediente', () => {
     ).toBe('91-1330')
     expect(numeroExpedienteVisible({ numeroExpediente: '927581' })).toBe('9275-81')
     expect(numeroExpedienteVisible(null)).toBe('')
+  })
+
+  it('resuelve la captura para consultar la existencia del expediente', () => {
+    // Teclado/escáner: solo dígitos.
+    expect(resolverNumeroExpedienteCapturado('927581')).toBe('927581')
+    expect(resolverNumeroExpedienteCapturado(' 927581 ')).toBe('927581')
+    expect(resolverNumeroExpedienteCapturado('9275-81')).toBeNull()
+    expect(resolverNumeroExpedienteCapturado('')).toBeNull()
+
+    // Ingreso manual: se conserva el guion solo para mostrar; se consulta sin él.
+    expect(resolverNumeroExpedienteCapturado('91-1330', '91-1330')).toBe('911330')
+    expect(resolverNumeroExpedienteCapturado('911330', '9113-30')).toBe('911330')
+    expect(resolverNumeroExpedienteCapturado('91-13-30', '91-13-30')).toBeNull()
+    expect(resolverNumeroExpedienteCapturado('911330', '911330-')).toBeNull()
   })
 
   it('rechaza números en la persona y acepta signos de nombres reales', () => {
