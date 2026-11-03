@@ -454,4 +454,16 @@ describe('DepuracionExpedientesPage · robustez', () => {
     expect(listarDepuraciones).not.toHaveBeenCalled()
     expect(screen.getByRole('heading', { name: 'Depurados hoy', level: 3 })).toBeInTheDocument()
   })
+
+  it('coloca el buscador de la bitácora antes del contenedor de registros', async () => {
+    listarDepuraciones.mockResolvedValue([REGISTRO])
+    renderPage()
+
+    const buscador = await screen.findByRole('textbox', { name: /buscar en la bitácora/i })
+    const region = screen.getByRole('region', {
+      name: /listado de expedientes depurados, desplazable/i,
+    })
+
+    expect(buscador.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

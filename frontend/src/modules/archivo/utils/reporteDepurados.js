@@ -8,18 +8,18 @@ import {
 import { fechaIsoDeRegistro } from './historialDepurados'
 import { etiquetaPeriodo } from './periodoDepuracion'
 
-const ANCHO_PAGINA = 841.89
-const ALTO_PAGINA = 595.28
+const ANCHO_PAGINA = 595.28
+const ALTO_PAGINA = 841.89
 const MARGEN = 28
-const ANCHO_TABLA = 786
-const INICIO_TABLA = 145
-const FIN_CONTENIDO = 540
+const ANCHO_TABLA = 539.28
+const INICIO_TABLA = 148
+const FIN_CONTENIDO = 760
 const COLUMNAS = [
-  { clave: 'numeroExpediente', titulo: 'Número de expediente', ancho: 100 },
+  { clave: 'numeroExpediente', titulo: 'Número de expediente', ancho: 82 },
   { clave: 'fechaHora', titulo: 'Fecha y hora', ancho: 82 },
-  { clave: 'pacienteNombre', titulo: 'Paciente', ancho: 220 },
-  { clave: 'usuarioNombre', titulo: 'Usuario', ancho: 135 },
-  { clave: 'motivo', titulo: 'Motivo', ancho: 249 },
+  { clave: 'pacienteNombre', titulo: 'Paciente', ancho: 150 },
+  { clave: 'usuarioNombre', titulo: 'Usuario', ancho: 90 },
+  { clave: 'motivo', titulo: 'Motivo', ancho: 135.28 },
 ]
 
 const COLOR_AZUL = '0.122 0.227 0.373'
@@ -140,8 +140,8 @@ function dibujarEncabezado(pagina, datos, generado, periodo, filtro) {
   const c = pagina.comandos
   c.push(texto(MARGEN, 36, 12, 'HOSPITAL REGIONAL DE OCCIDENTE', true))
   c.push(texto(MARGEN, 49, 8, 'Sistema Hospitalario HRO · Archivo Clínico'))
-  c.push(texto(718, 36, 9, 'ARCHIVO', true))
-  c.push(texto(690, 49, 8, 'Estación de Archivo'))
+  c.push(texto(480, 36, 9, 'ARCHIVO', true))
+  c.push(texto(450, 49, 8, 'Estación de Archivo'))
   c.push(linea(MARGEN, 60, MARGEN + ANCHO_TABLA, 60, COLOR_AZUL, 1))
 
   c.push(textoCentrado(80, 12, 'REPORTE DE EXPEDIENTES DEPURADOS', true))
@@ -160,13 +160,13 @@ function dibujarEncabezado(pagina, datos, generado, periodo, filtro) {
 
   const metaTop = 121
   c.push(texto(MARGEN, metaTop, 7.5, 'PERIODO CONSULTADO', true))
-  c.push(texto(120, metaTop, 8, periodo))
-  c.push(texto(460, metaTop, 7.5, 'FILTRO', true))
-  c.push(texto(510, metaTop, 8, filtro))
+  c.push(texto(120, metaTop, 7.2, periodo))
+  c.push(texto(380, metaTop, 7.5, 'FILTRO', true))
+  c.push(texto(425, metaTop, 7.5, filtro))
   c.push(texto(MARGEN, metaTop + 13, 7.5, 'FECHA Y HORA DE GENERACIÓN', true))
-  c.push(texto(120, metaTop + 13, 8, generado))
-  c.push(texto(460, metaTop + 13, 7.5, 'TOTAL DE EXPEDIENTES', true))
-  c.push(texto(510, metaTop + 13, 8, String(datos.total)))
+  c.push(texto(125, metaTop + 13, 8, generado))
+  c.push(texto(380, metaTop + 13, 7.5, 'TOTAL DE EXPEDIENTES', true))
+  c.push(texto(425, metaTop + 13, 8, String(datos.total)))
 }
 
 function dibujarCabeceraTabla(pagina) {
@@ -178,7 +178,7 @@ function dibujarCabeceraTabla(pagina) {
         borde: COLOR_AZUL,
       }),
     )
-    pagina.comandos.push(texto(x + 3, INICIO_TABLA + 10, 7.5, columna.titulo, true))
+    pagina.comandos.push(texto(x + 3, INICIO_TABLA + 10, 6.8, columna.titulo, true))
     x += columna.ancho
   }
 }
@@ -196,7 +196,7 @@ function dibujarFila(pagina, registro, top) {
     ...columna,
     lineas: envolverTexto(
       valores[columna.clave],
-      Math.max(6, Math.floor((columna.ancho - 8) / 4.3)),
+      Math.max(6, Math.floor((columna.ancho - 6) / 3.9)),
     ),
   }))
   const lineas = Math.max(...celdas.map((celda) => celda.lineas.length))
@@ -206,7 +206,7 @@ function dibujarFila(pagina, registro, top) {
   for (const celda of celdas) {
     pagina.comandos.push(rectangulo(x, top, celda.ancho, alto, { borde: COLOR_LINEA }))
     celda.lineas.forEach((lineaTexto, indice) => {
-      pagina.comandos.push(texto(x + 3, top + 10 + indice * 9, 8, lineaTexto))
+      pagina.comandos.push(texto(x + 3, top + 10 + indice * 9, 7.2, lineaTexto))
     })
     x += celda.ancho
   }
@@ -215,18 +215,18 @@ function dibujarFila(pagina, registro, top) {
 }
 
 function dibujarFirmas(pagina, top) {
-  pagina.comandos.push(linea(72, top + 28, 340, top + 28, COLOR_TEXTO, 0.7))
-  pagina.comandos.push(linea(480, top + 28, 750, top + 28, COLOR_TEXTO, 0.7))
-  pagina.comandos.push(texto(178, top + 39, 9, 'Elaborado por', true))
-  pagina.comandos.push(texto(188, top + 49, 8, 'Archivo'))
-  pagina.comandos.push(texto(582, top + 39, 9, 'Revisado por', true))
-  pagina.comandos.push(texto(562, top + 49, 8, 'Jefatura de Archivo'))
+  pagina.comandos.push(linea(60, top + 28, 275, top + 28, COLOR_TEXTO, 0.7))
+  pagina.comandos.push(linea(320, top + 28, 535, top + 28, COLOR_TEXTO, 0.7))
+  pagina.comandos.push(texto(140, top + 39, 9, 'Elaborado por', true))
+  pagina.comandos.push(texto(155, top + 49, 8, 'Archivo'))
+  pagina.comandos.push(texto(387, top + 39, 9, 'Revisado por', true))
+  pagina.comandos.push(texto(377, top + 49, 8, 'Jefatura de Archivo'))
 }
 
 function dibujarPie(pagina, numero, total) {
-  pagina.comandos.push(linea(MARGEN, 557, MARGEN + ANCHO_TABLA, 557, COLOR_LINEA, 0.5))
-  pagina.comandos.push(texto(MARGEN, 569, 7.5, 'Hospital Regional de Occidente · Archivo Clínico'))
-  pagina.comandos.push(texto(730, 569, 7.5, `Página ${numero} de ${total}`, true))
+  pagina.comandos.push(linea(MARGEN, 805, MARGEN + ANCHO_TABLA, 805, COLOR_LINEA, 0.5))
+  pagina.comandos.push(texto(MARGEN, 817, 7.5, 'Hospital Regional de Occidente · Archivo Clínico'))
+  pagina.comandos.push(texto(505, 817, 7.5, `Página ${numero} de ${total}`, true))
 }
 
 function aBytesLatin1(textoPdf) {
@@ -366,7 +366,7 @@ export function construirPdfReporteDepurados({
     top += dibujarFila(pagina, registro, top)
   })
 
-  if (top + 70 > FIN_CONTENIDO) {
+  if (top + 70 > 790) {
     pagina = nuevaPagina(datos, generado, periodo, filtro, false)
     paginas.push(pagina)
     top = 175

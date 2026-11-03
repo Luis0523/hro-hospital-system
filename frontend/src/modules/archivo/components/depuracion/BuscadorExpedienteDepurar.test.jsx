@@ -1,6 +1,6 @@
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BuscadorExpedienteDepurar from './BuscadorExpedienteDepurar.jsx'
 
@@ -67,6 +67,56 @@ describe('BuscadorExpedienteDepurar', () => {
 
     expect(screen.getByLabelText(/número de expediente/i)).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: /buscando/i })).toBeDisabled()
+  })
+
+  it('alterna a ingreso manual y conserva el guion escrito por el operador', async () => {
+    const onCambio = vi.fn()
+    const onAlternarModo = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = renderBuscador({
+      numero: '927581',
+      onCambio,
+      onAlternarModo,
+    })
+
+    await user.click(screen.getByRole('button', { name: /ingreso manual/i }))
+    expect(onAlternarModo).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <BuscadorExpedienteDepurar
+        numero="9275-81"
+        onCambio={onCambio}
+        onEnviar={() => {}}
+        inputRef={createRef()}
+        procesando={false}
+        escaner={escanerMock()}
+        manual
+        onAlternarModo={onAlternarModo}
+      />,
+    )
+
+    const input = screen.getByLabelText(/número de expediente/i)
+    expect(input).toHaveValue('9275-81')
+    expect(screen.getByRole('button', { name: /captura normal/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    fireEvent.change(input, { target: { value: '0012-34' } })
+    expect(onCambio).toHaveBeenCalledWith('0012-34')
+  })
+
+  it('rechaza letras y guiones inválidos en el ingreso manual', () => {
+    const onCambio = vi.fn()
+    renderBuscador({ manual: true, onCambio })
+
+    const input = screen.getByLabelText(/número de expediente/i)
+    fireEvent.change(input, { target: { value: 'ABC-123' } })
+    expect(onCambio).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/solo dígitos/i)
+
+    fireEvent.change(input, { target: { value: '92-75-81' } })
+    expect(onCambio).not.toHaveBeenCalled()
   })
 
   it('abre y cierra la cámara mediante sus controles', async () => {

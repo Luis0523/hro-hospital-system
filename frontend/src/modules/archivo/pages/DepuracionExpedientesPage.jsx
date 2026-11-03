@@ -41,6 +41,7 @@ export default function DepuracionExpedientesPage() {
     errorDeshacer,
     deshaciendo,
     exitoDeshacer,
+    modoCaptura,
     bitacoraCargada,
     cargandoBitacora,
     errorBitacora,
@@ -60,6 +61,8 @@ export default function DepuracionExpedientesPage() {
     datosHistorial,
     inputRef,
     buscar,
+    alternarModoCaptura,
+    establecerModoCaptura,
     abrirConfirmacion,
     cerrarConfirmacion,
     confirmarDepuracion,
@@ -91,7 +94,11 @@ export default function DepuracionExpedientesPage() {
 
   const escaner = useEscanerCodigo((codigo) => {
     const valor = String(codigo ?? '').trim()
-    if (valor) setNumero(valor)
+    if (!valor) return
+    // Un código escaneado siempre representa la identidad numérica, aunque el
+    // operador haya abierto la captura manual.
+    establecerModoCaptura('normal')
+    setNumero(valor)
   })
 
   function generarReporte() {
@@ -134,6 +141,8 @@ export default function DepuracionExpedientesPage() {
             inputRef={inputRef}
             procesando={procesando}
             escaner={escaner}
+            manual={modoCaptura === 'manual'}
+            onAlternarModo={alternarModoCaptura}
           />
 
           <section className="space-y-3">
@@ -248,49 +257,6 @@ export default function DepuracionExpedientesPage() {
           totalCoincidencias={filtroBitacora.totalCoincidencias}
         />
 
-        <section
-          aria-labelledby="reporte-depurados-titulo"
-          className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3
-                id="reporte-depurados-titulo"
-                className="inline-flex items-center gap-1 text-title-md font-bold text-on-surface"
-              >
-                <Icon name="description" className="text-[20px] text-primary" />
-                Reporte de depurados
-              </h3>
-              <p className="mt-1 text-label-sm text-on-surface-variant">
-                Usa los registros completos del período y la búsqueda activa.
-              </p>
-            </div>
-            <Button
-              size="md"
-              variant="secondary"
-              className="min-h-11"
-              onClick={generarReporte}
-              disabled={!puedeGenerarReporte}
-              aria-describedby={bloqueoReporte ? 'reporte-depurados-motivo' : undefined}
-            >
-              <Icon name="picture_as_pdf" className="text-[18px]" />
-              Descargar reporte PDF
-            </Button>
-          </div>
-
-          {bloqueoReporte && (
-            <p id="reporte-depurados-motivo" className="text-label-sm text-on-surface-variant">
-              {bloqueoReporte}
-            </p>
-          )}
-
-          {errorReporte && (
-            <Alert tone="warning" title="No se pudo generar el reporte PDF">
-              {errorReporte}
-            </Alert>
-          )}
-        </section>
-
         {!bitacoraCargada && cargandoBitacora && (
           <section className="rounded-2xl bg-surface-container-lowest p-4 shadow-card">
             <Spinner label="Cargando bitácora…" />
@@ -369,6 +335,49 @@ export default function DepuracionExpedientesPage() {
             )}
           </>
         )}
+
+        <section
+          aria-labelledby="reporte-depurados-titulo"
+          className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3
+                id="reporte-depurados-titulo"
+                className="inline-flex items-center gap-1 text-title-md font-bold text-on-surface"
+              >
+                <Icon name="description" className="text-[20px] text-primary" />
+                Reporte de depurados
+              </h3>
+              <p className="mt-1 text-label-sm text-on-surface-variant">
+                Usa los registros completos del período y la búsqueda activa.
+              </p>
+            </div>
+            <Button
+              size="md"
+              variant="secondary"
+              className="min-h-11"
+              onClick={generarReporte}
+              disabled={!puedeGenerarReporte}
+              aria-describedby={bloqueoReporte ? 'reporte-depurados-motivo' : undefined}
+            >
+              <Icon name="picture_as_pdf" className="text-[18px]" />
+              Descargar reporte PDF
+            </Button>
+          </div>
+
+          {bloqueoReporte && (
+            <p id="reporte-depurados-motivo" className="text-label-sm text-on-surface-variant">
+              {bloqueoReporte}
+            </p>
+          )}
+
+          {errorReporte && (
+            <Alert tone="warning" title="No se pudo generar el reporte PDF">
+              {errorReporte}
+            </Alert>
+          )}
+        </section>
       </main>
     </ArchivoLayout>
   )

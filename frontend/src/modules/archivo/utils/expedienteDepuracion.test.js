@@ -5,6 +5,7 @@ import {
   limpiarEntradaExpediente,
   normalizarExpedienteDepuracion,
   validarEntradaExpediente,
+  validarEntradaExpedienteManual,
 } from './expedienteDepuracion'
 
 describe('expedienteDepuracion', () => {
@@ -75,5 +76,36 @@ describe('expedienteDepuracion', () => {
 
   it('mantiene la visualización de códigos heredados no numéricos', () => {
     expect(formatearExpedienteDepuracion('EXP-2024-035')).toBe('EXP-2024-035')
+  })
+
+  it('valida la captura manual con un único guion interior y conserva la identidad', () => {
+    expect(validarEntradaExpedienteManual('9275-81')).toMatchObject({
+      valido: true,
+      numero: '927581',
+    })
+    expect(validarEntradaExpedienteManual('0012-34')).toMatchObject({
+      valido: true,
+      numero: '001234',
+    })
+    expect(validarEntradaExpedienteManual('927581')).toMatchObject({
+      valido: false,
+      error: 'guion_requerido',
+    })
+    expect(validarEntradaExpedienteManual('92-75-81')).toMatchObject({
+      valido: false,
+      error: 'guion_invalido',
+    })
+    expect(validarEntradaExpedienteManual('-9275')).toMatchObject({
+      valido: false,
+      error: 'guion_invalido',
+    })
+    expect(validarEntradaExpedienteManual('9275-')).toMatchObject({
+      valido: false,
+      error: 'guion_invalido',
+    })
+    expect(validarEntradaExpedienteManual('ABC-123')).toMatchObject({
+      valido: false,
+      error: 'caracteres_invalidos',
+    })
   })
 })

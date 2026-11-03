@@ -12,6 +12,7 @@ export const MENSAJES_ERROR_EXPEDIENTE = {
   requerido: 'Ingrese el número de expediente.',
   caracteres_invalidos: 'Use solo dígitos; el guion se agrega automáticamente.',
   guion_invalido: 'Use un único guion entre grupos de dígitos.',
+  guion_requerido: 'En modo manual, coloque un único guion interior (p. ej. 9275-81).',
   muy_largo: `El número de expediente no puede superar ${MAX_LONGITUD_EXPEDIENTE} dígitos.`,
 }
 
@@ -67,6 +68,38 @@ export function validarEntradaExpediente(valor) {
   }
 
   return { valido: false, numero: '', error: 'caracteres_invalidos' }
+}
+
+/**
+ * Valida la captura manual: exige un único guion interior escrito por el
+ * operador y devuelve la identidad canónica sin guion.
+ */
+export function validarEntradaExpedienteManual(valor) {
+  const limpio = limpiarEntradaExpediente(valor)
+  if (!limpio) {
+    return { valido: false, numero: '', error: 'requerido' }
+  }
+
+  const compacto = limpio.replace(/\s+/g, '')
+
+  if (!/^[\d-]+$/.test(compacto)) {
+    return { valido: false, numero: '', error: 'caracteres_invalidos' }
+  }
+
+  if (!compacto.includes('-')) {
+    return { valido: false, numero: '', error: 'guion_requerido' }
+  }
+
+  if (!/^\d+-\d+$/.test(compacto)) {
+    return { valido: false, numero: '', error: 'guion_invalido' }
+  }
+
+  const numero = compacto.replace('-', '')
+  if (numero.length > MAX_LONGITUD_EXPEDIENTE) {
+    return { valido: false, numero: '', error: 'muy_largo' }
+  }
+
+  return { valido: true, numero, error: null }
 }
 
 /** Identidad canónica o `null` si la captura no es válida. */

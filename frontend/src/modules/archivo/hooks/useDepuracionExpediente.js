@@ -3,6 +3,7 @@ import {
   MENSAJES_ERROR_EXPEDIENTE,
   formatearExpedienteDepuracion,
   validarEntradaExpediente,
+  validarEntradaExpedienteManual,
 } from '../utils/expedienteDepuracion'
 import {
   USANDO_DATOS_MOCK,
@@ -36,11 +37,14 @@ export function useDepuracionExpediente() {
   const [errorDeshacer, setErrorDeshacer] = useState(null)
   const [deshaciendo, setDeshaciendo] = useState(false)
   const [exitoDeshacer, setExitoDeshacer] = useState(null)
+  const [modoCaptura, setModoCaptura] = useState('normal')
 
   const inputRef = useRef(null)
   const peticionRef = useRef(0)
   const confirmandoRef = useRef(false)
   const deshaciendoRef = useRef(false)
+  const modoCapturaRef = useRef('normal')
+  const timerBusquedaRef = useRef(null)
 
   const enfocar = useCallback(() => inputRef.current?.focus(), [])
 
@@ -52,7 +56,10 @@ export function useDepuracionExpediente() {
     const peticion = peticionRef.current + 1
     peticionRef.current = peticion
 
-    const validacion = validarEntradaExpediente(valor)
+    const validacion =
+      modoCapturaRef.current === 'manual'
+        ? validarEntradaExpedienteManual(valor)
+        : validarEntradaExpediente(valor)
     if (!validacion.valido) {
       setProcesando(false)
       setEstado('formato_invalido')
@@ -103,6 +110,26 @@ export function useDepuracionExpediente() {
     }
   }, [])
 
+  const establecerModoCaptura = useCallback((modo) => {
+    if (modo !== 'normal' && modo !== 'manual') return
+    if (modoCapturaRef.current === modo) return
+
+    if (timerBusquedaRef.current != null) {
+      clearTimeout(timerBusquedaRef.current)
+      timerBusquedaRef.current = null
+    }
+    peticionRef.current += 1
+    modoCapturaRef.current = modo
+    setModoCaptura(modo)
+    setProcesando(false)
+    setMensaje(null)
+    setEstado((actual) => (actual === 'formato_invalido' ? 'inicial' : actual))
+  }, [])
+
+  const alternarModoCaptura = useCallback(() => {
+    establecerModoCaptura(modoCapturaRef.current === 'normal' ? 'manual' : 'normal')
+  }, [establecerModoCaptura])
+
   // Búsqueda automática con debounce al escribir/escanear.
   useEffect(() => {
     const buscado = numero.trim()
@@ -121,8 +148,15 @@ export function useDepuracionExpediente() {
 
     setExito(null)
     setExitoDeshacer(null)
-    const timer = setTimeout(() => buscar(buscado), DEBOUNCE_MS)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      timerBusquedaRef.current = null
+      buscar(buscado)
+    }, DEBOUNCE_MS)
+    timerBusquedaRef.current = timer
+    return () => {
+      clearTimeout(timer)
+      if (timerBusquedaRef.current === timer) timerBusquedaRef.current = null
+    }
   }, [numero, buscar])
 
   const abrirConfirmacion = useCallback(() => {
@@ -287,8 +321,11 @@ export function useDepuracionExpediente() {
     errorDeshacer,
     deshaciendo,
     exitoDeshacer,
+    modoCaptura,
     inputRef,
     buscar,
+    alternarModoCaptura,
+    establecerModoCaptura,
     abrirConfirmacion,
     cerrarConfirmacion,
     confirmarDepuracion,

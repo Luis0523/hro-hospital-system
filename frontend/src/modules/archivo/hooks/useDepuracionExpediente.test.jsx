@@ -34,6 +34,27 @@ describe('useDepuracionExpediente', () => {
     expect(result.current.resultado.numeroExpediente).toBe('927581')
   })
 
+  it('en modo manual exige un guion interior y no busca un número sin guion', async () => {
+    const { result } = renderHook(() => useDepuracionExpediente())
+
+    act(() => result.current.establecerModoCaptura('manual'))
+    act(() => result.current.setNumero(PRIMERO))
+
+    await waitFor(() => expect(result.current.estado).toBe('formato_invalido'))
+    expect(result.current.mensaje).toMatch(/guion/i)
+  })
+
+  it('en modo manual busca la identidad canónica sin enviar el guion', async () => {
+    const { result } = renderHook(() => useDepuracionExpediente())
+
+    act(() => result.current.establecerModoCaptura('manual'))
+    act(() => result.current.setNumero('9275-81'))
+
+    await waitFor(() => expect(result.current.estado).toBe('encontrado'))
+    expect(result.current.resultado.numeroExpediente).toBe('927581')
+    expect(result.current.numero).toBe('9275-81')
+  })
+
   it('reporta no_encontrado cuando el número no existe', async () => {
     const { result } = renderHook(() => useDepuracionExpediente())
 

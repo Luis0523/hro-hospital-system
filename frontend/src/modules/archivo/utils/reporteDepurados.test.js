@@ -60,7 +60,7 @@ afterEach(() => {
 })
 
 describe('reporteDepurados PDF', () => {
-  it('genera un PDF real, A4 horizontal, con encabezado, firmas y simulación', () => {
+  it('genera un PDF real, A4 vertical, con encabezado, firmas y simulación', () => {
     const reporte = construirPdfReporteDepurados({
       datosHistorial: datos(),
       fechaGeneracion: FECHA_GENERACION,
@@ -69,7 +69,7 @@ describe('reporteDepurados PDF', () => {
 
     expect(reporte.blob.type).toBe('application/pdf')
     expect(new TextDecoder('latin1').decode(reporte.bytes).startsWith('%PDF-')).toBe(true)
-    expect(reporte.texto).toContain('/MediaBox [0 0 841.89 595.28]')
+    expect(reporte.texto).toContain('/MediaBox [0 0 595.28 841.89]')
     expect(reporte.texto).toContain('HOSPITAL REGIONAL DE OCCIDENTE')
     expect(reporte.texto).toContain('REPORTE DE EXPEDIENTES DEPURADOS')
     expect(reporte.texto).toContain('MODO SIMULACIÓN')
