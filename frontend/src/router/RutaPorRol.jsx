@@ -14,6 +14,13 @@ export default function RutaPorRol({ area, areas }) {
   const { autenticado, usuario, modoAuth } = useAuth()
   const { puedeAcceder, inicioSegunRol, cargando } = useAcceso()
   const location = useLocation()
+  const bypassLocal =
+    import.meta.env.DEV &&
+    import.meta.env.MODE !== 'test' &&
+    import.meta.env.VITE_SALTAR_AUTH_LOCAL === 'true' &&
+    location.pathname.startsWith('/seguimiento-enfermeria')
+
+  if (bypassLocal) return <Outlet />
 
   if (!autenticado) {
     return <Navigate to="/login" replace />

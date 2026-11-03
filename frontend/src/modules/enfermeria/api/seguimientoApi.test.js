@@ -145,7 +145,7 @@ describe('seguimientoApi', () => {
     expect(etapaDesdeEstado('en_clinica')).toBe('en_clinica')
     expect(etapaDesdeEstado('llamado')).toBe('en_clinica')
     expect(etapaDesdeEstado('no_asistio')).toBe('en_clinica')
-    expect(etapaDesdeEstado('atendido')).toBe('en_clinica')
+    expect(etapaDesdeEstado('atendido')).toBe('citar')
     expect(etapaDesdeEstado('devuelto')).toBe('devuelto')
     expect(etapaDesdeEstado('archivado')).toBe('archivo')
   })
@@ -173,13 +173,16 @@ describe('seguimientoApi', () => {
     ])
   })
 
-  it('avanza por las cuatro etapas visibles y exige clínica al repartir', async () => {
+  it('avanza por las cinco etapas visibles y exige clínica al repartir', async () => {
     const registrado = await registrarTurno({ codigo: 'ONC', numero: 5 })
 
     await expect(avanzarTurno(registrado.id)).rejects.toMatchObject({ status: 422 })
 
     const enClinica = await avanzarTurno(registrado.id, { clinicaId: 3 })
     expect(enClinica).toMatchObject({ etapa: 'en_clinica', clinicaId: 3 })
+
+    const citar = await avanzarTurno(registrado.id)
+    expect(citar.etapa).toBe('citar')
 
     const devuelto = await avanzarTurno(registrado.id)
     expect(devuelto.etapa).toBe('devuelto')

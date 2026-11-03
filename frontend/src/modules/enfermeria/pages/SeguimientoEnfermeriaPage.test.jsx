@@ -305,6 +305,78 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
   }, 20000)
 
+  it('permite citar un turno atendido y agendar su próxima visita', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-citar'))
+    expect(screen.queryByRole('heading', { name: 'Clínicas físicas' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'MI-19, Citar' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Citar paciente' })
+    expect(within(dialogo).getByText('MI-19')).toBeInTheDocument()
+    expect(within(dialogo).getByText('Paciente sin nombre registrado')).toBeInTheDocument()
+    expect(within(dialogo).getByText('Próxima visita')).toBeInTheDocument()
+    expect(within(dialogo).getByRole('button', { name: 'Semana' })).toBeInTheDocument()
+    expect(within(dialogo).getByRole('button', { name: 'Mes actual' })).toBeInTheDocument()
+    expect(within(dialogo).getByRole('button', { name: 'Agendar' })).toBeDisabled()
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Clínica' }))
+    await user.click(await screen.findByRole('option', { name: /^Clínica 1$/ }))
+
+    const diasDisponibles = await within(dialogo).findAllByRole('button', { name: /cupos$/ })
+    await user.click(diasDisponibles[0])
+
+    await user.type(within(dialogo).getByPlaceholderText('Expediente'), '123456')
+    await user.click(within(dialogo).getByRole('button', { name: /^Asignar$/ }))
+    expect(await within(dialogo).findByRole('button', { name: /^Confirmado$/ })).toBeDisabled()
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Agendar' }))
+    expect(await screen.findByText(/Próxima visita agendada para/)).toBeInTheDocument()
+  }, 20000)
+
+  it('busca al paciente y alterna el calendario entre semana y mes', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-citar'))
+    await user.click(await screen.findByRole('button', { name: 'MI-19, Citar' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Citar paciente' })
+    expect(within(dialogo).getByText('Correlativo MI-19')).toBeInTheDocument()
+
+    await user.type(within(dialogo).getByLabelText('Buscar paciente'), 'EXP-004521')
+    await user.click(within(dialogo).getByRole('button', { name: 'Buscar' }))
+    await user.click(
+      await within(dialogo).findByRole('button', { name: /María Fernanda López García/ }),
+    )
+
+    expect(within(dialogo).getByLabelText('Número de expediente')).toHaveValue('EXP-004521')
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Semana' }))
+    expect(within(dialogo).getByRole('button', { name: 'Semana' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(within(dialogo).getByText(/Semana del/)).toBeInTheDocument()
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Mes actual' }))
+    expect(within(dialogo).getByRole('button', { name: 'Mes' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  }, 20000)
+
+  it('permite seleccionar cualquier correlativo en la etapa Citar', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-citar'))
+    await user.click(await screen.findByRole('button', { name: /^MI-01,/ }))
+
+    expect(await screen.findByTestId('panel-citar')).toBeInTheDocument()
+  }, 20000)
+
   it('filtra por etapa sin controles de búsqueda ni registro', async () => {
     const user = userEvent.setup()
     renderPagina()

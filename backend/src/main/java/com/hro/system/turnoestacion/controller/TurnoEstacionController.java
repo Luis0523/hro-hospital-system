@@ -133,6 +133,26 @@ public class TurnoEstacionController {
                 turnoEstacionService.actualizarTipoRegistro(id, dto), "Tipo de registro actualizado"));
     }
 
+    @PutMapping("/{id}/expediente")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Asignar expediente desde Enfermería",
+            description = "Completa el número de expediente y el nombre del paciente si el turno aún no lo tiene.")
+    public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> asignarExpediente(
+            @PathVariable UUID id, @Valid @RequestBody AsignarExpedienteTurnoRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.asignarExpediente(id, dto), "Expediente asignado"));
+    }
+
+    @PutMapping("/{id}/proxima-visita")
+    @PreAuthorize("hasAnyRole('enfermeria', 'jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Agendar próxima visita",
+            description = "Guarda la fecha de la próxima visita de un turno atendido.")
+    public ResponseEntity<ApiResponse<TurnoEstacionResponseDTO>> agendarProximaVisita(
+            @PathVariable UUID id, @Valid @RequestBody AgendarProximaVisitaRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                turnoEstacionService.agendarProximaVisita(id, dto), "Próxima visita agendada"));
+    }
+
     @PostMapping("/{id}/vincular-expediente")
     @PreAuthorize("hasAnyRole('medico', 'administrador')")
     @Operation(summary = "Vincular expediente (médico)",

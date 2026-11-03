@@ -126,6 +126,13 @@ export async function listarSubespecialidadesEstacion(estacionId, fecha) {
   return Array.isArray(lista) ? lista : []
 }
 
+export async function listarSubespecialidadesDeEspecialidad(especialidadId) {
+  const id = String(especialidadId ?? '').trim()
+  if (!id) return []
+  if (USE_MOCK) return [{ id, nombre: 'Área de la especialidad' }]
+  return desenvolver(await client.get(`/subespecialidades/especialidad/${id}`)) ?? []
+}
+
 export async function listarTurnosEstacion(estacionId, fecha, incluirNoResponde = false) {
   if (USE_MOCK) return turnosEstacionMock(estacionId)
   const params = {}
@@ -156,14 +163,21 @@ export async function listarPacientes({ page = 0, size = 50 } = {}) {
   return pagina?.content ?? pagina
 }
 
-export async function consultarDisponibilidad({ subespecialidadIds = [], fechaInicio, fechaFin } = {}) {
+export async function consultarDisponibilidad({
+  subespecialidadIds = [],
+  fechaInicio,
+  fechaFin,
+} = {}) {
   if (USE_MOCK) {
     return disponibilidadMock(fechaInicio, fechaFin, Math.max(1, subespecialidadIds.length))
   }
   const clave = `cupos_mes_${fechaInicio}_${fechaFin}_${subespecialidadIds.join('-') || 'all'}`
   const cacheado = leerCache(clave)
   if (cacheado) return cacheado
-  const cupos = await consultarCuposPorSubespecialidades(subespecialidadIds, { fechaInicio, fechaFin })
+  const cupos = await consultarCuposPorSubespecialidades(subespecialidadIds, {
+    fechaInicio,
+    fechaFin,
+  })
   const agrupado = agruparCuposPorFecha(cupos)
   const feriados = await obtenerFeriados(fechaInicio, fechaFin)
   const resultado = completarRango(agrupado, fechaInicio, fechaFin, feriados)

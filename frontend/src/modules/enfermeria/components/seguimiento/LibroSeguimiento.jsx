@@ -87,6 +87,7 @@ export default function LibroSeguimiento({
     registrado: 'Enter sobre una especialidad asigna el siguiente turno.',
     en_clinica:
       'Enter sobre una especialidad elige su turno; se usa la clínica ya asignada o la seleccionada.',
+    citar: 'Seleccione un turno atendido para agendar su próxima visita.',
     devuelto: 'Enter sobre una especialidad devuelve su siguiente turno en clínica.',
     archivo: 'Enter sobre una especialidad envía su siguiente turno devuelto al archivo.',
   }

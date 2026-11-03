@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   actualizarTipoRegistroTurno,
+  agendarProximaVisitaTurno,
+  asignarExpedienteTurno,
   avanzarTurno,
   cambiarClinicaTurno,
   deshacerDevolucionClinica,
@@ -292,6 +294,26 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     [estacionId, fecha],
   )
 
+  const asignarExpediente = useCallback(
+    async (id, numeroExpediente) => {
+      const turno = await encolar(id, () => asignarExpedienteTurno(id, numeroExpediente))
+      setLibro((actual) => reemplazarTurno(actual, turno))
+      cargar({ silencioso: true })
+      return turno
+    },
+    [cargar, encolar],
+  )
+
+  const agendarProximaVisita = useCallback(
+    async (id, fecha) => {
+      const turno = await encolar(id, () => agendarProximaVisitaTurno(id, fecha))
+      setLibro((actual) => reemplazarTurno(actual, turno))
+      cargar({ silencioso: true })
+      return turno
+    },
+    [cargar, encolar],
+  )
+
   const recargar = useCallback(() => cargar(), [cargar])
 
   return {
@@ -306,6 +328,8 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
     eliminar,
     cambiarClinica,
     cambiarTipoRegistro,
+    asignarExpediente,
+    agendarProximaVisita,
     devolverClinica,
     deshacerDevolucion,
   }

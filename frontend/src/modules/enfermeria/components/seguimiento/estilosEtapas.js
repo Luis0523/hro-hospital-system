@@ -22,6 +22,13 @@ export const ESTILOS_ETAPA = {
     punto: 'bg-violet-500',
     barra: 'bg-violet-500',
   },
+  citar: {
+    texto: 'text-sky-600 dark:text-sky-300',
+    borde: 'border-sky-500/60',
+    fondo: 'bg-sky-500/10',
+    punto: 'bg-sky-500',
+    barra: 'bg-sky-500',
+  },
   devuelto: {
     texto: 'text-rose-600 dark:text-rose-300',
     borde: 'border-rose-500/70',
