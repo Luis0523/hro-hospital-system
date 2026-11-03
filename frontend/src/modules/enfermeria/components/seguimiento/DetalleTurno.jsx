@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Icon, Modal } from '@/shared/components/ui'
 import {
   ETAPAS_SEGUIMIENTO,
@@ -34,12 +34,15 @@ export default function DetalleTurno({
   onCambiarClinica,
   onCambiarTipoRegistro,
   onEliminar,
+  menuSecundario = false,
 }) {
   const [historialAbierto, setHistorialAbierto] = useState(false)
   const [historial, setHistorial] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [errorHistorial, setErrorHistorial] = useState(null)
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const historialTimerRef = useRef(null)
   const [motivoEliminar, setMotivoEliminar] = useState('')
   const [eliminando, setEliminando] = useState(false)
 
@@ -54,8 +57,24 @@ export default function DetalleTurno({
 
   useEffect(() => {
     setConfirmandoEliminar(false)
+    setMenuAbierto(false)
     setMotivoEliminar('')
   }, [turnoId])
+
+  // El historial es informativo: se cierra solo si deja de usarse.
+  useEffect(() => {
+    if (!historialAbierto) return undefined
+    historialTimerRef.current = setTimeout(() => setHistorialAbierto(false), 8000)
+    return () => {
+      if (historialTimerRef.current) clearTimeout(historialTimerRef.current)
+    }
+  }, [historialAbierto])
+
+  function renovarCierreHistorial() {
+    if (!historialAbierto) return
+    if (historialTimerRef.current) clearTimeout(historialTimerRef.current)
+    historialTimerRef.current = setTimeout(() => setHistorialAbierto(false), 8000)
+  }
 
   async function confirmarEliminar() {
     if (!turno || eliminando) return
@@ -160,11 +179,43 @@ export default function DetalleTurno({
               Revertir
             </Button>
           )}
-          {puedeEliminar && (
+          {puedeEliminar && !menuSecundario && (
             <Button variant="danger" size="sm" onClick={() => setConfirmandoEliminar(true)}>
               <Icon name="delete" className="text-[16px]" />
               Eliminar registro
             </Button>
+          )}
+          {puedeEliminar && menuSecundario && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Más acciones del turno"
+                aria-expanded={menuAbierto}
+                onClick={() => setMenuAbierto((valor) => !valor)}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-outline-variant text-on-surface-variant transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+              >
+                <Icon name="more_vert" className="text-[20px]" />
+              </button>
+              {menuAbierto && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-30 mt-1 min-w-52 rounded-lg border border-outline-variant bg-surface-container-lowest p-1 shadow-popover"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuAbierto(false)
+                      setConfirmandoEliminar(true)
+                    }}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-2.5 text-left text-label-md font-semibold text-error transition hover:bg-error-container"
+                  >
+                    <Icon name="delete" className="text-[18px]" />
+                    Eliminar registro
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           {turno && (
             <button
@@ -190,7 +241,24 @@ export default function DetalleTurno({
       {mostrarEditorTipo && <EditorTipoRegistro turno={turno} onCambiar={onCambiarTipoRegistro} />}
 
       {historialAbierto && (
-        <div className="mt-2 space-y-1.5 border-t border-outline-variant pt-2">
+        <div
+          className="mt-2 space-y-1.5 border-t border-outline-variant pt-2"
+          onPointerDown={renovarCierreHistorial}
+          onKeyDown={renovarCierreHistorial}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              Historial de movimientos
+            </p>
+            <button
+              type="button"
+              aria-label="Cerrar historial"
+              onClick={() => setHistorialAbierto(false)}
+              className="flex min-h-9 min-w-9 items-center justify-center rounded-md border border-outline-variant text-on-surface-variant transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+            >
+              <Icon name="close" className="text-[18px]" />
+            </button>
+          </div>
           {cargandoHistorial && (
             <p className="text-label-sm text-on-surface-variant">Cargando historial…</p>
           )}

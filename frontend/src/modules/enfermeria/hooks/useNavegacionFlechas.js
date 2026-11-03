@@ -60,7 +60,9 @@ export function useNavegacionFlechas(ref) {
       const objetivo = evento.target
       if (
         objetivo instanceof Element &&
-        objetivo.closest('input, textarea, select, [contenteditable="true"]')
+        objetivo.closest(
+          'input, textarea, select, [contenteditable="true"], [data-nav-propia="true"]',
+        )
       ) {
         return
       }

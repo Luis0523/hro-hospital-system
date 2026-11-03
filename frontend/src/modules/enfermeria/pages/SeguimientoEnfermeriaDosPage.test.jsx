@@ -155,4 +155,62 @@ describe('SeguimientoEnfermeriaDosPage', () => {
 
     await waitFor(() => expect(detalle().getByText(/Clínica 3/)).toBeInTheDocument())
   }, 20000)
+
+  it('muestra Devoluciones por clínica en la etapa Devuelto', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-devuelto')
+    await user.click(screen.getByTestId('etapa-devuelto'))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Devoluciones por clínica' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Clínica 3')).toBeInTheDocument()
+  }, 20000)
+
+  it('muestra Salida de Enfermería a Archivo en la etapa Archivo', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-archivo')
+    await user.click(screen.getByTestId('etapa-archivo'))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Salida de Enfermería a Archivo' }),
+    ).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Escriba o escanee el expediente')).toBeInTheDocument()
+  }, 20000)
+
+  it('muestra las clínicas en la barra inferior de Recibir/Repartir, sin modal', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-en_clinica')
+    await user.click(screen.getByTestId('etapa-en_clinica'))
+
+    expect(screen.getByText('Destino')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Clínica 3:/ })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  }, 20000)
+
+  it('registra con un toque y con doble toque como presentación', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-registrado')
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
+
+    await user.click(screen.getByRole('button', { name: /^Oncología\./ }))
+
+    expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
+
+    const celdaLibre = await screen.findByRole('button', { name: 'ONC-06, sin registro' })
+    await user.dblClick(celdaLibre)
+
+    expect(
+      await screen.findByRole('button', { name: 'ONC-06, Registrado, presentación' }),
+    ).toBeInTheDocument()
+  }, 20000)
 })

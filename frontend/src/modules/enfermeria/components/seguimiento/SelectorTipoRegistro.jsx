@@ -65,7 +65,7 @@ export default function SelectorTipoRegistro({
             aria-pressed={activo}
             disabled={deshabilitado}
             onClick={() => onCambiar(opcion.id)}
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-label-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`inline-flex min-h-11 touch-manipulation select-none items-center gap-1 rounded-md border px-2.5 text-label-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
               activo
                 ? ESTILOS_ACTIVOS[opcion.clave]
                 : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'

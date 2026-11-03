@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, EmptyState, Select, Spinner } from '@/shared/components/ui'
+import { Alert, Button, EmptyState, Icon, Select, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
 import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
-import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.jsx'
+import BarraDestino from '../components/seguimiento/BarraDestino.jsx'
+import CuadriculaTurnos from '../components/seguimiento/CuadriculaTurnos.jsx'
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
-import EtapasSeguimiento from '../components/seguimiento/EtapasSeguimiento.jsx'
-import LibroSeguimiento from '../components/seguimiento/LibroSeguimiento.jsx'
+import DevolucionesClinicas from '../components/seguimiento/DevolucionesClinicas.jsx'
+import HojaClinicas from '../components/seguimiento/HojaClinicas.jsx'
+import ListaEspecialidades from '../components/seguimiento/ListaEspecialidades.jsx'
+import PestanasEtapas from '../components/seguimiento/PestanasEtapas.jsx'
+import SalidaEnfermeriaArchivo from '../components/seguimiento/SalidaEnfermeriaArchivo.jsx'
+import SelectorTipoRegistro from '../components/seguimiento/SelectorTipoRegistro.jsx'
 import {
   ES_MODO_MOCK,
   ETAPA_PREVIA,
@@ -50,6 +55,7 @@ export default function SeguimientoEnfermeriaDosPage() {
   const { estacion, seleccionarEstacion } = useEstacion()
   const fecha = useMemo(() => hoyIso(), [])
   const contenidoRef = useRef(null)
+  const dobleEventoRef = useRef(null)
   useNavegacionFlechas(contenidoRef)
   const { mostrarToast } = useToast()
 
@@ -68,6 +74,8 @@ export default function SeguimientoEnfermeriaDosPage() {
     eliminar,
     cambiarClinica,
     cambiarTipoRegistro,
+    devolverClinica,
+    deshacerDevolucion,
   } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
 
   const [seleccion, setSeleccion] = useState(null)
@@ -81,7 +89,18 @@ export default function SeguimientoEnfermeriaDosPage() {
   const [tokenAsignaciones, setTokenAsignaciones] = useState(0)
   const [registroPendiente, setRegistroPendiente] = useState(null)
   const [cambioClinicaActivo, setCambioClinicaActivo] = useState(false)
-  const [focoClinicas, setFocoClinicas] = useState(0)
+  const [especialidadActivaId, setEspecialidadActivaId] = useState(null)
+  const [hojaClinicasAbierta, setHojaClinicasAbierta] = useState(false)
+  const [mostrarTodasClinicas, setMostrarTodasClinicas] = useState(false)
+  const [turnoPendienteClinica, setTurnoPendienteClinica] = useState(null)
+  const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
+
+  useEffect(
+    () => () => {
+      if (dobleEventoRef.current) clearTimeout(dobleEventoRef.current.timer)
+    },
+    [],
+  )
 
   useEffect(() => {
     let activo = true
@@ -167,6 +186,19 @@ export default function SeguimientoEnfermeriaDosPage() {
     setCambioClinicaActivo(false)
   }, [seleccion?.especialidadId, seleccion?.numero, filtro])
 
+  useEffect(() => {
+    if (registroPendiente || cambioClinicaActivo) {
+      setHojaClinicasAbierta(true)
+      setMostrarTodasClinicas(false)
+    }
+  }, [registroPendiente, cambioClinicaActivo])
+
+  useEffect(() => {
+    setHojaClinicasAbierta(false)
+    setMostrarTodasClinicas(false)
+    setTurnoPendienteClinica(null)
+  }, [filtro])
+
   const opcionesEstacion = useMemo(
     () =>
       estaciones.map((item) => ({
@@ -177,6 +209,18 @@ export default function SeguimientoEnfermeriaDosPage() {
   )
 
   const especialidades = useMemo(() => libro?.especialidades ?? [], [libro])
+
+  useEffect(() => {
+    if (especialidades.length === 0) {
+      setEspecialidadActivaId(null)
+      return
+    }
+    setEspecialidadActivaId((actual) =>
+      actual != null && especialidades.some((item) => String(item.id) === String(actual))
+        ? actual
+        : especialidades[0].id,
+    )
+  }, [especialidades])
 
   const turnosPorClave = useMemo(() => {
     const mapa = new Map()
@@ -220,6 +264,12 @@ export default function SeguimientoEnfermeriaDosPage() {
     [especialidades, turnosPorClave],
   )
 
+  const filaActiva = useMemo(
+    () =>
+      filas.find((fila) => String(fila.id) === String(especialidadActivaId)) ?? filas[0] ?? null,
+    [filas, especialidadActivaId],
+  )
+
   const seleccionCompleta = useMemo(() => {
     if (!seleccion) return null
     const turno = turnosPorClave.get(`${seleccion.especialidadId}-${seleccion.numero}`) ?? null
@@ -244,22 +294,35 @@ export default function SeguimientoEnfermeriaDosPage() {
   }, [asignacionesVista])
 
   const idsClinicasElegibles = useMemo(() => {
+    // Si la vista de asignaciones no trae el mapeo de la especialidad, no se
+    // bloquean las clínicas: es preferible permitir elegir que dejar la barra
+    // completamente deshabilitada.
+    const idsDe = (especialidadId) => {
+      const ids = clinicasPorEspecialidad.get(String(especialidadId))
+      return ids && ids.size > 0 ? ids : null
+    }
+
     if (cambioClinicaActivo && seleccion?.especialidadId != null) {
-      return clinicasPorEspecialidad.get(String(seleccion.especialidadId)) ?? new Set()
+      return idsDe(seleccion.especialidadId)
     }
     if (filtro === 'registrado') {
       if (!registroPendiente) return new Set()
-      return clinicasPorEspecialidad.get(String(registroPendiente.especialidadId)) ?? new Set()
+      return idsDe(registroPendiente.especialidadId)
     }
-    if (filtro === 'en_clinica' && seleccionCompleta?.turno) {
+    if (filtro === 'en_clinica') {
       const especialidadId =
-        seleccionCompleta.turno.especialidadId ?? seleccionCompleta.especialidadId
-      return clinicasPorEspecialidad.get(String(especialidadId)) ?? new Set()
+        seleccionCompleta?.turno?.especialidadId ??
+        seleccionCompleta?.especialidadId ??
+        seleccion?.especialidadId ??
+        especialidadActivaId
+      if (especialidadId == null) return null
+      return idsDe(especialidadId)
     }
     return null
   }, [
     cambioClinicaActivo,
     clinicasPorEspecialidad,
+    especialidadActivaId,
     filtro,
     registroPendiente,
     seleccion?.especialidadId,
@@ -270,6 +333,26 @@ export default function SeguimientoEnfermeriaDosPage() {
     (clinica) => !idsClinicasElegibles || idsClinicasElegibles.has(String(clinica.id)),
     [idsClinicasElegibles],
   )
+
+  const clinicasHoja = useMemo(() => {
+    if (mostrarTodasClinicas) return clinicas
+    const especialidadId =
+      registroPendiente?.especialidadId ??
+      seleccionCompleta?.turno?.especialidadId ??
+      seleccionCompleta?.especialidadId ??
+      filaActiva?.id
+    if (especialidadId == null) return clinicas
+    const ids = clinicasPorEspecialidad.get(String(especialidadId))
+    if (!ids || ids.size === 0) return clinicas
+    return clinicas.filter((clinica) => ids.has(String(clinica.id)))
+  }, [
+    clinicas,
+    clinicasPorEspecialidad,
+    filaActiva?.id,
+    mostrarTodasClinicas,
+    registroPendiente,
+    seleccionCompleta,
+  ])
 
   function clinicasElegiblesPara(especialidadId) {
     const ids = clinicasPorEspecialidad.get(String(especialidadId)) ?? new Set()
@@ -302,13 +385,72 @@ export default function SeguimientoEnfermeriaDosPage() {
     return null
   }
 
-  function activarEspecialidad(especialidadId, codigo) {
+  // Un toque registra normal; dos toques rápidos registran la presentación.
+  // También sirve para Enter/doble Enter, porque los botones emiten click.
+  function reaccionarConDobleEvento(clave, accionNormal, accionPresentacion) {
+    const ahora = Date.now()
+    const pendiente = dobleEventoRef.current
+
+    if (pendiente && pendiente.clave === clave && ahora - pendiente.instante <= 300) {
+      clearTimeout(pendiente.timer)
+      dobleEventoRef.current = null
+      accionPresentacion()
+      return
+    }
+
+    if (pendiente) {
+      clearTimeout(pendiente.timer)
+      dobleEventoRef.current = null
+      pendiente.accionNormal()
+    }
+
+    const timer = setTimeout(() => {
+      dobleEventoRef.current = null
+      accionNormal()
+    }, 300)
+    dobleEventoRef.current = { clave, timer, instante: ahora, accionNormal }
+  }
+
+  function activarEspecialidadConEvento(especialidadId, codigo, opciones = {}) {
+    // El teclado conserva su acción inmediata; el toque espera 300 ms para
+    // distinguir un toque simple de un doble toque.
+    if (!opciones.puntero) {
+      activarEspecialidad(especialidadId, codigo)
+      return
+    }
+    reaccionarConDobleEvento(
+      `especialidad-${especialidadId}`,
+      () => activarEspecialidad(especialidadId, codigo),
+      () =>
+        activarEspecialidad(especialidadId, codigo, {
+          tipoForzado: 'presentacion',
+        }),
+    )
+  }
+
+  function seleccionarConEvento(especialidadId, codigo, numero, opciones = {}) {
+    if (!opciones.puntero) {
+      seleccionar(especialidadId, codigo, numero)
+      return
+    }
+    reaccionarConDobleEvento(
+      `turno-${especialidadId}-${numero}`,
+      () => seleccionar(especialidadId, codigo, numero),
+      () =>
+        seleccionar(especialidadId, codigo, numero, {
+          tipoForzado: 'presentacion',
+        }),
+    )
+  }
+
+  function activarEspecialidad(especialidadId, codigo, opciones = {}) {
     if (registrando && (!filtro || filtro === 'registrado')) return
     const especialidad = especialidades.find((item) => String(item.id) === String(especialidadId))
     if (!especialidad) return
+    setEspecialidadActivaId(especialidadId)
 
     if (!filtro || filtro === 'registrado') {
-      iniciarRegistro(especialidad)
+      iniciarRegistro(especialidad, null, opciones.tipoForzado)
       return
     }
 
@@ -331,9 +473,10 @@ export default function SeguimientoEnfermeriaDosPage() {
     if (filtro === 'en_clinica') {
       const clinica = clinicaDestino ?? clinicaDelTurno(turno)
       if (!clinica) {
+        setTurnoPendienteClinica({ turno, especialidadId })
         mostrarToast({
           tone: 'warning',
-          title: 'Seleccione una clínica física como destino.',
+          title: 'Seleccione una clínica física en la barra inferior.',
         })
         return
       }
@@ -344,7 +487,9 @@ export default function SeguimientoEnfermeriaDosPage() {
     avanzarDirecto(turno, especialidadId)
   }
 
-  function iniciarRegistro(especialidad, numero = null) {
+  function iniciarRegistro(especialidad, numero = null, tipoForzado = undefined) {
+    setEspecialidadActivaId(especialidad.id)
+    const tipo = tipoForzado === undefined ? tipoRegistro : tipoForzado
     const correlativo = numero ?? siguienteCorrelativo(especialidad)
     if (correlativo == null) {
       mostrarToast({
@@ -356,11 +501,11 @@ export default function SeguimientoEnfermeriaDosPage() {
 
     const elegibles = clinicasElegiblesPara(especialidad.id)
     if (elegibles.length === 0) {
-      registrarDirecto(especialidad.id, especialidad.codigo, correlativo, null)
+      registrarDirecto(especialidad.id, especialidad.codigo, correlativo, null, tipo)
       return
     }
     if (elegibles.length === 1) {
-      registrarDirecto(especialidad.id, especialidad.codigo, correlativo, elegibles[0])
+      registrarDirecto(especialidad.id, especialidad.codigo, correlativo, elegibles[0], tipo)
       return
     }
 
@@ -374,10 +519,10 @@ export default function SeguimientoEnfermeriaDosPage() {
       codigo: especialidad.codigo,
       numero: correlativo,
       nombre: especialidad.nombre,
+      tipoRegistro: tipo,
     })
     setClinicaDestino(null)
     setCambioClinicaActivo(false)
-    setFocoClinicas((valor) => valor + 1)
     mostrarToast({
       tone: 'info',
       title: `Seleccione la clínica para ${especialidad.nombre}.`,
@@ -400,11 +545,15 @@ export default function SeguimientoEnfermeriaDosPage() {
     setClinicaDestino(null)
     setRegistroPendiente(null)
     setCambioClinicaActivo(false)
+    setEspecialidadActivaId(null)
+    setHojaClinicasAbierta(false)
+    setTurnoPendienteClinica(null)
   }
 
-  function seleccionar(especialidadId, codigo, numero) {
+  function seleccionar(especialidadId, codigo, numero, opciones = {}) {
     if (registrando && (!filtro || filtro === 'registrado')) return
     const turno = turnosPorClave.get(`${especialidadId}-${numero}`) ?? null
+    setEspecialidadActivaId(especialidadId)
     setSeleccion({ especialidadId, codigo, numero })
 
     if (!filtro) return
@@ -414,7 +563,7 @@ export default function SeguimientoEnfermeriaDosPage() {
       // registro en el detalle del turno.
       if (turno) return
       const especialidad = especialidades.find((item) => String(item.id) === String(especialidadId))
-      if (especialidad) iniciarRegistro(especialidad, numero)
+      if (especialidad) iniciarRegistro(especialidad, numero, opciones.tipoForzado)
       return
     }
 
@@ -438,9 +587,10 @@ export default function SeguimientoEnfermeriaDosPage() {
     if (filtro === 'en_clinica') {
       const clinica = clinicaDestino ?? clinicaDelTurno(turno)
       if (!clinica) {
+        setTurnoPendienteClinica({ turno, especialidadId })
         mostrarToast({
           tone: 'warning',
-          title: 'Seleccione una clínica física como destino.',
+          title: 'Seleccione una clínica física en la barra inferior.',
         })
         return
       }
@@ -462,9 +612,17 @@ export default function SeguimientoEnfermeriaDosPage() {
     }
   }
 
-  function registrarDirecto(especialidadId, codigo, numero, clinica = null) {
+  function registrarDirecto(
+    especialidadId,
+    codigo,
+    numero,
+    clinica = null,
+    tipoForzado = undefined,
+  ) {
     if (registrando) return
-    const tipo = tipoRegistro
+    const tipo = tipoForzado === undefined ? tipoRegistro : tipoForzado
+    setEspecialidadActivaId(especialidadId)
+    setSeleccion({ especialidadId, codigo, numero })
     setRegistrando(true)
     ejecutarAccion(async () => {
       try {
@@ -482,7 +640,9 @@ export default function SeguimientoEnfermeriaDosPage() {
           codigo: creado.codigo ?? codigo,
           numero: creado.numero,
         })
+        setEspecialidadActivaId(creado.especialidadId ?? especialidadId)
         setRegistroPendiente(null)
+        setHojaClinicasAbierta(false)
         setCambioClinicaActivo(false)
         setTipoRegistro(null)
         enfocarEspecialidad(especialidadId)
@@ -528,6 +688,7 @@ export default function SeguimientoEnfermeriaDosPage() {
     setClinicaDestino(null)
     setRegistroPendiente(null)
     setCambioClinicaActivo(false)
+    if (nuevo === 'devuelto' || nuevo === 'archivo') setSeleccion(null)
     enfocarEspecialidad(filas[0]?.id)
   }
 
@@ -629,7 +790,6 @@ export default function SeguimientoEnfermeriaDosPage() {
     setRegistroPendiente(null)
     setCambioClinicaActivo(true)
     setClinicaDestino(null)
-    setFocoClinicas((valor) => valor + 1)
     mostrarToast({
       tone: 'info',
       title: `Seleccione la nueva clínica para ${etiquetaTurno(
@@ -640,6 +800,8 @@ export default function SeguimientoEnfermeriaDosPage() {
   }
 
   function elegirClinica(clinica) {
+    setHojaClinicasAbierta(false)
+
     if (cambioClinicaActivo && seleccionCompleta?.turno) {
       const turno = seleccionCompleta.turno
       ejecutarAccion(async () => {
@@ -674,11 +836,18 @@ export default function SeguimientoEnfermeriaDosPage() {
         registroPendiente.codigo,
         registroPendiente.numero,
         clinica,
+        registroPendiente.tipoRegistro,
       )
       return
     }
 
     if (filtro === 'en_clinica') {
+      if (turnoPendienteClinica?.turno) {
+        const { turno, especialidadId } = turnoPendienteClinica
+        setTurnoPendienteClinica(null)
+        asignarTurnoAClinica(turno, especialidadId, clinica)
+        return
+      }
       const misma = String(clinicaDestino?.id) === String(clinica.id)
       setClinicaDestino(misma ? null : clinica)
       mostrarToast({
@@ -708,6 +877,46 @@ export default function SeguimientoEnfermeriaDosPage() {
             .join(', ')
         : undefined,
     })
+  }
+
+  async function registrarDevolucionEnClinica(clinica, cantidad = 1) {
+    if (procesandoClinicaId != null) return
+    setProcesandoClinicaId(clinica.id)
+    try {
+      const resumen = await devolverClinica(clinica.id, cantidad)
+      mostrarToast({
+        tone: 'success',
+        title: `${clinica.nombre}: ${cantidad} devolución(es) registrada(s)`,
+        message: `Pendientes: ${resumen?.pendientes ?? clinica.expedientesEnClinica ?? 0}`,
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo registrar la devolución.',
+      })
+    } finally {
+      setProcesandoClinicaId(null)
+    }
+  }
+
+  async function deshacerDevolucionEnClinica(clinica) {
+    if (procesandoClinicaId != null) return
+    setProcesandoClinicaId(clinica.id)
+    try {
+      const resumen = await deshacerDevolucion(clinica.id)
+      mostrarToast({
+        tone: 'info',
+        title: `${clinica.nombre}: devolución deshecha`,
+        message: `Devueltos: ${resumen?.devueltos ?? clinica.devueltos ?? 0}`,
+      })
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo deshacer la devolución.',
+      })
+    } finally {
+      setProcesandoClinicaId(null)
+    }
   }
 
   function recargarTodo() {
@@ -740,100 +949,167 @@ export default function SeguimientoEnfermeriaDosPage() {
       tituloCentrado="Control de turnos y expedientes · Prueba"
       acciones={accionesBarra}
     >
-      <main ref={contenidoRef} className="mx-auto w-full max-w-7xl space-y-4 px-2 py-4">
-        {errorEstaciones && (
-          <Alert tone="error" title="No se pudieron cargar las estaciones">
-            <div className="mt-2 flex items-center gap-3">
-              <span>{errorEstaciones}</span>
-              <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
-                Reintentar
-              </Button>
-            </div>
-          </Alert>
+      <main
+        ref={contenidoRef}
+        className="flex h-[calc(100dvh-3.5rem)] min-h-0 w-full flex-col overflow-hidden bg-surface"
+      >
+        {(errorEstaciones || error) && (
+          <div className="shrink-0 space-y-2 px-2 pt-2">
+            {errorEstaciones && (
+              <Alert tone="error" title="No se pudieron cargar las estaciones">
+                <div className="mt-2 flex items-center gap-3">
+                  <span>{errorEstaciones}</span>
+                  <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+                    Reintentar
+                  </Button>
+                </div>
+              </Alert>
+            )}
+            {error && (
+              <Alert tone="error" title="No se pudo cargar el libro de turnos">
+                <div className="mt-2 flex items-center gap-3">
+                  <span>{error}</span>
+                  <Button variant="secondary" size="sm" onClick={recargarTodo}>
+                    Reintentar
+                  </Button>
+                </div>
+              </Alert>
+            )}
+          </div>
         )}
 
-        {error && (
-          <Alert tone="error" title="No se pudo cargar el libro de turnos">
-            <div className="mt-2 flex items-center gap-3">
-              <span>{error}</span>
-              <Button variant="secondary" size="sm" onClick={recargarTodo}>
-                Reintentar
-              </Button>
-            </div>
-          </Alert>
-        )}
+        <h2 className="sr-only">Clínicas físicas</h2>
 
         {mostrarCarga ? (
-          <div className="flex justify-center py-16">
+          <div className="flex flex-1 items-center justify-center">
             <Spinner label="Cargando libro de turnos…" />
           </div>
         ) : !estacion?.id ? (
-          <EmptyState
-            title="Seleccione una estación"
-            description="Elija la estación de enfermería desde la cual se está abriendo esta jornada."
-          />
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]">
-            <div className="grid gap-3 md:grid-cols-[130px_minmax(0,1fr)]">
-              <aside className="space-y-1.5 md:-ml-2">
-                <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                  Flujo de seguimiento
-                </h2>
-                <EtapasSeguimiento conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
-              </aside>
-
-              <LibroSeguimiento
-                filas={filas}
-                seleccionId={seleccion ? `${seleccion.especialidadId}-${seleccion.numero}` : null}
-                filtro={filtro}
-                onSeleccionar={seleccionar}
-                onActivarEspecialidad={activarEspecialidad}
-                especialidadActivaId={seleccion?.especialidadId}
-                tipoRegistro={tipoRegistro}
-                onCambiarTipoRegistro={elegirTipoRegistro}
-                onIrACasillas={() => enfocarEspecialidad(filas[0]?.id)}
-                detalle={
-                  <DetalleTurno
-                    seleccion={seleccionCompleta}
-                    especialidadNombre={seleccionCompleta?.especialidadNombre}
-                    onRevertir={revertirSeleccionado}
-                    onCambiarClinica={iniciarCambioClinica}
-                    onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
-                    onEliminar={eliminarSeleccionado}
-                  />
-                }
-              />
-            </div>
-
-            <ClinicasSeguimiento
-              clinicas={clinicas}
-              modoAsignacion={filtro === 'en_clinica'}
-              modoRegistro={filtro === 'registrado'}
-              modoCambio={cambioClinicaActivo}
-              clinicaSeleccionadaId={
-                cambioClinicaActivo ? seleccionCompleta?.turno?.clinicaId : clinicaDestino?.id
-              }
-              onElegir={elegirClinica}
-              esElegible={esElegibleClinica}
-              focusToken={focoClinicas}
-              mensaje={
-                cambioClinicaActivo
-                  ? `Turno ${etiquetaTurno(
-                      seleccionCompleta?.turno?.codigo ?? seleccionCompleta?.codigo,
-                      seleccionCompleta?.turno?.numero ?? seleccionCompleta?.numero,
-                    )}: elija su nueva clínica.`
-                  : filtro === 'registrado'
-                    ? registroPendiente
-                      ? `${registroPendiente.nombre}: elija la clínica para el turno ${etiquetaTurno(
-                          registroPendiente.codigo,
-                          registroPendiente.numero,
-                        )}.`
-                      : 'Elija una especialidad para habilitar sus clínicas.'
-                    : null
-              }
+          <div className="flex flex-1 items-center justify-center p-4">
+            <EmptyState
+              title="Seleccione una estación"
+              description="Elija la estación de enfermería desde la cual se está abriendo esta jornada."
             />
           </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <PestanasEtapas conteos={conteos} filtro={filtro} onFiltrar={cambiarFiltro} />
+
+            {filtro !== 'devuelto' && filtro !== 'archivo' && (
+              <section className="shrink-0 space-y-1 border-b border-outline-variant bg-surface-container-lowest px-2 py-1.5">
+                <DetalleTurno
+                  seleccion={seleccionCompleta}
+                  especialidadNombre={seleccionCompleta?.especialidadNombre}
+                  onRevertir={revertirSeleccionado}
+                  onCambiarClinica={iniciarCambioClinica}
+                  onCambiarTipoRegistro={cambiarTipoRegistroSeleccionado}
+                  onEliminar={eliminarSeleccionado}
+                  menuSecundario
+                />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                    Tipo de registro
+                  </span>
+                  <SelectorTipoRegistro
+                    valor={tipoRegistro}
+                    onCambiar={elegirTipoRegistro}
+                    etiqueta="Tipo de nuevo registro"
+                  />
+                  <button
+                    type="button"
+                    aria-pressed={tipoRegistro === null}
+                    onClick={() => elegirTipoRegistro(null)}
+                    className={`inline-flex min-h-11 items-center gap-1 rounded-md border px-2.5 text-label-sm font-semibold transition touch-manipulation select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue active:scale-95 ${
+                      tipoRegistro === null
+                        ? 'border-primary bg-primary text-on-primary'
+                        : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    <Icon name="label_off" className="text-[16px]" />
+                    Sin marca
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {filtro === 'devuelto' ? (
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+                <DevolucionesClinicas
+                  clinicas={clinicas}
+                  onDevolver={registrarDevolucionEnClinica}
+                  onDeshacer={deshacerDevolucionEnClinica}
+                  procesandoId={procesandoClinicaId}
+                />
+              </div>
+            ) : filtro === 'archivo' ? (
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+                <SalidaEnfermeriaArchivo
+                  estacionId={estacion?.id}
+                  fecha={fecha}
+                  clinicas={clinicas}
+                />
+              </div>
+            ) : (
+              <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)] overflow-hidden">
+                <ListaEspecialidades
+                  filas={filas}
+                  especialidadActivaId={filaActiva?.id}
+                  onActivar={activarEspecialidadConEvento}
+                />
+
+                <CuadriculaTurnos
+                  fila={filaActiva}
+                  seleccionId={seleccion ? `${seleccion.especialidadId}-${seleccion.numero}` : null}
+                  filtro={filtro}
+                  onSeleccionar={seleccionarConEvento}
+                />
+              </div>
+            )}
+
+            {filtro === 'en_clinica' && (
+              <BarraDestino
+                clinicas={clinicas}
+                clinicaSeleccionadaId={clinicaDestino?.id}
+                onElegir={elegirClinica}
+                esElegible={esElegibleClinica}
+              />
+            )}
+          </div>
         )}
+
+        <HojaClinicas
+          open={hojaClinicasAbierta}
+          onClose={() => setHojaClinicasAbierta(false)}
+          clinicas={clinicasHoja}
+          clinicaSeleccionadaId={
+            cambioClinicaActivo ? seleccionCompleta?.turno?.clinicaId : clinicaDestino?.id
+          }
+          onElegir={elegirClinica}
+          esElegible={esElegibleClinica}
+          especialidadNombre={filaActiva?.nombre}
+          mostrarTodas={mostrarTodasClinicas}
+          onMostrarTodas={() => setMostrarTodasClinicas((valor) => !valor)}
+          mensaje={
+            cambioClinicaActivo
+              ? `Turno ${etiquetaTurno(
+                  seleccionCompleta?.turno?.codigo ?? seleccionCompleta?.codigo,
+                  seleccionCompleta?.turno?.numero ?? seleccionCompleta?.numero,
+                )}: elija su nueva clínica.`
+              : turnoPendienteClinica
+                ? `Turno ${etiquetaTurno(
+                    turnoPendienteClinica.turno?.codigo,
+                    turnoPendienteClinica.turno?.numero,
+                  )}: elija la clínica de destino.`
+                : filtro === 'registrado'
+                  ? registroPendiente
+                    ? `${registroPendiente.nombre}: elija la clínica para el turno ${etiquetaTurno(
+                        registroPendiente.codigo,
+                        registroPendiente.numero,
+                      )}.`
+                    : 'Elija una especialidad para habilitar sus clínicas.'
+                  : null
+          }
+        />
       </main>
     </EnfermeriaEstacionLayout>
   )
