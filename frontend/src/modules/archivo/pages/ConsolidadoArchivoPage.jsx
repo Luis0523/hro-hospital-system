@@ -7,6 +7,7 @@ import { descargarArchivadosPdf } from '../api/consolidadoArchivoApi'
 import { descargarBlob } from '../utils/descargarBlob'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import ConsolidadoDiario from '../components/consolidado/ConsolidadoDiario.jsx'
+import HistorialDepuracionesConsolidado from '../components/consolidado/HistorialDepuracionesConsolidado.jsx'
 import TablaInformeEstadistico from '../components/consolidado/TablaInformeEstadistico.jsx'
 import TablaDetalleConsulta from '../components/consolidado/TablaDetalleConsulta.jsx'
 import BloqueTotalesMes from '../components/consolidado/BloqueTotalesMes.jsx'
@@ -15,6 +16,7 @@ import { useConsolidadoArchivo } from '../hooks/useConsolidadoArchivo'
 const VISTAS = [
   { clave: 'diario', etiqueta: 'Diario', icono: 'today' },
   { clave: 'mensual', etiqueta: 'Mensual', icono: 'calendar_month' },
+  { clave: 'depuraciones', etiqueta: 'Depuraciones', icono: 'delete_sweep' },
 ]
 
 function mesValor(periodo) {
@@ -106,7 +108,7 @@ export default function ConsolidadoArchivoPage() {
             </p>
           </div>
 
-          <div role="tablist" aria-label="Tipo de consolidado" className="flex gap-2">
+          <div role="tablist" aria-label="Tipo de consolidado" className="flex flex-wrap gap-2">
             {VISTAS.map((item) => {
               const activa = vista === item.clave
               return (
@@ -292,6 +294,8 @@ export default function ConsolidadoArchivoPage() {
             )}
           </>
         )}
+
+        {vista === 'depuraciones' && <HistorialDepuracionesConsolidado />}
       </main>
 
       <ModalGenerandoPdf abierto={descargandoArchivados} progreso={progresoPdf} />

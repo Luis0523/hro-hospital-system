@@ -2,14 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { crearHistoricoDepuracionMock, expedientesDepuracionMock } from './depuracionFixtures'
 
 describe('depuracionFixtures históricos', () => {
-  it('genera registros ficticios anteriores a hoy, sin duplicar expedientes', () => {
+  it('genera registros históricos y doce fixtures de hoy sin duplicar expedientes', () => {
     const { expedientes, depuraciones } = crearHistoricoDepuracionMock('2026-11-02')
     const numeros = [...expedientesDepuracionMock, ...expedientes].map(
       (expediente) => expediente.numeroExpediente,
     )
+    const historicas = depuraciones.filter((registro) => registro.fecha < '2026-11-02')
+    const deHoy = depuraciones.filter((registro) => registro.fecha === '2026-11-02')
 
     expect(new Set(numeros).size).toBe(numeros.length)
-    expect(depuraciones.every((registro) => registro.fecha < '2026-11-02')).toBe(true)
+    expect(historicas.length).toBeGreaterThan(0)
+    expect(deHoy).toHaveLength(12)
+    expect(new Set(deHoy.map((registro) => registro.numeroExpediente)).size).toBe(12)
+    expect(new Set(deHoy.map((registro) => registro.depuradoEn.slice(11, 16))).size).toBe(12)
+    expect(deHoy.some((registro) => registro.numeroExpediente.startsWith('0'))).toBe(true)
+    expect(deHoy.some((registro) => registro.numeroExpediente.startsWith('9275'))).toBe(true)
+    expect(deHoy.every((registro) => registro.pacienteNombre.includes('Fixture Hoy'))).toBe(true)
     expect(depuraciones.every((registro) => registro.depuradoEn.startsWith(registro.fecha))).toBe(
       true,
     )

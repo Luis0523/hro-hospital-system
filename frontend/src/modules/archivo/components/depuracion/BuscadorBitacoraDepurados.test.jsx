@@ -1,52 +1,78 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BuscadorBitacoraDepurados from './BuscadorBitacoraDepurados.jsx'
 
 function renderBuscador(props = {}) {
-  return render(
-    <BuscadorBitacoraDepurados
-      valor=""
-      onChange={() => {}}
-      totalPeriodo={18}
-      totalCoincidencias={18}
-      {...props}
-    />,
-  )
+  return render(<BuscadorBitacoraDepurados valor="" onChange={() => {}} {...props} />)
 }
 
 describe('BuscadorBitacoraDepurados', () => {
-  it('muestra el total del período sin búsqueda', () => {
+  it('abre el modal desde el botón y enfoca el campo', async () => {
+    const user = userEvent.setup()
     renderBuscador()
 
-    expect(screen.getByText('18 expedientes en el período')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByLabelText(/número de expediente/i)).toHaveFocus()
   })
 
-  it('muestra coincidencias y total cuando hay búsqueda', () => {
-    renderBuscador({ valor: '9275', totalCoincidencias: 2 })
-
-    expect(screen.getByText('Mostrando 2 de 18 expedientes')).toBeInTheDocument()
-  })
-
-  it('normaliza guiones y rechaza letras', () => {
-    const onChange = vi.fn()
-    renderBuscador({ onChange })
-    const input = screen.getByRole('textbox', { name: /buscar en la bitácora/i })
-
-    fireEvent.change(input, { target: { value: '92-75' } })
-    expect(onChange).toHaveBeenLastCalledWith('9275')
-
-    fireEvent.change(input, { target: { value: 'ABC' } })
-    expect(onChange).toHaveBeenCalledTimes(1)
-  })
-
-  it('permite limpiar la búsqueda', async () => {
+  it('normaliza guiones y rechaza letras sin consultar la API', async () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
-    renderBuscador({ valor: '9275', totalCoincidencias: 1, onChange })
+    renderBuscador({ onChange })
 
-    await user.click(screen.getByRole('button', { name: /limpiar búsqueda/i }))
+    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+    const input = screen.getByLabelText(/número de expediente/i)
+
+    await user.type(input, '92-75')
+    expect(input).toHaveValue('9275')
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.type(input, 'ABC')
+    expect(input).toHaveValue('9275')
+
+    await user.click(screen.getByRole('button', { name: /aplicar/i }))
+    expect(onChange).toHaveBeenCalledWith('9275')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('permite limpiar el filtro desde el modal', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    renderBuscador({ valor: '9275', onChange })
+
+    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+    await user.click(screen.getByRole('button', { name: /limpiar/i }))
 
     expect(onChange).toHaveBeenCalledWith('')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('muestra un indicador y permite limpiar sin reabrir el campo', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    renderBuscador({ valor: '9275', onChange })
+
+    expect(screen.getByText('Exp. 9275')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /limpiar búsqueda de expediente/i }))
+    expect(onChange).toHaveBeenCalledWith('')
+  })
+
+  it('cierra con Escape sin aplicar cambios', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    renderBuscador({ onChange })
+
+    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+    await user.type(screen.getByLabelText(/número de expediente/i), '9275')
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

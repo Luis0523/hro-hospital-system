@@ -40,6 +40,30 @@ function primerDiaMesAnterior(hoy) {
   return `${anio}-${String(mes - 1).padStart(2, '0')}-01`
 }
 
+function definicionesHoy(hoy) {
+  return [
+    ['001250', 'Fixture Hoy Uno', 'Archivo Mock Uno', '08:05'],
+    ['001251', 'Fixture Hoy Dos', 'Archivo Mock Dos', '08:20'],
+    ['927582', 'Fixture Hoy Tres', 'Archivo Mock Tres', '08:45'],
+    ['927583', 'Fixture Hoy Cuatro', 'Archivo Mock Cuatro', '09:10'],
+    ['30955', 'Fixture Hoy Cinco', 'Archivo Mock Cinco', '09:35'],
+    ['30956', 'Fixture Hoy Seis', 'Archivo Mock Seis', '10:05'],
+    ['881204', 'Fixture Hoy Siete', 'Archivo Mock Siete', '10:30'],
+    ['881205', 'Fixture Hoy Ocho', 'Archivo Mock Ocho', '11:00'],
+    ['1234568', 'Fixture Hoy Nueve', 'Archivo Mock Nueve', '11:25'],
+    ['450102', 'Fixture Hoy Diez', 'Archivo Mock Diez', '12:10'],
+    ['77010', 'Fixture Hoy Once', 'Archivo Mock Once', '12:40'],
+    ['620015', 'Fixture Hoy Doce', 'Archivo Mock Doce', '13:15'],
+  ].map(([numeroExpediente, pacienteNombre, usuarioNombre, hora]) => ({
+    fecha: hoy,
+    numeroExpediente,
+    pacienteNombre,
+    usuarioNombre,
+    hora,
+    motivo: 'Registro ficticio de hoy para pruebas de búsqueda',
+  }))
+}
+
 function definicionesHistoricas(hoy) {
   const { anio } = partesFecha(hoy)
   const primerDiaMesPrevio = primerDiaMesAnterior(hoy)
@@ -134,14 +158,15 @@ function definicionesHistoricas(hoy) {
 }
 
 export function crearHistoricoDepuracionMock(hoy = hoyIsoGuatemala()) {
-  const definiciones = definicionesHistoricas(hoy)
+  const definiciones = [...definicionesHistoricas(hoy), ...definicionesHoy(hoy)]
   const expedientes = []
   const depuraciones = []
 
   definiciones.forEach((definicion, indice) => {
     const id = 201 + indice
-    const hora = String(8 + ((indice * 3) % 9)).padStart(2, '0')
-    const minuto = String((indice * 7) % 60).padStart(2, '0')
+    const [horaDefinida, minutoDefinido] = String(definicion.hora ?? '').split(':')
+    const hora = horaDefinida || String(8 + ((indice * 3) % 9)).padStart(2, '0')
+    const minuto = minutoDefinido || String((indice * 7) % 60).padStart(2, '0')
     const expedienteId = `10000000-0000-4000-8000-${String(id).padStart(12, '0')}`
 
     expedientes.push({

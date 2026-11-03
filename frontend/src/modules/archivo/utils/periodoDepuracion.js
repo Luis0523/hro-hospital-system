@@ -233,7 +233,7 @@ export function etiquetaPeriodo(periodo) {
 export function tituloPeriodo(tipo) {
   if (tipo === TIPOS_PERIODO.SEMANA) return 'Depurados de la semana'
   if (tipo === TIPOS_PERIODO.PERSONALIZADO) return 'Depurados del rango'
-  return 'Depurados hoy'
+  return 'Depurados de hoy'
 }
 
 export function textoVacioPeriodo(tipo) {

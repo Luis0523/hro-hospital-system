@@ -5,6 +5,7 @@ import { marcarDepurado } from './depuracionArchivoApi'
 import { obtenerConsolidadoDiario, obtenerConsolidadoMensual } from './consolidadoArchivoApi'
 
 const EXISTENTE = expedientesMock.find((expediente) => expediente.numeroExpediente).numeroExpediente
+const FIXTURES_HOY = 12
 
 describe('consolidadoArchivoApi (mock)', () => {
   beforeEach(() => {
@@ -16,7 +17,7 @@ describe('consolidadoArchivoApi (mock)', () => {
 
     expect(consolidado).toMatchObject({
       total: expect.any(Number),
-      totalDepurados: 0,
+      totalDepurados: FIXTURES_HOY,
     })
     expect(consolidado.fecha).toBeTruthy()
     expect(Array.isArray(consolidado.porEspecialidad)).toBe(true)
@@ -35,7 +36,7 @@ describe('consolidadoArchivoApi (mock)', () => {
     await marcarDepurado({ numeroExpediente: EXISTENTE })
 
     const consolidado = await obtenerConsolidadoDiario()
-    expect(consolidado.totalDepurados).toBe(1)
+    expect(consolidado.totalDepurados).toBe(FIXTURES_HOY + 1)
   })
 
   it('devuelve el consolidado mensual con su forma', async () => {

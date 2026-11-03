@@ -124,7 +124,7 @@ describe('periodoDepuracion', () => {
   })
 
   it('describe títulos y estados vacíos sin la opción mensual', () => {
-    expect(tituloPeriodo('hoy')).toBe('Depurados hoy')
+    expect(tituloPeriodo('hoy')).toBe('Depurados de hoy')
     expect(tituloPeriodo('semana')).toBe('Depurados de la semana')
     expect(tituloPeriodo('personalizado')).toBe('Depurados del rango')
     expect(textoVacioPeriodo('semana')).toMatch(/semana/i)

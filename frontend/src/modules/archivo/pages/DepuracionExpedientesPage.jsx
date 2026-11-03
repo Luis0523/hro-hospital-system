@@ -1,18 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
+import { useToast } from '@/shared/context/ToastContext.jsx'
 import { formatearFechaLarga } from '@/shared/utils/fecha'
 import { USANDO_DATOS_MOCK } from '../api/depuracionArchivoApi'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import BuscadorBitacoraDepurados from '../components/depuracion/BuscadorBitacoraDepurados.jsx'
 import BuscadorExpedienteDepurar from '../components/depuracion/BuscadorExpedienteDepurar.jsx'
-import FiltrosBitacoraDepurados from '../components/depuracion/FiltrosBitacoraDepurados.jsx'
-import ModalConfirmacionDepuracion from '../components/depuracion/ModalConfirmacionDepuracion.jsx'
-import ModalConsultaRangoLargo from '../components/depuracion/ModalConsultaRangoLargo.jsx'
+import ModalConfirmarDepuracion from '../components/depuracion/ModalConfirmarDepuracion.jsx'
 import ModalDeshacerDepuracion from '../components/depuracion/ModalDeshacerDepuracion.jsx'
 import TablaDepurados from '../components/depuracion/TablaDepurados.jsx'
-import TarjetaConfirmacionDepurar from '../components/depuracion/TarjetaConfirmacionDepurar.jsx'
-import UltimaDepuracionPanel from '../components/depuracion/UltimaDepuracionPanel.jsx'
-import { useEscanerCodigo } from '../hooks/useEscanerCodigo'
 import { useDepuracionExpediente } from '../hooks/useDepuracionExpediente'
 import { filtrarDepuradosPorExpediente } from '../utils/busquedaDepurados'
 import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
@@ -22,6 +18,18 @@ import {
   puedeGenerarReporteDepurados,
 } from '../utils/reporteDepurados'
 
+function fechaLargaCapitalizada(iso) {
+  const texto = formatearFechaLarga(iso)
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : ''
+}
+
+function coincideExpediente(expediente, numero) {
+  if (!expediente) return false
+  return (
+    String(expediente.numeroExpediente).replace(/\D/g, '') === String(numero).replace(/\D/g, '')
+  )
+}
+
 export default function DepuracionExpedientesPage() {
   const {
     numero,
@@ -30,8 +38,6 @@ export default function DepuracionExpedientesPage() {
     estado,
     mensaje,
     exito,
-    motivo,
-    setMotivo,
     depurados,
     procesando,
     confirmacionAbierta,
@@ -47,22 +53,12 @@ export default function DepuracionExpedientesPage() {
     errorBitacora,
     consultaCompleta,
     desactualizado,
-    filtroSeleccionado,
-    filtroActivo,
-    rangoBorrador,
-    errorRango,
-    confirmacionRangoLargoAbierta,
-    periodoPendiente,
-    confirmarRangoLargo,
-    cancelarRangoLargo,
     etiquetaPeriodo,
-    tituloHistorial,
     textoVacioHistorial,
     datosHistorial,
     inputRef,
     buscar,
     alternarModoCaptura,
-    establecerModoCaptura,
     abrirConfirmacion,
     cerrarConfirmacion,
     confirmarDepuracion,
@@ -70,13 +66,23 @@ export default function DepuracionExpedientesPage() {
     cerrarDeshacer,
     confirmarDeshacer,
     reintentarBitacora,
-    seleccionarPeriodo,
-    cambiarRango,
-    aplicarRangoPersonalizado,
-    restablecerRango,
   } = useDepuracionExpediente()
-  const [errorReporte, setErrorReporte] = useState(null)
+  const { mostrarToast } = useToast()
+  const exitoNotificadoRef = useRef(null)
+  const confirmacionSolicitadaRef = useRef(false)
   const [busquedaExpediente, setBusquedaExpediente] = useState('')
+
+  useEffect(() => {
+    if (!exito) {
+      exitoNotificadoRef.current = null
+      return
+    }
+    if (exitoNotificadoRef.current === exito) return
+
+    exitoNotificadoRef.current = exito
+    mostrarToast({ tone: 'success', title: 'Expediente depurado correctamente' })
+  }, [exito, mostrarToast])
+
   const filtroBitacora = filtrarDepuradosPorExpediente(depurados, busquedaExpediente)
   const totalPeriodo = datosHistorial.total
   const datosReporte = {
@@ -92,26 +98,87 @@ export default function DepuracionExpedientesPage() {
       ? 'No hay coincidencias para el número de expediente buscado.'
       : '')
 
-  const escaner = useEscanerCodigo((codigo) => {
-    const valor = String(codigo ?? '').trim()
+  async function manejarEnvio() {
+    if (confirmacionAbierta || confirmacionSolicitadaRef.current) return
+
+    const valor = numero.trim()
     if (!valor) return
-    // Un código escaneado siempre representa la identidad numérica, aunque el
-    // operador haya abierto la captura manual.
-    establecerModoCaptura('normal')
-    setNumero(valor)
-  })
+
+    if (estado === 'encontrado' && coincideExpediente(resultado, valor)) {
+      abrirConfirmacion()
+      return
+    }
+
+    confirmacionSolicitadaRef.current = true
+    try {
+      const respuesta = await buscar(numero)
+      if (respuesta?.estado === 'encontrado' && respuesta.resultado) {
+        abrirConfirmacion(respuesta.resultado)
+      }
+    } finally {
+      confirmacionSolicitadaRef.current = false
+    }
+  }
 
   function generarReporte() {
     if (!puedeGenerarReporte) return
-    setErrorReporte(null)
     const resultado = descargarReporteDepurados({
       datosHistorial: datosReporte,
       usandoMock: USANDO_DATOS_MOCK,
       periodoEtiqueta: etiquetaPeriodo,
       busquedaExpediente: filtroBitacora.busquedaActiva ? busquedaExpediente : '',
     })
-    if (!resultado.ok) setErrorReporte(resultado.mensaje)
+    if (!resultado.ok) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo generar el reporte PDF',
+        message: resultado.mensaje,
+      })
+    }
   }
+
+  const accionesTabla = (
+    <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
+      <BuscadorBitacoraDepurados valor={busquedaExpediente} onChange={setBusquedaExpediente} />
+
+      {USANDO_DATOS_MOCK && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="min-h-11 min-w-11 px-3"
+          onClick={abrirDeshacer}
+          disabled={!ultimaDepuracion || deshaciendo}
+          title={!ultimaDepuracion ? 'No hay una depuración reversible en esta sesión.' : undefined}
+          aria-label="Deshacer"
+        >
+          <Icon name="undo" className="text-[18px]" />
+          <span className="hidden sm:inline">Deshacer</span>
+        </Button>
+      )}
+
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="min-h-11 min-w-11 px-3"
+        onClick={generarReporte}
+        disabled={!puedeGenerarReporte}
+        title={bloqueoReporte || undefined}
+        aria-label="Descargar PDF"
+        aria-describedby={bloqueoReporte ? 'bloqueo-reporte-depurados' : undefined}
+      >
+        <Icon name="picture_as_pdf" className="text-[18px]" />
+        <span className="hidden sm:inline">Descargar PDF</span>
+      </Button>
+
+      {bloqueoReporte && (
+        <span id="bloqueo-reporte-depurados" className="sr-only">
+          {bloqueoReporte}
+        </span>
+      )}
+    </div>
+  )
 
   return (
     <ArchivoLayout>
@@ -121,26 +188,19 @@ export default function DepuracionExpedientesPage() {
           <p className="mt-1 text-body-md text-on-surface-variant">
             Ingrese el número de expediente para marcarlo como “ya no existe en el sistema”.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-label-md text-on-surface-variant">
-            <span className="inline-flex items-center gap-1">
-              <Icon name="calendar_today" className="text-[16px] text-secondary" />
-              {formatearFechaLarga(hoyIsoGuatemala())}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Icon name="barcode_scanner" className="text-[16px] text-primary" />
-              Lector listo · foco permanente
-            </span>
-          </div>
+          <p className="mt-3 flex items-center gap-2 text-body-md font-semibold text-on-surface">
+            <Icon name="calendar_today" className="shrink-0 text-[20px] text-secondary" />
+            <time dateTime={hoyIsoGuatemala()}>{fechaLargaCapitalizada(hoyIsoGuatemala())}</time>
+          </p>
         </header>
 
         <div className="mx-auto w-full max-w-2xl space-y-4">
           <BuscadorExpedienteDepurar
             numero={numero}
             onCambio={setNumero}
-            onEnviar={() => buscar(numero)}
+            onEnviar={manejarEnvio}
             inputRef={inputRef}
             procesando={procesando}
-            escaner={escaner}
             manual={modoCaptura === 'manual'}
             onAlternarModo={alternarModoCaptura}
           />
@@ -156,52 +216,23 @@ export default function DepuracionExpedientesPage() {
               </p>
             )}
 
-            {exito && (
-              <Alert tone="success" title="Expediente depurado">
-                {exito}
-              </Alert>
-            )}
-
             {exitoDeshacer && (
               <Alert tone="success" title="Depuración simulada revertida">
                 {exitoDeshacer}
               </Alert>
             )}
 
-            {estado === 'encontrado' && resultado && (
-              <>
-                <p role="status" className="sr-only">
-                  Expediente encontrado. Revise los datos y pulse Depurar expediente para confirmar.
-                </p>
-                <TarjetaConfirmacionDepurar
-                  expediente={resultado}
-                  onSolicitarDepuracion={abrirConfirmacion}
-                />
-              </>
-            )}
-
-            {estado === 'duplicado' && resultado && (
-              <TarjetaConfirmacionDepurar expediente={resultado} yaDepurado />
-            )}
-
-            {(estado === 'formato_invalido' || estado === 'no_encontrado' || estado === 'error') &&
+            {(estado === 'formato_invalido' ||
+              estado === 'no_encontrado' ||
+              estado === 'duplicado' ||
+              estado === 'error') &&
               mensaje && <Alert tone={estado === 'error' ? 'error' : 'warning'} title={mensaje} />}
           </section>
-
-          {USANDO_DATOS_MOCK && ultimaDepuracion && (
-            <UltimaDepuracionPanel
-              depuracion={ultimaDepuracion}
-              onDeshacer={abrirDeshacer}
-              deshaciendo={deshaciendo}
-            />
-          )}
         </div>
 
-        <ModalConfirmacionDepuracion
+        <ModalConfirmarDepuracion
           abierto={confirmacionAbierta}
           expediente={resultado}
-          motivo={motivo}
-          onMotivo={setMotivo}
           onConfirmar={confirmarDepuracion}
           onCerrar={cerrarConfirmacion}
           procesando={procesando}
@@ -219,15 +250,6 @@ export default function DepuracionExpedientesPage() {
           />
         )}
 
-        {!USANDO_DATOS_MOCK && (
-          <ModalConsultaRangoLargo
-            abierto={confirmacionRangoLargoAbierta}
-            periodo={periodoPendiente}
-            onConfirmar={confirmarRangoLargo}
-            onCancelar={cancelarRangoLargo}
-          />
-        )}
-
         {USANDO_DATOS_MOCK && (
           <p className="flex items-start gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-label-sm text-on-surface-variant">
             <Icon name="science" className="text-[16px] text-primary" />
@@ -237,25 +259,6 @@ export default function DepuracionExpedientesPage() {
             </span>
           </p>
         )}
-
-        <FiltrosBitacoraDepurados
-          filtroSeleccionado={filtroSeleccionado}
-          filtroActivo={filtroActivo}
-          etiquetaActiva={etiquetaPeriodo}
-          rango={rangoBorrador}
-          errorRango={errorRango}
-          onSeleccionar={seleccionarPeriodo}
-          onCambiarRango={cambiarRango}
-          onAplicarRango={aplicarRangoPersonalizado}
-          onRestablecerRango={restablecerRango}
-        />
-
-        <BuscadorBitacoraDepurados
-          valor={busquedaExpediente}
-          onChange={setBusquedaExpediente}
-          totalPeriodo={totalPeriodo}
-          totalCoincidencias={filtroBitacora.totalCoincidencias}
-        />
 
         {!bitacoraCargada && cargandoBitacora && (
           <section className="rounded-2xl bg-surface-container-lowest p-4 shadow-card">
@@ -314,70 +317,26 @@ export default function DepuracionExpedientesPage() {
               </p>
             )}
 
-            {(depurados.length > 0 || (consultaCompleta && !desactualizado)) && (
-              <TablaDepurados
-                depurados={filtroBitacora.registros}
-                titulo={tituloHistorial}
-                descripcion={etiquetaPeriodo}
-                total={totalPeriodo}
-                totalCoincidencias={filtroBitacora.totalCoincidencias}
-                busquedaActiva={filtroBitacora.busquedaActiva}
-                sinRegistros={
-                  filtroBitacora.busquedaActiva
-                    ? 'No hay coincidencias para el número de expediente buscado'
-                    : textoVacioHistorial
-                }
-                consultaIncompleta={!consultaCompleta}
-                desactualizado={desactualizado}
-                caption={`${tituloHistorial}: fecha, hora, expediente, paciente, usuario y motivo.`}
-                etiquetaLista={`${tituloHistorial} (tarjetas)`}
-              />
-            )}
+            <TablaDepurados
+              depurados={filtroBitacora.registros}
+              titulo="Depurados de hoy"
+              descripcion={etiquetaPeriodo}
+              total={totalPeriodo}
+              totalCoincidencias={filtroBitacora.totalCoincidencias}
+              busquedaActiva={filtroBitacora.busquedaActiva}
+              sinRegistros={
+                filtroBitacora.busquedaActiva
+                  ? 'No hay coincidencias para el número de expediente buscado'
+                  : textoVacioHistorial
+              }
+              consultaIncompleta={!consultaCompleta}
+              desactualizado={desactualizado}
+              acciones={accionesTabla}
+              caption="Depurados de hoy: expediente, paciente y hora."
+              etiquetaLista="Depurados de hoy (tarjetas)"
+            />
           </>
         )}
-
-        <section
-          aria-labelledby="reporte-depurados-titulo"
-          className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3
-                id="reporte-depurados-titulo"
-                className="inline-flex items-center gap-1 text-title-md font-bold text-on-surface"
-              >
-                <Icon name="description" className="text-[20px] text-primary" />
-                Reporte de depurados
-              </h3>
-              <p className="mt-1 text-label-sm text-on-surface-variant">
-                Usa los registros completos del período y la búsqueda activa.
-              </p>
-            </div>
-            <Button
-              size="md"
-              variant="secondary"
-              className="min-h-11"
-              onClick={generarReporte}
-              disabled={!puedeGenerarReporte}
-              aria-describedby={bloqueoReporte ? 'reporte-depurados-motivo' : undefined}
-            >
-              <Icon name="picture_as_pdf" className="text-[18px]" />
-              Descargar reporte PDF
-            </Button>
-          </div>
-
-          {bloqueoReporte && (
-            <p id="reporte-depurados-motivo" className="text-label-sm text-on-surface-variant">
-              {bloqueoReporte}
-            </p>
-          )}
-
-          {errorReporte && (
-            <Alert tone="warning" title="No se pudo generar el reporte PDF">
-              {errorReporte}
-            </Alert>
-          )}
-        </section>
       </main>
     </ArchivoLayout>
   )

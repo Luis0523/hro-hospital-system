@@ -28,7 +28,6 @@ export function useDepuracionExpediente() {
   const [estado, setEstado] = useState('inicial')
   const [mensaje, setMensaje] = useState(null)
   const [exito, setExito] = useState(null)
-  const [motivo, setMotivo] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [errorConfirmacion, setErrorConfirmacion] = useState(null)
@@ -53,6 +52,11 @@ export function useDepuracionExpediente() {
   }, [enfocar])
 
   const buscar = useCallback(async (valor) => {
+    if (timerBusquedaRef.current != null) {
+      clearTimeout(timerBusquedaRef.current)
+      timerBusquedaRef.current = null
+    }
+
     const peticion = peticionRef.current + 1
     peticionRef.current = peticion
 
@@ -67,7 +71,7 @@ export function useDepuracionExpediente() {
       setResultado(null)
       setConfirmacionAbierta(false)
       setErrorConfirmacion(null)
-      return
+      return { estado: 'formato_invalido', resultado: null }
     }
 
     const buscado = validacion.numero
@@ -77,7 +81,6 @@ export function useDepuracionExpediente() {
     setResultado(null)
     setConfirmacionAbierta(false)
     setErrorConfirmacion(null)
-    setMotivo('')
 
     try {
       const expediente = await buscarExpedienteParaDepurar(buscado)
@@ -86,25 +89,27 @@ export function useDepuracionExpediente() {
       if (!expediente) {
         setEstado('no_encontrado')
         setMensaje(`No se encontró el expediente ${formatearExpedienteDepuracion(buscado)}.`)
-        return
+        return { estado: 'no_encontrado', resultado: null }
       }
       if (expediente.depurado) {
         setResultado(expediente)
         setEstado('duplicado')
         setMensaje('Este expediente ya está depurado (ya no existe en el sistema).')
-        return
+        return { estado: 'duplicado', resultado: expediente }
       }
       setResultado(expediente)
       setEstado('encontrado')
+      return { estado: 'encontrado', resultado: expediente }
     } catch (fallo) {
-      if (peticion !== peticionRef.current) return
+      if (peticion !== peticionRef.current) return null
       if (fallo?.status === 404) {
         setEstado('no_encontrado')
         setMensaje(`No se encontró el expediente ${formatearExpedienteDepuracion(buscado)}.`)
-      } else {
-        setEstado('error')
-        setMensaje(fallo?.message || 'No se pudo buscar el expediente.')
+        return { estado: 'no_encontrado', resultado: null }
       }
+      setEstado('error')
+      setMensaje(fallo?.message || 'No se pudo buscar el expediente.')
+      return { estado: 'error', resultado: null }
     } finally {
       if (peticion === peticionRef.current) setProcesando(false)
     }
@@ -159,17 +164,22 @@ export function useDepuracionExpediente() {
     }
   }, [numero, buscar])
 
-  const abrirConfirmacion = useCallback(() => {
-    if (!resultado || resultado.depurado) return
-    setErrorConfirmacion(null)
-    setConfirmacionAbierta(true)
-  }, [resultado])
+  const abrirConfirmacion = useCallback(
+    (expediente = resultado) => {
+      if (!expediente || expediente.depurado) return false
+      setErrorConfirmacion(null)
+      setConfirmacionAbierta(true)
+      return true
+    },
+    [resultado],
+  )
 
   const cerrarConfirmacion = useCallback(() => {
     if (procesando) return
     setConfirmacionAbierta(false)
     setErrorConfirmacion(null)
-  }, [procesando])
+    setTimeout(enfocar, 0)
+  }, [procesando, enfocar])
 
   const confirmarDepuracion = useCallback(async () => {
     // El ref corta el doble clic/Enter en el mismo tick, antes de que React
@@ -186,7 +196,6 @@ export function useDepuracionExpediente() {
       try {
         registro = await marcarDepurado({
           numeroExpediente: resultado.numeroExpediente,
-          motivo: motivo.trim() || undefined,
         })
       } catch (fallo) {
         const status = fallo?.status
@@ -221,12 +230,11 @@ export function useDepuracionExpediente() {
       )
       setNumero('')
       setResultado(null)
-      setMotivo('')
       setEstado('inicial')
       setConfirmacionAbierta(false)
       setErrorConfirmacion(null)
       setProcesando(false)
-      // Espera a que el modal termine de desmontarse para devolver el foco.
+      // Espera a que la tarjeta vuelva a su estado inicial para devolver el foco.
       setTimeout(enfocar, 0)
 
       await refrescarHistorial({ forzar: true })
@@ -234,7 +242,7 @@ export function useDepuracionExpediente() {
       confirmandoRef.current = false
       setProcesando(false)
     }
-  }, [resultado, confirmacionAbierta, motivo, refrescarHistorial, enfocar])
+  }, [resultado, confirmacionAbierta, refrescarHistorial, enfocar])
 
   const abrirDeshacer = useCallback(() => {
     if (!USANDO_DATOS_MOCK || !ultimaDepuracion || deshaciendo) return
@@ -311,8 +319,6 @@ export function useDepuracionExpediente() {
     estado,
     mensaje,
     exito,
-    motivo,
-    setMotivo,
     procesando,
     confirmacionAbierta,
     errorConfirmacion,

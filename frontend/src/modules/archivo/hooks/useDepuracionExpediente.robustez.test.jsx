@@ -201,6 +201,7 @@ describe('useDepuracionExpediente · registro y recarga separados', () => {
     })
 
     expect(marcarDepurado).toHaveBeenCalledTimes(1)
+    expect(marcarDepurado).toHaveBeenCalledWith({ numeroExpediente: EXPEDIENTE.numeroExpediente })
     expect(result.current.exito).toMatch(/depurado/i)
     expect(result.current.numero).toBe('')
     expect(result.current.errorBitacora).toBeNull()
@@ -208,7 +209,7 @@ describe('useDepuracionExpediente · registro y recarga separados', () => {
     expect(result.current.confirmacionAbierta).toBe(false)
   })
 
-  it('POST fallido: conserva el contexto y muestra el error en el modal', async () => {
+  it('POST fallido: conserva el contexto y muestra el error en la tarjeta', async () => {
     marcarDepurado.mockRejectedValueOnce(errorCon(500))
 
     const { result } = await montarConExpediente()
@@ -303,7 +304,7 @@ describe('useDepuracionExpediente · registro y recarga separados', () => {
     await waitFor(() => expect(result.current.exito).toBeTruthy())
   })
 
-  it('no confirma si el modal está cerrado', async () => {
+  it('no confirma si la confirmación integrada está cerrada', async () => {
     const { result } = await montarConExpediente({ abrir: false })
 
     await act(async () => {

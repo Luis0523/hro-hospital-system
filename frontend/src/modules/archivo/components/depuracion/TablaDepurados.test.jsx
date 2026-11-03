@@ -2,8 +2,6 @@
 import { render, screen, within } from '@testing-library/react'
 import TablaDepurados from './TablaDepurados.jsx'
 
-const MOTIVO_LARGO =
-  'Expediente extraviado definitivamente tras revisión completa de estantería y bodega'
 const NOMBRE_LARGO = 'María Fernanda López García de la Cruz con un nombre extremadamente largo'
 
 const REGISTROS = [
@@ -12,7 +10,7 @@ const REGISTROS = [
     numeroExpediente: '927581',
     pacienteNombre: NOMBRE_LARGO,
     usuarioNombre: 'Lic. Archivo Central',
-    motivo: MOTIVO_LARGO,
+    motivo: 'Expediente extraviado',
     depuradoEn: '2026-11-02T15:30:00-06:00',
   },
   {
@@ -30,25 +28,24 @@ function filasDeTabla() {
 }
 
 describe('TablaDepurados', () => {
-  it('muestra el encabezado, el total y el estado vacío sin representaciones', () => {
+  it('muestra la cabecera, el total y el estado vacío sin representaciones', () => {
     render(<TablaDepurados depurados={[]} />)
 
-    expect(screen.getByRole('heading', { name: 'Depurados hoy', level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Depurados de hoy', level: 3 })).toBeInTheDocument()
     expect(screen.getByText('Total: 0')).toBeInTheDocument()
     expect(screen.getByText(/aún no hay expedientes depurados hoy/i)).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('list', { name: /tarjetas/i })).not.toBeInTheDocument()
   })
 
-  it('renderiza la tabla de escritorio con fecha, hora y el orden recibido', () => {
+  it('renderiza exactamente las columnas Expediente, Paciente y Hora', () => {
     render(<TablaDepurados depurados={REGISTROS} />)
 
     const tabla = screen.getByRole('table')
-    expect(tabla).toHaveAccessibleName(/expedientes depurados hoy/i)
     const encabezados = within(tabla)
       .getAllByRole('columnheader')
       .map((celda) => celda.textContent)
-    expect(encabezados).toEqual(['Fecha', 'Hora', 'Expediente', 'Paciente', 'Usuario', 'Motivo'])
+    expect(encabezados).toEqual(['EXPEDIENTE', 'PACIENTE', 'HORA'])
     for (const encabezado of within(tabla).getAllByRole('columnheader')) {
       expect(encabezado).toHaveAttribute('scope', 'col')
     }
@@ -57,21 +54,23 @@ describe('TablaDepurados', () => {
     expect(filas).toHaveLength(3)
 
     const primera = within(filas[1]).getAllByRole('cell')
-    expect(primera).toHaveLength(6)
-    expect(primera[0]).toHaveTextContent('02/11/2026')
-    expect(primera[1].textContent).toMatch(/\d{2}:\d{2}/)
-    expect(primera[2]).toHaveTextContent('9275-81')
-    expect(primera[3]).toHaveTextContent(NOMBRE_LARGO)
-    expect(primera[4]).toHaveTextContent('Lic. Archivo Central')
-    expect(primera[5]).toHaveTextContent(MOTIVO_LARGO)
-
-    const segunda = within(filas[2]).getAllByRole('cell')
-    expect(segunda[0]).toHaveTextContent('02/11/2026')
-    expect(segunda[2]).toHaveTextContent('3095-4')
-    expect(segunda[3]).toHaveTextContent('Juan Pérez')
+    expect(primera).toHaveLength(3)
+    expect(primera[0]).toHaveTextContent('9275-81')
+    expect(primera[1]).toHaveTextContent(NOMBRE_LARGO)
+    expect(primera[2].textContent).toMatch(/\d{2}:\d{2}/)
+    expect(segunda(filas)).toHaveLength(3)
   })
 
-  it('renderiza las tarjetas móviles con los mismos datos y sin duplicar registros', () => {
+  it('muestra la fecha secundaria dentro de Hora solo para rangos de varios días', () => {
+    const { rerender } = render(<TablaDepurados depurados={REGISTROS} />)
+    expect(screen.queryByText('02/11/2026')).not.toBeInTheDocument()
+
+    rerender(<TablaDepurados depurados={REGISTROS} mostrarFecha />)
+    expect(screen.getAllByText('02/11/2026')).toHaveLength(4)
+    expect(within(screen.getByRole('table')).getAllByRole('columnheader')).toHaveLength(3)
+  })
+
+  it('renderiza las tarjetas móviles con los mismos tres datos', () => {
     render(<TablaDepurados depurados={REGISTROS} />)
 
     const lista = screen.getByRole('list', { name: /tarjetas/i })
@@ -80,35 +79,35 @@ describe('TablaDepurados', () => {
 
     expect(tarjetas[0]).toHaveTextContent('9275-81')
     expect(tarjetas[0]).toHaveTextContent(NOMBRE_LARGO)
-    expect(tarjetas[0]).toHaveTextContent('Lic. Archivo Central')
-    expect(tarjetas[0]).toHaveTextContent(MOTIVO_LARGO)
-    expect(tarjetas[0]).toHaveTextContent('02/11/2026')
-    expect(within(tarjetas[0]).getByText('Fecha de depuración:')).toBeInTheDocument()
-    expect(within(tarjetas[0]).getByText('Hora de depuración:')).toBeInTheDocument()
+    expect(tarjetas[0]).toHaveTextContent(/\d{2}:\d{2}/)
+    expect(tarjetas[0]).not.toHaveTextContent('Lic. Archivo Central')
+    expect(tarjetas[0]).not.toHaveTextContent('Expediente extraviado')
+    expect(tarjetas[0]).not.toHaveTextContent('02/11/2026')
 
     expect(tarjetas[1]).toHaveTextContent('3095-4')
     expect(tarjetas[1]).toHaveTextContent('Juan Pérez')
-    expect(within(tarjetas[1]).getByText('—')).toBeInTheDocument()
   })
 
-  it('conserva completos los nombres y motivos largos en ambas representaciones', () => {
+  it('muestra fecha y hora en tarjetas cuando el rango incluye varios días', () => {
+    render(<TablaDepurados depurados={REGISTROS} mostrarFecha />)
+
+    const tarjetas = within(screen.getByRole('list', { name: /tarjetas/i })).getAllByRole(
+      'listitem',
+    )
+    expect(tarjetas[0]).toHaveTextContent('02/11/2026')
+    expect(within(tarjetas[0]).getByText('Fecha de depuración:')).toBeInTheDocument()
+  })
+
+  it('conserva nombres largos sin agregar usuario ni motivo', () => {
     render(<TablaDepurados depurados={REGISTROS} />)
 
     expect(screen.getAllByText(NOMBRE_LARGO)).toHaveLength(2)
-    expect(screen.getAllByText(MOTIVO_LARGO)).toHaveLength(2)
-  })
-
-  it('no agrega columnas ni datos clínicos', () => {
-    render(<TablaDepurados depurados={REGISTROS} />)
-
-    expect(within(screen.getByRole('table')).getAllByRole('columnheader')).toHaveLength(6)
-    expect(screen.queryByText(/dpi/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/diagnóstico/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Lic. Archivo Central')).not.toBeInTheDocument()
+    expect(screen.queryByText('Expediente extraviado')).not.toBeInTheDocument()
   })
 
   it('muestra el total completo del período y lo marca cuando es parcial o está desactualizado', () => {
     const { rerender } = render(<TablaDepurados depurados={REGISTROS} total={25} />)
-
     expect(screen.getByText('Total: 25')).toBeInTheDocument()
 
     rerender(<TablaDepurados depurados={REGISTROS} total={6} consultaIncompleta />)
@@ -118,13 +117,14 @@ describe('TablaDepurados', () => {
     expect(screen.getByText(/total: 6 · puede estar desactualizado/i)).toBeInTheDocument()
   })
 
-  it('permite personalizar el título y el mensaje vacío del período', () => {
+  it('permite personalizar el título, el mensaje vacío y las acciones de cabecera', () => {
     render(
       <TablaDepurados
         depurados={[]}
         titulo="Depurados de la semana"
         descripcion="Semana del 2 al 8 de noviembre de 2026"
         sinRegistros="No hay expedientes depurados en esta semana"
+        acciones={<button type="button">Descargar PDF</button>}
       />,
     )
 
@@ -133,6 +133,7 @@ describe('TablaDepurados', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Semana del 2 al 8 de noviembre de 2026')).toBeInTheDocument()
     expect(screen.getByText('No hay expedientes depurados en esta semana')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument()
   })
 
   it('muestra coincidencias y conserva el total del período con búsqueda', () => {
@@ -149,7 +150,7 @@ describe('TablaDepurados', () => {
     expect(screen.queryByText('Total: 18')).not.toBeInTheDocument()
   })
 
-  it('usa contenedores internos desplazables y etiquetados', () => {
+  it('usa contenedores internos desplazables y etiquetados con encabezados sticky', () => {
     render(<TablaDepurados depurados={REGISTROS} />)
 
     const region = screen.getByRole('region', {
@@ -178,7 +179,19 @@ describe('TablaDepurados', () => {
     render(<TablaDepurados depurados={[registro]} />)
 
     expect(screen.getAllByText(registro.pacienteNombre)).toHaveLength(2)
-    expect(screen.getAllByText(registro.motivo)).toHaveLength(2)
-    expect(screen.getAllByText(registro.usuarioNombre)).toHaveLength(2)
+    expect(screen.queryByText(registro.motivo)).not.toBeInTheDocument()
+    expect(screen.queryByText(registro.usuarioNombre)).not.toBeInTheDocument()
+  })
+
+  it('no agrega columnas ni datos clínicos', () => {
+    render(<TablaDepurados depurados={REGISTROS} />)
+
+    expect(within(screen.getByRole('table')).getAllByRole('columnheader')).toHaveLength(3)
+    expect(screen.queryByText(/dpi/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/diagnóstico/i)).not.toBeInTheDocument()
   })
 })
+
+function segunda(filas) {
+  return within(filas[2]).getAllByRole('cell')
+}

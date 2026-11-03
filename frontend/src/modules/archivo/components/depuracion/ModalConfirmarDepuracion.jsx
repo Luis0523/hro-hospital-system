@@ -1,13 +1,9 @@
+import { Alert, Button, Icon, Modal } from '@/shared/components/ui'
 import { formatearExpediente } from '@/shared/utils/expediente'
-import { Alert, Button, Icon, Input, Modal } from '@/shared/components/ui'
 
-// Confirmación explícita de la baja lógica. El POST solo se ejecuta al pulsar
-// "Confirmar depuración"; cerrar o cancelar no modifica nada.
-export default function ModalConfirmacionDepuracion({
+export default function ModalConfirmarDepuracion({
   abierto,
   expediente,
-  motivo,
-  onMotivo,
   onConfirmar,
   onCerrar,
   procesando = false,
@@ -41,7 +37,14 @@ export default function ModalConfirmacionDepuracion({
             size="lg"
             className="w-full sm:w-auto"
             onClick={onConfirmar}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter' && evento.repeat) {
+                evento.preventDefault()
+                evento.stopPropagation()
+              }
+            }}
             disabled={procesando}
+            autoFocus
           >
             <Icon name="delete_sweep" className="text-[22px]" />
             {procesando ? 'Depurando…' : 'Confirmar depuración'}
@@ -66,19 +69,9 @@ export default function ModalConfirmacionDepuracion({
         </dl>
 
         <Alert tone="warning" title="Baja lógica">
-          Este expediente quedará marcado como <strong>no existente</strong> en el sistema. No se
-          elimina físicamente; la baja es lógica y queda registrada en la bitácora.
+          El expediente quedará marcado como <strong>no existente</strong> en el sistema. La baja es
+          lógica y queda registrada en la bitácora.
         </Alert>
-
-        <Input
-          label="Motivo (opcional)"
-          name="motivo-depuracion"
-          value={motivo}
-          onChange={(event) => onMotivo(event.target.value)}
-          placeholder="Ej. extraviado o fusionado"
-          autoFocus
-          disabled={procesando}
-        />
 
         {error && (
           <Alert tone="error" title="No se pudo confirmar la depuración">

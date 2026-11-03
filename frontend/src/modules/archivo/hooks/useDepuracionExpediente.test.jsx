@@ -8,6 +8,7 @@ import { useDepuracionExpediente } from './useDepuracionExpediente'
 const PRIMERO = expedientesDepuracionMock[0].numeroExpediente
 const SEGUNDO = expedientesDepuracionMock[1].numeroExpediente
 const INEXISTENTE = '999999'
+const FIXTURES_HOY = 12
 
 describe('useDepuracionExpediente', () => {
   beforeEach(() => {
@@ -73,7 +74,7 @@ describe('useDepuracionExpediente', () => {
     expect(result.current.mensaje).toMatch(/solo dígitos|guion/i)
   })
 
-  it('abre y cierra el modal sin depurar automáticamente', async () => {
+  it('abre y cierra la confirmación sin depurar automáticamente', async () => {
     const { result } = renderHook(() => useDepuracionExpediente())
 
     act(() => result.current.setNumero(PRIMERO))
@@ -87,7 +88,7 @@ describe('useDepuracionExpediente', () => {
     expect(result.current.resultado.numeroExpediente).toBe(PRIMERO)
   })
 
-  it('no ejecuta POST si el modal está cerrado', async () => {
+  it('no ejecuta POST si la confirmación está cerrada', async () => {
     const { result } = renderHook(() => useDepuracionExpediente())
 
     act(() => result.current.setNumero(PRIMERO))
@@ -101,7 +102,7 @@ describe('useDepuracionExpediente', () => {
     expect(result.current.estado).toBe('encontrado')
   })
 
-  it('confirma la baja desde el modal y la agrega a la bitácora', async () => {
+  it('confirma la baja desde la tarjeta y la agrega a la bitácora', async () => {
     const { result } = renderHook(() => useDepuracionExpediente())
 
     act(() => result.current.setNumero(SEGUNDO))
@@ -112,7 +113,7 @@ describe('useDepuracionExpediente', () => {
       await result.current.confirmarDepuracion()
     })
 
-    await waitFor(() => expect(result.current.depurados).toHaveLength(1))
+    await waitFor(() => expect(result.current.depurados).toHaveLength(FIXTURES_HOY + 1))
     expect(result.current.exito).toMatch(/depurado/i)
     expect(result.current.numero).toBe('')
     expect(result.current.confirmacionAbierta).toBe(false)
@@ -138,7 +139,7 @@ describe('useDepuracionExpediente', () => {
       await result.current.confirmarDepuracion()
     })
 
-    await waitFor(() => expect(result.current.depurados).toHaveLength(1))
+    await waitFor(() => expect(result.current.depurados).toHaveLength(FIXTURES_HOY + 1))
     expect(result.current.ultimaDepuracion?.numeroExpediente).toBe(SEGUNDO)
 
     act(() => result.current.abrirDeshacer())
@@ -150,7 +151,7 @@ describe('useDepuracionExpediente', () => {
 
     await waitFor(() => expect(result.current.ultimaDepuracion).toBeNull())
     expect(result.current.confirmacionDeshacerAbierta).toBe(false)
-    expect(result.current.depurados).toHaveLength(0)
+    expect(result.current.depurados).toHaveLength(FIXTURES_HOY)
     expect(result.current.exitoDeshacer).toMatch(/revertida/i)
 
     act(() => result.current.setNumero(SEGUNDO))
@@ -158,7 +159,7 @@ describe('useDepuracionExpediente', () => {
     expect(result.current.resultado.numeroExpediente).toBe(SEGUNDO)
   })
 
-  it('cancelar el modal conserva la última depuración disponible', async () => {
+  it('cancelar el deshacer conserva la última depuración disponible', async () => {
     const { result } = renderHook(() => useDepuracionExpediente())
 
     act(() => result.current.setNumero(SEGUNDO))
@@ -174,7 +175,7 @@ describe('useDepuracionExpediente', () => {
 
     expect(result.current.confirmacionDeshacerAbierta).toBe(false)
     expect(result.current.ultimaDepuracion?.numeroExpediente).toBe(SEGUNDO)
-    expect(result.current.depurados).toHaveLength(1)
+    expect(result.current.depurados).toHaveLength(FIXTURES_HOY + 1)
   })
 
   it('no ofrece deshacer si no existe una operación reversible', () => {

@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Icon } from '@/shared/components/ui'
+import { Button, Icon } from '@/shared/components/ui'
 
 const PATRON_MANUAL = /^\d*(-\d*)?$/
 
 // Campo único de búsqueda de expediente para depurar. Presentacional: recibe el
-// valor, el ref del input y los callbacks; el `escaner` (useEscanerCodigo) se
-// pasa desde el contenedor para la lectura por cámara.
+// valor, el ref del input y los callbacks. El lector físico funciona como teclado.
 export default function BuscadorExpedienteDepurar({
   numero,
   onCambio,
   onEnviar,
   inputRef,
   procesando,
-  escaner,
   manual = false,
   onAlternarModo,
 }) {
@@ -125,51 +123,8 @@ export default function BuscadorExpedienteDepurar({
 
         <Button type="submit" size="lg" className="w-full" disabled={procesando || !numero.trim()}>
           <Icon name="search" className="text-[24px]" />
-          {procesando ? 'Buscando…' : 'Buscar expediente'}
+          {procesando ? 'Buscando…' : 'Buscar'}
         </Button>
-
-        {!escaner.activo && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="w-full"
-            onClick={escaner.iniciar}
-          >
-            <Icon name="photo_camera" className="text-[24px]" />
-            Escanear con cámara
-          </Button>
-        )}
-
-        {escaner.activo && (
-          <div className="space-y-2">
-            <div className="relative overflow-hidden rounded-xl border border-outline-variant bg-black">
-              <video
-                ref={escaner.videoRef}
-                className="h-64 w-full object-cover"
-                muted
-                playsInline
-                aria-label="Vista de cámara"
-              />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-36 w-64 rounded-lg border-2 border-white/80" />
-              </div>
-            </div>
-            <p className="text-center text-label-sm text-on-surface-variant">
-              Apunte al código del expediente; se buscará solo al leerlo.
-            </p>
-            <Button type="button" variant="ghost" className="w-full" onClick={escaner.detener}>
-              <Icon name="close" className="text-[20px]" />
-              Cerrar cámara
-            </Button>
-          </div>
-        )}
-
-        {escaner.error && (
-          <Alert tone="warning" title="Cámara no disponible">
-            {escaner.error}
-          </Alert>
-        )}
 
         <p
           id="numero-expediente-ayuda"

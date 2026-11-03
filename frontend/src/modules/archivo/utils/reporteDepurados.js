@@ -12,18 +12,19 @@ const ANCHO_PAGINA = 595.28
 const ALTO_PAGINA = 841.89
 const MARGEN = 28
 const ANCHO_TABLA = 539.28
-const INICIO_TABLA = 148
+const INICIO_TABLA = 172
 const FIN_CONTENIDO = 760
 const COLUMNAS = [
-  { clave: 'numeroExpediente', titulo: 'Número de expediente', ancho: 82 },
-  { clave: 'fechaHora', titulo: 'Fecha y hora', ancho: 82 },
-  { clave: 'pacienteNombre', titulo: 'Paciente', ancho: 150 },
-  { clave: 'usuarioNombre', titulo: 'Usuario', ancho: 90 },
-  { clave: 'motivo', titulo: 'Motivo', ancho: 135.28 },
+  { clave: 'numeroExpediente', titulo: 'EXPEDIENTE', ancho: 82 },
+  { clave: 'pacienteNombre', titulo: 'PACIENTE', ancho: 160 },
+  { clave: 'fecha', titulo: 'FECHA', ancho: 68 },
+  { clave: 'hora', titulo: 'HORA', ancho: 48 },
+  { clave: 'usuarioNombre', titulo: 'USUARIO', ancho: 181.28 },
 ]
 
 const COLOR_AZUL = '0.122 0.227 0.373'
 const COLOR_TEXTO = '0.067 0.09 0.12'
+const COLOR_BLANCO = '1 1 1'
 const COLOR_LINEA = '0.58 0.64 0.70'
 const COLOR_SIMULACION = '1 0.984 0.929'
 const COLOR_BORDE_SIMULACION = '0.70 0.35 0.05'
@@ -50,10 +51,10 @@ function escaparPdf(valor) {
   return aWinAnsi(valor).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
 }
 
-function texto(x, top, tamano, valor, negrita = false) {
-  return `BT /${negrita ? 'F2' : 'F1'} ${tamano} Tf ${x} ${ALTO_PAGINA - top} Td (${escaparPdf(
-    valor,
-  )}) Tj ET`
+function texto(x, top, tamano, valor, negrita = false, color = COLOR_TEXTO) {
+  return `${color} rg\nBT /${negrita ? 'F2' : 'F1'} ${tamano} Tf ${x} ${
+    ALTO_PAGINA - top
+  } Td (${escaparPdf(valor)}) Tj ET`
 }
 
 function textoCentrado(top, tamano, valor, negrita = false) {
@@ -106,18 +107,22 @@ function envolverTexto(valor, maximo) {
   return lineas.length > 0 ? lineas : ['—']
 }
 
-function fechaHoraGuatemala(instante) {
+function fechaGuatemala(instante) {
   const iso = fechaIsoEnGuatemala(instante)
-  const hora = formatearHoraGuatemala(instante)
-  if (!iso || !hora) return '—'
-  return `${formatearFechaCortaGuatemala(iso)} ${hora}`
+  return iso ? formatearFechaCortaGuatemala(iso) : '—'
 }
 
-function fechaHoraRegistro(registro) {
+function horaGuatemala(instante) {
+  return formatearHoraGuatemala(instante) || '—'
+}
+
+function fechaRegistro(registro) {
   const iso = fechaIsoDeRegistro(registro)
-  const hora = formatearHoraGuatemala(registro?.depuradoEn)
-  if (!iso || !hora) return '—'
-  return `${formatearFechaCortaGuatemala(iso)} ${hora}`
+  return iso ? formatearFechaCortaGuatemala(iso) : '—'
+}
+
+function horaRegistro(registro) {
+  return formatearHoraGuatemala(registro?.depuradoEn) || '—'
 }
 
 function etiquetaFiltro(tipo) {
@@ -129,10 +134,10 @@ function etiquetaFiltro(tipo) {
 function filaTexto(registro) {
   return {
     numeroExpediente: formatearExpediente(registro?.numeroExpediente) || '—',
-    fechaHora: fechaHoraRegistro(registro),
     pacienteNombre: registro?.pacienteNombre || '—',
+    fecha: fechaRegistro(registro),
+    hora: horaRegistro(registro),
     usuarioNombre: registro?.usuarioNombre || '—',
-    motivo: registro?.motivo || '—',
   }
 }
 
@@ -160,13 +165,15 @@ function dibujarEncabezado(pagina, datos, generado, periodo, filtro) {
 
   const metaTop = 121
   c.push(texto(MARGEN, metaTop, 7.5, 'PERIODO CONSULTADO', true))
-  c.push(texto(120, metaTop, 7.2, periodo))
-  c.push(texto(380, metaTop, 7.5, 'FILTRO', true))
-  c.push(texto(425, metaTop, 7.5, filtro))
-  c.push(texto(MARGEN, metaTop + 13, 7.5, 'FECHA Y HORA DE GENERACIÓN', true))
-  c.push(texto(125, metaTop + 13, 8, generado))
-  c.push(texto(380, metaTop + 13, 7.5, 'TOTAL DE EXPEDIENTES', true))
-  c.push(texto(425, metaTop + 13, 8, String(datos.total)))
+  c.push(texto(140, metaTop, 7.2, periodo))
+  c.push(texto(MARGEN, metaTop + 12, 7.5, 'FILTRO', true))
+  c.push(texto(140, metaTop + 12, 7.2, filtro))
+  c.push(texto(MARGEN, metaTop + 24, 7.5, 'FECHA DE GENERACIÓN', true))
+  c.push(texto(150, metaTop + 24, 7.2, generado.fecha))
+  c.push(texto(360, metaTop + 24, 7.5, 'HORA DE GENERACIÓN', true))
+  c.push(texto(455, metaTop + 24, 7.2, generado.hora))
+  c.push(texto(MARGEN, metaTop + 36, 7.5, 'TOTAL DE EXPEDIENTES', true))
+  c.push(texto(150, metaTop + 36, 7.2, String(datos.total)))
 }
 
 function dibujarCabeceraTabla(pagina) {
@@ -178,7 +185,7 @@ function dibujarCabeceraTabla(pagina) {
         borde: COLOR_AZUL,
       }),
     )
-    pagina.comandos.push(texto(x + 3, INICIO_TABLA + 10, 6.8, columna.titulo, true))
+    pagina.comandos.push(texto(x + 3, INICIO_TABLA + 10, 6.8, columna.titulo, true, COLOR_BLANCO))
     x += columna.ancho
   }
 }
@@ -341,7 +348,10 @@ export function construirPdfReporteDepurados({
   const filtro = busquedaExpediente
     ? `Expediente ${formatearExpediente(busquedaExpediente)}`
     : etiquetaFiltro(datos.filtroActivo)
-  const generado = fechaHoraGuatemala(fechaGeneracion)
+  const generado = {
+    fecha: fechaGuatemala(fechaGeneracion),
+    hora: horaGuatemala(fechaGeneracion),
+  }
   const paginas = []
   let pagina = nuevaPagina(datos, generado, periodo, filtro)
   paginas.push(pagina)

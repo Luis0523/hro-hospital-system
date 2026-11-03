@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '@/shared/context/AuthContext.jsx'
 import { ThemeProvider } from '@/shared/context/ThemeContext.jsx'
-import { formatearFechaCortaGuatemala, hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
-import { crearPeriodo } from '../utils/periodoDepuracion'
+import { ToastProvider } from '@/shared/context/ToastContext.jsx'
+import { formatearFechaCortaGuatemala } from '../utils/fechaDepuracionGuatemala'
 
 const {
   buscarExpedienteParaDepurar,
@@ -69,7 +69,9 @@ function renderPage() {
     <ThemeProvider>
       <MemoryRouter>
         <AuthProvider>
-          <DepuracionExpedientesPage />
+          <ToastProvider>
+            <DepuracionExpedientesPage />
+          </ToastProvider>
         </AuthProvider>
       </MemoryRouter>
     </ThemeProvider>,
@@ -77,14 +79,16 @@ function renderPage() {
 }
 
 async function buscarExpediente(user) {
-  await user.type(screen.getByLabelText(/número de expediente/i), EXPEDIENTE.numeroExpediente)
-  await screen.findByText(EXPEDIENTE.pacienteNombre)
+  const input = screen.getByLabelText(/número de expediente/i)
+  await user.type(input, EXPEDIENTE.numeroExpediente)
+  await waitFor(() => expect(buscarExpedienteParaDepurar).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'false'))
 }
 
 async function abrirYConfirmar(user) {
-  await user.click(screen.getByRole('button', { name: /depurar expediente/i }))
-  await screen.findByRole('dialog')
-  await user.click(screen.getByRole('button', { name: /confirmar depuración/i }))
+  await user.keyboard('{Enter}')
+  const modal = await screen.findByRole('dialog')
+  await user.click(within(modal).getByRole('button', { name: /confirmar depuración/i }))
 }
 
 describe('DepuracionExpedientesPage · robustez', () => {
@@ -108,8 +112,7 @@ describe('DepuracionExpedientesPage · robustez', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(/cargando bitácora/i)
     expect(screen.queryByText(/aún no hay expedientes depurados hoy/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /descargar reporte pdf/i })).toBeDisabled()
-    expect(screen.getByText(/espere a que termine/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /descargar pdf/i })).not.toBeInTheDocument()
   })
 
   it('muestra el error de bitácora y permite reintentar', async () => {
@@ -119,8 +122,7 @@ describe('DepuracionExpedientesPage · robustez', () => {
     renderPage()
 
     expect(await screen.findByText('No se pudo cargar la bitácora')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /descargar reporte pdf/i })).toBeDisabled()
-    expect(screen.getByText(/período está incompleta/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /descargar pdf/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /reintentar/i }))
 
@@ -139,16 +141,37 @@ describe('DepuracionExpedientesPage · robustez', () => {
     )
 
     renderPage()
+    const input = screen.getByLabelText(/número de expediente/i)
 
-    await user.type(screen.getByLabelText(/número de expediente/i), EXPEDIENTE.numeroExpediente)
+    await user.type(input, EXPEDIENTE.numeroExpediente)
 
     expect(await screen.findByText(/buscando expediente/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/número de expediente/i)).toHaveAttribute('aria-busy', 'true')
+    expect(input).toHaveAttribute('aria-busy', 'true')
 
     await act(async () => {
       resolver(EXPEDIENTE)
     })
-    expect(await screen.findByText(EXPEDIENTE.pacienteNombre)).toBeInTheDocument()
+    await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'false'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByText(EXPEDIENTE.pacienteNombre)).not.toBeInTheDocument()
+  })
+
+  it('abre el modal con Enter reutilizando la búsqueda automática', async () => {
+    const user = userEvent.setup()
+    buscarExpedienteParaDepurar.mockResolvedValue(EXPEDIENTE)
+    renderPage()
+    const input = screen.getByLabelText(/número de expediente/i)
+
+    await user.type(input, EXPEDIENTE.numeroExpediente)
+    await waitFor(() => expect(buscarExpedienteParaDepurar).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'false'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(marcarDepurado).not.toHaveBeenCalled()
+    expect(buscarExpedienteParaDepurar).toHaveBeenCalledTimes(1)
   })
 
   it('muestra el error de formato y no busca', async () => {
@@ -172,10 +195,10 @@ describe('DepuracionExpedientesPage · robustez', () => {
     await buscarExpediente(user)
     await abrirYConfirmar(user)
 
-    expect(await screen.findByText('Expediente depurado')).toBeInTheDocument()
+    expect(await screen.findByText('Expediente depurado correctamente')).toBeInTheDocument()
     expect(await screen.findByText('No se pudo actualizar la bitácora')).toBeInTheDocument()
     expect(screen.queryByText(/no se pudo registrar la depuración/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /descargar reporte pdf/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /descargar pdf/i })).toBeDisabled()
     expect(screen.getByText(/está desactualizado/i)).toBeInTheDocument()
   })
 
@@ -200,7 +223,6 @@ describe('DepuracionExpedientesPage · robustez', () => {
     )
     expect(within(screen.getByRole('table')).getByText(FORMATEADO)).toBeInTheDocument()
     expect(marcarDepurado).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Expediente depurado')).toBeInTheDocument()
   })
 
   it('muestra el aviso de modo simulación cuando corresponde', async () => {
@@ -218,7 +240,7 @@ describe('DepuracionExpedientesPage · robustez', () => {
     renderPage()
     await screen.findByText('Total: 1')
 
-    const boton = screen.getByRole('button', { name: /descargar reporte pdf/i })
+    const boton = screen.getByRole('button', { name: /descargar pdf/i })
     expect(boton).toBeEnabled()
     await user.click(boton)
 
@@ -244,35 +266,11 @@ describe('DepuracionExpedientesPage · robustez', () => {
 
     renderPage()
     await screen.findByText('Total: 1')
-    await user.click(screen.getByRole('button', { name: /descargar reporte pdf/i }))
+    await user.click(screen.getByRole('button', { name: /descargar pdf/i }))
 
     expect(await screen.findByText('No se pudo generar el reporte PDF')).toBeInTheDocument()
     expect(screen.getByText(/no se pudo iniciar la descarga/i)).toBeInTheDocument()
     expect(open).not.toHaveBeenCalled()
-  })
-
-  it('aplica la máscara dd/mm/aaaa y permite un rango sin límite de 31 días', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByText(/aún no hay expedientes depurados hoy/i)
-    vi.clearAllMocks()
-
-    await user.click(screen.getByRole('button', { name: 'Rango personalizado' }))
-    const inicial = screen.getByLabelText('Fecha inicial')
-    const final = screen.getByLabelText('Fecha final')
-
-    fireEvent.change(inicial, { target: { value: '03102026' } })
-    fireEvent.change(final, { target: { value: '02112026' } })
-
-    expect(inicial).toHaveValue('03/10/2026')
-    expect(final).toHaveValue('02/11/2026')
-    expect(screen.queryByRole('button', { name: 'Este mes' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /aplicar rango/i }))
-
-    await waitFor(() => expect(listarDepuraciones).toHaveBeenCalledTimes(31))
-    expect(listarDepuraciones).toHaveBeenCalledWith({ fecha: '2026-10-03' })
-    expect(listarDepuraciones).toHaveBeenCalledWith({ fecha: '2026-11-02' })
   })
 
   it('filtra localmente por expediente y limita el PDF a las coincidencias', async () => {
@@ -288,14 +286,17 @@ describe('DepuracionExpedientesPage · robustez', () => {
     renderPage()
     await screen.findByText('Total: 2')
 
-    const buscador = screen.getByRole('textbox', { name: /buscar en la bitácora/i })
+    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+    const buscador = within(screen.getByRole('dialog')).getByLabelText(/número de expediente/i)
     fireEvent.change(buscador, { target: { value: '9275' } })
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /aplicar/i }))
 
     expect(screen.getAllByText('Mostrando 1 de 2').length).toBeGreaterThan(0)
     expect(within(screen.getByRole('table')).getByText('9275-81')).toBeInTheDocument()
     expect(within(screen.getByRole('table')).queryByText('3095-4')).not.toBeInTheDocument()
+    expect(listarDepuraciones).toHaveBeenCalledTimes(1)
 
-    await user.click(screen.getByRole('button', { name: /descargar reporte pdf/i }))
+    await user.click(screen.getByRole('button', { name: /descargar pdf/i }))
 
     expect(descargarReporteDepurados).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -321,11 +322,11 @@ describe('DepuracionExpedientesPage · robustez', () => {
     renderPage()
     await buscarExpediente(user)
     await abrirYConfirmar(user)
-    await screen.findByText('Expediente depurado')
+    await screen.findByText('Expediente depurado correctamente')
 
     expect(
-      screen.getByRole('heading', { name: /última depuración de la sesión/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: /última depuración de la sesión/i }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^deshacer$/i }))
     expect(
       await screen.findByRole('heading', { name: 'Deshacer última depuración' }),
@@ -333,9 +334,7 @@ describe('DepuracionExpedientesPage · robustez', () => {
 
     await user.click(screen.getByRole('button', { name: /cancelar/i }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(
-      screen.getByRole('heading', { name: /última depuración de la sesión/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^deshacer$/i })).toBeEnabled()
     expect(deshacerUltimaDepuracion).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: /^deshacer$/i }))
@@ -343,14 +342,12 @@ describe('DepuracionExpedientesPage · robustez', () => {
 
     expect(await screen.findByText('Depuración simulada revertida')).toBeInTheDocument()
     expect(deshacerUltimaDepuracion).toHaveBeenCalledTimes(1)
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('heading', { name: /última depuración de la sesión/i }),
-      ).not.toBeInTheDocument(),
-    )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /última depuración de la sesión/i }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText(/aún no hay expedientes depurados hoy/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /descargar reporte pdf/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /descargar pdf/i })).toBeDisabled()
   })
 
   it('usa el contenedor ampliado y centra el bloque de captura', () => {
@@ -372,98 +369,44 @@ describe('DepuracionExpedientesPage · robustez', () => {
     renderPage()
     await buscarExpediente(user)
     await abrirYConfirmar(user)
-    await screen.findByText('Expediente depurado')
+    await screen.findByText('Expediente depurado correctamente')
 
     expect(within(screen.getByRole('table')).getByText(FORMATEADO)).toBeInTheDocument()
     expect(
       within(screen.getByRole('list', { name: /tarjetas/i })).getByText(FORMATEADO),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('table')).getByText(
+      within(screen.getByRole('table')).queryByText(
         formatearFechaCortaGuatemala(REGISTRO.depuradoEn),
       ),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
   })
 
-  it('consulta la semana desde los filtros y actualiza el título de la bitácora', async () => {
-    const user = userEvent.setup()
+  it('mantiene únicamente el listado de hoy, sin filtros históricos', async () => {
     renderPage()
     await screen.findByText(/aún no hay expedientes depurados hoy/i)
-    vi.clearAllMocks()
 
-    await user.click(screen.getByRole('button', { name: 'Esta semana' }))
-
-    await waitFor(() => expect(listarDepuraciones).toHaveBeenCalledTimes(7))
-    expect(
-      await screen.findByRole('heading', { name: 'Depurados de la semana', level: 3 }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Depurados de hoy', level: 3 })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Esta semana' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rango personalizado' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Fecha inicial')).not.toBeInTheDocument()
   })
 
-  it('presenta la consulta incompleta sin un total engañoso', async () => {
-    const user = userEvent.setup()
-    const semana = crearPeriodo('semana', { hoy: hoyIsoGuatemala() })
-    const registros = semana.dias.map((fecha, indice) => ({
-      ...REGISTRO,
-      id: `semana-${indice}`,
-      numeroExpediente: `90000${indice}`,
-      depuradoEn: `${fecha}T10:00:00-06:00`,
-    }))
-
-    renderPage()
-    await screen.findByText(/aún no hay expedientes depurados hoy/i)
-    vi.clearAllMocks()
-
-    let primera = true
-    listarDepuraciones.mockImplementation(() => {
-      if (primera) {
-        primera = false
-        return Promise.reject(errorCon(500))
-      }
-      return Promise.resolve([registros.shift()])
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Esta semana' }))
-
-    expect(await screen.findByText('Consulta incompleta')).toBeInTheDocument()
-    expect(screen.getByText('Parcial: 6')).toBeInTheDocument()
-    expect(screen.queryByText('Total: 6')).not.toBeInTheDocument()
-    expect(screen.getByText(/no es una base válida para reportes/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /reintentar/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /descargar reporte pdf/i })).toBeDisabled()
-    expect(screen.getByText(/período está incompleta/i)).toBeInTheDocument()
-  })
-
-  it('no consulta un rango personalizado inválido', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByText(/aún no hay expedientes depurados hoy/i)
-    vi.clearAllMocks()
-
-    await user.click(screen.getByRole('button', { name: 'Rango personalizado' }))
-    expect(screen.getByLabelText('Fecha inicial')).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Fecha inicial'), {
-      target: { value: '03/11/2026' },
-    })
-    fireEvent.change(screen.getByLabelText('Fecha final'), {
-      target: { value: '02/11/2026' },
-    })
-    await user.click(screen.getByRole('button', { name: /aplicar rango/i }))
-
-    expect(screen.getByText(/no puede ser posterior/i)).toBeInTheDocument()
-    expect(listarDepuraciones).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'Depurados hoy', level: 3 })).toBeInTheDocument()
-  })
-
-  it('coloca el buscador de la bitácora antes del contenedor de registros', async () => {
+  it('coloca las acciones en la cabecera y deja el PDF al extremo derecho', async () => {
     listarDepuraciones.mockResolvedValue([REGISTRO])
     renderPage()
 
-    const buscador = await screen.findByRole('textbox', { name: /buscar en la bitácora/i })
-    const region = screen.getByRole('region', {
-      name: /listado de expedientes depurados, desplazable/i,
-    })
+    await screen.findByText('Total: 1')
+    const buscar = screen.getByRole('button', { name: /buscar expediente/i })
+    const deshacer = screen.getByRole('button', { name: /^deshacer$/i })
+    const pdf = screen.getByRole('button', { name: /descargar pdf/i })
 
-    expect(buscador.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Depurados de hoy', level: 3 })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: /buscar en la bitácora/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /reporte de depurados/i })).not.toBeInTheDocument()
+    expect(buscar.compareDocumentPosition(deshacer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(deshacer.compareDocumentPosition(pdf) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

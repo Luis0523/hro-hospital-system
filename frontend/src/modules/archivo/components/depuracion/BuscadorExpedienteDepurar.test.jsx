@@ -4,17 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BuscadorExpedienteDepurar from './BuscadorExpedienteDepurar.jsx'
 
-function escanerMock(overrides = {}) {
-  return {
-    activo: false,
-    error: null,
-    videoRef: createRef(),
-    iniciar: vi.fn(),
-    detener: vi.fn(),
-    ...overrides,
-  }
-}
-
 function renderBuscador(props = {}) {
   return render(
     <BuscadorExpedienteDepurar
@@ -23,7 +12,6 @@ function renderBuscador(props = {}) {
       onEnviar={() => {}}
       inputRef={createRef()}
       procesando={false}
-      escaner={escanerMock()}
       {...props}
     />,
   )
@@ -37,7 +25,7 @@ describe('BuscadorExpedienteDepurar', () => {
     expect(input).toBeInTheDocument()
     expect(input).toHaveAttribute('inputmode', 'numeric')
     expect(input).toHaveAttribute('placeholder', 'Ej. 927581')
-    expect(screen.getByRole('button', { name: /buscar expediente/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^buscar$/i })).toBeInTheDocument()
   })
 
   it('mantiene un área táctil de 44 px y foco visible en Limpiar', async () => {
@@ -58,7 +46,7 @@ describe('BuscadorExpedienteDepurar', () => {
     const user = userEvent.setup()
     renderBuscador({ numero: '927581', onEnviar })
 
-    await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
+    await user.click(screen.getByRole('button', { name: /^buscar$/i }))
     expect(onEnviar).toHaveBeenCalledTimes(1)
   })
 
@@ -89,7 +77,6 @@ describe('BuscadorExpedienteDepurar', () => {
         onEnviar={() => {}}
         inputRef={createRef()}
         procesando={false}
-        escaner={escanerMock()}
         manual
         onAlternarModo={onAlternarModo}
       />,
@@ -119,27 +106,11 @@ describe('BuscadorExpedienteDepurar', () => {
     expect(onCambio).not.toHaveBeenCalled()
   })
 
-  it('abre y cierra la cámara mediante sus controles', async () => {
-    const iniciar = vi.fn()
-    const detener = vi.fn()
-    const user = userEvent.setup()
+  it('no muestra controles de cámara en Depuración', () => {
+    renderBuscador()
 
-    const { rerender } = renderBuscador({ escaner: escanerMock({ iniciar }) })
-    await user.click(screen.getByRole('button', { name: /escanear con cámara/i }))
-    expect(iniciar).toHaveBeenCalledTimes(1)
-
-    rerender(
-      <BuscadorExpedienteDepurar
-        numero=""
-        onCambio={() => {}}
-        onEnviar={() => {}}
-        inputRef={createRef()}
-        procesando={false}
-        escaner={escanerMock({ activo: true, detener })}
-      />,
-    )
-    expect(screen.getByLabelText(/vista de cámara/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /cerrar cámara/i }))
-    expect(detener).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /escanear con cámara/i })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/vista de cámara/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cerrar cámara/i })).not.toBeInTheDocument()
   })
 })

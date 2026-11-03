@@ -50,8 +50,8 @@ describe('depuracionArchivoApi (mock)', () => {
     expect(registro.depuradoEn).toBeTruthy()
 
     const bitacora = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
-    expect(bitacora).toHaveLength(1)
-    expect(bitacora[0].numeroExpediente).toBe(EXISTENTE)
+    expect(bitacora.length).toBeGreaterThan(1)
+    expect(bitacora.some((item) => item.numeroExpediente === EXISTENTE)).toBe(true)
   })
 
   it('refleja depurado=true al volver a buscar el expediente', async () => {
@@ -123,18 +123,19 @@ describe('depuracionArchivoApi (mock)', () => {
   })
 
   it('mantiene separados los registros de sesión de los históricos', async () => {
-    reiniciarDepuracionesMock({ hoy: hoyIsoGuatemala() })
+    const hoyIso = hoyIsoGuatemala()
+    reiniciarDepuracionesMock({ hoy: hoyIso })
     const historico = obtenerHistoricoDepuracionMock()
+    const fixturesHoy = historico.depuraciones.filter((registro) => registro.fecha === hoyIso)
 
-    expect(historico.depuraciones.every((registro) => registro.fecha < hoyIsoGuatemala())).toBe(
-      true,
-    )
+    expect(fixturesHoy).toHaveLength(12)
+    expect(historico.depuraciones.some((registro) => registro.fecha < hoyIso)).toBe(true)
 
     await marcarDepurado({ numeroExpediente: EXISTENTE })
-    const hoy = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
+    const hoy = await listarDepuraciones({ fecha: hoyIso })
 
-    expect(hoy).toHaveLength(1)
-    expect(hoy[0].numeroExpediente).toBe(EXISTENTE)
+    expect(hoy).toHaveLength(fixturesHoy.length + 1)
+    expect(hoy.some((registro) => registro.numeroExpediente === EXISTENTE)).toBe(true)
   })
 
   it('deshace únicamente la última depuración y no permite una cadena de reversiones', async () => {
@@ -145,7 +146,8 @@ describe('depuracionArchivoApi (mock)', () => {
 
     expect(revertida.numeroExpediente).toBe(SEGUNDO)
     const hoy = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
-    expect(hoy.map((registro) => registro.numeroExpediente)).toEqual([EXISTENTE])
+    expect(hoy.map((registro) => registro.numeroExpediente)).toContain(EXISTENTE)
+    expect(hoy.map((registro) => registro.numeroExpediente)).not.toContain(SEGUNDO)
     expect((await buscarExpedienteParaDepurar(SEGUNDO)).depurado).toBe(false)
     expect((await buscarExpedienteParaDepurar(EXISTENTE)).depurado).toBe(true)
 
@@ -194,6 +196,10 @@ describe('depuracionArchivoApi (mock)', () => {
     reiniciarDepuracionesMock({ hoy: hoyIsoGuatemala() })
     const historico = obtenerHistoricoDepuracionMock()
     const fechaHistorica = historico.depuraciones[0].fecha
+    const historicosFecha = historico.depuraciones.filter(
+      (registro) => registro.fecha === fechaHistorica,
+    ).length
+    const hoyBase = (await listarDepuraciones({ fecha: hoyIsoGuatemala() })).length
     await marcarDepurado({ numeroExpediente: EXISTENTE })
 
     const get = vi.spyOn(client, 'get')
@@ -202,7 +208,7 @@ describe('depuracionArchivoApi (mock)', () => {
       dias: [fechaHistorica, hoyIsoGuatemala()],
     })
 
-    expect(registros).toHaveLength(2)
+    expect(registros).toHaveLength(historicosFecha + hoyBase + 1)
     expect(registros.map((registro) => registro.numeroExpediente)).toContain(EXISTENTE)
     expect(get).not.toHaveBeenCalled()
     expect(post).not.toHaveBeenCalled()
