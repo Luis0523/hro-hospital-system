@@ -23,7 +23,7 @@ function formatearFechaHora(valor) {
 function puedeRevertirTurno(turno) {
   if (!turno) return false
   const estado = turno.estadoBackend ?? turno.etapa
-  return ['recibido', 'en_clinica', 'llamado', 'no_asistio', 'atendido'].includes(estado)
+  return ['recibido', 'en_clinica', 'llamado', 'no_asistio'].includes(estado)
 }
 
 // Resumen compacto del turno asignado, su historial y la reversión de estado.

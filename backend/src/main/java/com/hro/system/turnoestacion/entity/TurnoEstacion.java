@@ -68,6 +68,9 @@ public class TurnoEstacion {
     @Column(name = "tipo_registro", length = 30)
     private String tipoRegistro;
 
+    @Column(name = "proxima_visita")
+    private LocalDate proximaVisita;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cita_id")
     private Cita cita;

@@ -9,6 +9,13 @@ import { useAuth } from '@/shared/context/AuthContext.jsx'
 export default function RutaPrivada() {
   const { autenticado, modoAuth } = useAuth()
   const location = useLocation()
+  const bypassLocal =
+    import.meta.env.DEV &&
+    import.meta.env.MODE !== 'test' &&
+    import.meta.env.VITE_SALTAR_AUTH_LOCAL === 'true' &&
+    location.pathname.startsWith('/seguimiento-enfermeria')
+
+  if (bypassLocal) return <Outlet />
 
   if (!autenticado) {
     return (

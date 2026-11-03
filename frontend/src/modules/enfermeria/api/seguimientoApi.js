@@ -37,6 +37,7 @@ async function leerConReintento(url, config) {
 export const ETAPAS_SEGUIMIENTO = [
   { id: 'registrado', nombre: 'Registrado' },
   { id: 'en_clinica', nombre: 'Recibir/Repartir' },
+  { id: 'citar', nombre: 'Citar' },
   { id: 'devuelto', nombre: 'Devuelto' },
   { id: 'archivo', nombre: 'Archivo' },
 ]
@@ -46,7 +47,7 @@ export const ETAPAS_SEGUIMIENTO = [
 // la clínica en una sola acción.
 export const ETAPA_PREVIA = {
   en_clinica: 'registrado',
-  devuelto: 'en_clinica',
+  devuelto: 'citar',
   archivo: 'devuelto',
 }
 
@@ -125,6 +126,7 @@ function etapaPorOrden(orden) {
   if (orden <= 6) return 'devuelto'
   if (orden <= 12) return 'en_clinica'
   if (orden <= 17) return 'recibido'
+  if (orden <= 19) return 'citar'
   return 'registrado'
 }
 
@@ -152,6 +154,9 @@ function sembrarTurnos() {
         clinicaId: conClinica ? 1 + ((numero + indice) % 5) : null,
         clinicaNombre: conClinica ? `Clínica ${1 + ((numero + indice) % 5)}` : null,
         tipoRegistro,
+        pacienteNombre: null,
+        numeroExpediente: null,
+        proximaVisita: null,
         registradoEn: new Date().toISOString(),
       })
     }
@@ -192,8 +197,9 @@ export function etapaDesdeEstado(estado) {
     case 'en_clinica':
     case 'llamado':
     case 'no_asistio':
-    case 'atendido':
       return 'en_clinica'
+    case 'atendido':
+      return 'citar'
     case 'devuelto':
       return 'devuelto'
     case 'archivado':
@@ -224,6 +230,9 @@ function normalizarTurno(turno, especialidad = {}) {
       turno.espacioFisicoNombre ??
       (turno.espacioFisicoNumero ? `Clínica ${turno.espacioFisicoNumero}` : null),
     tipoRegistro: turno.tipoRegistro ?? tiposPorTurno.get(turno.id) ?? null,
+    pacienteNombre: turno.pacienteNombre ?? null,
+    numeroExpediente: turno.numeroExpediente ?? null,
+    proximaVisita: turno.proximaVisita ?? null,
     registradoEn: turno.registradoEn ?? turno.creadoEn ?? null,
   }
 }
@@ -697,6 +706,44 @@ export async function avanzarTurno(id, { clinicaId, estadoBackend, observacion }
 
   const { ruta, cuerpo } = rutaSiguiente(estadoBackend, clinicaId, observacion)
   const respuesta = await client.post(`/turnos-estacion/${id}/${ruta}`, cuerpo)
+  return normalizarTurno(desenvolver(respuesta))
+}
+
+export async function asignarExpedienteTurno(id, numeroExpediente) {
+  const numero = String(numeroExpediente ?? '').trim()
+  if (!numero) throw crearError('El número de expediente es obligatorio', 422)
+  if (USE_MOCK) {
+    await esperar()
+    const turno = turnos.get(id)
+    if (!turno) throw crearError('Turno no encontrado', 404)
+    if (turno.numeroExpediente && turno.numeroExpediente !== numero) {
+      throw crearError('El turno ya tiene un expediente asignado', 409)
+    }
+    turno.numeroExpediente = numero
+    turno.pacienteNombre = turno.pacienteNombre ?? `Paciente ${numero}`
+    turno.actualizadoEn = new Date().toISOString()
+    return copiarTurno(turno)
+  }
+  const respuesta = await client.put(`/turnos-estacion/${id}/expediente`, {
+    numeroExpediente: numero,
+  })
+  return normalizarTurno(desenvolver(respuesta))
+}
+
+export async function agendarProximaVisitaTurno(id, fecha) {
+  if (!fecha) throw crearError('Seleccione la fecha de la próxima visita', 422)
+  if (USE_MOCK) {
+    await esperar()
+    const turno = turnos.get(id)
+    if (!turno) throw crearError('Turno no encontrado', 404)
+    if (turno.etapa !== 'citar') {
+      throw crearError('La próxima visita solo se agenda en la etapa Citar', 409)
+    }
+    turno.proximaVisita = fecha
+    turno.actualizadoEn = new Date().toISOString()
+    return copiarTurno(turno)
+  }
+  const respuesta = await client.put(`/turnos-estacion/${id}/proxima-visita`, { fecha })
   return normalizarTurno(desenvolver(respuesta))
 }
 

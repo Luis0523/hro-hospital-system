@@ -319,6 +319,73 @@ public class TurnoEstacionService {
     }
 
     @Transactional
+    public TurnoEstacionResponseDTO asignarExpediente(
+            UUID id, AsignarExpedienteTurnoRequestDTO dto) {
+        TurnoEstacion turno = cargar(id);
+        validarAccesoEstacion(turno);
+        String numeroExpediente = normalizar(dto.getNumeroExpediente());
+        if (numeroExpediente == null) {
+            throw new BusinessException("EXPEDIENTE_REQUERIDO", "El número de expediente es obligatorio");
+        }
+        if (numeroExpediente.equals(turno.getNumeroExpediente())) {
+            return toDTO(turno, true);
+        }
+        if (turno.getNumeroExpediente() != null) {
+            throw new ConflictException("EXPEDIENTE_YA_VINCULADO",
+                    "El turno ya tiene el expediente " + turno.getNumeroExpediente());
+        }
+        if (turnoRepository.existsByFechaAndNumeroExpedienteAndActivoTrue(
+                turno.getFecha(), numeroExpediente)) {
+            throw new ConflictException("EXPEDIENTE_CON_TURNO",
+                    "El expediente " + numeroExpediente + " ya tiene otro turno activo para la fecha");
+        }
+
+        Optional<Expediente> local = expedienteRepository.findByNumeroExpediente(numeroExpediente);
+        if (local.isPresent()) {
+            Expediente expediente = local.get();
+            if (turno.getPaciente() != null
+                    && !turno.getPaciente().getId().equals(expediente.getPaciente().getId())) {
+                throw new ConflictException("PACIENTE_EXPEDIENTE_INCONSISTENTE",
+                        "El expediente no corresponde al paciente registrado en el turno");
+            }
+            turno.setExpediente(expediente);
+            turno.setPaciente(expediente.getPaciente());
+            turno.setNumeroExpediente(expediente.getNumeroExpediente());
+            turno.setPacienteNombre(nombreCompleto(expediente.getPaciente()));
+        } else {
+            PacienteHroDTO externo = expedienteHroService.consultar(numeroExpediente);
+            turno.setNumeroExpediente(numeroExpediente);
+            turno.setPaciente(null);
+            turno.setExpediente(null);
+            turno.setExpedienteCiclo(null);
+            turno.setPacienteNombre(externo.getNombreCompleto());
+        }
+
+        turno.setActualizadoEn(OffsetDateTime.now());
+        turnoRepository.save(turno);
+        registrarMovimiento(turno, turno.getEstado(), turno.getEstado(), usuarioActual(), null,
+                "Expediente " + numeroExpediente + " asignado por Enfermería");
+        return toDTO(turno, true);
+    }
+
+    @Transactional
+    public TurnoEstacionResponseDTO agendarProximaVisita(
+            UUID id, AgendarProximaVisitaRequestDTO dto) {
+        TurnoEstacion turno = cargar(id);
+        validarAccesoEstacion(turno);
+        if (turno.getEstado() != EstadoTurnoEstacion.atendido) {
+            throw new ConflictException("TURNO_NO_CITABLE",
+                    "La próxima visita solo se agenda cuando el turno fue atendido");
+        }
+        turno.setProximaVisita(dto.getFecha());
+        turno.setActualizadoEn(OffsetDateTime.now());
+        turnoRepository.save(turno);
+        registrarMovimiento(turno, turno.getEstado(), turno.getEstado(), usuarioActual(), null,
+                "Próxima visita agendada para " + dto.getFecha());
+        return toDTO(turno, true);
+    }
+
+    @Transactional
     public TurnoEstacionResponseDTO vincularExpediente(UUID id, VincularExpedienteRequestDTO dto) {
         TurnoEstacion turno = cargar(id);
         validarAccesoEstacion(turno);
@@ -1065,6 +1132,7 @@ public class TurnoEstacionService {
                 .pacienteNombre(turno.getPaciente() != null
                         ? nombreCompleto(turno.getPaciente()) : turno.getPacienteNombre())
                 .tipoRegistro(turno.getTipoRegistro())
+                .proximaVisita(turno.getProximaVisita())
                 .expedienteId(turno.getExpediente() != null ? turno.getExpediente().getId() : null)
                 .numeroExpediente(turno.getNumeroExpediente())
                 .citaId(turno.getCita() != null ? turno.getCita().getId() : null)

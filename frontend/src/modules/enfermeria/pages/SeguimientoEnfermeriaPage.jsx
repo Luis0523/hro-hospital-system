@@ -9,6 +9,7 @@ import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.j
 import DevolucionesClinicas from '../components/seguimiento/DevolucionesClinicas.jsx'
 import SalidaEnfermeriaArchivo from '../components/seguimiento/SalidaEnfermeriaArchivo.jsx'
 import DetalleTurno from '../components/seguimiento/DetalleTurno.jsx'
+import PanelCitar from '../components/seguimiento/PanelCitar.jsx'
 import EtapasSeguimiento from '../components/seguimiento/EtapasSeguimiento.jsx'
 import LibroSeguimiento from '../components/seguimiento/LibroSeguimiento.jsx'
 import {
@@ -68,6 +69,8 @@ export default function SeguimientoEnfermeriaPage() {
     revertir,
     eliminar,
     cambiarTipoRegistro,
+    asignarExpediente,
+    agendarProximaVisita,
     devolverClinica,
     deshacerDevolucion,
   } = useSeguimientoEnfermeria(estacion?.id ?? null, fecha)
@@ -81,6 +84,7 @@ export default function SeguimientoEnfermeriaPage() {
   const [correlativoModal, setCorrelativoModal] = useState(null)
   const [procesandoClinicaId, setProcesandoClinicaId] = useState(null)
   const [flujoArchivoAbierto, setFlujoArchivoAbierto] = useState(false)
+  const [citarAbierto, setCitarAbierto] = useState(false)
   const [flujoOculto, setFlujoOculto] = useState(() => {
     try {
       return localStorage.getItem('hro_seguimiento_flujo_oculto') === 'true'
@@ -300,6 +304,21 @@ export default function SeguimientoEnfermeriaPage() {
       return
     }
 
+    if (filtro === 'citar') {
+      const turno =
+        especialidad.turnos.find((item) => item.etapa === 'citar') ?? especialidad.turnos[0]
+      if (!turno) {
+        mostrarToast({
+          tone: 'warning',
+          title: `${especialidad.nombre}: no hay turnos atendidos pendientes de citar.`,
+        })
+        return
+      }
+      setSeleccion({ especialidadId, codigo, numero: turno.numero })
+      setCitarAbierto(true)
+      return
+    }
+
     const previa = ETAPA_PREVIA[filtro]
     const turno = especialidad.turnos.find((item) => item.etapa === previa)
     if (!turno) {
@@ -365,6 +384,18 @@ export default function SeguimientoEnfermeriaPage() {
     setSeleccion({ especialidadId, codigo, numero })
 
     if (!filtro) return
+
+    if (filtro === 'citar') {
+      if (!turno) {
+        mostrarToast({
+          tone: 'warning',
+          title: `La casilla ${etiquetaTurno(codigo, numero)} está vacía.`,
+        })
+        return
+      }
+      setCitarAbierto(true)
+      return
+    }
 
     if (filtro === 'registrado') {
       // Si ya está registrado, la selección habilita el editor de su tipo de
@@ -479,6 +510,7 @@ export default function SeguimientoEnfermeriaPage() {
     setFiltro(nuevo)
     setTipoRegistro(null)
     if (nuevo !== 'en_clinica') setClinicaDestino(null)
+    if (nuevo !== 'citar') setCitarAbierto(false)
     if (nuevo === 'devuelto' || nuevo === 'archivo') setSeleccion(null)
     enfocarEspecialidad(filas[0]?.id)
   }
@@ -602,6 +634,55 @@ export default function SeguimientoEnfermeriaPage() {
       mostrarToast({
         tone: 'error',
         title: fallo?.message ?? 'No se pudo eliminar el registro.',
+      })
+      throw fallo
+    }
+  }
+
+  async function asignarExpedienteSeleccionado(numeroExpediente) {
+    const turno = seleccionCompleta?.turno
+    if (!turno) return
+    try {
+      const actualizado = await asignarExpediente(turno.id, numeroExpediente)
+      setSeleccion({
+        especialidadId: actualizado.especialidadId ?? seleccionCompleta.especialidadId,
+        codigo: actualizado.codigo ?? seleccionCompleta.codigo,
+        numero: actualizado.numero ?? seleccionCompleta.numero,
+      })
+      mostrarToast({
+        tone: 'success',
+        title: `Expediente ${actualizado.numeroExpediente} asignado.`,
+      })
+      return actualizado
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo asignar el expediente.',
+      })
+      throw fallo
+    }
+  }
+
+  async function agendarProximaVisitaSeleccionada(fecha) {
+    const turno = seleccionCompleta?.turno
+    if (!turno) return
+    try {
+      const actualizado = await agendarProximaVisita(turno.id, fecha)
+      setSeleccion({
+        especialidadId: actualizado.especialidadId ?? seleccionCompleta.especialidadId,
+        codigo: actualizado.codigo ?? seleccionCompleta.codigo,
+        numero: actualizado.numero ?? seleccionCompleta.numero,
+      })
+      setCitarAbierto(false)
+      mostrarToast({
+        tone: 'success',
+        title: `Próxima visita agendada para ${fecha}.`,
+      })
+      return actualizado
+    } catch (fallo) {
+      mostrarToast({
+        tone: 'error',
+        title: fallo?.message ?? 'No se pudo agendar la próxima visita.',
       })
       throw fallo
     }
@@ -756,7 +837,13 @@ export default function SeguimientoEnfermeriaPage() {
             </div>
 
             <div
-              className={`grid gap-3 ${flujoOculto ? '' : 'lg:grid-cols-[minmax(0,1fr)_250px]'}`}
+              className={`grid gap-3 ${
+                flujoOculto
+                  ? ''
+                  : filtro === 'citar'
+                    ? 'lg:grid-cols-[minmax(0,1fr)_300px]'
+                    : 'lg:grid-cols-[minmax(0,1fr)_250px]'
+              }`}
             >
               <div
                 className={`grid gap-3 ${flujoOculto ? '' : 'md:grid-cols-[130px_minmax(0,1fr)]'}`}
@@ -796,12 +883,26 @@ export default function SeguimientoEnfermeriaPage() {
                 />
               </div>
 
-              <ClinicasSeguimiento
-                clinicas={clinicas}
-                modoAsignacion={filtro === 'en_clinica'}
-                clinicaSeleccionadaId={clinicaDestino?.id}
-                onElegir={elegirClinica}
-              />
+              {filtro === 'citar' ? (
+                <PanelCitar
+                  abierto={citarAbierto && Boolean(seleccionCompleta?.turno)}
+                  turno={seleccionCompleta?.turno}
+                  especialidadNombre={seleccionCompleta?.especialidadNombre}
+                  especialidadTurnoId={seleccionCompleta?.especialidadId}
+                  especialidades={especialidades}
+                  clinicas={clinicas}
+                  onCerrar={() => setCitarAbierto(false)}
+                  onAsignarExpediente={asignarExpedienteSeleccionado}
+                  onAgendar={agendarProximaVisitaSeleccionada}
+                />
+              ) : (
+                <ClinicasSeguimiento
+                  clinicas={clinicas}
+                  modoAsignacion={filtro === 'en_clinica'}
+                  clinicaSeleccionadaId={clinicaDestino?.id}
+                  onElegir={elegirClinica}
+                />
+              )}
             </div>
           </div>
         )}
