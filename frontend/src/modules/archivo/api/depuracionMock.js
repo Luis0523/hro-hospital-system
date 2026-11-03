@@ -1,13 +1,11 @@
 import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
+import { crearHistoricoDepuracionMock, expedientesDepuracionMock } from './depuracionFixtures'
 import { expedientesMock, USUARIO_ARCHIVO_MOCK } from './mockData'
 
-// Datos simulados del módulo de Depuración de expedientes (baja lógica).
-// Imita el contrato confirmado del backend (migración V23): búsqueda por número,
-// marca de depurado y bitácora del día. El estado mutable vive en memoria del
-// módulo; es determinista (sin aleatoriedad) para que las pruebas sean estables.
-
 const depuraciones = []
+let historico = crearHistoricoDepuracionMock()
 let contador = 0
+let ultimaDepuracionId = null
 
 function uuidExpedienteMock(id) {
   return `10000000-0000-4000-8000-${String(id).padStart(12, '0')}`
@@ -15,28 +13,35 @@ function uuidExpedienteMock(id) {
 
 function buscarFixture(numero) {
   const buscado = String(numero ?? '').trim()
-  return expedientesMock.find((expediente) => expediente.numeroExpediente === buscado) ?? null
+  return (
+    expedientesDepuracionMock.find((expediente) => expediente.numeroExpediente === buscado) ??
+    historico.expedientes.find((expediente) => expediente.numeroExpediente === buscado) ??
+    expedientesMock.find((expediente) => expediente.numeroExpediente === buscado) ??
+    null
+  )
 }
 
-// Resultado de la búsqueda previa a la baja. `depurado` marca si ya fue dado de
-// baja (equivalente a `data.content[0].depurado = true` del backend real).
+function buscarDepuracionExistente(numero) {
+  const buscado = String(numero ?? '').trim()
+  return (
+    depuraciones.find((registro) => registro.numeroExpediente === buscado && !registro.revertida) ??
+    historico.depuraciones.find((registro) => registro.numeroExpediente === buscado) ??
+    null
+  )
+}
+
 export function buscarExpedienteDepuracionMock(numero) {
   const expediente = buscarFixture(numero)
   if (!expediente) return null
-
-  const yaDepurado = depuraciones.some(
-    (registro) => registro.numeroExpediente === expediente.numeroExpediente,
-  )
 
   return {
     expedienteId: uuidExpedienteMock(expediente.id),
     numeroExpediente: expediente.numeroExpediente,
     pacienteNombre: expediente.pacienteNombre,
-    depurado: yaDepurado,
+    depurado: Boolean(buscarDepuracionExistente(expediente.numeroExpediente)),
   }
 }
 
-// Marca un expediente como depurado. Lanza 404 si no existe y 409 si ya estaba.
 export function crearDepuracionMock({ numeroExpediente, motivo } = {}) {
   const buscado = String(numeroExpediente ?? '').trim()
   const expediente = buscarFixture(buscado)
@@ -47,8 +52,7 @@ export function crearDepuracionMock({ numeroExpediente, motivo } = {}) {
     throw error
   }
 
-  const existente = depuraciones.find((registro) => registro.numeroExpediente === buscado)
-  if (existente) {
+  if (buscarDepuracionExistente(buscado)) {
     const error = new Error('El expediente ya está depurado')
     error.status = 409
     throw error
@@ -64,19 +68,58 @@ export function crearDepuracionMock({ numeroExpediente, motivo } = {}) {
     usuarioNombre: USUARIO_ARCHIVO_MOCK,
     depuradoEn: new Date().toISOString(),
     fecha: hoyIsoGuatemala(),
+    revertida: false,
   }
   depuraciones.unshift(registro)
+  ultimaDepuracionId = registro.id
   return registro
 }
 
-// Bitácora del día (o de la fecha indicada). Más recientes primero.
 export function listarDepuracionesMock({ fecha } = {}) {
   const objetivo = fecha ?? hoyIsoGuatemala()
-  return depuraciones.filter((registro) => registro.fecha === objetivo)
+
+  return [...historico.depuraciones, ...depuraciones]
+    .filter((registro) => registro.fecha === objetivo && !registro.revertida)
+    .sort((a, b) => Date.parse(b.depuradoEn) - Date.parse(a.depuradoEn))
 }
 
-// Solo para pruebas: deja el estado mutable en limpio.
-export function reiniciarDepuracionesMock() {
+export function listarDepuracionesEnRangoMock({ dias = [] } = {}) {
+  const fechas = new Set(Array.isArray(dias) ? dias : [])
+
+  return [...historico.depuraciones, ...depuraciones]
+    .filter((registro) => fechas.has(registro.fecha) && !registro.revertida)
+    .sort((a, b) => Date.parse(b.depuradoEn) - Date.parse(a.depuradoEn))
+}
+
+export function obtenerUltimaDepuracionReversibleMock() {
+  if (!ultimaDepuracionId) return null
+  return (
+    depuraciones.find((registro) => registro.id === ultimaDepuracionId && !registro.revertida) ??
+    null
+  )
+}
+
+export function deshacerUltimaDepuracionMock() {
+  const registro = obtenerUltimaDepuracionReversibleMock()
+  if (!registro) {
+    const error = new Error('No hay una depuración reversible en esta sesión.')
+    error.status = 409
+    throw error
+  }
+
+  registro.revertida = true
+  registro.revertidaEn = new Date().toISOString()
+  ultimaDepuracionId = null
+  return registro
+}
+
+export function reiniciarDepuracionesMock({ hoy } = {}) {
   depuraciones.length = 0
   contador = 0
+  ultimaDepuracionId = null
+  historico = crearHistoricoDepuracionMock(hoy ?? hoyIsoGuatemala())
+}
+
+export function obtenerHistoricoDepuracionMock() {
+  return historico
 }

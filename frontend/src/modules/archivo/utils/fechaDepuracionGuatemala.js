@@ -18,6 +18,13 @@ const formatoHora = new Intl.DateTimeFormat('es-GT', {
   hourCycle: 'h23',
 })
 
+const formatoFechaCorta = new Intl.DateTimeFormat('es-GT', {
+  timeZone: ZONA_HOSPITAL,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
 function aFechaValida(instante) {
   if (instante == null) return null
   const fecha = instante instanceof Date ? instante : new Date(instante)
@@ -46,4 +53,18 @@ export function formatearHoraGuatemala(instante) {
   const fecha = aFechaValida(instante)
   if (!fecha) return ''
   return formatoHora.format(fecha)
+}
+
+export function formatearFechaCortaGuatemala(valor) {
+  if (typeof valor === 'string') {
+    const coincidencia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor.trim())
+    if (coincidencia) return `${coincidencia[3]}/${coincidencia[2]}/${coincidencia[1]}`
+  }
+
+  const fecha = aFechaValida(valor)
+  if (!fecha) return ''
+
+  const partes = formatoFechaCorta.formatToParts(fecha)
+  const parte = (tipo) => partes.find((item) => item.type === tipo)?.value ?? ''
+  return `${parte('day')}/${parte('month')}/${parte('year')}`
 }

@@ -5,6 +5,8 @@ import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
 import {
   buscarExpedienteDepuracionMock,
   crearDepuracionMock,
+  deshacerUltimaDepuracionMock,
+  listarDepuracionesEnRangoMock,
   listarDepuracionesMock,
 } from './depuracionMock'
 
@@ -75,4 +77,24 @@ export async function listarDepuraciones({ fecha } = {}) {
 
   const lista = desenvolver(await client.get('/expedientes/depuracion', { params: { fecha: dia } }))
   return (lista ?? []).map(mapearDepuracion)
+}
+
+export async function listarDepuracionesEnRango({ dias = [] } = {}) {
+  if (!USE_MOCK) {
+    const error = new Error('La consulta de rango optimizada solo está disponible en modo mock.')
+    error.codigo = 'solo_mock'
+    throw error
+  }
+
+  return listarDepuracionesEnRangoMock({ dias }).map(mapearDepuracion)
+}
+
+export async function deshacerUltimaDepuracion() {
+  if (!USE_MOCK) {
+    const error = new Error('La reversión simulada no está disponible en modo real.')
+    error.codigo = 'solo_mock'
+    throw error
+  }
+
+  return mapearDepuracion(deshacerUltimaDepuracionMock())
 }

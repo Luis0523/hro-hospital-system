@@ -17,7 +17,7 @@ export default function BuscadorExpedienteDepurar({
   }
 
   return (
-    <section className="rounded-xl bg-surface-container-lowest p-4 shadow-card">
+    <section className="rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5">
       <form onSubmit={manejarEnvio} className="space-y-3">
         <label
           htmlFor="numero-expediente"
@@ -27,7 +27,7 @@ export default function BuscadorExpedienteDepurar({
           Número de expediente
         </label>
 
-        <div className="relative flex items-center">
+        <div className="relative flex w-full min-w-0 items-center">
           <Icon
             name="qr_code_scanner"
             className="pointer-events-none absolute left-4 text-[28px] text-primary"
@@ -39,12 +39,14 @@ export default function BuscadorExpedienteDepurar({
             onChange={(event) => onCambio(event.target.value)}
             autoComplete="off"
             autoFocus
-            inputMode="text"
+            inputMode="numeric"
             enterKeyHint="done"
-            placeholder="Ej. EXP-2024-035"
+            pattern="[0-9-]*"
+            maxLength={31}
+            placeholder="Ej. 927581"
             aria-describedby="numero-expediente-ayuda"
             aria-busy={procesando}
-            className="h-16 w-full rounded-lg bg-surface-container-low pl-14 pr-12 text-[26px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition placeholder:text-[18px] placeholder:tracking-normal focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20 sm:placeholder:text-[22px]"
+            className="h-16 w-full min-w-0 rounded-lg bg-surface-container-low pl-14 pr-12 text-[26px] font-bold tracking-wider text-on-surface shadow-inner outline-none transition placeholder:text-[18px] placeholder:tracking-normal focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/20 sm:placeholder:text-[22px]"
           />
           {numero && (
             <button
@@ -110,7 +112,8 @@ export default function BuscadorExpedienteDepurar({
           id="numero-expediente-ayuda"
           className="text-center text-label-sm text-on-surface-variant"
         >
-          Escanee con la cámara, use el lector o escríbalo: la búsqueda es automática.
+          Escriba o escanee solo dígitos; el guion se agrega al mostrar el expediente. La búsqueda
+          es automática.
         </p>
       </form>
     </section>

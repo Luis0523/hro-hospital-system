@@ -1,25 +1,35 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import client from '@/shared/api/client'
 import { hoyIsoGuatemala } from '../utils/fechaDepuracionGuatemala'
-import { expedientesMock } from './mockData'
+import { expedientesDepuracionMock } from './depuracionFixtures'
 import {
   crearDepuracionMock,
   listarDepuracionesMock,
+  obtenerHistoricoDepuracionMock,
   reiniciarDepuracionesMock,
 } from './depuracionMock'
 import {
   buscarExpedienteParaDepurar,
+  deshacerUltimaDepuracion,
   listarDepuraciones,
+  listarDepuracionesEnRango,
   marcarDepurado,
 } from './depuracionArchivoApi'
 
-const EXISTENTE = expedientesMock.find((expediente) => expediente.numeroExpediente).numeroExpediente
+const EXISTENTE = expedientesDepuracionMock[0].numeroExpediente
+const SEGUNDO = expedientesDepuracionMock[1].numeroExpediente
+const INEXISTENTE = '999999'
 
 describe('depuracionArchivoApi (mock)', () => {
   beforeEach(() => {
     reiniciarDepuracionesMock()
   })
 
-  it('encuentra un expediente por número con su paciente', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('encuentra un expediente numérico por número con su paciente', async () => {
     const expediente = await buscarExpedienteParaDepurar(EXISTENTE)
 
     expect(expediente).toMatchObject({
@@ -30,7 +40,7 @@ describe('depuracionArchivoApi (mock)', () => {
   })
 
   it('devuelve null si el número no existe', async () => {
-    expect(await buscarExpedienteParaDepurar('NO-EXISTE')).toBeNull()
+    expect(await buscarExpedienteParaDepurar(INEXISTENTE)).toBeNull()
   })
 
   it('marca un expediente como depurado y lo registra en la bitácora del día', async () => {
@@ -60,7 +70,7 @@ describe('depuracionArchivoApi (mock)', () => {
   })
 
   it('lanza 404 si el expediente no existe', async () => {
-    await expect(marcarDepurado({ numeroExpediente: 'NO-EXISTE' })).rejects.toMatchObject({
+    await expect(marcarDepurado({ numeroExpediente: INEXISTENTE })).rejects.toMatchObject({
       status: 404,
     })
   })
@@ -70,5 +80,131 @@ describe('depuracionArchivoApi (mock)', () => {
 
     expect(registro.fecha).toBe(hoyIsoGuatemala())
     expect(listarDepuracionesMock({ fecha: hoyIsoGuatemala() })).toContainEqual(registro)
+  })
+
+  it('no realiza solicitudes HTTP en modo mock', async () => {
+    const get = vi.spyOn(client, 'get')
+    const post = vi.spyOn(client, 'post')
+
+    await buscarExpedienteParaDepurar(EXISTENTE)
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+    await listarDepuraciones({ fecha: hoyIsoGuatemala() })
+
+    expect(get).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it('encuentra un expediente histórico ya depurado y conserva el 409', async () => {
+    reiniciarDepuracionesMock({ hoy: '2026-11-02' })
+    const historico = obtenerHistoricoDepuracionMock()
+    const registro = historico.depuraciones[0]
+
+    const expediente = await buscarExpedienteParaDepurar(registro.numeroExpediente)
+    expect(expediente).toMatchObject({
+      numeroExpediente: registro.numeroExpediente,
+      depurado: true,
+    })
+
+    await expect(
+      marcarDepurado({ numeroExpediente: registro.numeroExpediente }),
+    ).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('devuelve el mismo conjunto para un día sin importar el filtro que lo consulte', async () => {
+    reiniciarDepuracionesMock({ hoy: '2026-11-02' })
+    const historico = obtenerHistoricoDepuracionMock()
+    const fecha = historico.depuraciones[0].fecha
+
+    const primero = await listarDepuraciones({ fecha })
+    const segundo = await listarDepuraciones({ fecha })
+
+    expect(segundo.map((registro) => registro.id)).toEqual(primero.map((registro) => registro.id))
+    expect(primero.length).toBeGreaterThan(0)
+  })
+
+  it('mantiene separados los registros de sesión de los históricos', async () => {
+    reiniciarDepuracionesMock({ hoy: hoyIsoGuatemala() })
+    const historico = obtenerHistoricoDepuracionMock()
+
+    expect(historico.depuraciones.every((registro) => registro.fecha < hoyIsoGuatemala())).toBe(
+      true,
+    )
+
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+    const hoy = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
+
+    expect(hoy).toHaveLength(1)
+    expect(hoy[0].numeroExpediente).toBe(EXISTENTE)
+  })
+
+  it('deshace únicamente la última depuración y no permite una cadena de reversiones', async () => {
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+    await marcarDepurado({ numeroExpediente: SEGUNDO })
+
+    const revertida = await deshacerUltimaDepuracion()
+
+    expect(revertida.numeroExpediente).toBe(SEGUNDO)
+    const hoy = await listarDepuraciones({ fecha: hoyIsoGuatemala() })
+    expect(hoy.map((registro) => registro.numeroExpediente)).toEqual([EXISTENTE])
+    expect((await buscarExpedienteParaDepurar(SEGUNDO)).depurado).toBe(false)
+    expect((await buscarExpedienteParaDepurar(EXISTENTE)).depurado).toBe(true)
+
+    await expect(deshacerUltimaDepuracion()).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('permite volver a depurar el expediente después de deshacer', async () => {
+    await marcarDepurado({ numeroExpediente: SEGUNDO })
+    await deshacerUltimaDepuracion()
+
+    const nuevo = await marcarDepurado({ numeroExpediente: SEGUNDO })
+    const revertida = await deshacerUltimaDepuracion()
+
+    expect(nuevo.numeroExpediente).toBe(SEGUNDO)
+    expect(revertida.numeroExpediente).toBe(SEGUNDO)
+    expect((await buscarExpedienteParaDepurar(SEGUNDO)).depurado).toBe(false)
+  })
+
+  it('no permite deshacer fixtures históricos ni una sesión reiniciada', async () => {
+    reiniciarDepuracionesMock({ hoy: '2026-11-02' })
+    const historico = obtenerHistoricoDepuracionMock()
+
+    await expect(deshacerUltimaDepuracion()).rejects.toMatchObject({ status: 409 })
+    expect(
+      (await buscarExpedienteParaDepurar(historico.depuraciones[0].numeroExpediente)).depurado,
+    ).toBe(true)
+
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+    reiniciarDepuracionesMock()
+    await expect(deshacerUltimaDepuracion()).rejects.toMatchObject({ status: 409 })
+    expect((await buscarExpedienteParaDepurar(EXISTENTE)).depurado).toBe(false)
+  })
+
+  it('no realiza HTTP al deshacer en modo mock', async () => {
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+    const get = vi.spyOn(client, 'get')
+    const post = vi.spyOn(client, 'post')
+
+    await deshacerUltimaDepuracion()
+
+    expect(get).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it('consulta un rango histórico local sin simular una petición por día', async () => {
+    reiniciarDepuracionesMock({ hoy: hoyIsoGuatemala() })
+    const historico = obtenerHistoricoDepuracionMock()
+    const fechaHistorica = historico.depuraciones[0].fecha
+    await marcarDepurado({ numeroExpediente: EXISTENTE })
+
+    const get = vi.spyOn(client, 'get')
+    const post = vi.spyOn(client, 'post')
+    const registros = await listarDepuracionesEnRango({
+      dias: [fechaHistorica, hoyIsoGuatemala()],
+    })
+
+    expect(registros).toHaveLength(2)
+    expect(registros.map((registro) => registro.numeroExpediente)).toContain(EXISTENTE)
+    expect(get).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
   })
 })

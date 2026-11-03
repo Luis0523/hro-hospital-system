@@ -30,17 +30,20 @@ function renderBuscador(props = {}) {
 }
 
 describe('BuscadorExpedienteDepurar', () => {
-  it('conserva la etiqueta y el campo de número de expediente', () => {
+  it('conserva la etiqueta y el campo de número de expediente numérico', () => {
     renderBuscador()
 
-    expect(screen.getByLabelText(/número de expediente/i)).toBeInTheDocument()
+    const input = screen.getByLabelText(/número de expediente/i)
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveAttribute('inputmode', 'numeric')
+    expect(input).toHaveAttribute('placeholder', 'Ej. 927581')
     expect(screen.getByRole('button', { name: /buscar expediente/i })).toBeInTheDocument()
   })
 
   it('mantiene un área táctil de 44 px y foco visible en Limpiar', async () => {
     const onCambio = vi.fn()
     const user = userEvent.setup()
-    renderBuscador({ numero: 'EXP-2024-035', onCambio })
+    renderBuscador({ numero: '927581', onCambio })
 
     const limpiar = screen.getByRole('button', { name: /limpiar campo/i })
     expect(limpiar).toHaveClass('h-11', 'w-11')
@@ -53,14 +56,14 @@ describe('BuscadorExpedienteDepurar', () => {
   it('envía la búsqueda desde el botón', async () => {
     const onEnviar = vi.fn()
     const user = userEvent.setup()
-    renderBuscador({ numero: 'EXP-2024-035', onEnviar })
+    renderBuscador({ numero: '927581', onEnviar })
 
     await user.click(screen.getByRole('button', { name: /buscar expediente/i }))
     expect(onEnviar).toHaveBeenCalledTimes(1)
   })
 
   it('expone aria-busy y deshabilita la búsqueda mientras procesa', () => {
-    renderBuscador({ numero: 'EXP-2024-035', procesando: true })
+    renderBuscador({ numero: '927581', procesando: true })
 
     expect(screen.getByLabelText(/número de expediente/i)).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: /buscando/i })).toBeDisabled()

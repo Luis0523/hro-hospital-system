@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   fechaIsoEnGuatemala,
+  formatearFechaCortaGuatemala,
   formatearHoraGuatemala,
   hoyIsoGuatemala,
 } from './fechaDepuracionGuatemala.js'
@@ -61,5 +62,18 @@ describe('fechaDepuracionGuatemala', () => {
     expect(formatearHoraGuatemala(undefined)).toBe('')
     expect(formatearHoraGuatemala('')).toBe('')
     expect(formatearHoraGuatemala('no-es-una-fecha')).toBe('')
+  })
+
+  it('formatea la fecha corta en Guatemala sin desfasar fechas ISO sin hora', () => {
+    expect(formatearFechaCortaGuatemala('2026-11-02')).toBe('02/11/2026')
+    expect(formatearFechaCortaGuatemala('2026-11-03T05:30:00Z')).toBe('02/11/2026')
+    expect(formatearFechaCortaGuatemala('2026-11-02T15:30:00-06:00')).toBe('02/11/2026')
+  })
+
+  it('devuelve cadena vacía cuando la fecha falta o es inválida', () => {
+    expect(formatearFechaCortaGuatemala(null)).toBe('')
+    expect(formatearFechaCortaGuatemala(undefined)).toBe('')
+    expect(formatearFechaCortaGuatemala('')).toBe('')
+    expect(formatearFechaCortaGuatemala('no-es-una-fecha')).toBe('')
   })
 })

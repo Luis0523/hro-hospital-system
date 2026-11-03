@@ -1,14 +1,25 @@
 import { formatearExpediente } from '@/shared/utils/expediente'
 import { EmptyState, Icon } from '@/shared/components/ui'
-import { formatearHoraGuatemala } from '../../utils/fechaDepuracionGuatemala'
+import {
+  formatearFechaCortaGuatemala,
+  formatearHoraGuatemala,
+} from '../../utils/fechaDepuracionGuatemala'
+import { fechaIsoDeRegistro } from '../../utils/historialDepurados'
 
 const COLUMNAS = [
+  { key: 'fecha', label: 'Fecha' },
   { key: 'hora', label: 'Hora' },
   { key: 'numeroExpediente', label: 'Expediente' },
   { key: 'pacienteNombre', label: 'Paciente' },
   { key: 'usuarioNombre', label: 'Usuario' },
   { key: 'motivo', label: 'Motivo' },
 ]
+
+function fechaDe(registro) {
+  return formatearFechaCortaGuatemala(
+    fechaIsoDeRegistro(registro) || registro?.depuradoEn || registro?.fecha,
+  )
+}
 
 function horaDe(registro) {
   return formatearHoraGuatemala(registro?.depuradoEn)
@@ -23,6 +34,13 @@ function claveRegistro(registro, indice) {
 }
 
 function celda(fila, clave) {
+  if (clave === 'fecha') {
+    return (
+      <span className="whitespace-nowrap font-mono text-on-surface-variant">
+        {textoOguion(fechaDe(fila))}
+      </span>
+    )
+  }
   if (clave === 'hora') {
     return (
       <span className="whitespace-nowrap font-mono text-on-surface-variant">
@@ -53,8 +71,6 @@ function celda(fila, clave) {
   return fila[clave]
 }
 
-// Tarjeta de la vista móvil. Usa los mismos campos y formateadores que la
-// tabla de escritorio para no duplicar reglas de presentación.
 function TarjetaDepurado({ registro }) {
   return (
     <li className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
@@ -62,10 +78,16 @@ function TarjetaDepurado({ registro }) {
         <p className="break-words font-mono text-title-md font-bold text-primary">
           {formatearExpediente(registro.numeroExpediente)}
         </p>
-        <p className="font-mono text-label-sm text-on-surface-variant">
-          <span className="sr-only">Hora de depuración: </span>
-          {textoOguion(horaDe(registro))}
-        </p>
+        <div className="text-right font-mono text-label-sm text-on-surface-variant">
+          <p>
+            <span className="sr-only">Fecha de depuración: </span>
+            {textoOguion(fechaDe(registro))}
+          </p>
+          <p>
+            <span className="sr-only">Hora de depuración: </span>
+            {textoOguion(horaDe(registro))}
+          </p>
+        </div>
       </div>
 
       <p className="mt-1 break-words text-title-sm font-semibold text-on-surface">
@@ -90,47 +112,81 @@ function TarjetaDepurado({ registro }) {
   )
 }
 
-// Bitácora del día de expedientes depurados. Sin correlativo (a diferencia del
-// registro de carnets). Tabla semántica en escritorio y tarjetas en móvil,
-// siempre sobre el mismo arreglo de registros.
-export default function TablaDepurados({ depurados = [] }) {
+export default function TablaDepurados({
+  depurados = [],
+  titulo = 'Depurados hoy',
+  descripcion = '',
+  total = depurados.length,
+  totalCoincidencias = depurados.length,
+  busquedaActiva = false,
+  sinRegistros = 'Aún no hay expedientes depurados hoy',
+  consultaIncompleta = false,
+  desactualizado = false,
+  caption = 'Expedientes depurados hoy: fecha, hora, expediente, paciente, usuario y motivo.',
+  etiquetaLista = 'Expedientes depurados hoy (tarjetas)',
+}) {
+  const etiquetaTotal = desactualizado
+    ? `Total: ${total} · puede estar desactualizado`
+    : consultaIncompleta
+      ? `Parcial: ${total}`
+      : busquedaActiva
+        ? `Mostrando ${totalCoincidencias} de ${total}`
+        : `Total: ${total}`
+
   return (
     <section
+      id="bitacora-depurados"
       aria-labelledby="depurados-titulo"
-      className="space-y-3 rounded-xl bg-surface-container-lowest p-4 shadow-card"
+      className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3
-          id="depurados-titulo"
-          className="inline-flex items-center gap-1 text-title-md font-bold text-on-surface"
-        >
-          <Icon name="history" className="text-[20px] text-primary" />
-          Depurados hoy
-        </h3>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3
+            id="depurados-titulo"
+            className="inline-flex items-center gap-1 text-title-md font-bold text-on-surface"
+          >
+            <Icon name="history" className="text-[20px] text-primary" />
+            {titulo}
+          </h3>
+          {descripcion && (
+            <p className="mt-1 text-label-sm text-on-surface-variant">{descripcion}</p>
+          )}
+        </div>
         <span className="rounded bg-primary/10 px-2 py-0.5 text-label-sm font-bold text-primary">
-          Total: {depurados.length}
+          {etiquetaTotal}
         </span>
       </div>
 
       {depurados.length === 0 ? (
-        <EmptyState title="Aún no hay expedientes depurados hoy" />
+        <EmptyState title={sinRegistros} />
       ) : (
         <>
-          <ul aria-label="Expedientes depurados hoy (tarjetas)" className="space-y-3 lg:hidden">
+          <ul
+            aria-label={etiquetaLista}
+            tabIndex={0}
+            className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue lg:hidden"
+          >
             {depurados.map((registro, indice) => (
               <TarjetaDepurado key={claveRegistro(registro, indice)} registro={registro} />
             ))}
           </ul>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest lg:block">
+          <div
+            role="region"
+            aria-label="Listado de expedientes depurados, desplazable"
+            tabIndex={0}
+            className="hidden max-h-[460px] overflow-auto rounded-xl border border-outline-variant bg-surface-container-lowest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue lg:block"
+          >
             <table className="w-full text-left text-sm">
-              <caption className="sr-only">
-                Expedientes depurados hoy: hora, expediente, paciente, usuario y motivo.
-              </caption>
+              <caption className="sr-only">{caption}</caption>
               <thead className="bg-surface-container-low text-xs uppercase tracking-wide text-on-surface-variant">
                 <tr>
                   {COLUMNAS.map((columna) => (
-                    <th key={columna.key} scope="col" className="px-4 py-3 font-semibold">
+                    <th
+                      key={columna.key}
+                      scope="col"
+                      className="sticky top-0 z-10 bg-surface-container-low px-4 py-3 font-semibold"
+                    >
                       {columna.label}
                     </th>
                   ))}

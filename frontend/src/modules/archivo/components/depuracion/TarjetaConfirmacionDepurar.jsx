@@ -1,23 +1,23 @@
 import { formatearExpediente } from '@/shared/utils/expediente'
-import { Alert, Button, Icon, Input } from '@/shared/components/ui'
+import { Alert, Button, Icon } from '@/shared/components/ui'
 
-// Confirmación de baja lógica: muestra el paciente encontrado y permite
-// registrar un motivo opcional antes de marcar el expediente como depurado.
+// Resumen del expediente encontrado. No confirma nada por sí mismo: solo abre
+// el modal de confirmación cuando el operador lo solicita explícitamente.
 export default function TarjetaConfirmacionDepurar({
   expediente,
-  motivo,
-  onMotivo,
-  onConfirmar,
-  procesando,
+  onSolicitarDepuracion,
   yaDepurado = false,
 }) {
   if (!expediente) return null
 
   return (
-    <section className="space-y-3 rounded-xl bg-surface-container-lowest p-4 shadow-card">
+    <section className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 shadow-card sm:p-5">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon name="person_search" className="text-[22px]" />
+          <Icon
+            name={yaDepurado ? 'history_toggle_off' : 'person_search'}
+            className="text-[22px]"
+          />
         </span>
         <dl className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -37,31 +37,20 @@ export default function TarjetaConfirmacionDepurar({
 
       {yaDepurado ? (
         <Alert tone="warning" title="Expediente ya depurado">
-          Este expediente figura como “ya no existe en el sistema”.
+          Este expediente figura como “ya no existe en el sistema”. No se puede iniciar otra baja.
         </Alert>
       ) : (
         <>
-          <Alert tone="warning" title="Confirmación requerida">
-            Este expediente quedará marcado como <strong>no existente</strong> en el sistema.
-          </Alert>
-
-          <Input
-            label="Motivo (opcional)"
-            name="motivo-depuracion"
-            value={motivo}
-            onChange={(event) => onMotivo(event.target.value)}
-            placeholder="Ej. extraviado definitivamente, fusionado…"
-          />
-
-          <Button
-            variant="danger"
-            size="lg"
-            className="w-full"
-            onClick={onConfirmar}
-            disabled={procesando}
-          >
-            <Icon name="delete_forever" className="text-[24px]" />
-            {procesando ? 'Marcando…' : 'Marcar como depurado'}
+          <p className="flex flex-wrap items-center gap-2 text-label-sm text-on-surface-variant">
+            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+              <Icon name="check_circle" className="text-[14px]" />
+              Vigente
+            </span>
+            Revisa los datos antes de continuar.
+          </p>
+          <Button variant="danger" size="lg" className="w-full" onClick={onSolicitarDepuracion}>
+            <Icon name="delete_sweep" className="text-[24px]" />
+            Depurar expediente
           </Button>
         </>
       )}
