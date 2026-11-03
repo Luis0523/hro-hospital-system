@@ -43,6 +43,7 @@ import CroquisPage from '@/modules/jefeEnfermeria/pages/CroquisPage.jsx'
 import EspecialidadesJefePage from '@/modules/jefeEnfermeria/pages/EspecialidadesPage.jsx'
 import HorariosPage from '@/modules/jefeEnfermeria/pages/HorariosPage.jsx'
 import EstacionesJefePage from '@/modules/jefeEnfermeria/pages/EstacionesPage.jsx'
+import RecetarioPersonalizadoPage from '@/modules/jefeEnfermeria/pages/RecetarioPersonalizadoPage.jsx'
 import ReportesJefePage from '@/modules/jefeEnfermeria/pages/ReportesPage.jsx'
 import Spinner from '@/shared/components/ui/Spinner.jsx'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
@@ -142,6 +143,7 @@ export default function AppRouter() {
             <Route path="especialidades" element={<EspecialidadesJefePage />} />
             <Route path="horarios" element={<HorariosPage />} />
             <Route path="estaciones" element={<EstacionesJefePage />} />
+            <Route path="recetario" element={<RecetarioPersonalizadoPage />} />
             <Route path="reportes" element={<ReportesJefePage />} />
             <Route path="*" element={<Navigate to="/jefe-enfermeria" replace />} />
           </Route>

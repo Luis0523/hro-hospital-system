@@ -14,6 +14,11 @@ export const ITEMS_JEFE = [
     icono: 'schedule',
   },
   { to: '/jefe-enfermeria/estaciones', etiqueta: 'Estaciones', icono: 'point_of_sale' },
+  {
+    to: '/jefe-enfermeria/recetario',
+    etiqueta: 'Recetario Personalizado',
+    icono: 'medication',
+  },
   { to: '/jefe-enfermeria/reportes', etiqueta: 'Estadísticas y reportes', icono: 'monitoring' },
 ]
 
