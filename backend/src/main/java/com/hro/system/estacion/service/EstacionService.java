@@ -31,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +56,7 @@ public class EstacionService {
     private final SubespecialidadRepository subespecialidadRepository;
     private final SubespecialidadHorarioRepository horarioRepository;
     private final SubespecialidadService subespecialidadService;
+    private final EstacionEspecialidadOrdenService especialidadOrdenService;
     private final UsuarioReferenciaRepository usuarioRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -137,7 +140,7 @@ public class EstacionService {
     @Transactional(readOnly = true)
     public List<SubespecialidadAsignadaDTO> listarSubespecialidades(Long id) {
         EstacionEnfermeria estacion = buscarEntidad(id);
-        return estacionSubRepository.findByEstacionIdAndActivoTrue(estacion.getId()).stream()
+        return estacionSubRepository.findByEstacionIdAndActivoTrueOrderByIdAsc(estacion.getId()).stream()
                 .map(this::toSubDTO)
                 .toList();
     }
@@ -149,7 +152,8 @@ public class EstacionService {
     @Transactional(readOnly = true)
     public List<SubespecialidadAsignadaDTO> listarSubespecialidadesActivas(Long id, LocalDate fecha) {
         EstacionEnfermeria estacion = buscarEntidad(id);
-        List<EstacionSubespecialidad> asignadas = estacionSubRepository.findByEstacionIdAndActivoTrue(estacion.getId());
+        List<EstacionSubespecialidad> asignadas =
+                estacionSubRepository.findByEstacionIdAndActivoTrueOrderByIdAsc(estacion.getId());
         if (asignadas.isEmpty() || fecha == null) {
             return asignadas.stream().map(this::toSubDTO).toList();
         }
@@ -173,7 +177,8 @@ public class EstacionService {
     @Transactional(readOnly = true)
     public List<EspecialidadActivaDTO> listarEspecialidadesActivas(Long id, LocalDate fecha) {
         EstacionEnfermeria estacion = buscarEntidad(id);
-        List<EstacionSubespecialidad> asignadas = estacionSubRepository.findByEstacionIdAndActivoTrue(estacion.getId());
+        List<EstacionSubespecialidad> asignadas =
+                estacionSubRepository.findByEstacionIdAndActivoTrueOrderByIdAsc(estacion.getId());
 
         List<EstacionSubespecialidad> vigentes = asignadas;
         if (fecha != null && !asignadas.isEmpty()) {
@@ -197,7 +202,12 @@ public class EstacionService {
                     .abreviatura(esp.getAbreviatura())
                     .build());
         }
-        return new java.util.ArrayList<>(porEspecialidad.values());
+        Map<Long, Integer> ordenes = especialidadOrdenService
+                .ordenesPorEspecialidad(estacion.getId());
+        List<EspecialidadActivaDTO> resultado = new ArrayList<>(porEspecialidad.values());
+        resultado.sort(Comparator.comparingInt(
+                especialidad -> ordenes.getOrDefault(especialidad.getId(), Integer.MAX_VALUE)));
+        return resultado;
     }
 
     /**

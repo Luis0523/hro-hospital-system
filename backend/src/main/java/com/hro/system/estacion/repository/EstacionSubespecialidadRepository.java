@@ -15,6 +15,8 @@ public interface EstacionSubespecialidadRepository extends JpaRepository<Estacio
 
     List<EstacionSubespecialidad> findByEstacionIdAndActivoTrue(Long estacionId);
 
+    List<EstacionSubespecialidad> findByEstacionIdAndActivoTrueOrderByIdAsc(Long estacionId);
+
     List<EstacionSubespecialidad> findByEstacionIdIn(Collection<Long> estacionIds);
 
     /** Pertenencia única: devuelve la estación a la que pertenece la subespecialidad, si alguna. */

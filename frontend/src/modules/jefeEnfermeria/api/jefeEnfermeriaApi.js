@@ -21,6 +21,8 @@ import {
   guardarClinicasFijasMock,
   listarOrdenClinicasMock,
   guardarOrdenClinicasMock,
+  listarOrdenEspecialidadesMock,
+  guardarOrdenEspecialidadesMock,
   listarEspaciosFisicosMock,
   obtenerEspacioFisicoMock,
   actualizarEspacioFisicoMock,
@@ -226,6 +228,20 @@ export async function guardarOrdenClinicas(estacionId, espacioFisicoIds) {
   if (USE_MOCK) return guardarOrdenClinicasMock(estacionId, espacioFisicoIds)
   return desenvolver(
     await client.put(`/estaciones/${estacionId}/clinicas-orden`, { espacioFisicoIds }),
+  )
+}
+
+/** Orden configurado de las especialidades médicas para una estación. */
+export async function listarOrdenEspecialidades(estacionId) {
+  if (USE_MOCK) return listarOrdenEspecialidadesMock(estacionId)
+  return desenvolver(await client.get(`/estaciones/${estacionId}/especialidades-orden`))
+}
+
+/** Guarda las especialidades en el orden deseado (la primera se muestra primero). */
+export async function guardarOrdenEspecialidades(estacionId, especialidadIds) {
+  if (USE_MOCK) return guardarOrdenEspecialidadesMock(estacionId, especialidadIds)
+  return desenvolver(
+    await client.put(`/estaciones/${estacionId}/especialidades-orden`, { especialidadIds }),
   )
 }
 

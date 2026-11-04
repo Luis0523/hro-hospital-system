@@ -23,6 +23,7 @@ import com.hro.system.estacion.repository.EstacionClinicaOrdenRepository;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.estacion.repository.ClinicaFijaEstacionRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
+import com.hro.system.estacion.service.EstacionEspecialidadOrdenService;
 import com.hro.system.integracion.dto.PacienteHroDTO;
 import com.hro.system.integracion.service.ExpedienteHroService;
 import com.hro.system.medico.entity.Medico;
@@ -72,6 +73,7 @@ public class TurnoEstacionService {
     private final DevolucionClinicaRepository devolucionClinicaRepository;
     private final EstacionEnfermeriaRepository estacionRepository;
     private final EstacionSubespecialidadRepository estacionSubespecialidadRepository;
+    private final EstacionEspecialidadOrdenService estacionEspecialidadOrdenService;
     private final ClinicaFijaEstacionRepository clinicaFijaEstacionRepository;
     private final EstacionClinicaOrdenRepository estacionClinicaOrdenRepository;
     private final EspecialidadRepository especialidadRepository;
@@ -824,7 +826,7 @@ public class TurnoEstacionService {
 
         Map<Long, LibroTurnoEstacionResponseDTO.LibroEspecialidadDTO> porEspecialidad = new LinkedHashMap<>();
         for (EstacionSubespecialidad config : estacionSubespecialidadRepository
-                .findByEstacionIdAndActivoTrue(estacion.getId())) {
+                .findByEstacionIdAndActivoTrueOrderByIdAsc(estacion.getId())) {
             if (config.getSubespecialidad() == null || config.getSubespecialidad().getEspecialidad() == null) {
                 continue;
             }
@@ -854,12 +856,19 @@ public class TurnoEstacionService {
             }
         }
 
+        Map<Long, Integer> ordenes = estacionEspecialidadOrdenService
+                .ordenesPorEspecialidad(estacion.getId());
+        List<LibroTurnoEstacionResponseDTO.LibroEspecialidadDTO> especialidades =
+                new ArrayList<>(porEspecialidad.values());
+        especialidades.sort(Comparator.comparingInt(
+                especialidad -> ordenes.getOrDefault(especialidad.getId(), Integer.MAX_VALUE)));
+
         return LibroTurnoEstacionResponseDTO.builder()
                 .estacionId(estacion.getId())
                 .estacionNombre(estacion.getNombre())
                 .fecha(dia)
                 .resumen(resumen)
-                .especialidades(new ArrayList<>(porEspecialidad.values()))
+                .especialidades(especialidades)
                 .build();
     }
 

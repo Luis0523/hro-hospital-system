@@ -11,7 +11,9 @@ import {
   asignarEspecialidadesEstacion,
   guardarClinicasFijas,
   guardarOrdenClinicas,
+  guardarOrdenEspecialidades,
   listarOrdenClinicas,
+  listarOrdenEspecialidades,
   crearEstacion,
   desactivarEstacion,
   listarAccesosEstacion,
@@ -62,6 +64,11 @@ export default function EstacionesPage() {
   const [ordenClinicas, setOrdenClinicas] = useState([])
   const [cargandoOrden, setCargandoOrden] = useState(false)
   const [guardandoOrden, setGuardandoOrden] = useState(false)
+
+  const [ordenandoEspecialidades, setOrdenandoEspecialidades] = useState(null)
+  const [ordenEspecialidades, setOrdenEspecialidades] = useState([])
+  const [cargandoOrdenEspecialidades, setCargandoOrdenEspecialidades] = useState(false)
+  const [guardandoOrdenEspecialidades, setGuardandoOrdenEspecialidades] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -272,6 +279,50 @@ export default function EstacionesPage() {
     }
   }
 
+  async function abrirOrdenEspecialidades(estacion) {
+    setOrdenandoEspecialidades(estacion)
+    setOrdenEspecialidades([])
+    setCargandoOrdenEspecialidades(true)
+    try {
+      const lista = await listarOrdenEspecialidades(estacion.id)
+      setOrdenEspecialidades(Array.isArray(lista) ? lista : [])
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo cargar el orden de especialidades.')
+    } finally {
+      setCargandoOrdenEspecialidades(false)
+    }
+  }
+
+  function moverEspecialidad(indice, delta) {
+    setOrdenEspecialidades((actual) => {
+      const destino = indice + delta
+      if (destino < 0 || destino >= actual.length) return actual
+      const copia = [...actual]
+      const [movida] = copia.splice(indice, 1)
+      copia.splice(destino, 0, movida)
+      return copia
+    })
+  }
+
+  async function guardarOrdenEspecialidadesHandler(evento) {
+    evento.preventDefault()
+    if (!ordenandoEspecialidades || guardandoOrdenEspecialidades) return
+    setGuardandoOrdenEspecialidades(true)
+    try {
+      const guardado = await guardarOrdenEspecialidades(
+        ordenandoEspecialidades.id,
+        ordenEspecialidades.map((especialidad) => especialidad.especialidadId),
+      )
+      setOrdenEspecialidades(Array.isArray(guardado) ? guardado : ordenEspecialidades)
+      setOrdenandoEspecialidades(null)
+      mostrarToast({ tone: 'success', title: 'Orden de especialidades actualizado' })
+    } catch (fallo) {
+      setError(fallo?.message || 'No se pudo guardar el orden de especialidades.')
+    } finally {
+      setGuardandoOrdenEspecialidades(false)
+    }
+  }
+
   function abrirGestion(estacion) {
     setGestionando(estacion)
     setSeleccionadas(especialidadIdsDe(estacion))
@@ -389,6 +440,13 @@ export default function EstacionesPage() {
                       onClick={() => abrirOrdenClinicas(estacion)}
                     >
                       Ordenar clínicas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => abrirOrdenEspecialidades(estacion)}
+                    >
+                      Orden de especialidades
                     </Button>
                     {estacion.activo && (
                       <Button size="sm" variant="danger" onClick={() => setPorDesactivar(estacion)}>
@@ -701,6 +759,95 @@ export default function EstacionesPage() {
                     aria-label={`Bajar ${clinica.nombre}`}
                     onClick={() => moverClinica(indice, 1)}
                     disabled={indice === ordenClinicas.length - 1 || guardandoOrden}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon name="arrow_downward" className="text-[18px]" />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+        </form>
+      </Modal>
+
+      {/* Modal orden de especialidades */}
+      <Modal
+        open={Boolean(ordenandoEspecialidades)}
+        onClose={() => {
+          if (!guardandoOrdenEspecialidades) setOrdenandoEspecialidades(null)
+        }}
+        title={`Orden de especialidades — ${ordenandoEspecialidades?.codigo ?? ''}`}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setOrdenandoEspecialidades(null)}
+              disabled={guardandoOrdenEspecialidades}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-orden-especialidades')?.requestSubmit()}
+              disabled={guardandoOrdenEspecialidades || cargandoOrdenEspecialidades}
+            >
+              {guardandoOrdenEspecialidades ? 'Guardando…' : 'Guardar orden'}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="form-orden-especialidades"
+          onSubmit={guardarOrdenEspecialidadesHandler}
+          className="space-y-3"
+        >
+          <p className="text-body-sm text-on-surface-variant">
+            Use las flechas para definir en qué orden aparecerán las especialidades en los listados
+            de esta estación. Este orden es independiente del resto de estaciones.
+          </p>
+          {cargandoOrdenEspecialidades ? (
+            <div className="flex justify-center py-6">
+              <Spinner label="Cargando especialidades…" />
+            </div>
+          ) : ordenEspecialidades.length === 0 ? (
+            <p className="text-body-sm text-on-surface-variant">
+              La estación no tiene especialidades asignadas.
+            </p>
+          ) : (
+            <ol className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+              {ordenEspecialidades.map((especialidad, indice) => (
+                <li
+                  key={especialidad.especialidadId}
+                  className="flex items-center gap-2 rounded-lg border border-outline-variant p-2"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-container text-label-sm font-bold text-on-surface-variant">
+                    {indice + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body-sm font-semibold text-on-surface">
+                      {especialidad.nombre}
+                    </span>
+                    {especialidad.abreviatura && (
+                      <span className="block text-label-sm text-on-surface-variant">
+                        {especialidad.abreviatura}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Subir ${especialidad.nombre}`}
+                    onClick={() => moverEspecialidad(indice, -1)}
+                    disabled={indice === 0 || guardandoOrdenEspecialidades}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon name="arrow_upward" className="text-[18px]" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Bajar ${especialidad.nombre}`}
+                    onClick={() => moverEspecialidad(indice, 1)}
+                    disabled={
+                      indice === ordenEspecialidades.length - 1 || guardandoOrdenEspecialidades
+                    }
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface transition hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Icon name="arrow_downward" className="text-[18px]" />

@@ -9,8 +9,10 @@ import com.hro.system.clinica.repository.SubespecialidadHorarioRepository;
 import com.hro.system.clinica.repository.SubespecialidadRepository;
 import com.hro.system.estacion.dto.AsignarSubespecialidadesRequestDTO;
 import com.hro.system.estacion.dto.CrearEstacionRequestDTO;
+import com.hro.system.estacion.dto.GuardarOrdenEspecialidadesRequestDTO;
 import com.hro.system.estacion.repository.EstacionAccesoRepository;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
+import com.hro.system.estacion.repository.EstacionEspecialidadOrdenRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +57,9 @@ class EstacionAdminTest {
     private EstacionEnfermeriaRepository estacionRepository;
 
     @Autowired
+    private EstacionEspecialidadOrdenRepository especialidadOrdenRepository;
+
+    @Autowired
     private SubespecialidadHorarioRepository horarioRepository;
 
     @Autowired
@@ -70,6 +75,7 @@ class EstacionAdminTest {
     @BeforeEach
     void setUp() {
         accesoRepository.deleteAll();
+        especialidadOrdenRepository.deleteAll();
         estacionSubRepository.deleteAll();
         estacionRepository.deleteAll();
         horarioRepository.deleteAll();
@@ -150,6 +156,58 @@ class EstacionAdminTest {
                 .andExpect(jsonPath("$.data.subespecialidades", hasSize(2)))
                 .andExpect(jsonPath("$.data.subespecialidades[*].nombre",
                         containsInAnyOrder("Medicina General", "Cardiología Clínica")));
+    }
+
+    @Test
+    @DisplayName("Orden de especialidades - Guarda, recupera y es independiente por estación")
+    void ordenEspecialidadesIndependiente() throws Exception {
+        long estacionA = crearEstacion("EST-OA", "Orden A");
+        long estacionB = crearEstacion("EST-OB", "Orden B");
+        asignar(estacionA, List.of(medicinaGeneral.getId(), cardiologia.getId()));
+        asignar(estacionB, List.of(pediatriaGeneral.getId()));
+
+        Long medicinaId = medicinaGeneral.getEspecialidad().getId();
+        Long cardiologiaId = cardiologia.getEspecialidad().getId();
+
+        mockMvc.perform(get("/estaciones/{id}/especialidades-orden", estacionA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Medicina Interna")))
+                .andExpect(jsonPath("$.data[1].nombre", is("Cardiología")));
+
+        mockMvc.perform(put("/estaciones/{id}/especialidades-orden", estacionA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                GuardarOrdenEspecialidadesRequestDTO.builder()
+                                        .especialidadIds(List.of(cardiologiaId, medicinaId))
+                                        .build())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].nombre", is("Cardiología")))
+                .andExpect(jsonPath("$.data[1].nombre", is("Medicina Interna")));
+
+        mockMvc.perform(get("/estaciones/{id}/especialidades-orden", estacionA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].nombre", is("Cardiología")))
+                .andExpect(jsonPath("$.data[1].nombre", is("Medicina Interna")));
+
+        mockMvc.perform(get("/estaciones/{id}/especialidades-activas", estacionA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].nombre", is("Cardiología")))
+                .andExpect(jsonPath("$.data[1].nombre", is("Medicina Interna")));
+
+        mockMvc.perform(get("/estaciones/{id}/especialidades-orden", estacionB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Pediatría")));
+
+        mockMvc.perform(put("/estaciones/{id}/especialidades-orden", estacionA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                GuardarOrdenEspecialidadesRequestDTO.builder()
+                                        .especialidadIds(List.of(pediatriaGeneral.getEspecialidad().getId()))
+                                        .build())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("no está asignada")));
     }
 
     @Test
