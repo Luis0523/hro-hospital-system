@@ -1,4 +1,4 @@
-import { Alert, Button, Icon, Input } from '@/shared/components/ui'
+import { Button, Icon, Input } from '@/shared/components/ui'
 import { CAMPOS_CUADERNO_ROJO } from '../cuadernoRojoCampos'
 
 const CAMPOS_CANTIDAD = CAMPOS_CUADERNO_ROJO.filter((campo) => campo.tipo !== 'fecha')
@@ -23,56 +23,71 @@ export default function CuadernoRojoFormulario({
     onGuardar()
   }
 
+  const camposBloqueados = cargandoDia || guardando
+
   return (
-    <form className="space-y-5" noValidate onSubmit={manejarEnvio}>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <form
+      className="space-y-4"
+      noValidate
+      onSubmit={manejarEnvio}
+      aria-busy={cargandoDia}
+      aria-label="Registro del día"
+    >
+      <div className="max-w-xs">
         <Input
           id="cuaderno-rojo-fecha"
           name="fecha"
-          label="Fecha"
+          label="Fecha del registro"
           type="date"
           value={valores.fecha}
+          disabled={guardando}
+          className="min-h-11 text-base sm:text-sm"
           error={tocados.fecha ? errores.fecha : undefined}
-          hint="Un registro por día. Puede corregir fechas anteriores."
+          hint="Un registro por día."
           onChange={(evento) => onCambiar('fecha', evento.target.value)}
           onBlur={() => onBlur('fecha')}
         />
+      </div>
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {CAMPOS_CANTIDAD.map((campo) => (
-          <Input
-            key={campo.clave}
-            id={`cuaderno-rojo-${campo.clave}`}
-            name={campo.clave}
-            label={campo.etiqueta}
-            type="text"
-            inputMode="numeric"
-            placeholder="0"
-            autoComplete="off"
-            value={valores[campo.clave]}
-            error={tocados[campo.clave] ? errores[campo.clave] : undefined}
-            onChange={(evento) => onCambiar(campo.clave, evento.target.value)}
-            onBlur={() => onBlur(campo.clave)}
-          />
+          <div key={campo.clave} className="min-w-0">
+            <Input
+              id={`cuaderno-rojo-${campo.clave}`}
+              name={campo.clave}
+              label={campo.etiqueta}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="0"
+              autoComplete="off"
+              disabled={camposBloqueados}
+              className="min-h-11 text-right text-base tabular-nums sm:text-sm"
+              value={valores[campo.clave]}
+              error={tocados[campo.clave] ? errores[campo.clave] : undefined}
+              onChange={(evento) => onCambiar(campo.clave, evento.target.value)}
+              onBlur={() => onBlur(campo.clave)}
+            />
+          </div>
         ))}
       </div>
 
       <p className="text-body-sm text-on-surface-variant">
-        Ingrese cantidades enteras iguales o mayores a cero.
+        Cantidades enteras mayores o iguales a cero.
       </p>
 
-      {existente && (
-        <Alert tone="info" title="Esta fecha ya tiene un registro">
-          Al guardar se actualizarán los valores existentes; no se creará un duplicado.
-        </Alert>
+      {existente && !cargandoDia && (
+        <p className="text-body-sm text-on-surface-variant">
+          Se actualizará el registro existente.
+        </p>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        {cargandoDia && (
-          <span className="text-body-sm text-on-surface-variant" role="status">
-            Consultando el registro de la fecha…
-          </span>
-        )}
-        <Button type="submit" disabled={guardando || cargandoDia} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={guardando || cargandoDia}
+          className="min-h-11 w-full sm:w-auto"
+        >
           <Icon name="save" className="text-[18px]" />
           {guardando ? 'Guardando…' : existente ? 'Actualizar registro' : 'Guardar registro'}
         </Button>

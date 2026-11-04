@@ -31,7 +31,7 @@ describe('AppRouter · /archivo/cuaderno-rojo', () => {
   it('navegar directamente a /archivo/cuaderno-rojo muestra la pantalla del Cuaderno Rojo', () => {
     renderRuta('/archivo/cuaderno-rojo')
 
-    expect(screen.getByRole('heading', { name: 'Registro del Cuaderno Rojo' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cuaderno Rojo' })).toBeInTheDocument()
     expect(screen.getByLabelText('TIA')).toBeInTheDocument()
   })
 

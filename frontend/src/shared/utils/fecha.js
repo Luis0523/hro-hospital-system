@@ -9,6 +9,25 @@ export function hoyIso() {
   return aIso(new Date())
 }
 
+const ZONA_GUATEMALA = 'America/Guatemala'
+
+/**
+ * Día actual según la zona horaria del Hospital Regional de Occidente.
+ * Independiente de la zona horaria configurada en el navegador.
+ * Devuelve una fecha ISO `YYYY-MM-DD`.
+ */
+export function hoyIsoGuatemala() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_GUATEMALA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+
+  const valor = (tipo) => partes.find((parte) => parte.type === tipo)?.value
+  return `${valor('year')}-${valor('month')}-${valor('day')}`
+}
+
 export function formatearFechaLarga(iso) {
   if (!iso) return ''
   const [anio, mes, dia] = iso.split('-').map(Number)
