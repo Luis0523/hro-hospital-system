@@ -42,6 +42,12 @@ export const ETAPAS_SEGUIMIENTO = [
   { id: 'archivo', nombre: 'Archivo' },
 ]
 
+// El flujo de Citas todavía no está listo para producción: en el build de
+// producción se oculta de la navegación (en desarrollo y pruebas sigue visible).
+export const ETAPAS_VISIBLES = import.meta.env.PROD
+  ? ETAPAS_SEGUIMIENTO.filter((etapa) => etapa.id !== 'citar')
+  : ETAPAS_SEGUIMIENTO
+
 // El backend conserva el estado interno `recibido`, pero la operación lo une
 // con `en_clinica`: al pasar de Registrado a En clínica se recibe y se asigna
 // la clínica en una sola acción.
@@ -709,8 +715,9 @@ export async function avanzarTurno(id, { clinicaId, estadoBackend, observacion }
   return normalizarTurno(desenvolver(respuesta))
 }
 
-export async function asignarExpedienteTurno(id, numeroExpediente) {
+export async function asignarExpedienteTurno(id, numeroExpediente, pacienteNombre = null) {
   const numero = String(numeroExpediente ?? '').trim()
+  const nombre = String(pacienteNombre ?? '').trim()
   if (!numero) throw crearError('El número de expediente es obligatorio', 422)
   if (USE_MOCK) {
     await esperar()
@@ -720,12 +727,13 @@ export async function asignarExpedienteTurno(id, numeroExpediente) {
       throw crearError('El turno ya tiene un expediente asignado', 409)
     }
     turno.numeroExpediente = numero
-    turno.pacienteNombre = turno.pacienteNombre ?? `Paciente ${numero}`
+    turno.pacienteNombre = nombre || turno.pacienteNombre || `Paciente ${numero}`
     turno.actualizadoEn = new Date().toISOString()
     return copiarTurno(turno)
   }
   const respuesta = await client.put(`/turnos-estacion/${id}/expediente`, {
     numeroExpediente: numero,
+    ...(nombre ? { pacienteNombre: nombre } : {}),
   })
   return normalizarTurno(desenvolver(respuesta))
 }

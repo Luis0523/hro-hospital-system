@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/shared/components/ui'
-import { ETAPA_PREVIA, ETAPAS_SEGUIMIENTO } from '../../api/seguimientoApi'
+import { ETAPA_PREVIA, ETAPAS_SEGUIMIENTO, ETAPAS_VISIBLES } from '../../api/seguimientoApi'
 import SelectorTipoRegistro from './SelectorTipoRegistro'
 import { estiloDeEtapa, estiloRegistro, etiquetaRegistro } from './estilosEtapas'
 
@@ -238,7 +238,7 @@ export default function LibroSeguimiento({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-outline-variant px-4 py-2 text-label-sm text-on-surface-variant">
         <span>{hint}</span>
         <span className="flex flex-wrap items-center gap-3">
-          {ETAPAS_SEGUIMIENTO.map((etapa) => (
+          {ETAPAS_VISIBLES.map((etapa) => (
             <span key={etapa.id} className="inline-flex items-center gap-1.5">
               <i
                 className={`h-2 w-2 rounded-sm ${estiloDeEtapa(etapa.id).punto}`}

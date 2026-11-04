@@ -126,6 +126,17 @@ export async function listarSubespecialidadesEstacion(estacionId, fecha) {
   return Array.isArray(lista) ? lista : []
 }
 
+export async function listarEspecialidadesEstacion(estacionId, fecha) {
+  if (!estacionId) return []
+  if (USE_MOCK) return []
+  const lista = desenvolver(
+    await client.get(`/estaciones/${estacionId}/especialidades-activas`, {
+      params: fecha ? { fecha } : {},
+    }),
+  )
+  return Array.isArray(lista) ? lista : []
+}
+
 export async function listarSubespecialidadesDeEspecialidad(especialidadId) {
   const id = String(especialidadId ?? '').trim()
   if (!id) return []

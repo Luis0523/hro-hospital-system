@@ -1,4 +1,4 @@
-import { ETAPAS_SEGUIMIENTO } from '../../api/seguimientoApi'
+import { ETAPAS_VISIBLES } from '../../api/seguimientoApi'
 import { estiloDeEtapa } from './estilosEtapas'
 
 const ETIQUETAS_ETAPA = {
@@ -15,7 +15,7 @@ export default function PestanasEtapas({ conteos, filtro, onFiltrar }) {
       data-testid="pestanas-etapas"
       className="flex shrink-0 items-stretch gap-1 overflow-x-auto border-b border-outline-variant bg-surface-container-lowest px-2 py-1.5"
     >
-      {ETAPAS_SEGUIMIENTO.map((etapa) => {
+      {ETAPAS_VISIBLES.map((etapa) => {
         const estilo = estiloDeEtapa(etapa.id)
         const activa = filtro === etapa.id
         const etiqueta = ETIQUETAS_ETAPA[etapa.id] ?? etapa.nombre

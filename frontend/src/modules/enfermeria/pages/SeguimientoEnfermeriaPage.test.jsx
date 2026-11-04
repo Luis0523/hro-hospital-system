@@ -321,18 +321,43 @@ describe('SeguimientoEnfermeriaPage', () => {
     expect(within(dialogo).getByRole('button', { name: 'Mes actual' })).toBeInTheDocument()
     expect(within(dialogo).getByRole('button', { name: 'Agendar' })).toBeDisabled()
 
-    await user.click(within(dialogo).getByRole('button', { name: 'Clínica' }))
-    await user.click(await screen.findByRole('option', { name: /^Clínica 1$/ }))
-
     const diasDisponibles = await within(dialogo).findAllByRole('button', { name: /cupos$/ })
     await user.click(diasDisponibles[0])
 
-    await user.type(within(dialogo).getByPlaceholderText('Expediente'), '123456')
-    await user.click(within(dialogo).getByRole('button', { name: /^Asignar$/ }))
-    expect(await within(dialogo).findByRole('button', { name: /^Confirmado$/ })).toBeDisabled()
+    await user.type(within(dialogo).getByLabelText('Buscar paciente'), 'EXP-004521')
+    await user.click(within(dialogo).getByRole('button', { name: 'Buscar' }))
+    await user.click(
+      await within(dialogo).findByRole('button', { name: /María Fernanda López García/ }),
+    )
+    expect(
+      await within(dialogo).findByText('Expediente vinculado al turno.'),
+    ).toBeInTheDocument()
 
     await user.click(within(dialogo).getByRole('button', { name: 'Agendar' }))
     expect(await screen.findByText(/Próxima visita agendada para/)).toBeInTheDocument()
+  }, 20000)
+
+  it('registra manualmente un expediente cuando no aparece en la búsqueda', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await user.click(await screen.findByTestId('etapa-citar'))
+    await user.click(await screen.findByRole('button', { name: 'MI-19, Citar' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Citar paciente' })
+    await user.click(within(dialogo).getByRole('button', { name: /Registro manual/ }))
+
+    const modal = await screen.findByRole('dialog', { name: 'Registro manual de expediente' })
+    const campos = within(modal).getAllByRole('textbox')
+    await user.type(campos[0], '837871')
+    await user.type(campos[1], 'Paciente Manual')
+    await user.click(within(modal).getByRole('button', { name: 'Registrar' }))
+
+    expect(
+      await within(dialogo).findByText('Expediente vinculado al turno.'),
+    ).toBeInTheDocument()
+    expect(within(dialogo).getByRole('heading', { name: 'Paciente Manual' })).toBeInTheDocument()
+    expect(within(dialogo).getByText('Expediente 837871')).toBeInTheDocument()
   }, 20000)
 
   it('busca al paciente y alterna el calendario entre semana y mes', async () => {
@@ -351,7 +376,10 @@ describe('SeguimientoEnfermeriaPage', () => {
       await within(dialogo).findByRole('button', { name: /María Fernanda López García/ }),
     )
 
-    expect(within(dialogo).getByLabelText('Número de expediente')).toHaveValue('EXP-004521')
+    expect(
+      within(dialogo).getByRole('heading', { name: 'María Fernanda López García' }),
+    ).toBeInTheDocument()
+    expect(within(dialogo).getByText('Expediente EXP-004521')).toBeInTheDocument()
 
     await user.click(within(dialogo).getByRole('button', { name: 'Semana' }))
     expect(within(dialogo).getByRole('button', { name: 'Semana' })).toHaveAttribute(

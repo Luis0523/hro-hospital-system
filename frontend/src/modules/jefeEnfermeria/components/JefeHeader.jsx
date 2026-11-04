@@ -31,9 +31,7 @@ export default function JefeHeader({ onAbrirMenu, menuAbierto = false }) {
 
         <div className="min-w-0 leading-tight">
           <p className="text-label-sm uppercase tracking-widest text-primary">SIGHO</p>
-          <p className="truncate text-title-sm font-semibold text-on-surface sm:hidden">
-            Jefatura
-          </p>
+          <p className="truncate text-title-sm font-semibold text-on-surface sm:hidden">Jefatura</p>
           <h1 className="hidden truncate text-headline-sm uppercase tracking-tight text-on-surface sm:block">
             Jefatura Operativa de Enfermería
           </h1>

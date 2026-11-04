@@ -295,8 +295,10 @@ export function useSeguimientoEnfermeria(estacionId, fecha) {
   )
 
   const asignarExpediente = useCallback(
-    async (id, numeroExpediente) => {
-      const turno = await encolar(id, () => asignarExpedienteTurno(id, numeroExpediente))
+    async (id, numeroExpediente, pacienteNombre = null) => {
+      const turno = await encolar(id, () =>
+        asignarExpedienteTurno(id, numeroExpediente, pacienteNombre),
+      )
       setLibro((actual) => reemplazarTurno(actual, turno))
       cargar({ silencioso: true })
       return turno

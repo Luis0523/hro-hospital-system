@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
-import { Button, Icon, Select } from '@/shared/components/ui'
+import { Button, Icon, Modal, Select } from '@/shared/components/ui'
+import { buscarPacientePorExpediente } from '@/modules/libroCitas/api/libroCitasApi'
 import {
   buscarPacientes,
   consultarDisponibilidad,
+  listarEspecialidadesEstacion,
   listarSubespecialidadesDeEspecialidad,
+  listarSubespecialidadesEstacion,
 } from '../../api/enfermeriaApi'
 import { formatearFechaLarga, mesDe } from '@/shared/utils/fecha'
 import CalendarioCuposCita, { rangoDePeriodo } from './CalendarioCuposCita'
@@ -28,9 +31,27 @@ function etiquetaTurno(turno) {
   return `${turno.codigo}-${String(turno.numero).padStart(2, '0')}`
 }
 
+function nombrePaciente(paciente) {
+  if (!paciente) return ''
+  const completo = [paciente.nombres, paciente.apellidos].filter(Boolean).join(' ').trim()
+  return completo || paciente.nombreCompleto || paciente.pacienteNombre || ''
+}
+
+function pacienteDesdeHro(paciente) {
+  return {
+    id: `hro-${paciente.numeroExpediente}`,
+    nombres: paciente.nombre,
+    apellidos: '',
+    numeroExpediente: paciente.numeroExpediente,
+    dpi: null,
+    externo: true,
+  }
+}
+
 export default function PanelCitar({
   abierto,
   turno,
+  estacionId = null,
   especialidadNombre,
   especialidadTurnoId = null,
   especialidades = [],
@@ -39,6 +60,7 @@ export default function PanelCitar({
   onAsignarExpediente,
   onAgendar,
   onBuscarPacientes = buscarPacientes,
+  onBuscarExpediente = buscarPacientePorExpediente,
 }) {
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState([])
@@ -46,7 +68,10 @@ export default function PanelCitar({
   const [pacienteSugerido, setPacienteSugerido] = useState(null)
   const [expediente, setExpediente] = useState('')
   const [especialidadId, setEspecialidadId] = useState('')
-  const [clinicaId, setClinicaId] = useState('')
+  const [especialidadesEstacion, setEspecialidadesEstacion] = useState(null)
+  const [manualAbierto, setManualAbierto] = useState(false)
+  const [formManual, setFormManual] = useState({ numeroExpediente: '', pacienteNombre: '' })
+  const [guardandoManual, setGuardandoManual] = useState(false)
   const [fecha, setFecha] = useState('')
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(() => new Date())
@@ -80,8 +105,9 @@ export default function PanelCitar({
     setFecha(proxima)
     setExpediente(turno?.numeroExpediente ?? '')
     setPacienteSugerido(null)
+    setManualAbierto(false)
+    setFormManual({ numeroExpediente: '', pacienteNombre: '' })
     setEspecialidadId(especialidadActual)
-    setClinicaId(turno?.clinicaId != null ? String(turno.clinicaId) : '')
     setVista('mes')
     setCursor(proxima ? mesDe(proxima) : new Date())
     setBusqueda('')
@@ -89,6 +115,28 @@ export default function PanelCitar({
     setError(null)
   }, [abierto, turno, especialidadTurnoId, especialidades])
 
+  // Especialidades con atención en la estación seleccionada.
+  useEffect(() => {
+    if (!abierto || estacionId == null) {
+      setEspecialidadesEstacion(null)
+      return undefined
+    }
+
+    let activo = true
+    listarEspecialidadesEstacion(estacionId)
+      .then((lista) => {
+        if (activo) setEspecialidadesEstacion(Array.isArray(lista) && lista.length ? lista : null)
+      })
+      .catch(() => {
+        if (activo) setEspecialidadesEstacion(null)
+      })
+
+    return () => {
+      activo = false
+    }
+  }, [abierto, estacionId])
+
+  // Subespecialidades de la estación que pertenecen a la especialidad elegida.
   useEffect(() => {
     if (!abierto || !especialidadId) {
       setSubespecialidadIds([])
@@ -98,26 +146,36 @@ export default function PanelCitar({
 
     let activo = true
     setCatalogoListo(false)
-    listarSubespecialidadesDeEspecialidad(especialidadId)
-      .then((lista) => {
-        if (!activo) return
-        setSubespecialidadIds(
-          (Array.isArray(lista) ? lista : [])
-            .map((subespecialidad) => subespecialidad?.id)
-            .filter((id) => id != null),
+
+    async function cargarSubespecialidades() {
+      let lista = []
+      if (estacionId != null) {
+        const estacion = await listarSubespecialidadesEstacion(estacionId).catch(() => [])
+        lista = (Array.isArray(estacion) ? estacion : []).filter(
+          (subespecialidad) =>
+            subespecialidad?.especialidadId != null &&
+            String(subespecialidad.especialidadId) === String(especialidadId),
         )
-      })
-      .catch(() => {
-        if (activo) setSubespecialidadIds([])
-      })
-      .finally(() => {
-        if (activo) setCatalogoListo(true)
-      })
+      }
+      if (lista.length === 0) {
+        lista = await listarSubespecialidadesDeEspecialidad(especialidadId).catch(() => [])
+      }
+      if (!activo) return
+      setSubespecialidadIds(
+        (Array.isArray(lista) ? lista : [])
+          .map((subespecialidad) => subespecialidad?.id)
+          .filter((id) => id != null),
+      )
+    }
+
+    cargarSubespecialidades().finally(() => {
+      if (activo) setCatalogoListo(true)
+    })
 
     return () => {
       activo = false
     }
-  }, [abierto, especialidadId])
+  }, [abierto, estacionId, especialidadId])
 
   const rango = useMemo(() => rangoDePeriodo(vista, cursor), [vista, cursor])
 
@@ -153,8 +211,10 @@ export default function PanelCitar({
     rango.fechaFin,
   ])
 
+  const listaEspecialidades = especialidadesEstacion ?? especialidades
+
   const opcionesEspecialidad = useMemo(() => {
-    const opciones = especialidades.map((especialidad) => ({
+    const opciones = listaEspecialidades.map((especialidad) => ({
       value: String(especialidad.id),
       label: especialidad.nombre,
     }))
@@ -171,23 +231,31 @@ export default function PanelCitar({
       })
     }
     return opciones
-  }, [especialidades, especialidadNombre, especialidadTurnoId, turno?.especialidadId])
-
-  const opcionesClinica = useMemo(
-    () =>
-      clinicas.map((clinica) => ({
-        value: String(clinica.id),
-        label: clinica.nombre,
-      })),
-    [clinicas],
-  )
+  }, [listaEspecialidades, especialidadNombre, especialidadTurnoId, turno?.especialidadId])
 
   const especialidadSeleccionada = opcionesEspecialidad.find(
     (opcion) => opcion.value === especialidadId,
   )
-  const clinicaSeleccionada = opcionesClinica.find((opcion) => opcion.value === clinicaId)
+  const clinicaDelTurno =
+    turno?.clinicaNombre ??
+    clinicas.find((clinica) => String(clinica.id) === String(turno?.clinicaId))?.nombre ??
+    null
   const expedienteConfirmado = Boolean(turno?.numeroExpediente)
-  const puedeAgendar = Boolean(fecha) && Boolean(clinicaId) && expedienteConfirmado && !agendando
+  const pacienteConsultado = pacienteSugerido ?? (
+    turno?.numeroExpediente || turno?.pacienteNombre
+      ? {
+          nombres: turno?.pacienteNombre ?? '',
+          numeroExpediente: turno?.numeroExpediente ?? '',
+          dpi: null,
+        }
+      : null
+  )
+  const puedeAgendar = Boolean(fecha) && expedienteConfirmado && !agendando
+  const motivoBloqueo = !expedienteConfirmado
+    ? 'Asigne o registre manualmente el expediente para habilitar el agendamiento.'
+    : !fecha
+      ? 'Seleccione una fecha con cupos en el calendario.'
+      : null
   const infoFecha = dias.find((dia) => dia.fecha === fecha)
 
   async function manejarBusqueda(evento) {
@@ -198,24 +266,82 @@ export default function PanelCitar({
     setBuscando(true)
     setError(null)
     try {
-      setResultados(await onBuscarPacientes(termino))
+      let lista = await onBuscarPacientes(termino)
+      lista = Array.isArray(lista) ? lista : []
+      const pareceExpediente = /^\d+$/.test(termino)
+      if (lista.length === 0 || pareceExpediente) {
+        const externo = await onBuscarExpediente(termino).catch(() => null)
+        if (
+          externo &&
+          !lista.some(
+            (paciente) =>
+              String(paciente.numeroExpediente ?? '') === String(externo.numeroExpediente),
+          )
+        ) {
+          lista = [pacienteDesdeHro(externo), ...lista]
+        }
+      }
+      setResultados(lista)
+      if (lista.length === 0) {
+        setError('No se encontró un paciente con ese nombre, DPI o expediente.')
+      }
     } catch (fallo) {
+      setResultados([])
       setError(fallo?.message ?? 'No se pudo buscar el paciente.')
     } finally {
       setBuscando(false)
     }
   }
 
-  function elegirPaciente(paciente) {
+  async function elegirPaciente(paciente) {
     setPacienteSugerido(paciente)
-    setExpediente(paciente.numeroExpediente ?? '')
+    const numero = paciente.numeroExpediente ?? ''
+    setExpediente(numero)
     setBusqueda('')
     setResultados([])
     setError(null)
+    if (numero && !expedienteConfirmado) {
+      await asignarExpediente(numero)
+    }
   }
 
-  async function asignarExpediente() {
-    const numero = expediente.trim()
+  function abrirManual() {
+    setFormManual({
+      numeroExpediente: expediente || busqueda.trim(),
+      pacienteNombre: nombrePaciente(pacienteSugerido),
+    })
+    setManualAbierto(true)
+  }
+
+  async function registrarManual(evento) {
+    evento.preventDefault()
+    if (guardandoManual) return
+    const numero = formManual.numeroExpediente.trim()
+    const nombre = formManual.pacienteNombre.trim()
+    if (!numero || !nombre) {
+      setError('Ingrese el número de expediente y el nombre completo.')
+      return
+    }
+
+    setGuardandoManual(true)
+    setError(null)
+    try {
+      await onAsignarExpediente(numero, nombre)
+      setExpediente(numero)
+      setPacienteSugerido({ nombres: nombre, numeroExpediente: numero, dpi: null, manual: true })
+      setManualAbierto(false)
+      setFormManual({ numeroExpediente: '', pacienteNombre: '' })
+      setBusqueda('')
+      setResultados([])
+    } catch (fallo) {
+      setError(fallo?.message ?? 'No se pudo registrar el expediente manualmente.')
+    } finally {
+      setGuardandoManual(false)
+    }
+  }
+
+  async function asignarExpediente(numeroParam = expediente) {
+    const numero = String(numeroParam ?? '').trim()
     if (!numero || procesandoExpediente || expedienteConfirmado) return
 
     setProcesandoExpediente(true)
@@ -268,7 +394,8 @@ export default function PanelCitar({
   }
 
   return (
-    <Dialog open={abierto} onClose={onCerrar} className="relative z-50">
+    <>
+      <Dialog open={abierto} onClose={onCerrar} className="relative z-50">
       <div className="fixed inset-0 bg-on-surface/50 backdrop-blur-sm" aria-hidden="true" />
 
       <div className="fixed inset-0 overflow-y-auto p-3 sm:p-6">
@@ -287,7 +414,7 @@ export default function PanelCitar({
                     Citar paciente
                   </DialogTitle>
                   <p className="text-body-sm text-on-surface-variant">
-                    {turno.pacienteNombre ?? 'Paciente sin nombre registrado'}
+                    {nombrePaciente(pacienteConsultado) || 'Paciente sin nombre registrado'}
                   </p>
                 </div>
               </div>
@@ -314,9 +441,15 @@ export default function PanelCitar({
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="space-y-3">
                   <section className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
-                    <p className="text-label-sm uppercase tracking-wider text-on-surface-variant">
-                      Buscar paciente
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-label-sm uppercase tracking-wider text-on-surface-variant">
+                        Buscar paciente
+                      </p>
+                      <Button variant="secondary" size="sm" onClick={abrirManual}>
+                        <Icon name="edit_note" className="text-[16px]" />
+                        Registro manual
+                      </Button>
+                    </div>
                     <form onSubmit={manejarBusqueda} className="mt-1 flex gap-2">
                       <input
                         value={busqueda}
@@ -350,56 +483,53 @@ export default function PanelCitar({
                         ))}
                       </ul>
                     )}
-
-                    {pacienteSugerido && (
-                      <p className="mt-2 text-label-sm text-primary">
-                        Paciente encontrado: {pacienteSugerido.nombres} {pacienteSugerido.apellidos}
-                      </p>
-                    )}
                   </section>
 
                   <section className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-label-sm uppercase tracking-wider text-on-surface-variant">
-                        Número de expediente
+                        Expediente consultado
                       </p>
                       <span className="rounded-md bg-primary-container/20 px-2 py-1 text-label-sm font-semibold text-primary">
                         Correlativo {etiquetaTurno(turno)}
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        value={expediente}
-                        onChange={(evento) => {
-                          setExpediente(evento.target.value)
-                          setPacienteSugerido(null)
-                          setError(null)
-                        }}
-                        disabled={expedienteConfirmado || procesandoExpediente}
-                        placeholder="Expediente"
-                        inputMode="numeric"
-                        aria-label="Número de expediente"
-                        className="h-10 min-w-0 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-                      />
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={asignarExpediente}
-                        disabled={
-                          expedienteConfirmado || !expediente.trim() || procesandoExpediente
-                        }
-                      >
-                        <Icon name="badge" className="text-[16px]" />
-                        {expedienteConfirmado
-                          ? 'Confirmado'
-                          : procesandoExpediente
-                            ? 'Asignando…'
-                            : 'Asignar'}
-                      </Button>
-                    </div>
-                    {!expedienteConfirmado && (
-                      <p className="mt-1 text-label-sm text-on-surface-variant">
-                        Asigne el expediente para habilitar el agendamiento.
+
+                    {pacienteConsultado ? (
+                      <div className="mt-2 space-y-1">
+                        <h2 className="text-title-lg font-bold tracking-tight text-on-surface">
+                          {nombrePaciente(pacienteConsultado) || 'Paciente sin nombre registrado'}
+                        </h2>
+                        {pacienteConsultado.dpi && (
+                          <h3 className="text-body-sm font-medium text-on-surface-variant">
+                            DPI {pacienteConsultado.dpi}
+                          </h3>
+                        )}
+                        <h3 className="text-body-sm font-semibold text-on-surface">
+                          Expediente {pacienteConsultado.numeroExpediente || 'sin número'}
+                        </h3>
+
+                        {expedienteConfirmado ? (
+                          <p className="flex items-center gap-1 text-label-sm font-semibold text-primary">
+                            <Icon name="verified" className="text-[16px]" />
+                            Expediente vinculado al turno.
+                          </p>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={asignarExpediente}
+                            disabled={!expediente.trim() || procesandoExpediente}
+                          >
+                            <Icon name="badge" className="text-[16px]" />
+                            {procesandoExpediente ? 'Asignando…' : 'Asignar expediente'}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-body-sm text-on-surface-variant">
+                        Busque al paciente por nombre, DPI o expediente para consultar sus datos, o
+                        use “Registro manual” si el expediente no aparece.
                       </p>
                     )}
                   </section>
@@ -419,15 +549,19 @@ export default function PanelCitar({
                 </div>
 
                 <aside className="space-y-3">
-                  <Select
-                    label="Clínica"
-                    ariaLabel="Clínica"
-                    value={clinicaId}
-                    onChange={setClinicaId}
-                    options={opcionesClinica}
-                    placeholder="Seleccione una clínica"
-                  />
-
+                  <section className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
+                    <p className="text-label-sm uppercase tracking-wider text-on-surface-variant">
+                      Clínica
+                    </p>
+                    <h2 className="mt-1 text-title-lg font-bold tracking-tight text-on-surface">
+                      {clinicaDelTurno ?? 'Sin clínica'}
+                    </h2>
+                    <p className="mt-1 text-label-sm text-on-surface-variant">
+                      {clinicaDelTurno
+                        ? 'Asignada desde la vista del doctor.'
+                        : 'Aún no tiene una clínica asignada.'}
+                    </p>
+                  </section>
                   <section className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
                     <p className="text-label-sm uppercase tracking-wider text-on-surface-variant">
                       Próxima visita
@@ -446,7 +580,7 @@ export default function PanelCitar({
                         : 'Fecha seleccionada por Enfermería.'}
                     </p>
                     <p className="mt-1 text-label-sm text-on-surface">
-                      {clinicaSeleccionada?.label ?? 'Clínica pendiente de seleccionar'}
+                      {clinicaDelTurno ?? 'Sin clínica'}
                     </p>
                     {infoFecha && (
                       <p className="mt-1 text-label-sm text-on-surface-variant">
@@ -496,10 +630,13 @@ export default function PanelCitar({
                   <span>
                     Próxima visita:{' '}
                     <strong className="text-on-surface">{formatearFechaLarga(fecha)}</strong>
-                    {clinicaSeleccionada ? ` · ${clinicaSeleccionada.label}` : ''}
+                    {clinicaDelTurno ? ` · ${clinicaDelTurno}` : ''}
+                    {motivoBloqueo && (
+                      <span className="mt-0.5 block text-label-sm text-error">{motivoBloqueo}</span>
+                    )}
                   </span>
                 ) : (
-                  'Seleccione una fecha y una clínica para agendar.'
+                  (motivoBloqueo ?? 'Seleccione una fecha para agendar.')
                 )}
               </div>
               <Button size="lg" onClick={agendar} disabled={!puedeAgendar} className="min-w-48">
@@ -511,5 +648,74 @@ export default function PanelCitar({
         </div>
       </div>
     </Dialog>
+
+      <Modal
+        open={manualAbierto}
+        onClose={() => {
+          if (!guardandoManual) setManualAbierto(false)
+        }}
+        title="Registro manual de expediente"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setManualAbierto(false)}
+              disabled={guardandoManual}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => document.getElementById('form-cita-manual')?.requestSubmit()}
+              disabled={guardandoManual}
+            >
+              {guardandoManual ? 'Guardando…' : 'Registrar'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Úselo cuando el expediente físico no coincida con el paciente del HRO. El nombre se
+          guarda solo para este turno y su cita.
+        </p>
+        <form id="form-cita-manual" onSubmit={registrarManual} className="mt-3 space-y-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Número de expediente
+            </span>
+            <input
+              value={formManual.numeroExpediente}
+              onChange={(evento) =>
+                setFormManual((actual) => ({
+                  ...actual,
+                  numeroExpediente: evento.target.value,
+                }))
+              }
+              inputMode="numeric"
+              autoComplete="off"
+              required
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+              Nombre completo
+            </span>
+            <input
+              value={formManual.pacienteNombre}
+              onChange={(evento) =>
+                setFormManual((actual) => ({ ...actual, pacienteNombre: evento.target.value }))
+              }
+              autoComplete="off"
+              required
+              className="h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-body-md text-on-surface outline-none focus:border-primary"
+            />
+          </label>
+          <p className="text-label-sm text-on-surface-variant">
+            Turno: <strong>{etiquetaTurno(turno)}</strong>
+            {especialidadSeleccionada ? ` · ${especialidadSeleccionada.label}` : ''}
+          </p>
+        </form>
+      </Modal>
+    </>
   )
 }

@@ -3,7 +3,11 @@ import Icon from '@/shared/components/ui/Icon.jsx'
 export default function TarjetaSala({ item, onClick }) {
   const subs = Array.isArray(item.asignaciones) ? item.asignaciones : []
   const asignada = subs.length > 0
-  const etiqueta = !asignada ? 'Sin asignar' : subs.length > 1 ? `${subs.length} asignadas` : 'Asignada'
+  const etiqueta = !asignada
+    ? 'Sin asignar'
+    : subs.length > 1
+      ? `${subs.length} asignadas`
+      : 'Asignada'
 
   return (
     <button

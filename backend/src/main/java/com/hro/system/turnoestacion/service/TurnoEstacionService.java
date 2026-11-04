@@ -341,7 +341,16 @@ public class TurnoEstacionService {
         }
 
         Optional<Expediente> local = expedienteRepository.findByNumeroExpediente(numeroExpediente);
-        if (local.isPresent()) {
+        String nombreManual = normalizar(dto.getPacienteNombre());
+        if (nombreManual != null) {
+            // Registro manual: se respeta el nombre capturado por Enfermería y no se
+            // consulta el padrón local ni el API externo del hospital.
+            turno.setNumeroExpediente(numeroExpediente);
+            turno.setPaciente(null);
+            turno.setExpediente(null);
+            turno.setExpedienteCiclo(null);
+            turno.setPacienteNombre(nombreManual);
+        } else if (local.isPresent()) {
             Expediente expediente = local.get();
             if (turno.getPaciente() != null
                     && !turno.getPaciente().getId().equals(expediente.getPaciente().getId())) {

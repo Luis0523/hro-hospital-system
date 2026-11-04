@@ -639,11 +639,11 @@ export default function SeguimientoEnfermeriaPage() {
     }
   }
 
-  async function asignarExpedienteSeleccionado(numeroExpediente) {
+  async function asignarExpedienteSeleccionado(numeroExpediente, pacienteNombre = null) {
     const turno = seleccionCompleta?.turno
     if (!turno) return
     try {
-      const actualizado = await asignarExpediente(turno.id, numeroExpediente)
+      const actualizado = await asignarExpediente(turno.id, numeroExpediente, pacienteNombre)
       setSeleccion({
         especialidadId: actualizado.especialidadId ?? seleccionCompleta.especialidadId,
         codigo: actualizado.codigo ?? seleccionCompleta.codigo,
@@ -887,6 +887,7 @@ export default function SeguimientoEnfermeriaPage() {
                 <PanelCitar
                   abierto={citarAbierto && Boolean(seleccionCompleta?.turno)}
                   turno={seleccionCompleta?.turno}
+                  estacionId={estacion?.id ?? null}
                   especialidadNombre={seleccionCompleta?.especialidadNombre}
                   especialidadTurnoId={seleccionCompleta?.especialidadId}
                   especialidades={especialidades}
