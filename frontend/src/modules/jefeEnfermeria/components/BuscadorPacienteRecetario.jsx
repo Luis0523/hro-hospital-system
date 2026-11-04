@@ -1,6 +1,7 @@
 import Button from '@/shared/components/ui/Button.jsx'
 import Icon from '@/shared/components/ui/Icon.jsx'
 import Input from '@/shared/components/ui/Input.jsx'
+import { esExpedienteValido } from '@/modules/libroCitas/utils/expediente'
 
 export default function BuscadorPacienteRecetario({
   expediente,
@@ -8,7 +9,9 @@ export default function BuscadorPacienteRecetario({
   onBuscar,
   buscando = false,
 }) {
-  const puedeBuscar = Boolean(expediente.trim()) && !buscando
+  const valido = esExpedienteValido(expediente)
+  const puedeBuscar = valido && !buscando
+  const mostrarFormatoInvalido = expediente.trim() !== '' && !valido
 
   return (
     <form
@@ -21,9 +24,14 @@ export default function BuscadorPacienteRecetario({
           name="numeroExpediente"
           value={expediente}
           onChange={(event) => onExpedienteChange(event.target.value)}
-          placeholder="Ej. 30954"
+          placeholder="Ej. 837871"
           autoComplete="off"
           autoFocus
+          inputMode="numeric"
+          error={
+            mostrarFormatoInvalido ? 'El número de expediente debe contener solo números.' : null
+          }
+          hint="Escriba el número y presione Enter. Se consulta el API del hospital."
         />
       </div>
       <Button type="submit" disabled={!puedeBuscar} className="sm:mb-0.5">

@@ -44,3 +44,22 @@ export function calcularEdad(iso) {
   }
   return edad
 }
+
+export function formatearFechaCorta(iso) {
+  if (!iso) return ''
+  const [anio, mes, dia] = String(iso).split('-').map(Number)
+  if (!anio || !mes || !dia) return iso
+  return new Date(anio, mes - 1, dia).toLocaleDateString('es-GT', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export function formatearFechaHoraCorta(valor) {
+  if (!valor) return ''
+  const [fecha, hora = ''] = String(valor).split('T')
+  const fechaLegible = formatearFechaCorta(fecha)
+  const horaCorta = hora.slice(0, 5)
+  return horaCorta ? `${fechaLegible}, ${horaCorta}` : fechaLegible
+}

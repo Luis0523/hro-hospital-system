@@ -41,12 +41,14 @@ const SOLICITUD = {
 }
 
 describe('SolicitudMedicamentosFormato1', () => {
-  it('renderiza el encabezado y el título No.1', () => {
+  it('renderiza el encabezado institucional con logo y el título No.1', () => {
     render(<SolicitudMedicamentosFormato1 solicitud={SOLICITUD} />)
 
-    expect(screen.getAllByText('MINISTERIO DE SALUD PÚBLICA Y ASISTENCIA SOCIAL')).toHaveLength(2)
-    expect(screen.getAllByText('Hospital Regional de Occidente')).toHaveLength(2)
+    expect(screen.getAllByText('HOSPITAL REGIONAL DE OCCIDENTE')).toHaveLength(2)
     expect(screen.getAllByText('SOLICITUD DE MEDICAMENTOS ESPECIALES No.1')).toHaveLength(2)
+    expect(screen.getAllByRole('img', { name: 'Hospital Regional de Occidente' })).toHaveLength(2)
+    expect(screen.getAllByRole('img', { name: 'Código de barras 30954' })).toHaveLength(2)
+    expect(screen.queryByText(/MINISTERIO DE SALUD/i)).not.toBeInTheDocument()
   })
 
   it('muestra los campos resumidos y un medicamento por página', () => {
@@ -76,5 +78,14 @@ describe('SolicitudMedicamentosFormato1', () => {
     expect(within(paginas[0]).getByText('Paciente estable.')).toBeInTheDocument()
 
     expect(screen.queryByText('5555-1234')).not.toBeInTheDocument()
+  })
+
+  it('imprime dos copias media carta por medicamento', () => {
+    render(<SolicitudMedicamentosFormato1 solicitud={SOLICITUD} copias={2} />)
+
+    expect(screen.getAllByTestId('hoja-carta-formato1')).toHaveLength(2)
+    expect(screen.getAllByTestId('solicitud-formato1-pagina')).toHaveLength(4)
+    expect(screen.getAllByText('Amoxicilina')).toHaveLength(2)
+    expect(screen.getAllByText('Ibuprofeno')).toHaveLength(2)
   })
 })

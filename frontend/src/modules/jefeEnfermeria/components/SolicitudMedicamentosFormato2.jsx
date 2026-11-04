@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { calcularEdad } from '@/shared/utils/fecha'
+import CodigoBarras from './CodigoBarras.jsx'
 
 function texto(valor) {
   return valor == null ? '' : String(valor).trim()
@@ -30,10 +31,37 @@ function Dato({ etiqueta, children, className = '' }) {
   )
 }
 
-export default function SolicitudMedicamentosFormato2({ solicitud }) {
-  const paciente = solicitud?.paciente
-  if (!paciente) return null
+function EncabezadoInstitucional({ numeroExpediente }) {
+  return (
+    <header className="solicitud-encabezado">
+      <img className="solicitud-logo" src="/logo-hro.jpg" alt="Hospital Regional de Occidente" />
+      <div className="solicitud-encabezado-texto">
+        <p className="solicitud-institucion">HOSPITAL REGIONAL DE OCCIDENTE</p>
+        <h1>SOLICITUD DE MEDICAMENTOS ESPECIALES</h1>
+        <p className="solicitud-subtitulo">Recetario personalizado · Formato No. 2</p>
+      </div>
+      <div className="solicitud-encabezado-codigo">
+        <span className="solicitud-numero-formato">No. 2</span>
+        <CodigoBarras valor={numeroExpediente} className="solicitud-codigo-barras" />
+        <span className="solicitud-codigo-texto">{numeroExpediente || 'Sin expediente'}</span>
+      </div>
+    </header>
+  )
+}
 
+function PieInstitucional({ copia, totalCopias }) {
+  return (
+    <footer className="solicitud-pie">
+      <span>Sistema HRO · Documento generado automáticamente</span>
+      <span>
+        Copia {copia} de {totalCopias}
+      </span>
+    </footer>
+  )
+}
+
+function ContenidoFormato2({ solicitud, copia = 1, totalCopias = 1 }) {
+  const paciente = solicitud.paciente
   const nombre = [paciente.nombres, paciente.apellidos].filter(Boolean).join(' ').trim()
   const edad = calcularEdad(paciente.fechaNacimiento)
   const medicamentos = Array.isArray(solicitud.medicamentos) ? solicitud.medicamentos : []
@@ -41,35 +69,24 @@ export default function SolicitudMedicamentosFormato2({ solicitud }) {
 
   while (filas.length < 6) filas.push(null)
 
-  const contenido = (
-    <div
-      className="solicitud-impresion solicitud-formato2"
-      data-testid="solicitud-impresion-formato2"
-    >
-      <header className="solicitud-encabezado">
-        <div>
-          <p>MINISTERIO DE SALUD PÚBLICA Y ASISTENCIA SOCIAL</p>
-          <p>HOSPITAL REGIONAL DE OCCIDENTE</p>
-        </div>
-        <p>No. 2</p>
-      </header>
+  return (
+    <div className="solicitud-cuerpo">
+      <EncabezadoInstitucional numeroExpediente={paciente.numeroExpediente} />
 
-      <h1>SOLICITUD MEDICAMENTOS ESPECIALES</h1>
-
-      <section className="solicitud-datos">
-        <Dato etiqueta="Nombre del paciente" className="solicitud-dato-amplio">
+      <section className="solicitud-datos solicitud-panel">
+        <Dato etiqueta="Paciente" className="solicitud-dato-amplio">
           {nombre}
         </Dato>
-        <Dato etiqueta="Dx." className="solicitud-dato-amplio">
-          {texto(solicitud.diagnostico)}
-        </Dato>
-        <Dato etiqueta="Edad">{edad != null ? `${edad} años` : ''}</Dato>
-        <Dato etiqueta="Cama">{texto(solicitud.cama)}</Dato>
         <Dato etiqueta="Registro" className="solicitud-dato-medio">
           {texto(paciente.numeroExpediente)}
         </Dato>
+        <Dato etiqueta="Edad">{edad != null ? `${edad} años` : ''}</Dato>
+        <Dato etiqueta="Cama">{texto(solicitud.cama)}</Dato>
         <Dato etiqueta="Servicio">{texto(solicitud.servicio)}</Dato>
         <Dato etiqueta="Fecha">{fechaCorta(solicitud.fecha)}</Dato>
+        <Dato etiqueta="Diagnóstico" className="solicitud-dato-amplio">
+          {texto(solicitud.diagnostico)}
+        </Dato>
       </section>
 
       <table className="solicitud-tabla">
@@ -92,9 +109,10 @@ export default function SolicitudMedicamentosFormato2({ solicitud }) {
                 <>
                   <td>{texto(medicamento.nombre)}</td>
                   <td>
-                    <span>{texto(medicamento.dosis)}</span>
-                    <span>{texto(medicamento.via)}</span>
-                    <span>{texto(medicamento.frecuencia)}</span>
+                    {[medicamento.dosis, medicamento.via, medicamento.frecuencia]
+                      .map(texto)
+                      .filter(Boolean)
+                      .join(' / ')}
                   </td>
                   <td>{fechaHora(medicamento.fechaHoraInicio)}</td>
                   <td>{texto(medicamento.cantidadSolicitada)}</td>
@@ -127,6 +145,44 @@ export default function SolicitudMedicamentosFormato2({ solicitud }) {
           <p className="solicitud-firma">&nbsp;</p>
         </div>
       </section>
+
+      <PieInstitucional copia={copia} totalCopias={totalCopias} />
+    </div>
+  )
+}
+
+function PaginaCarta({ solicitud, testId }) {
+  return (
+    <div className="hoja-carta" data-testid={testId}>
+      <div className="media-carta">
+        <ContenidoFormato2 solicitud={solicitud} copia={1} totalCopias={2} />
+      </div>
+      <div className="linea-corte" aria-hidden="true" />
+      <div className="media-carta">
+        <ContenidoFormato2 solicitud={solicitud} copia={2} totalCopias={2} />
+      </div>
+    </div>
+  )
+}
+
+export default function SolicitudMedicamentosFormato2({ solicitud, copias = 1 }) {
+  const paciente = solicitud?.paciente
+  if (!paciente) return null
+
+  const totalPaginas = Math.max(1, Math.ceil(copias / 2))
+
+  const contenido = (
+    <div
+      className={`solicitud-impresion solicitud-formato2 ${copias > 1 ? 'con-copias' : ''}`}
+      data-testid="solicitud-impresion-formato2"
+    >
+      {copias > 1 ? (
+        Array.from({ length: totalPaginas }, (_, indice) => (
+          <PaginaCarta key={indice} solicitud={solicitud} testId="hoja-carta-formato2" />
+        ))
+      ) : (
+        <ContenidoFormato2 solicitud={solicitud} copia={1} totalCopias={1} />
+      )}
     </div>
   )
 

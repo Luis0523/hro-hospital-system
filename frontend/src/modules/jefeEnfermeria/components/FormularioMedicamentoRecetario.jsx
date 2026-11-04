@@ -11,8 +11,6 @@ function formularioDesde(valores = {}) {
     fechaHoraInicio: valores.fechaHoraInicio ?? '',
     cantidadSolicitada:
       valores.cantidadSolicitada == null ? '' : String(valores.cantidadSolicitada),
-    cantidadDespachada:
-      valores.cantidadDespachada == null ? '' : String(valores.cantidadDespachada),
   }
 }
 
@@ -42,22 +40,19 @@ function validar(formulario) {
     errores.cantidadSolicitada = 'La cantidad solicitada debe ser mayor que 0.'
   }
 
-  const despachada = formulario.cantidadDespachada.trim()
-  if (despachada !== '' && (!Number.isFinite(Number(despachada)) || Number(despachada) < 0)) {
-    errores.cantidadDespachada = 'La cantidad despachada no puede ser negativa.'
-  }
-
   return errores
 }
 
 export default function FormularioMedicamentoRecetario({
   valoresIniciales,
   textoAccion = 'Agregar',
+  campoEnfoque = 'nombre',
   onGuardar,
   onCancelar,
 }) {
   const [formulario, setFormulario] = useState(() => formularioDesde(valoresIniciales ?? {}))
   const [errores, setErrores] = useState({})
+  const [guardarEnCatalogo, setGuardarEnCatalogo] = useState(true)
 
   function actualizar(campo, valor) {
     setFormulario((actual) => ({ ...actual, [campo]: valor }))
@@ -82,14 +77,21 @@ export default function FormularioMedicamentoRecetario({
       frecuencia: formulario.frecuencia.trim(),
       fechaHoraInicio: formulario.fechaHoraInicio,
       cantidadSolicitada: Number(formulario.cantidadSolicitada),
-      cantidadDespachada:
-        formulario.cantidadDespachada.trim() === '' ? null : Number(formulario.cantidadDespachada),
+      guardarEnCatalogo,
     })
+  }
+
+  function manejarTecla(evento) {
+    if ((evento.ctrlKey || evento.metaKey) && evento.key === 'Enter') {
+      evento.preventDefault()
+      manejarEnvio(evento)
+    }
   }
 
   return (
     <form
       onSubmit={manejarEnvio}
+      onKeyDown={manejarTecla}
       className="flex max-h-[calc(100dvh-10rem)] flex-col gap-4 overflow-hidden"
     >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
@@ -100,7 +102,7 @@ export default function FormularioMedicamentoRecetario({
             value={formulario.nombre}
             onChange={(evento) => actualizar('nombre', evento.target.value)}
             error={errores.nombre}
-            autoFocus
+            autoFocus={campoEnfoque === 'nombre'}
           />
           <Input
             label="Dosis *"
@@ -130,6 +132,7 @@ export default function FormularioMedicamentoRecetario({
             value={formulario.fechaHoraInicio}
             onChange={(evento) => actualizar('fechaHoraInicio', evento.target.value)}
             error={errores.fechaHoraInicio}
+            autoFocus={campoEnfoque === 'fechaHoraInicio'}
           />
           <Input
             label="Cantidad solicitada *"
@@ -141,17 +144,24 @@ export default function FormularioMedicamentoRecetario({
             onChange={(evento) => actualizar('cantidadSolicitada', evento.target.value)}
             error={errores.cantidadSolicitada}
           />
-          <Input
-            label="Cantidad despachada"
-            name="cantidadDespachada"
-            type="number"
-            min="0"
-            step="any"
-            value={formulario.cantidadDespachada}
-            onChange={(evento) => actualizar('cantidadDespachada', evento.target.value)}
-            error={errores.cantidadDespachada}
-          />
         </div>
+
+        <label className="flex items-start gap-2 rounded-lg bg-surface-container-low p-3">
+          <input
+            type="checkbox"
+            name="guardarEnCatalogo"
+            checked={guardarEnCatalogo}
+            onChange={(evento) => setGuardarEnCatalogo(evento.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-outline-variant text-primary focus:ring-secondary-fixed-dim"
+          />
+          <span className="text-body-sm text-on-surface-variant">
+            Guardar en el catálogo para reutilizarlo en otra solicitud.
+          </span>
+        </label>
+
+        <p className="text-label-sm text-on-surface-variant">
+          Sugerencia: Ctrl+Enter para guardar el medicamento.
+        </p>
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-outline-variant pt-3 sm:flex-row sm:justify-end">

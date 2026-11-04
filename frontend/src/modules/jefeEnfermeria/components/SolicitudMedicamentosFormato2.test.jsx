@@ -44,10 +44,10 @@ describe('SolicitudMedicamentosFormato2', () => {
   it('recrea los datos institucionales del formato', () => {
     render(<SolicitudMedicamentosFormato2 solicitud={SOLICITUD} />)
 
-    expect(screen.getByText('MINISTERIO DE SALUD PÚBLICA Y ASISTENCIA SOCIAL')).toBeInTheDocument()
     expect(screen.getByText('HOSPITAL REGIONAL DE OCCIDENTE')).toBeInTheDocument()
-    expect(screen.getByText('SOLICITUD MEDICAMENTOS ESPECIALES')).toBeInTheDocument()
+    expect(screen.getByText('SOLICITUD DE MEDICAMENTOS ESPECIALES')).toBeInTheDocument()
     expect(screen.getByText('No. 2')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Hospital Regional de Occidente' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Medicamento' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Dosis/Vía/Frecuencia' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Fecha/Hora inicio' })).toBeInTheDocument()
@@ -59,22 +59,19 @@ describe('SolicitudMedicamentosFormato2', () => {
     render(<SolicitudMedicamentosFormato2 solicitud={SOLICITUD} />)
 
     expect(screen.getByText(/María Fernanda López Morales/)).toBeInTheDocument()
-    expect(screen.getByText('30954')).toBeInTheDocument()
+    expect(screen.getAllByText('30954').length).toBeGreaterThan(0)
     expect(screen.queryByText('3095-4')).not.toBeInTheDocument()
     expect(screen.getByText('Neumonía')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('Medicina Interna')).toBeInTheDocument()
     expect(screen.getByText('01/11/2026')).toBeInTheDocument()
     expect(screen.getByText('Amoxicilina')).toBeInTheDocument()
-    expect(screen.getByText('500 mg')).toBeInTheDocument()
-    expect(screen.getAllByText('Oral')).toHaveLength(2)
-    expect(screen.getByText('Cada 8 horas')).toBeInTheDocument()
+    expect(screen.getByText('500 mg / Oral / Cada 8 horas')).toBeInTheDocument()
     expect(screen.getByText('2026-11-01 08:00')).toBeInTheDocument()
     expect(screen.getByText('21')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(screen.getByText('Ibuprofeno')).toBeInTheDocument()
-    expect(screen.getByText('400 mg')).toBeInTheDocument()
-    expect(screen.getByText('Cada 12 horas')).toBeInTheDocument()
+    expect(screen.getByText('400 mg / Oral / Cada 12 horas')).toBeInTheDocument()
     expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('Paciente estable.')).toBeInTheDocument()
     expect(screen.getByText('Nombre y firma del médico:')).toBeInTheDocument()
@@ -89,5 +86,14 @@ describe('SolicitudMedicamentosFormato2', () => {
 
     expect(screen.getAllByTestId('fila-impresa')).toHaveLength(2)
     expect(screen.getAllByTestId('fila-vacia')).toHaveLength(4)
+  })
+
+  it('imprime dos copias media carta en una hoja carta', () => {
+    render(<SolicitudMedicamentosFormato2 solicitud={SOLICITUD} copias={2} />)
+
+    expect(screen.getAllByTestId('hoja-carta-formato2')).toHaveLength(1)
+    expect(screen.getAllByTestId('fila-impresa')).toHaveLength(4)
+    expect(screen.getAllByText('No. 2')).toHaveLength(2)
+    expect(screen.getAllByRole('table')).toHaveLength(2)
   })
 })
