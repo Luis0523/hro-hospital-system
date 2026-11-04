@@ -122,7 +122,7 @@ export default function DetalleTurno({
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-label-sm font-semibold text-on-surface-variant">Turno asignado:</h2>
           <p className="text-label-sm text-on-surface-variant">
-            Presione Enter sobre una especialidad para asignar el siguiente turno.
+            Presione Enter sobre una especialidad o toque un turno para seleccionarlo.
           </p>
         </div>
       </div>

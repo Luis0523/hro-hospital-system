@@ -59,7 +59,7 @@ export default function ListaEspecialidades({ filas, especialidadActivaId, onAct
               data-especialidad-header="true"
               data-especialidad-id={fila.id}
               data-nav-propia="true"
-              aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Un toque registra el siguiente turno; doble toque lo registra como presentación.`}
+              aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Seleccione la especialidad y luego toque el turno que desea registrar.`}
               aria-pressed={activa}
               onClick={() => onActivar?.(fila.id, fila.codigo, { puntero: true })}
               onKeyDown={(evento) => manejarTeclas(evento, fila)}

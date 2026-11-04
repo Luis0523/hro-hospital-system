@@ -329,9 +329,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(
       await within(dialogo).findByRole('button', { name: /María Fernanda López García/ }),
     )
-    expect(
-      await within(dialogo).findByText('Expediente vinculado al turno.'),
-    ).toBeInTheDocument()
+    expect(await within(dialogo).findByText('Expediente vinculado al turno.')).toBeInTheDocument()
 
     await user.click(within(dialogo).getByRole('button', { name: 'Agendar' }))
     expect(await screen.findByText(/Próxima visita agendada para/)).toBeInTheDocument()
@@ -353,9 +351,7 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.type(campos[1], 'Paciente Manual')
     await user.click(within(modal).getByRole('button', { name: 'Registrar' }))
 
-    expect(
-      await within(dialogo).findByText('Expediente vinculado al turno.'),
-    ).toBeInTheDocument()
+    expect(await within(dialogo).findByText('Expediente vinculado al turno.')).toBeInTheDocument()
     expect(within(dialogo).getByRole('heading', { name: 'Paciente Manual' })).toBeInTheDocument()
     expect(within(dialogo).getByText('Expediente 837871')).toBeInTheDocument()
   }, 20000)
@@ -403,6 +399,17 @@ describe('SeguimientoEnfermeriaPage', () => {
     await user.click(await screen.findByRole('button', { name: /^MI-01,/ }))
 
     expect(await screen.findByTestId('panel-citar')).toBeInTheDocument()
+  }, 20000)
+
+  it('no registra al tocar una especialidad si no hay una etapa seleccionada', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    const medicina = await screen.findByRole('button', { name: /^Medicina Interna\./ })
+    await user.click(medicina)
+
+    expect(screen.getByRole('button', { name: 'MI-39, sin registro' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'MI-39, Registrado' })).not.toBeInTheDocument()
   }, 20000)
 
   it('filtra por etapa sin controles de búsqueda ni registro', async () => {

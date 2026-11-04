@@ -84,7 +84,8 @@ export default function LibroSeguimiento({
   })
   const nombreFiltro = ETAPAS_SEGUIMIENTO.find((etapa) => etapa.id === filtro)?.nombre
   const indicaciones = {
-    registrado: 'Enter sobre una especialidad asigna el siguiente turno.',
+    registrado:
+      'Enter sobre una especialidad asigna el siguiente turno. Con toque, elija la especialidad y luego el turno.',
     en_clinica:
       'Enter sobre una especialidad elige su turno; se usa la clínica ya asignada o la seleccionada.',
     citar: 'Seleccione un turno atendido para agendar su próxima visita.',
@@ -260,7 +261,8 @@ export default function LibroSeguimiento({
                 type="button"
                 data-especialidad-header="true"
                 data-especialidad-id={fila.id}
-                aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Presione Enter para ejecutar el siguiente paso.`}
+                aria-label={`${fila.nombre}. ${fila.registrados} de ${fila.maximo} registrados. Presione Enter para ejecutar el siguiente paso o toque el turno que desea usar.`}
+                onClick={(evento) => evento.currentTarget.focus()}
                 onKeyDown={(evento) => manejarTeclaEspecialidad(evento, fila)}
                 className={`flex w-full flex-col justify-center gap-0.5 rounded-lg border border-l-4 px-3 py-2 text-left transition hover:bg-surface-container focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 ${
                   String(especialidadActivaId) === String(fila.id)

@@ -3,7 +3,12 @@ import { Alert, Button, EmptyState, Icon, Select, Spinner } from '@/shared/compo
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
-import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
+import {
+  esEspecialidadGinecologia,
+  esNumeroClinica,
+  imprimirTicketGinecologia,
+  imprimirTicketTurno,
+} from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
 import BarraDestino from '../components/seguimiento/BarraDestino.jsx'
 import CuadriculaTurnos from '../components/seguimiento/CuadriculaTurnos.jsx'
@@ -385,8 +390,9 @@ export default function SeguimientoEnfermeriaDosPage() {
     return null
   }
 
-  // Un toque registra normal; dos toques rápidos registran la presentación.
-  // También sirve para Enter/doble Enter, porque los botones emiten click.
+  // En las casillas, un toque ejecuta la acción de la etapa y dos toques
+  // rápidos registran la presentación. Las especialidades ya no ejecutan
+  // acciones con el puntero: solo seleccionan la especialidad activa.
   function reaccionarConDobleEvento(clave, accionNormal, accionPresentacion) {
     const ahora = Date.now()
     const pendiente = dobleEventoRef.current
@@ -412,19 +418,15 @@ export default function SeguimientoEnfermeriaDosPage() {
   }
 
   function activarEspecialidadConEvento(especialidadId, codigo, opciones = {}) {
-    // El teclado conserva su acción inmediata; el toque espera 300 ms para
-    // distinguir un toque simple de un doble toque.
     if (!opciones.puntero) {
       activarEspecialidad(especialidadId, codigo)
       return
     }
-    reaccionarConDobleEvento(
-      `especialidad-${especialidadId}`,
-      () => activarEspecialidad(especialidadId, codigo),
-      () =>
-        activarEspecialidad(especialidadId, codigo, {
-          tipoForzado: 'presentacion',
-        }),
+    // El toque en una especialidad solo la selecciona. La acción se ejecuta
+    // después, al tocar la casilla del turno que corresponda.
+    setEspecialidadActivaId(especialidadId)
+    setSeleccion((actual) =>
+      String(actual?.especialidadId) === String(especialidadId) ? actual : null,
     )
   }
 
@@ -449,7 +451,15 @@ export default function SeguimientoEnfermeriaDosPage() {
     if (!especialidad) return
     setEspecialidadActivaId(especialidadId)
 
-    if (!filtro || filtro === 'registrado') {
+    if (!filtro) {
+      mostrarToast({
+        tone: 'info',
+        title: 'Seleccione una etapa del flujo para ejecutar una acción.',
+      })
+      return
+    }
+
+    if (filtro === 'registrado') {
       iniciarRegistro(especialidad, null, opciones.tipoForzado)
       return
     }
@@ -660,11 +670,19 @@ export default function SeguimientoEnfermeriaDosPage() {
           especialidades.find((item) => String(item.id) === String(especialidadId))?.nombre ??
           codigo
         const numeroClinica = clinica?.numero ?? clinica?.id ?? creado.clinicaNumero ?? null
-        imprimirTicketTurno({
-          turno: creado.numeroGeneral,
-          especialidad: especialidadNombre,
-          clinica: numeroClinica,
-        }).catch(() => {
+        const ticketGinecologia =
+          esEspecialidadGinecologia(especialidadNombre) && esNumeroClinica(numeroClinica)
+        const impresion = ticketGinecologia
+          ? imprimirTicketGinecologia({
+              clinica: numeroClinica,
+              especialidad: especialidadNombre,
+            })
+          : imprimirTicketTurno({
+              turno: creado.numeroGeneral,
+              especialidad: especialidadNombre,
+              clinica: numeroClinica,
+            })
+        impresion.catch(() => {
           mostrarToast({
             tone: 'warning',
             title: `Turno ${etiquetaTurno(creado.codigo ?? codigo, creado.numero)} registrado, pero no se pudo imprimir el ticket.`,

@@ -3,7 +3,12 @@ import { Alert, Button, EmptyState, Icon, Select, Spinner } from '@/shared/compo
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
-import { imprimirTicketTurno } from '@/shared/utils/impresionTicket'
+import {
+  esEspecialidadGinecologia,
+  esNumeroClinica,
+  imprimirTicketGinecologia,
+  imprimirTicketTurno,
+} from '@/shared/utils/impresionTicket'
 import EnfermeriaEstacionLayout from '../components/EnfermeriaEstacionLayout.jsx'
 import ClinicasSeguimiento from '../components/seguimiento/ClinicasSeguimiento.jsx'
 import DevolucionesClinicas from '../components/seguimiento/DevolucionesClinicas.jsx'
@@ -291,15 +296,21 @@ export default function SeguimientoEnfermeriaPage() {
     const especialidad = especialidades.find((item) => String(item.id) === String(especialidadId))
     if (!especialidad) return
 
-    // En modo Registrado (o sin etapa elegida) Enter asigna el siguiente turno.
-    if (!filtro || filtro === 'registrado') {
+    if (!filtro) {
+      mostrarToast({
+        tone: 'info',
+        title: 'Seleccione una etapa del flujo para ejecutar una acción.',
+      })
+      return
+    }
+
+    // En modo Registrado Enter asigna el siguiente turno.
+    if (filtro === 'registrado') {
       if (opciones.tecla === 'Enter') {
         registrarConDobleEnter(
           () => registrarSiguiente(especialidad),
           () => registrarSiguiente(especialidad, 'presentacion'),
         )
-      } else {
-        registrarSiguiente(especialidad)
       }
       return
     }
@@ -484,11 +495,20 @@ export default function SeguimientoEnfermeriaPage() {
         const especialidadNombre =
           especialidades.find((item) => String(item.id) === String(especialidadId))?.nombre ??
           codigo
-        imprimirTicketTurno({
-          turno: creado.numeroGeneral,
-          especialidad: especialidadNombre,
-          clinica: creado.clinicaNumero ?? creado.clinicaNombre ?? null,
-        }).catch(() => {
+        const numeroClinica = creado.clinicaNumero ?? creado.clinicaNombre ?? null
+        const ticketGinecologia =
+          esEspecialidadGinecologia(especialidadNombre) && esNumeroClinica(numeroClinica)
+        const impresion = ticketGinecologia
+          ? imprimirTicketGinecologia({
+              clinica: numeroClinica,
+              especialidad: especialidadNombre,
+            })
+          : imprimirTicketTurno({
+              turno: creado.numeroGeneral,
+              especialidad: especialidadNombre,
+              clinica: numeroClinica,
+            })
+        impresion.catch(() => {
           mostrarToast({
             tone: 'warning',
             title: `Turno ${etiquetaTurno(creado.codigo ?? codigo, creado.numero)} registrado, pero no se pudo imprimir el ticket.`,

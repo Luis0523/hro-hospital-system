@@ -20,6 +20,7 @@ import SinAccesoPage from '@/modules/login/pages/SinAccesoPage.jsx'
 import PruebaOcrPage from '@/modules/pruebaOcr/pages/PruebaOcrPage.jsx'
 import PruebaVozPage from '@/modules/pruebaVoz/pages/PruebaVozPage.jsx'
 import PruebaImpresionPage from '@/modules/pruebaImpresion/pages/PruebaImpresionPage.jsx'
+import PruebaImpresionGinecologiaPage from '@/modules/pruebaImpresion/pages/PruebaImpresionGinecologiaPage.jsx'
 import MesaCoexPage from '@/modules/coex/pages/MesaCoexPage.jsx'
 import VistaDoctorPage from '@/modules/vistaDoctor/pages/VistaDoctorPage.jsx'
 import RutaPrivada from './RutaPrivada.jsx'
@@ -75,6 +76,7 @@ export default function AppRouter() {
       <Route path="/prueba-ocr" element={<PruebaOcrPage />} />
       <Route path="/prueba-voz" element={<PruebaVozPage />} />
       <Route path="/prueba-impresion" element={<PruebaImpresionPage />} />
+      <Route path="/prueba-impresion-ginecologia" element={<PruebaImpresionGinecologiaPage />} />
       {/* Rutas privadas: requieren sesión (guard global) y área permitida por rol */}
       <Route element={<RutaPrivada />}>
         <Route path="/" element={<InicioPorRol />} />

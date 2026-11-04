@@ -16,7 +16,7 @@ export function formatearFechaHora(fecha = new Date()) {
  * Si no hay clínica asignada, el agente imprime «Estar atento a la pantalla».
  */
 export async function imprimirTicketTurno(
-  { turno, especialidad, clinica = null },
+  { turno, especialidad, clinica = null, fechaHora = formatearFechaHora(new Date()) },
   { ms = 12000 } = {},
 ) {
   if (ES_MODO_TEST) return { ok: true, omitido: true }
@@ -32,7 +32,7 @@ export async function imprimirTicketTurno(
         turno,
         especialidad,
         clinica,
-        fechaHora: formatearFechaHora(new Date()),
+        fechaHora,
       }),
       signal: control.signal,
     })
@@ -45,4 +45,43 @@ export async function imprimirTicketTurno(
   } finally {
     clearTimeout(temporizador)
   }
+}
+
+/** Indica si el ticket corresponde a Ginecología (ajuste temporal). */
+export function esEspecialidadGinecologia(especialidad) {
+  return /ginecolog/i.test(String(especialidad ?? ''))
+}
+
+/** Valida que el número de clínica pueda viajar como entero al agente. */
+export function esNumeroClinica(valor) {
+  const texto = String(valor ?? '').trim()
+  if (!texto) return false
+  const numero = Number(texto)
+  return Number.isInteger(numero) && numero >= 0
+}
+
+/**
+ * Ticket temporal de Ginecología: el número grande vuelve a ser la clínica.
+ * Se envía el número de clínica en `turno` y otra vez en `clinica`, sin
+ * modificar el agente de impresión ni el ticket oficial.
+ */
+export function payloadTicketGinecologia({
+  clinica,
+  especialidad,
+  fechaHora = formatearFechaHora(new Date()),
+}) {
+  const textoClinica = String(clinica ?? '').trim()
+  if (!esNumeroClinica(textoClinica)) {
+    throw new Error('El número de clínica debe ser un entero mayor o igual a cero.')
+  }
+  return {
+    turno: Number(textoClinica),
+    especialidad,
+    clinica: textoClinica,
+    fechaHora,
+  }
+}
+
+export async function imprimirTicketGinecologia({ clinica, especialidad }, opciones) {
+  return imprimirTicketTurno(payloadTicketGinecologia({ clinica, especialidad }), opciones)
 }

@@ -194,7 +194,7 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   }, 20000)
 
-  it('registra con un toque y con doble toque como presentación', async () => {
+  it('selecciona la especialidad con un toque y registra al tocar el turno', async () => {
     const user = userEvent.setup()
     renderPagina()
 
@@ -204,6 +204,11 @@ describe('SeguimientoEnfermeriaDosPage', () => {
 
     await user.click(screen.getByRole('button', { name: /^Oncología\./ }))
 
+    expect(screen.queryByRole('button', { name: 'ONC-05, Registrado' })).not.toBeInTheDocument()
+
+    const siguiente = await screen.findByRole('button', { name: 'ONC-05, sin registro' })
+    await user.click(siguiente)
+
     expect(await screen.findByRole('button', { name: 'ONC-05, Registrado' })).toBeInTheDocument()
 
     const celdaLibre = await screen.findByRole('button', { name: 'ONC-06, sin registro' })
@@ -212,5 +217,17 @@ describe('SeguimientoEnfermeriaDosPage', () => {
     expect(
       await screen.findByRole('button', { name: 'ONC-06, Registrado, presentación' }),
     ).toBeInTheDocument()
+  }, 20000)
+
+  it('no registra al tocar una especialidad si no hay una etapa seleccionada', async () => {
+    const user = userEvent.setup()
+    renderPagina()
+
+    await screen.findByTestId('etapa-registrado')
+    await user.click(screen.getByRole('button', { name: /^Oncología\./ }))
+
+    const siguiente = await screen.findByRole('button', { name: 'ONC-05, sin registro' })
+    expect(siguiente).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ONC-05, Registrado' })).not.toBeInTheDocument()
   }, 20000)
 })
