@@ -8,7 +8,9 @@ import com.hro.system.estacion.dto.AsignarClinicasFijasRequestDTO;
 import com.hro.system.estacion.dto.AsignarSubespecialidadesRequestDTO;
 import com.hro.system.estacion.dto.ClinicaFijaEstacionResponseDTO;
 import com.hro.system.estacion.dto.ClinicaOrdenDTO;
+import com.hro.system.estacion.dto.EspecialidadOrdenDTO;
 import com.hro.system.estacion.dto.GuardarOrdenClinicasRequestDTO;
+import com.hro.system.estacion.dto.GuardarOrdenEspecialidadesRequestDTO;
 import com.hro.system.estacion.dto.CrearEstacionRequestDTO;
 import com.hro.system.estacion.dto.EstacionAccesoResponseDTO;
 import com.hro.system.estacion.dto.EstacionResponseDTO;
@@ -16,6 +18,7 @@ import com.hro.system.estacion.dto.EspecialidadActivaDTO;
 import com.hro.system.estacion.dto.SubespecialidadAsignadaDTO;
 import com.hro.system.estacion.service.ClinicaFijaEstacionService;
 import com.hro.system.estacion.service.EstacionClinicaOrdenService;
+import com.hro.system.estacion.service.EstacionEspecialidadOrdenService;
 import com.hro.system.estacion.service.EstacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +43,7 @@ public class EstacionController {
     private final EstacionService estacionService;
     private final ClinicaFijaEstacionService clinicaFijaService;
     private final EstacionClinicaOrdenService clinicaOrdenService;
+    private final EstacionEspecialidadOrdenService especialidadOrdenService;
 
     @GetMapping
     @Operation(summary = "Listar estaciones",
@@ -141,6 +145,27 @@ public class EstacionController {
         return ResponseEntity.ok(ApiResponse.ok(
                 clinicaOrdenService.reemplazar(id, dto.getEspacioFisicoIds()),
                 "Orden de clínicas actualizado"));
+    }
+
+    @GetMapping("/{id}/especialidades-orden")
+    @Operation(summary = "Orden de especialidades de la estación",
+            description = "Lista las especialidades asignadas en el orden configurado para la estación.")
+    public ResponseEntity<ApiResponse<List<EspecialidadOrdenDTO>>> listarOrdenEspecialidades(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                especialidadOrdenService.listar(id), "Orden de especialidades de la estación"));
+    }
+
+    @PutMapping("/{id}/especialidades-orden")
+    @PreAuthorize("hasAnyRole('jefe_enfermeria', 'administrador')")
+    @Operation(summary = "Reemplazar el orden de especialidades de la estación",
+            description = "Recibe los IDs de las especialidades en el orden deseado.")
+    public ResponseEntity<ApiResponse<List<EspecialidadOrdenDTO>>> guardarOrdenEspecialidades(
+            @PathVariable Long id,
+            @Valid @RequestBody GuardarOrdenEspecialidadesRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                especialidadOrdenService.reemplazar(id, dto.getEspecialidadIds()),
+                "Orden de especialidades actualizado"));
     }
 
     @PutMapping("/{id}/clinicas-fijas")

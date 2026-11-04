@@ -742,6 +742,7 @@ export function reporteUtilizacionCuposMock(
 }
 
 const ordenClinicasPorEstacion = new Map()
+const ordenEspecialidadesPorEstacion = new Map()
 
 export function listarOrdenClinicasMock(estacionId, nivel) {
   const espacios = espaciosMock
@@ -773,8 +774,48 @@ export function guardarOrdenClinicasMock(estacionId, espacioFisicoIds = []) {
   return listarOrdenClinicasMock(estacionId)
 }
 
+function especialidadesAsignadasMock(estacionId) {
+  const estacion = estacionesMockData.find((item) => item.id === Number(estacionId))
+  if (!estacion) return []
+  const porId = new Map()
+  for (const subespecialidadId of estacion.subespecialidadIds ?? []) {
+    const subespecialidad = subDe(subespecialidadId)
+    if (!subespecialidad || subespecialidad.especialidadId == null) continue
+    const especialidad = ESPECIALIDADES_BASE.find(
+      (item) => item.id === subespecialidad.especialidadId,
+    )
+    if (especialidad && !porId.has(especialidad.id)) porId.set(especialidad.id, especialidad)
+  }
+  return [...porId.values()]
+}
+
+export function listarOrdenEspecialidadesMock(estacionId) {
+  const especialidades = especialidadesAsignadasMock(estacionId)
+  const porId = new Map(especialidades.map((especialidad) => [especialidad.id, especialidad]))
+  const guardado = ordenEspecialidadesPorEstacion.get(String(estacionId)) ?? []
+  const ordenadas = []
+  for (const especialidadId of guardado) {
+    const especialidad = porId.get(Number(especialidadId))
+    if (!especialidad) continue
+    ordenadas.push(especialidad)
+    porId.delete(Number(especialidadId))
+  }
+  return [...ordenadas, ...porId.values()].map((especialidad, indice) => ({
+    especialidadId: especialidad.id,
+    nombre: especialidad.nombre,
+    abreviatura: especialidad.abreviatura ?? null,
+    orden: indice + 1,
+  }))
+}
+
+export function guardarOrdenEspecialidadesMock(estacionId, especialidadIds = []) {
+  ordenEspecialidadesPorEstacion.set(String(estacionId), [...especialidadIds])
+  return listarOrdenEspecialidadesMock(estacionId)
+}
+
 export function reiniciarJefeMock() {
   ordenClinicasPorEstacion.clear()
+  ordenEspecialidadesPorEstacion.clear()
   asignacionesPorFecha.clear()
   diasCerrados.clear()
   horariosMockData.length = 0
