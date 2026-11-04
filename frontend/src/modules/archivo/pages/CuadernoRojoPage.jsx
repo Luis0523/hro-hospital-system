@@ -4,44 +4,12 @@ import { useToast } from '@/shared/context/ToastContext.jsx'
 import { formatearFechaLarga, hoyIsoGuatemala } from '@/shared/utils/fecha'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import CuadernoRojoConfirmacion from '../components/CuadernoRojoConfirmacion.jsx'
-import CuadernoRojoFormulario from '../components/CuadernoRojoFormulario.jsx'
+import CuadernoRojoEliminar from '../components/CuadernoRojoEliminar.jsx'
 import CuadernoRojoHistorial from '../components/CuadernoRojoHistorial.jsx'
+import CuadernoRojoModalRegistro from '../components/CuadernoRojoModalRegistro.jsx'
 import { useCuadernoRojo } from '../hooks/useCuadernoRojo'
-
-// Plantilla estática servida desde `public/`. Se compone con la base URL de Vite
-// para funcionar igual en desarrollo y bajo un subdirectorio de despliegue.
-const RUTA_PLANTILLA_PDF = `${import.meta.env.BASE_URL || '/'}plantillas/cuaderno-rojo.pdf`
-
-const ESTILOS_ESTADO = {
-  nuevo: {
-    caja: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200',
-    punto: 'bg-emerald-500',
-    texto: 'Nuevo',
-  },
-  editando: {
-    caja: 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-    punto: 'bg-amber-500',
-    texto: 'Editando',
-  },
-  consultando: {
-    caja: 'bg-surface-container text-on-surface-variant',
-    punto: 'bg-primary animate-pulse',
-    texto: 'Consultando…',
-  },
-}
-
-function ChipEstado({ estado }) {
-  const estilo = ESTILOS_ESTADO[estado] ?? ESTILOS_ESTADO.nuevo
-  return (
-    <span
-      role="status"
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm font-semibold ${estilo.caja}`}
-    >
-      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${estilo.punto}`} />
-      {estilo.texto}
-    </span>
-  )
-}
+import { USANDO_DATOS_MOCK } from '../api/archivoApi'
+import { descargarReporteCuaderno } from '../utils/cuadernoRojoPdf'
 
 export default function CuadernoRojoPage() {
   const { mostrarToast } = useToast()
@@ -52,139 +20,272 @@ export default function CuadernoRojoPage() {
     existente,
     registros,
     cargandoHistorial,
+    progreso,
     cargandoDia,
     guardando,
+    eliminando,
     error,
     hayCambios,
+    filtros,
+    iniciarRegistroNuevo,
     cambiarCampo,
     marcarTocado,
+    marcarTodosTocados,
+    crearRegistro,
     guardar,
     obtenerSnapshot,
     seleccionarRegistro,
-    recargarHistorial,
-    filtros,
-    anioActual,
-    cambiarFiltro,
+    eliminarRegistro,
+    aplicarFiltros,
     restablecerFiltros,
   } = useCuadernoRojo()
 
+  const [modal, setModal] = useState(null)
   const [confirmacion, setConfirmacion] = useState(null)
-  const [descartePendiente, setDescartePendiente] = useState(null)
+  const [descarte, setDescarte] = useState(null)
+  const [eliminacion, setEliminacion] = useState(null)
 
-  const estado = cargandoDia ? 'consultando' : existente ? 'editando' : 'nuevo'
+  function abrirCrear() {
+    iniciarRegistroNuevo()
+    setConfirmacion(null)
+    setDescarte(null)
+    setModal({ tipo: 'crear' })
+  }
 
-  async function ejecutarGuardado(confirmado, actualizacion) {
-    const resultado = await guardar(confirmado)
-    if (resultado.omitido) return
+  function abrirEditar(registro) {
+    seleccionarRegistro(registro)
+    setConfirmacion(null)
+    setDescarte(null)
+    setModal({ tipo: 'editar' })
+  }
 
-    if (resultado.ok) {
-      setConfirmacion(null)
-      const titulo = actualizacion ? 'Registro actualizado' : 'Registro creado'
-
-      if (!resultado.historialActualizado) {
-        mostrarToast({
-          tone: 'warning',
-          title: 'Historial sin actualizar',
-          message: 'El registro se guardó. Reintente desde el historial.',
-        })
-        return
-      }
-
-      if (resultado.fueraDePeriodo) {
-        mostrarToast({
-          tone: 'warning',
-          title: titulo,
-          message: 'No aparece en el período filtrado. Cambie Año o Mes para verlo.',
-        })
-        return
-      }
-
-      mostrarToast({
-        tone: 'success',
-        title: titulo,
-        message: `Cuaderno Rojo del ${resultado.registro?.fecha ?? valores.fecha}.`,
-      })
+  function solicitarCierre() {
+    if (guardando) return
+    if (hayCambios) {
+      setDescarte({ tipo: 'cerrar', reabrir: modal?.tipo })
+      setModal(null)
       return
     }
-
-    mostrarToast({
-      tone: 'error',
-      title: resultado.validacion ? 'Revise el formulario' : 'No se pudo guardar',
-      message: resultado.error,
-    })
-  }
-
-  function manejarGuardar() {
-    const snapshot = obtenerSnapshot()
-    if (snapshot.valido && existente) {
-      setConfirmacion(snapshot)
-      return
-    }
-    ejecutarGuardado(null, false)
-  }
-
-  function manejarConfirmar() {
-    if (confirmacion) ejecutarGuardado(confirmacion, true)
-  }
-
-  function manejarCancelarConfirmacion() {
-    if (!guardando) setConfirmacion(null)
-  }
-
-  function aplicarDescarte(pendiente) {
-    if (!pendiente) return
-
-    if (pendiente.tipo === 'registro') {
-      seleccionarRegistro(pendiente.registro)
-    } else if (pendiente.tipo === 'fecha') {
-      cambiarCampo('fecha', pendiente.fecha)
-    }
-
-    setDescartePendiente(null)
+    setModal(null)
   }
 
   function manejarCambio(clave, valor) {
     if (clave === 'fecha' && valor !== valores.fecha && hayCambios) {
-      setDescartePendiente({ tipo: 'fecha', fecha: valor })
+      setDescarte({ tipo: 'fecha', fecha: valor, reabrir: modal?.tipo ?? 'crear' })
+      setModal(null)
       return
     }
     cambiarCampo(clave, valor)
   }
 
-  function manejarSeleccion(registro) {
-    if (guardando) return
-    if (hayCambios) {
-      setDescartePendiente({ tipo: 'registro', registro })
+  function cancelarDescarte() {
+    const pendiente = descarte
+    setDescarte(null)
+    if (pendiente?.reabrir) setModal({ tipo: pendiente.reabrir })
+  }
+
+  function confirmarDescarte() {
+    const pendiente = descarte
+    setDescarte(null)
+    if (!pendiente) return
+
+    if (pendiente.tipo === 'fecha') {
+      cambiarCampo('fecha', pendiente.fecha)
+      setModal({ tipo: pendiente.reabrir ?? 'crear' })
+    }
+  }
+
+  function mostrarResultadoGuardado(resultado, actualizacion) {
+    const titulo = actualizacion ? 'Registro actualizado' : 'Registro creado'
+
+    if (!resultado.historialActualizado) {
+      mostrarToast({
+        tone: 'warning',
+        title: 'Historial sin actualizar',
+        message: 'El registro se guardó. Reintente aplicando el filtro de fechas.',
+      })
       return
     }
-    aplicarDescarte({ tipo: 'registro', registro })
+
+    if (resultado.fueraDePeriodo) {
+      mostrarToast({
+        tone: 'warning',
+        title: titulo,
+        message: 'No aparece en el rango de fechas seleccionado. Ajuste el filtro para verlo.',
+      })
+      return
+    }
+
+    mostrarToast({
+      tone: 'success',
+      title: titulo,
+      message: `Cuaderno Rojo del ${resultado.registro?.fecha ?? valores.fecha}.`,
+    })
+  }
+
+  async function manejarGuardar() {
+    if (modal?.tipo === 'editar') {
+      const snapshot = obtenerSnapshot()
+      if (!snapshot.valido) {
+        marcarTodosTocados()
+        mostrarToast({
+          tone: 'error',
+          title: 'Revise el formulario',
+          message: 'Corrija las cantidades marcadas antes de actualizar.',
+        })
+        return
+      }
+      setModal(null)
+      setConfirmacion(snapshot)
+      return
+    }
+
+    const resultado = await crearRegistro()
+    if (resultado.omitido) return
+
+    if (resultado.duplicado) {
+      seleccionarRegistro(resultado.registro)
+      mostrarToast({
+        tone: 'warning',
+        title: 'La fecha ya tiene un registro',
+        message: 'Puede editar el registro existente.',
+      })
+      return
+    }
+
+    if (!resultado.ok) {
+      mostrarToast({
+        tone: 'error',
+        title: resultado.validacion ? 'Revise el formulario' : 'No se pudo guardar',
+        message: resultado.error,
+      })
+      return
+    }
+
+    setModal(null)
+    mostrarResultadoGuardado(resultado, false)
+  }
+
+  async function manejarConfirmar() {
+    if (!confirmacion) return
+    const resultado = await guardar(confirmacion)
+    if (resultado.omitido) return
+
+    if (!resultado.ok) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo actualizar',
+        message: resultado.error,
+      })
+      return
+    }
+
+    setConfirmacion(null)
+    mostrarResultadoGuardado(resultado, true)
+  }
+
+  function manejarCancelarConfirmacion() {
+    if (guardando) return
+    setConfirmacion(null)
+    setModal({ tipo: 'editar' })
+  }
+
+  function editarExistente() {
+    setModal({ tipo: 'editar' })
+  }
+
+  function abrirEliminar(registro) {
+    if (!USANDO_DATOS_MOCK) return
+    setEliminacion({ registro, paso: 1 })
+  }
+
+  function continuarEliminar() {
+    setEliminacion((actual) => (actual ? { ...actual, paso: 2 } : actual))
+  }
+
+  function cancelarEliminar() {
+    if (eliminando) return
+    setEliminacion(null)
+  }
+
+  async function confirmarEliminar() {
+    if (!eliminacion) return
+    const resultado = await eliminarRegistro(eliminacion.registro.fecha)
+    if (resultado.omitido) return
+
+    if (!resultado.ok) {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo eliminar',
+        message: resultado.error,
+      })
+      return
+    }
+
+    setEliminacion(null)
+    mostrarToast({
+      tone: 'success',
+      title: 'Registro eliminado',
+      message: `Cuaderno Rojo del ${eliminacion.registro.fecha}.`,
+    })
+  }
+
+  function generarPdf() {
+    if (cargandoHistorial || registros.length === 0) return
+
+    try {
+      const descargado = descargarReporteCuaderno({
+        registros,
+        desde: filtros.desde,
+        hasta: filtros.hasta,
+      })
+      if (!descargado) {
+        mostrarToast({
+          tone: 'warning',
+          title: 'No se pudo iniciar la descarga',
+          message: 'El navegador no permitió generar el archivo.',
+        })
+        return
+      }
+      mostrarToast({
+        tone: 'success',
+        title: 'Reporte generado',
+        message: 'El PDF del período seleccionado se está descargando.',
+      })
+    } catch {
+      mostrarToast({
+        tone: 'error',
+        title: 'No se pudo generar el reporte',
+        message: 'Intente de nuevo con el período actual.',
+      })
+    }
   }
 
   return (
     <ArchivoLayout>
       <main className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-headline-md text-on-surface">Cuaderno Rojo</h2>
-              <ChipEstado estado={estado} />
-            </div>
-            <p className="text-body-md text-on-surface-variant">Registro diario de Archivo</p>
-            <p className="flex items-center gap-1.5 text-body-sm text-on-surface-variant">
-              <Icon name="calendar_today" className="text-[16px] text-secondary" />
+        <header className="min-w-0 space-y-1">
+          <h2 className="text-headline-md text-on-surface">Cuaderno Rojo</h2>
+          <p className="text-body-md text-on-surface-variant">Registro diario de Archivo</p>
+          <p className="flex items-start gap-1.5 text-body-sm text-on-surface-variant">
+            <Icon name="calendar_today" className="mt-0.5 shrink-0 text-[16px] text-secondary" />
+            <span className="min-w-0">
               Hoy en Guatemala · {formatearFechaLarga(hoyIsoGuatemala())}
-            </p>
-          </div>
-
-          <a
-            href={RUTA_PLANTILLA_PDF}
-            download="cuaderno-rojo.pdf"
-            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
-          >
-            <Icon name="download" className="text-[18px]" />
-            Plantilla PDF
-          </a>
+            </span>
+          </p>
         </header>
+
+        <div className="flex justify-center py-1">
+          <Button
+            type="button"
+            size="lg"
+            onClick={abrirCrear}
+            className="min-h-16 w-full max-w-md gap-3 rounded-xl shadow-sm sm:w-auto sm:min-w-[20rem]"
+          >
+            <Icon name="add" className="text-[24px]" />
+            Registrar nuevo día
+          </Button>
+        </div>
 
         {error && (
           <Alert tone="error" title="Ocurrió un problema">
@@ -193,34 +294,35 @@ export default function CuadernoRojoPage() {
         )}
 
         <Card className="!p-4 sm:!p-6">
-          <CuadernoRojoFormulario
-            valores={valores}
-            errores={errores}
-            tocados={tocados}
-            existente={existente}
-            cargandoDia={cargandoDia}
-            guardando={guardando}
-            onCambiar={manejarCambio}
-            onBlur={marcarTocado}
-            onGuardar={manejarGuardar}
-          />
-        </Card>
-
-        <Card className="!p-4 sm:!p-6">
           <CuadernoRojoHistorial
             registros={registros}
             cargando={cargandoHistorial}
-            onRecargar={recargarHistorial}
-            onSeleccionar={manejarSeleccion}
-            fechaSeleccionada={valores.fecha}
-            deshabilitado={guardando || cargandoDia}
+            progreso={progreso}
             filtros={filtros}
-            anioActual={anioActual}
-            onCambiarFiltro={cambiarFiltro}
+            onAplicarFiltros={aplicarFiltros}
             onRestablecer={restablecerFiltros}
-            registroEnEdicion={existente ? valores.fecha : null}
+            onEditar={abrirEditar}
+            onEliminar={abrirEliminar}
+            puedeEliminar={USANDO_DATOS_MOCK}
+            onGenerarPdf={generarPdf}
           />
         </Card>
+
+        <CuadernoRojoModalRegistro
+          abierto={Boolean(modal)}
+          modo={modal?.tipo ?? 'crear'}
+          valores={valores}
+          errores={errores}
+          tocados={tocados}
+          existente={existente}
+          cargandoDia={cargandoDia}
+          guardando={guardando}
+          onCambiar={manejarCambio}
+          onBlur={marcarTocado}
+          onGuardar={manejarGuardar}
+          onCerrar={solicitarCierre}
+          onEditarExistente={editarExistente}
+        />
 
         <CuadernoRojoConfirmacion
           abierto={Boolean(confirmacion)}
@@ -231,28 +333,34 @@ export default function CuadernoRojoPage() {
           onConfirmar={manejarConfirmar}
         />
 
-        <Modal
-          open={Boolean(descartePendiente)}
-          onClose={() => setDescartePendiente(null)}
-          title="Cambios sin guardar"
-        >
+        <CuadernoRojoEliminar
+          abierto={Boolean(eliminacion)}
+          registro={eliminacion?.registro}
+          paso={eliminacion?.paso ?? 1}
+          eliminando={eliminando}
+          onContinuar={continuarEliminar}
+          onCancelar={cancelarEliminar}
+          onConfirmar={confirmarEliminar}
+        />
+
+        <Modal open={Boolean(descarte)} onClose={cancelarDescarte} title="Cambios sin guardar">
           <div className="space-y-4">
             <p>
-              Hay cantidades escritas que aún no se han guardado. Si cambia de fecha o de registro,
-              esos cambios se perderán.
+              Hay cantidades escritas que aún no se han guardado. Si cambia de fecha o cierra el
+              formulario, esos cambios se perderán.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button
                 variant="secondary"
                 className="min-h-11 w-full sm:w-auto"
-                onClick={() => setDescartePendiente(null)}
+                onClick={cancelarDescarte}
               >
                 Seguir editando
               </Button>
               <Button
                 variant="danger"
                 className="min-h-11 w-full sm:w-auto"
-                onClick={() => aplicarDescarte(descartePendiente)}
+                onClick={confirmarDescarte}
               >
                 Descartar cambios
               </Button>

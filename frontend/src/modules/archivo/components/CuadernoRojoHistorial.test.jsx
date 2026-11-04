@@ -1,374 +1,224 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+﻿import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import CuadernoRojoHistorial from './CuadernoRojoHistorial.jsx'
 
-beforeAll(() => {
-  if (typeof globalThis.ResizeObserver === 'undefined') {
-    globalThis.ResizeObserver = class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    }
-  }
-})
-
 const REGISTROS = [
   {
-    id: 'oct-15',
-    fecha: '2026-10-15',
+    id: 'n-01',
+    fecha: '2026-11-01',
     egresosHospitalarios: 11,
     sobresEmergencia: 12,
     sobresSellados: 13,
     tia: 14,
     registradoPor: 'Ana Pérez',
     actualizadoPor: 'Luis Gómez',
-    actualizadoEn: '2026-10-15T15:00:00-06:00',
+    actualizadoEn: '2026-11-04T02:30:00Z',
   },
   {
-    id: 'oct-16',
-    fecha: '2026-10-16',
+    id: 'n-02',
+    fecha: '2026-11-02',
     egresosHospitalarios: 21,
     sobresEmergencia: 22,
     sobresSellados: 23,
     tia: 24,
-    registradoPor: 'Beto Ruiz',
-    actualizadoPor: 'Carla Méndez',
-    actualizadoEn: '2026-10-16T16:30:00-06:00',
+    registradoPor: null,
+    actualizadoPor: '   ',
+    actualizadoEn: 'no-es-fecha',
   },
   {
-    id: 'nov-03',
-    fecha: '2026-11-03',
+    id: 'o-31',
+    fecha: '2026-10-31',
     egresosHospitalarios: 31,
     sobresEmergencia: 32,
     sobresSellados: 33,
     tia: 34,
     registradoPor: 'Archivo',
     actualizadoPor: 'Archivo',
-    actualizadoEn: '2026-11-04T02:30:00Z',
+    actualizadoEn: '2026-11-01T15:00:00-06:00',
   },
 ]
 
+function props(extra = {}) {
+  return {
+    registros: REGISTROS,
+    filtros: { desde: '2026-10-01', hasta: '2026-11-30' },
+    onAplicarFiltros: vi.fn(),
+    onRestablecer: vi.fn(),
+    onEditar: vi.fn(),
+    onEliminar: vi.fn(),
+    puedeEliminar: true,
+    onGenerarPdf: vi.fn(),
+    ...extra,
+  }
+}
+
+function tabla() {
+  return screen.getByRole('table')
+}
+
+function botonDetalle(fecha) {
+  return within(tabla()).getByRole('button', {
+    name: `Detalle del registro del ${fecha}`,
+  })
+}
+
+function metrica(etiqueta) {
+  return screen.getAllByText(etiqueta)[0].parentElement
+}
+
 describe('CuadernoRojoHistorial', () => {
-  it('agrupa por mes y año y muestra el conteo total', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} />)
+  it('muestra el resumen calculado solo con los registros del período', () => {
+    render(<CuadernoRojoHistorial {...props()} />)
 
-    expect(screen.getByText('3 días registrados.')).toBeInTheDocument()
-    expect(screen.getAllByText('Octubre 2026').length).toBeGreaterThan(0)
+    expect(within(metrica('Días registrados')).getByText('3')).toBeInTheDocument()
+    expect(within(metrica('Egresos hospitalarios')).getByText('63')).toBeInTheDocument()
+    expect(within(metrica('Sobres emergencia')).getByText('66')).toBeInTheDocument()
+    expect(within(metrica('Sobres sellados')).getByText('69')).toBeInTheDocument()
+    expect(within(metrica('TIA')).getByText('72')).toBeInTheDocument()
+  })
+
+  it('muestra las cuatro cantidades y agrupa por mes en escritorio', () => {
+    render(<CuadernoRojoHistorial {...props()} />)
+
+    const fila = within(tabla())
+      .getByRole('rowheader', { name: /02\/11\/2026/ })
+      .closest('tr')
+    expect(within(fila).getByText('21')).toBeInTheDocument()
+    expect(within(fila).getByText('22')).toBeInTheDocument()
+    expect(within(fila).getByText('23')).toBeInTheDocument()
+    expect(within(fila).getByText('24')).toBeInTheDocument()
     expect(screen.getAllByText('Noviembre 2026').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('2 registros').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Octubre 2026').length).toBeGreaterThan(0)
   })
 
-  it('muestra las cuatro cantidades en la tabla de escritorio', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} />)
+  it('habilita el reporte solo con registros y lo solicita al pulsar', () => {
+    const onGenerarPdf = vi.fn()
+    render(<CuadernoRojoHistorial {...props({ onGenerarPdf })} />)
 
-    const tabla = screen.getByRole('table')
-    const fila = within(tabla)
-      .getByRole('rowheader', { name: /03\/11\/2026/ })
-      .closest('tr')
-
-    expect(within(fila).getByText('31')).toBeInTheDocument()
-    expect(within(fila).getByText('32')).toBeInTheDocument()
-    expect(within(fila).getByText('33')).toBeInTheDocument()
-    expect(within(fila).getByText('34')).toBeInTheDocument()
+    const boton = screen.getByRole('button', { name: /generar reporte pdf/i })
+    expect(boton).toBeEnabled()
+    fireEvent.click(boton)
+    expect(onGenerarPdf).toHaveBeenCalledTimes(1)
   })
 
-  it('identifica el registro seleccionado con el texto En edición', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} fechaSeleccionada="2026-11-03" />)
+  it('mantiene el reporte fuera del scroll y fija el encabezado de la tabla', () => {
+    render(<CuadernoRojoHistorial {...props()} />)
 
-    expect(screen.getAllByText('En edición').length).toBeGreaterThan(0)
+    const scrollEscritorio = screen.getByTestId('historial-scroll-escritorio')
+    const scrollMovil = screen.getByTestId('historial-scroll-movil')
+    const botonReporte = screen.getByRole('button', { name: /generar reporte pdf/i })
 
-    const tabla = screen.getByRole('table')
-    const fila = within(tabla)
-      .getByRole('rowheader', { name: /03\/11\/2026/ })
-      .closest('tr')
-    expect(fila).toHaveClass('bg-primary/5')
+    expect(scrollEscritorio).toHaveClass('overflow-y-auto')
+    expect(scrollMovil).toHaveClass('overflow-y-auto')
+    expect(scrollEscritorio.contains(botonReporte)).toBe(false)
+    expect(scrollMovil.contains(botonReporte)).toBe(false)
+    expect(within(tabla()).getByRole('columnheader', { name: 'Acciones' })).toHaveClass('sticky')
+    expect(within(tabla()).getByRole('columnheader', { name: 'Fecha' })).toHaveClass('sticky')
   })
 
-  it('permite editar un registro desde la acción Editar', () => {
-    const onSeleccionar = vi.fn()
-    render(<CuadernoRojoHistorial registros={REGISTROS} onSeleccionar={onSeleccionar} />)
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Editar registro del 03/11/2026' })[0])
-
-    expect(onSeleccionar).toHaveBeenCalledWith(REGISTROS[2])
-  })
-
-  it('muestra el estado vacío reutilizando EmptyState', () => {
-    render(<CuadernoRojoHistorial registros={[]} />)
-
-    expect(screen.getByText('Sin registros')).toBeInTheDocument()
-    expect(
-      screen.getByText('Los días que guarde aparecerán aquí agrupados por mes y año.'),
-    ).toBeInTheDocument()
-  })
-
-  it('muestra la carga y permite recargar', () => {
-    const onRecargar = vi.fn()
-    const { rerender } = render(<CuadernoRojoHistorial registros={[]} cargando />)
-
-    expect(screen.getByText('Cargando historial…')).toBeInTheDocument()
-
-    rerender(<CuadernoRojoHistorial registros={REGISTROS} onRecargar={onRecargar} />)
-    fireEvent.click(screen.getByRole('button', { name: /actualizar/i }))
-
-    expect(onRecargar).toHaveBeenCalledTimes(1)
-  })
-
-  it('usa encabezados semánticos y nombres accesibles en Editar', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} onSeleccionar={vi.fn()} />)
-
-    expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.getAllByRole('rowheader').length).toBeGreaterThan(0)
-    expect(
-      screen.getAllByRole('button', { name: 'Editar registro del 15/10/2026' }).length,
-    ).toBeGreaterThan(0)
-  })
-
-  it('renderiza los filtros y notifica cambios de año, mes y restablecimiento', async () => {
-    const onCambiarFiltro = vi.fn()
-    const onRestablecer = vi.fn()
-    render(
-      <CuadernoRojoHistorial
-        registros={REGISTROS}
-        filtros={{ anio: '2026', mes: '' }}
-        anioActual={2026}
-        onCambiarFiltro={onCambiarFiltro}
-        onRestablecer={onRestablecer}
-      />,
-    )
-
-    expect(screen.getByText('Año')).toBeInTheDocument()
-    expect(screen.getByText('Mes')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Año' })).toHaveTextContent('2026')
-    expect(screen.getByRole('button', { name: 'Mes' })).toHaveTextContent('Todos')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Año' }))
-    fireEvent.click(await screen.findByRole('option', { name: '2000' }))
-    expect(onCambiarFiltro).toHaveBeenCalledWith('anio', '2000')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Mes' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Enero' }))
-    expect(onCambiarFiltro).toHaveBeenCalledWith('mes', '01')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Restablecer' }))
-    expect(onRestablecer).toHaveBeenCalledTimes(1)
-  })
-
-  it('muestra el estado vacío del período filtrado', () => {
-    render(
-      <CuadernoRojoHistorial
-        registros={[]}
-        filtros={{ anio: '2026', mes: '11' }}
-        anioActual={2026}
-        onCambiarFiltro={vi.fn()}
-        onRestablecer={vi.fn()}
-      />,
-    )
+  it('deshabilita el reporte y no muestra resumen en un período vacío', () => {
+    render(<CuadernoRojoHistorial {...props({ registros: [] })} />)
 
     expect(screen.getByText('Sin registros en el período seleccionado')).toBeInTheDocument()
-    expect(screen.getByText('Pruebe con otro año o mes.')).toBeInTheDocument()
-    expect(screen.queryByText('0 días registrados.')).not.toBeInTheDocument()
-    expect(screen.queryByText('Aún no hay días registrados.')).not.toBeInTheDocument()
-  })
-
-  it('abre y contrae el detalle de trazabilidad con el mismo botón', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} />)
-
-    const tabla = screen.getByRole('table')
-    const boton = within(tabla).getByRole('button', {
-      name: 'Detalle del registro del 15/10/2026',
-    })
-
-    expect(boton).toHaveAttribute('aria-expanded', 'false')
-
-    fireEvent.click(boton)
-    expect(boton).toHaveAttribute('aria-expanded', 'true')
-
-    const control = boton.getAttribute('aria-controls')
-    const detalle = document.getElementById(control)
-
-    expect(detalle).toBeInTheDocument()
-    expect(within(detalle).getByText('Ana Pérez')).toBeInTheDocument()
-    expect(within(detalle).getByText('Luis Gómez')).toBeInTheDocument()
-    expect(within(detalle).getByText(/15:00/)).toBeInTheDocument()
     expect(
-      within(detalle).getByText(
-        'El sistema conserva únicamente los datos de la última actualización.',
-      ),
+      screen.getByText('Ajuste el rango de fechas o registre un nuevo día.'),
     ).toBeInTheDocument()
-
-    fireEvent.click(boton)
-    expect(boton).toHaveAttribute('aria-expanded', 'false')
-    expect(document.getElementById(control)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /generar reporte pdf/i })).toBeDisabled()
+    expect(screen.queryByText('Días registrados')).not.toBeInTheDocument()
   })
 
-  it('mantiene solo un detalle abierto a la vez', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} />)
+  it('muestra el progreso y oculta la tabla mientras carga', () => {
+    render(
+      <CuadernoRojoHistorial
+        {...props({ cargando: true, progreso: { completados: 1, total: 3 } })}
+      />,
+    )
 
-    const tabla = screen.getByRole('table')
-    const botonA = within(tabla).getByRole('button', {
-      name: 'Detalle del registro del 15/10/2026',
+    expect(screen.getByText('Consultando 1 de 3 años…')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /generar reporte pdf/i })).toBeDisabled()
+  })
+
+  it('edita y elimina desde las acciones de la derecha', () => {
+    const onEditar = vi.fn()
+    const onEliminar = vi.fn()
+    render(<CuadernoRojoHistorial {...props({ onEditar, onEliminar })} />)
+
+    fireEvent.click(within(tabla()).getByRole('button', { name: 'Editar registro del 01/11/2026' }))
+    expect(onEditar).toHaveBeenCalledWith(REGISTROS[0])
+
+    fireEvent.click(
+      within(tabla()).getByRole('button', { name: 'Eliminar registro del 01/11/2026' }),
+    )
+    expect(onEliminar).toHaveBeenCalledWith(REGISTROS[0])
+  })
+
+  it('deshabilita Eliminar cuando el backend real no expone DELETE', () => {
+    render(<CuadernoRojoHistorial {...props({ puedeEliminar: false })} />)
+
+    const boton = within(tabla()).getByRole('button', {
+      name: 'Eliminar no disponible para el registro del 01/11/2026',
     })
-    const botonB = within(tabla).getByRole('button', {
-      name: 'Detalle del registro del 03/11/2026',
-    })
+    expect(boton).toBeDisabled()
+    expect(boton).toHaveAttribute('title', 'Eliminar no disponible: el backend no expone DELETE')
+  })
+
+  it('abre, contrae y mantiene un solo detalle de trazabilidad', () => {
+    render(<CuadernoRojoHistorial {...props()} />)
+
+    const botonA = botonDetalle('01/11/2026')
+    const botonB = botonDetalle('02/11/2026')
+    expect(botonA).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(botonA)
-    expect(within(tabla).getByText('Ana Pérez')).toBeInTheDocument()
+    expect(botonA).toHaveAttribute('aria-expanded', 'true')
+    const controlA = botonA.getAttribute('aria-controls')
+    const detalleA = document.getElementById(controlA)
+    expect(detalleA).toBeInTheDocument()
+    expect(within(detalleA).getByText('Ana Pérez')).toBeInTheDocument()
+    expect(within(detalleA).getByText('Luis Gómez')).toBeInTheDocument()
+    expect(within(detalleA).getByText(/20:30/)).toBeInTheDocument()
 
     fireEvent.click(botonB)
     expect(botonA).toHaveAttribute('aria-expanded', 'false')
-    expect(botonB).toHaveAttribute('aria-expanded', 'true')
-    expect(within(tabla).queryByText('Ana Pérez')).not.toBeInTheDocument()
-    expect(within(tabla).getAllByText('Archivo').length).toBeGreaterThan(0)
+    expect(document.getElementById(controlA)).not.toBeInTheDocument()
+    const detalleB = document.getElementById(botonB.getAttribute('aria-controls'))
+    expect(within(detalleB).getAllByText('No disponible')).toHaveLength(3)
+
+    fireEvent.click(botonB)
+    expect(botonB).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('cierra el detalle al cambiar de filtros', () => {
-    const onCambiarFiltro = vi.fn()
-    const { rerender } = render(
-      <CuadernoRojoHistorial
-        registros={REGISTROS}
-        filtros={{ anio: '2026', mes: '' }}
-        anioActual={2026}
-        onCambiarFiltro={onCambiarFiltro}
-        onRestablecer={vi.fn()}
-      />,
-    )
-
-    const tabla = screen.getByRole('table')
-    fireEvent.click(
-      within(tabla).getByRole('button', {
-        name: 'Detalle del registro del 15/10/2026',
-      }),
-    )
-    expect(within(tabla).getByText('Ana Pérez')).toBeInTheDocument()
+  it('cierra el detalle al cambiar filtros o al desaparecer el registro', () => {
+    const { rerender } = render(<CuadernoRojoHistorial {...props()} />)
+    fireEvent.click(botonDetalle('01/11/2026'))
+    expect(screen.getAllByText('Ana Pérez').length).toBeGreaterThan(0)
 
     rerender(
       <CuadernoRojoHistorial
-        registros={REGISTROS}
-        filtros={{ anio: '2025', mes: '' }}
-        anioActual={2026}
-        onCambiarFiltro={onCambiarFiltro}
-        onRestablecer={vi.fn()}
+        {...props({ filtros: { desde: '2026-11-01', hasta: '2026-11-30' } })}
       />,
     )
+    expect(screen.queryAllByText('Ana Pérez')).toHaveLength(0)
 
-    expect(screen.queryByText('Ana Pérez')).not.toBeInTheDocument()
-    expect(
-      within(screen.getByRole('table')).getByRole('button', {
-        name: 'Detalle del registro del 15/10/2026',
-      }),
-    ).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('cierra el detalle si el registro deja de estar en el listado', () => {
-    const { rerender } = render(<CuadernoRojoHistorial registros={REGISTROS} />)
-
-    const tabla = screen.getByRole('table')
-    fireEvent.click(
-      within(tabla).getByRole('button', {
-        name: 'Detalle del registro del 15/10/2026',
-      }),
-    )
-    expect(within(tabla).getByText('Ana Pérez')).toBeInTheDocument()
+    fireEvent.click(botonDetalle('01/11/2026'))
+    expect(screen.getAllByText('Ana Pérez').length).toBeGreaterThan(0)
 
     rerender(
       <CuadernoRojoHistorial
-        registros={REGISTROS.filter((registro) => registro.id !== 'oct-15')}
+        {...props({ registros: REGISTROS.filter((registro) => registro.id !== 'n-01') })}
       />,
     )
-
-    expect(screen.queryByText('Ana Pérez')).not.toBeInTheDocument()
+    expect(screen.queryAllByText('Ana Pérez')).toHaveLength(0)
   })
 
-  it('usa No disponible para datos ausentes o una fecha inválida', () => {
-    const sinDatos = {
-      id: 'sin-datos',
-      fecha: '2026-10-20',
-      egresosHospitalarios: 1,
-      sobresEmergencia: 2,
-      sobresSellados: 3,
-      tia: 4,
-      registradoPor: null,
-      actualizadoPor: '   ',
-      actualizadoEn: 'no-es-fecha',
-    }
-    render(<CuadernoRojoHistorial registros={[sinDatos]} />)
+  it('mantiene Editar operativo con el detalle abierto', () => {
+    const onEditar = vi.fn()
+    render(<CuadernoRojoHistorial {...props({ onEditar })} />)
 
-    const tabla = screen.getByRole('table')
-    const boton = within(tabla).getByRole('button', {
-      name: 'Detalle del registro del 20/10/2026',
-    })
-    fireEvent.click(boton)
+    fireEvent.click(botonDetalle('01/11/2026'))
+    fireEvent.click(within(tabla()).getByRole('button', { name: 'Editar registro del 01/11/2026' }))
 
-    const detalle = document.getElementById(boton.getAttribute('aria-controls'))
-    expect(within(detalle).getAllByText('No disponible')).toHaveLength(3)
-    expect(within(detalle).queryByText(/Invalid Date/)).not.toBeInTheDocument()
-  })
-
-  it('formatea la última actualización en America/Guatemala', () => {
-    render(<CuadernoRojoHistorial registros={REGISTROS} />)
-
-    const tabla = screen.getByRole('table')
-    const boton = within(tabla).getByRole('button', {
-      name: 'Detalle del registro del 03/11/2026',
-    })
-    fireEvent.click(boton)
-
-    const detalle = document.getElementById(boton.getAttribute('aria-controls'))
-    expect(within(detalle).getByText(/20:30/)).toBeInTheDocument()
-    expect(within(detalle).queryByText(/Invalid Date/)).not.toBeInTheDocument()
-  })
-
-  it('permite editar mientras el detalle está abierto', () => {
-    const onSeleccionar = vi.fn()
-    render(<CuadernoRojoHistorial registros={REGISTROS} onSeleccionar={onSeleccionar} />)
-
-    const tabla = screen.getByRole('table')
-    fireEvent.click(
-      within(tabla).getByRole('button', {
-        name: 'Detalle del registro del 15/10/2026',
-      }),
-    )
-    fireEvent.click(
-      within(tabla).getByRole('button', {
-        name: 'Editar registro del 15/10/2026',
-      }),
-    )
-
-    expect(onSeleccionar).toHaveBeenCalledWith(REGISTROS[0])
-  })
-
-  it('muestra y oculta la nota del registro fuera del período', () => {
-    const onCambiarFiltro = vi.fn()
-    const { rerender } = render(
-      <CuadernoRojoHistorial
-        registros={REGISTROS}
-        filtros={{ anio: '2026', mes: '11' }}
-        anioActual={2026}
-        onCambiarFiltro={onCambiarFiltro}
-        onRestablecer={vi.fn()}
-        registroEnEdicion="2026-10-15"
-      />,
-    )
-
-    expect(
-      screen.getByText('El registro que está editando no pertenece al período seleccionado.'),
-    ).toBeInTheDocument()
-
-    rerender(
-      <CuadernoRojoHistorial
-        registros={REGISTROS}
-        filtros={{ anio: '2026', mes: '10' }}
-        anioActual={2026}
-        onCambiarFiltro={onCambiarFiltro}
-        onRestablecer={vi.fn()}
-        registroEnEdicion="2026-10-15"
-      />,
-    )
-
-    expect(
-      screen.queryByText('El registro que está editando no pertenece al período seleccionado.'),
-    ).not.toBeInTheDocument()
+    expect(onEditar).toHaveBeenCalledWith(REGISTROS[0])
   })
 })

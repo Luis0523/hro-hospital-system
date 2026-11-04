@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  eliminarCuadernoRojoMock,
   guardarCuadernoRojoMock,
   listarCuadernoRojoMock,
   obtenerCuadernoRojoMock,
@@ -111,5 +112,21 @@ describe('cuadernoRojoMock', () => {
     const error = capturarError(() => listarCuadernoRojoMock(filtros))
 
     expect(error?.status).toBe(400)
+  })
+
+  it('elimina un registro existente del mock', () => {
+    guardarCuadernoRojoMock(FECHA, VALIDO)
+
+    const eliminado = eliminarCuadernoRojoMock(FECHA)
+
+    expect(eliminado.fecha).toBe(FECHA)
+    expect(obtenerCuadernoRojoMock(FECHA)).toBeNull()
+    expect(listarCuadernoRojoMock()).toEqual([])
+  })
+
+  it('devuelve 404 al eliminar una fecha inexistente', () => {
+    const error = capturarError(() => eliminarCuadernoRojoMock('2026-11-04'))
+
+    expect(error?.status).toBe(404)
   })
 })

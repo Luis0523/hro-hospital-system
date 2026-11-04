@@ -1,37 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { hoyIsoGuatemala } from '@/shared/utils/fecha'
 import { validarFormulario, valoresIniciales } from '../cuadernoRojoCampos'
-import { guardarCuadernoRojo, listarCuadernoRojo, obtenerCuadernoRojo } from '../api/archivoApi'
+import {
+  eliminarCuadernoRojo,
+  guardarCuadernoRojo,
+  listarCuadernoRojo,
+  obtenerCuadernoRojo,
+} from '../api/archivoApi'
+import {
+  aniosDelRango,
+  fechaEnRango,
+  filtrarRegistrosPorRango,
+  rangoMesActualGuatemala,
+} from '../utils/rangoFechas'
 
 const CLAVES_CANTIDAD = ['egresosHospitalarios', 'sobres', 'sobresSellados', 'tia']
+const LIMITE_SOLICITUDES_ANIO = 3
 
 function valoresConFecha(fecha = hoyIsoGuatemala()) {
   return { ...valoresIniciales(), fecha }
-}
-
-function periodoActual() {
-  const iso = hoyIsoGuatemala()
-  return { anio: iso.slice(0, 4), mes: '' }
-}
-
-function construirParametros(filtros = {}) {
-  const parametros = {}
-  const anio = Number(filtros.anio)
-  if (Number.isInteger(anio)) parametros.anio = anio
-  if (filtros.mes !== '' && filtros.mes !== null && filtros.mes !== undefined) {
-    parametros.mes = Number(filtros.mes)
-  }
-  return parametros
-}
-
-function estaEnPeriodo(fecha, filtros = {}) {
-  if (!fecha) return true
-  const anio = fecha.slice(0, 4)
-  const mes = fecha.slice(5, 7)
-  return (
-    String(anio) === String(filtros.anio) &&
-    (!filtros.mes || mes === String(filtros.mes).padStart(2, '0'))
-  )
 }
 
 export function valoresDesdeRegistro(registro) {
@@ -70,20 +57,30 @@ function mismasCantidades(a, b) {
 
 function mensajeError(fallo, accion) {
   const status = fallo?.status
-  const verbo = accion === 'guardar' ? 'guardar' : 'consultar'
+  const verbo = accion === 'guardar' ? 'guardar' : accion === 'eliminar' ? 'eliminar' : 'consultar'
 
   if (status === 400) {
     if (accion === 'guardar') {
       return 'El servidor rechazó las cantidades. Revise los datos e intente de nuevo.'
     }
     if (accion === 'filtrar') {
-      return 'El servidor rechazó el período. Verifique el año y el mes.'
+      return 'El servidor rechazó el período. Verifique el rango de fechas.'
     }
     return 'El servidor rechazó la consulta. Verifique la fecha e intente de nuevo.'
   }
   if (status === 401) return 'La sesión expiró. Vuelva a iniciar sesión.'
   if (status === 403) return `Su rol no tiene permiso para ${verbo} el Cuaderno Rojo.`
-  if (status === 404) return 'No se encontró el recurso solicitado. Actualice e intente de nuevo.'
+  if (status === 404) {
+    return accion === 'eliminar'
+      ? 'No se encontró el registro que intenta eliminar.'
+      : 'No se encontró el recurso solicitado. Actualice e intente de nuevo.'
+  }
+  if (status === 501) {
+    return (
+      fallo?.message ||
+      'La operación no está disponible: el backend no expone el endpoint necesario.'
+    )
+  }
   if (!status) {
     return 'No se pudo conectar con el servidor. Verifique la conexión e intente de nuevo.'
   }
@@ -96,16 +93,11 @@ function mensajeError(fallo, accion) {
 }
 
 /**
- * Estado y operaciones de la pantalla del Cuaderno Rojo. El formulario usa
- * `valores` como única fuente de verdad (incluida la fecha). Al cambiar de
- * fecha se consulta el registro existente: si ya existe, se edita; si no, se
- * captura uno nuevo.
+ * Estado y operaciones de la pantalla del Cuaderno Rojo.
  *
- * Concurrencia:
- * - `solicitudRef` invalida respuestas antiguas de consultas por fecha.
- * - `historialSolicitudRef` invalida respuestas antiguas del historial filtrado.
- * - `guardandoRef` bloquea de forma síncrona envíos duplicados.
- * - `omitirCargaRef` evita un GET cuando el registro ya vino del historial.
+ * - El formulario vive en los modales de alta/edición.
+ * - El historial usa un rango de fechas y consulta al backend por año.
+ * - Los tokens separan consultas de fecha e historial para descartar respuestas obsoletas.
  */
 export function useCuadernoRojo() {
   const [valores, setValores] = useState(() => valoresConFecha())
@@ -114,13 +106,15 @@ export function useCuadernoRojo() {
   const [registros, setRegistros] = useState([])
   const [existente, setExistente] = useState(false)
   const [cargandoHistorial, setCargandoHistorial] = useState(true)
+  const [progreso, setProgreso] = useState({ completados: 0, total: 0 })
   const [cargandoDia, setCargandoDia] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState(null)
-  const [filtros, setFiltros] = useState(() => periodoActual())
-  const [anioActual] = useState(() => Number(hoyIsoGuatemala().slice(0, 4)))
+  const [filtros, setFiltros] = useState(() => rangoMesActualGuatemala())
 
   const guardandoRef = useRef(false)
+  const eliminandoRef = useRef(false)
   const solicitudRef = useRef(0)
   const historialSolicitudRef = useRef(0)
   const omitirCargaRef = useRef(null)
@@ -147,22 +141,63 @@ export function useCuadernoRojo() {
   const cargarHistorial = useCallback(
     async (
       filtrosSolicitados = null,
-      { conservarRegistrosEnError = false, registrarError = true } = {},
+      { conservarRegistrosEnError = false, registrarError = true, limpiarAlIniciar = true } = {},
     ) => {
       const vigentes = filtrosSolicitados ?? filtrosRef.current
+      const anios = aniosDelRango(vigentes.desde, vigentes.hasta)
+
+      if (anios.length === 0) {
+        setError('El período seleccionado no es válido.')
+        setRegistros([])
+        setCargandoHistorial(false)
+        return false
+      }
+
       const token = ++historialSolicitudRef.current
       setCargandoHistorial(true)
+      setProgreso({ completados: 0, total: anios.length })
+      if (limpiarAlIniciar) setRegistros([])
+
+      const resultados = []
+      let siguienteAnio = 0
+      let completados = 0
+      let fallo = null
+
+      async function trabajador() {
+        while (!fallo) {
+          const indice = siguienteAnio
+          siguienteAnio += 1
+          if (indice >= anios.length) return
+
+          try {
+            const lista = await listarCuadernoRojo({ anio: anios[indice] })
+            if (token !== historialSolicitudRef.current) return
+            if (Array.isArray(lista)) resultados.push(...lista)
+            completados += 1
+            setProgreso({ completados, total: anios.length })
+          } catch (errorConsulta) {
+            fallo = errorConsulta
+            return
+          }
+        }
+      }
 
       try {
-        const lista = await listarCuadernoRojo(construirParametros(vigentes))
+        await Promise.all(
+          Array.from({ length: Math.min(LIMITE_SOLICITUDES_ANIO, anios.length) }, () =>
+            trabajador(),
+          ),
+        )
         if (token !== historialSolicitudRef.current) return null
-        setRegistros(Array.isArray(lista) ? lista : [])
+        if (fallo) throw fallo
+
+        setRegistros(filtrarRegistrosPorRango(resultados, vigentes.desde, vigentes.hasta))
         setError(null)
         return true
-      } catch (fallo) {
+      } catch (errorConsulta) {
         if (token !== historialSolicitudRef.current) return null
         if (!conservarRegistrosEnError) setRegistros([])
-        if (registrarError) setError(mensajeError(fallo, 'filtrar'))
+        if (registrarError) setError(mensajeError(errorConsulta, 'filtrar'))
         return false
       } finally {
         if (token === historialSolicitudRef.current) setCargandoHistorial(false)
@@ -211,10 +246,10 @@ export function useCuadernoRojo() {
         }
         setTocados({})
       })
-      .catch((fallo) => {
+      .catch((falloConsulta) => {
         if (!activo || token !== solicitudRef.current) return
         setExistente(false)
-        setError(mensajeError(fallo, 'consultar'))
+        setError(mensajeError(falloConsulta, 'consultar'))
       })
       .finally(() => {
         if (activo && token === solicitudRef.current) setCargandoDia(false)
@@ -227,7 +262,6 @@ export function useCuadernoRojo() {
 
   const cambiarCampo = useCallback((clave, valor) => {
     if (clave === 'fecha' && valor !== valoresRef.current.fecha) {
-      // Invalida de inmediato cualquier consulta pendiente de la fecha anterior.
       solicitudRef.current += 1
       omitirCargaRef.current = null
     }
@@ -245,52 +279,21 @@ export function useCuadernoRojo() {
     setTocados((actuales) => ({ ...actuales, [clave]: true }))
   }, [])
 
-  const cambiarFiltro = useCallback(
-    (clave, valor) => {
-      const actuales = filtrosRef.current
-      let siguientes = actuales
+  const marcarTodosTocados = useCallback(() => {
+    const todos = {}
+    for (const clave of Object.keys(valoresRef.current)) todos[clave] = true
+    setTocados(todos)
+  }, [])
 
-      if (clave === 'anio') {
-        const anio = Number(valor)
-        if (!Number.isInteger(anio) || anio < 2000 || anio > anioActual) return
-        if (String(anio) === actuales.anio) return
-        siguientes = { ...actuales, anio: String(anio) }
-      } else if (clave === 'mes') {
-        if (valor === '') {
-          if (actuales.mes === '') return
-          siguientes = { ...actuales, mes: '' }
-        } else {
-          const mes = Number(valor)
-          if (!Number.isInteger(mes) || mes < 1 || mes > 12) return
-          const normalizado = String(mes).padStart(2, '0')
-          if (normalizado === actuales.mes) return
-          siguientes = { ...actuales, mes: normalizado }
-        }
-      } else {
-        return
-      }
-
-      filtrosRef.current = siguientes
-      setFiltros(siguientes)
-      setError(null)
-    },
-    [anioActual],
-  )
-
-  const restablecerFiltros = useCallback(() => {
-    const siguientes = { anio: String(anioActual), mes: '' }
-    if (filtrosRef.current.anio === siguientes.anio && filtrosRef.current.mes === siguientes.mes) {
-      return
-    }
-    filtrosRef.current = siguientes
-    setFiltros(siguientes)
+  const iniciarRegistroNuevo = useCallback(() => {
+    solicitudRef.current += 1
+    omitirCargaRef.current = null
+    aplicarValores(valoresConFecha())
+    setExistente(false)
+    setTocados({})
     setError(null)
-  }, [anioActual])
+  }, [aplicarValores])
 
-  /**
-   * Selecciona un registro del historial sin volver a consultarlo.
-   * Invalida cualquier GET pendiente para que no sobrescriba la selección.
-   */
   const seleccionarRegistro = useCallback(
     (registro) => {
       if (!registro?.fecha) return
@@ -307,7 +310,6 @@ export function useCuadernoRojo() {
     [aplicarValores],
   )
 
-  /** Snapshot inmutable para la confirmación de actualización. */
   const obtenerSnapshot = useCallback(() => {
     const actuales = valoresRef.current
     const revision = validarFormulario(actuales)
@@ -319,20 +321,13 @@ export function useCuadernoRojo() {
     }
   }, [])
 
-  /**
-   * Guarda (crea o actualiza) el registro.
-   * `confirmado` es un snapshot inmutable tomado al abrir el modal de actualización.
-   */
-  const guardar = useCallback(
-    async (confirmado = null) => {
+  const persistir = useCallback(
+    async (fuente, fecha, { verificarDuplicado = false, marcarTocados = false } = {}) => {
       if (guardandoRef.current) return { ok: false, omitido: true }
 
-      const fuente = confirmado ? confirmado.valores : valoresRef.current
-      const fecha = confirmado ? confirmado.fecha : valoresRef.current.fecha
       const revision = validarFormulario(fuente)
-
       if (!revision.valido) {
-        if (!confirmado) {
+        if (marcarTocados) {
           const todos = {}
           for (const clave of Object.keys(fuente)) todos[clave] = true
           setTocados(todos)
@@ -348,33 +343,90 @@ export function useCuadernoRojo() {
       setGuardando(true)
       setError(null)
 
-      let guardado
       try {
-        guardado = await guardarCuadernoRojo(fecha, datosParaGuardar(fuente))
+        if (verificarDuplicado) {
+          const existenteFecha = await obtenerCuadernoRojo(fecha)
+          if (existenteFecha) {
+            return { ok: false, duplicado: true, registro: existenteFecha }
+          }
+        }
+
+        const guardado = await guardarCuadernoRojo(fecha, datosParaGuardar(fuente))
         aplicarValores(valoresDesdeRegistro(guardado))
         setExistente(true)
         setTocados({})
-      } catch (fallo) {
+
+        const refresco = await cargarHistorial(null, {
+          conservarRegistrosEnError: true,
+          registrarError: false,
+          limpiarAlIniciar: false,
+        })
+
+        return {
+          ok: true,
+          registro: guardado,
+          historialActualizado: refresco !== false,
+          fueraDePeriodo: !fechaEnRango(guardado?.fecha ?? fecha, filtrosRef.current),
+        }
+      } catch (falloGuardado) {
+        return { ok: false, error: mensajeError(falloGuardado, 'guardar') }
+      } finally {
         guardandoRef.current = false
         setGuardando(false)
-        return { ok: false, error: mensajeError(fallo, 'guardar') }
       }
-
-      // El PUT ya fue exitoso. Un fallo al refrescar el historial no invalida el guardado.
-      const refresco = await cargarHistorial(null, {
-        conservarRegistrosEnError: true,
-        registrarError: false,
-      })
-      const historialActualizado = refresco !== false
-      const fueraDePeriodo = !estaEnPeriodo(guardado?.fecha ?? fecha, filtrosRef.current)
-
-      guardandoRef.current = false
-      setGuardando(false)
-
-      return { ok: true, registro: guardado, historialActualizado, fueraDePeriodo }
     },
     [aplicarValores, cargarHistorial],
   )
+
+  const crearRegistro = useCallback(
+    () =>
+      persistir(valoresRef.current, valoresRef.current.fecha, {
+        verificarDuplicado: true,
+        marcarTocados: true,
+      }),
+    [persistir],
+  )
+
+  const guardar = useCallback(
+    (confirmado = null) =>
+      persistir(
+        confirmado ? confirmado.valores : valoresRef.current,
+        confirmado ? confirmado.fecha : valoresRef.current.fecha,
+        { marcarTocados: !confirmado },
+      ),
+    [persistir],
+  )
+
+  const eliminarRegistro = useCallback(async (fecha) => {
+    if (eliminandoRef.current) return { ok: false, omitido: true }
+
+    eliminandoRef.current = true
+    setEliminando(true)
+    try {
+      await eliminarCuadernoRojo(fecha)
+      setRegistros((actuales) => actuales.filter((registro) => registro.fecha !== fecha))
+      return { ok: true }
+    } catch (falloEliminar) {
+      return { ok: false, error: mensajeError(falloEliminar, 'eliminar') }
+    } finally {
+      eliminandoRef.current = false
+      setEliminando(false)
+    }
+  }, [])
+
+  const aplicarFiltros = useCallback(({ desde, hasta }) => {
+    const siguientes = { desde, hasta }
+    filtrosRef.current = siguientes
+    setFiltros(siguientes)
+    setError(null)
+  }, [])
+
+  const restablecerFiltros = useCallback(() => {
+    const siguientes = rangoMesActualGuatemala()
+    filtrosRef.current = siguientes
+    setFiltros(siguientes)
+    setError(null)
+  }, [])
 
   return {
     valores,
@@ -384,19 +436,24 @@ export function useCuadernoRojo() {
     existente,
     registros,
     cargandoHistorial,
+    progreso,
     cargandoDia,
     guardando,
+    eliminando,
     error,
     hayCambios,
     filtros,
-    anioActual,
+    iniciarRegistroNuevo,
     cambiarCampo,
     marcarTocado,
-    cambiarFiltro,
-    restablecerFiltros,
+    marcarTodosTocados,
+    crearRegistro,
     guardar,
     obtenerSnapshot,
     seleccionarRegistro,
+    eliminarRegistro,
+    aplicarFiltros,
+    restablecerFiltros,
     recargarHistorial,
   }
 }

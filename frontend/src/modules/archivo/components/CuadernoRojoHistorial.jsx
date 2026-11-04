@@ -1,37 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Button, EmptyState, Icon, Select, Spinner } from '@/shared/components/ui'
+import { Button, EmptyState, Icon } from '@/shared/components/ui'
 import { COLUMNAS_HISTORIAL } from '../cuadernoRojoCampos'
 import { agruparPorMesAnio } from '../utils/agruparHistorial'
+import CuadernoRojoRangoFechas from './CuadernoRojoRangoFechas.jsx'
 
 const COLUMNAS_CANTIDAD = COLUMNAS_HISTORIAL.filter((columna) => columna.clave !== 'fecha')
 
-const ANIO_MINIMO = 2000
-
-const MESES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-]
-
-const OPCIONES_MES = [
-  { value: '', label: 'Todos' },
-  ...MESES.map((nombre, indice) => ({
-    value: String(indice + 1).padStart(2, '0'),
-    label: nombre,
-  })),
-]
-
-// El formulario usa `sobres` como clave interna; el backend y el mock
-// persisten el mismo dato como `sobresEmergencia`. Se traduce solo al mostrar.
 const CLAVE_REGISTRO = {
   fecha: 'fecha',
   egresosHospitalarios: 'egresosHospitalarios',
@@ -92,31 +66,42 @@ function formatearActualizacion(valor) {
   }
 }
 
-function fechaEnPeriodo(fecha, filtros) {
-  if (!fecha || !filtros?.anio) return true
-  const anio = fecha.slice(0, 4)
-  const mes = fecha.slice(5, 7)
-  return (
-    String(anio) === String(filtros.anio) &&
-    (!filtros.mes || mes === String(filtros.mes).padStart(2, '0'))
-  )
-}
-
-function BotonEditar({ registro, onSeleccionar, deshabilitado }) {
-  if (!onSeleccionar) return null
-
+function BotonEditar({ registro, onEditar }) {
   return (
     <Button
       type="button"
       variant="secondary"
       size="sm"
       className="min-h-11"
-      onClick={() => onSeleccionar(registro)}
-      disabled={deshabilitado}
+      onClick={() => onEditar?.(registro)}
       aria-label={`Editar registro del ${fechaCorta(registro?.fecha)}`}
     >
       <Icon name="edit" className="text-[16px]" />
       Editar
+    </Button>
+  )
+}
+
+function BotonEliminar({ registro, onEliminar, puedeEliminar }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="min-h-11 !text-error hover:!bg-error-container/40"
+      onClick={() => onEliminar?.(registro)}
+      disabled={!puedeEliminar}
+      title={
+        puedeEliminar ? 'Eliminar registro' : 'Eliminar no disponible: el backend no expone DELETE'
+      }
+      aria-label={
+        puedeEliminar
+          ? `Eliminar registro del ${fechaCorta(registro?.fecha)}`
+          : `Eliminar no disponible para el registro del ${fechaCorta(registro?.fecha)}`
+      }
+    >
+      <Icon name="delete" className="text-[16px]" />
+      Eliminar
     </Button>
   )
 }
@@ -171,43 +156,75 @@ function DetalleRegistro({ registro, id }) {
   )
 }
 
+function ResumenCuaderno({ registros }) {
+  const resumen = useMemo(
+    () =>
+      registros.reduce(
+        (acumulado, registro) => ({
+          dias: acumulado.dias + 1,
+          egresos: acumulado.egresos + (Number(registro.egresosHospitalarios) || 0),
+          emergencia: acumulado.emergencia + (Number(registro.sobresEmergencia) || 0),
+          sellados: acumulado.sellados + (Number(registro.sobresSellados) || 0),
+          tia: acumulado.tia + (Number(registro.tia) || 0),
+        }),
+        { dias: 0, egresos: 0, emergencia: 0, sellados: 0, tia: 0 },
+      ),
+    [registros],
+  )
+
+  const metricas = [
+    { etiqueta: 'Días registrados', valor: resumen.dias },
+    { etiqueta: 'Egresos hospitalarios', valor: resumen.egresos },
+    { etiqueta: 'Sobres emergencia', valor: resumen.emergencia },
+    { etiqueta: 'Sobres sellados', valor: resumen.sellados },
+    { etiqueta: 'TIA', valor: resumen.tia },
+  ]
+
+  return (
+    <dl
+      aria-label="Resumen estadístico del período"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-1.5"
+    >
+      {metricas.map((metrica, indice) => (
+        <div
+          key={metrica.etiqueta}
+          className={`rounded-lg border border-outline-variant/70 border-l-4 border-l-primary/70 bg-surface-container-lowest px-2.5 py-1.5 sm:px-1.5 sm:py-1 ${
+            indice === 0 ? 'col-span-2 sm:col-span-1' : ''
+          }`}
+        >
+          <dt className="text-[10px] font-semibold uppercase leading-tight tracking-normal text-on-surface-variant sm:text-[9px] lg:text-[10px]">
+            {metrica.etiqueta}
+          </dt>
+          <dd className="text-metric-sub tabular-nums text-primary">{metrica.valor}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /**
- * Historial de registros del Cuaderno Rojo. La tabla aparece solo cuando el
- * ancho real permite 40rem sin desbordar (xl); por debajo se usan filas
- * agrupadas por mes, cómodas para tablet y móvil.
+ * Tabla principal del Cuaderno Rojo: resumen, rango de fechas, reporte,
+ * registros y detalle de trazabilidad.
  */
 export default function CuadernoRojoHistorial({
   registros = [],
   cargando = false,
-  onRecargar,
-  onSeleccionar,
-  fechaSeleccionada,
-  deshabilitado = false,
-  filtros = null,
-  anioActual = null,
-  onCambiarFiltro,
+  progreso = { completados: 0, total: 0 },
+  filtros = { desde: '', hasta: '' },
+  onAplicarFiltros,
   onRestablecer,
-  registroEnEdicion = null,
+  onEditar,
+  onEliminar,
+  puedeEliminar = false,
+  onGenerarPdf,
 }) {
   const grupos = agruparPorMesAnio(registros)
-  const vacio = grupos.length === 0
-  const tieneFiltros = Boolean(filtros && onCambiarFiltro)
-  const anioTope = Number(anioActual) || Number(filtros?.anio) || new Date().getFullYear()
-  const anioSeleccionado = filtros?.anio ?? ''
-  const mesSeleccionado = filtros?.mes ?? ''
+  const vacio = registros.length === 0
   const [detalleAbierto, setDetalleAbierto] = useState(null)
-
-  const opcionesAnio = useMemo(() => {
-    const cantidad = Math.max(0, anioTope - ANIO_MINIMO + 1)
-    return Array.from({ length: cantidad }, (_, indice) => {
-      const anio = anioTope - indice
-      return { value: String(anio), label: String(anio) }
-    })
-  }, [anioTope])
 
   useEffect(() => {
     setDetalleAbierto(null)
-  }, [filtros?.anio, filtros?.mes])
+  }, [filtros?.desde, filtros?.hasta])
 
   useEffect(() => {
     if (!detalleAbierto) return
@@ -217,101 +234,72 @@ export default function CuadernoRojoHistorial({
     if (!sigueEnLista) setDetalleAbierto(null)
   }, [registros, detalleAbierto])
 
-  const esSeleccionado = (registro) =>
-    Boolean(fechaSeleccionada) && registro?.fecha === fechaSeleccionada
-
   const alternarDetalle = (registro) => {
     const clave = String(claveRegistro(registro) ?? '')
     if (!clave) return
     setDetalleAbierto((actual) => (actual === clave ? null : clave))
   }
 
-  const notaFueraDePeriodo = Boolean(
-    registroEnEdicion && filtros && !fechaEnPeriodo(registroEnEdicion, filtros),
-  )
+  const porcentaje =
+    progreso.total > 0 ? Math.round((progreso.completados / progreso.total) * 100) : 0
 
   return (
-    <section aria-label="Historial de registros" className="space-y-4">
+    <section aria-label="Registros del Cuaderno Rojo" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-title-md text-on-surface">Historial</h3>
-          {(registros.length > 0 || !tieneFiltros) && (
-            <p className="text-body-sm text-on-surface-variant">
-              {registros.length === 0
-                ? 'Aún no hay días registrados.'
-                : `${registros.length} ${registros.length === 1 ? 'día registrado' : 'días registrados'}.`}
-            </p>
-          )}
+          <h3 className="text-title-md text-on-surface">Registros</h3>
         </div>
 
-        {onRecargar && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="min-h-11"
-            onClick={onRecargar}
-            disabled={cargando}
-          >
-            <Icon name="refresh" className="text-[18px]" />
-            Actualizar
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onGenerarPdf}
+          disabled={cargando || vacio}
+          className="min-h-11 w-full sm:w-auto"
+        >
+          <Icon name="picture_as_pdf" className="text-[18px]" />
+          Generar reporte PDF
+        </Button>
       </div>
 
-      {tieneFiltros && (
-        <div className="flex flex-wrap items-end gap-2">
-          <Select
-            label="Año"
-            ariaLabel="Año"
-            value={anioSeleccionado}
-            onChange={(valor) => onCambiarFiltro('anio', valor)}
-            options={opcionesAnio}
-            className="w-[calc(50%-0.25rem)] sm:w-36 [&_button]:min-h-11"
-          />
-          <Select
-            label="Mes"
-            ariaLabel="Mes"
-            value={mesSeleccionado}
-            onChange={(valor) => onCambiarFiltro('mes', valor)}
-            options={OPCIONES_MES}
-            className="w-[calc(50%-0.25rem)] sm:w-40 [&_button]:min-h-11"
-          />
-          {onRestablecer && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="min-h-11 w-full sm:w-auto"
-              onClick={onRestablecer}
-            >
-              <Icon name="restart_alt" className="text-[18px]" />
-              Restablecer
-            </Button>
-          )}
-        </div>
-      )}
+      {!cargando && !vacio && <ResumenCuaderno registros={registros} />}
 
-      {notaFueraDePeriodo && (
-        <p className="flex items-start gap-2 text-body-sm text-on-surface-variant">
-          <Icon name="info" className="text-[16px] text-amber-600 dark:text-amber-400" />
-          El registro que está editando no pertenece al período seleccionado.
-        </p>
-      )}
+      <CuadernoRojoRangoFechas
+        filtros={filtros}
+        onAplicar={onAplicarFiltros}
+        onRestablecer={onRestablecer}
+        cargando={cargando}
+      />
 
       {cargando ? (
-        <Spinner label="Cargando historial…" />
+        <div className="space-y-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+          <p className="text-body-sm text-on-surface-variant" role="status">
+            {progreso.total > 1
+              ? `Consultando ${progreso.completados} de ${progreso.total} años…`
+              : 'Consultando registros…'}
+          </p>
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200"
+              style={{ width: `${porcentaje}%` }}
+            />
+          </div>
+        </div>
       ) : vacio ? (
         <EmptyState
-          title={tieneFiltros ? 'Sin registros en el período seleccionado' : 'Sin registros'}
-          description={
-            tieneFiltros
-              ? 'Pruebe con otro año o mes.'
-              : 'Los días que guarde aparecerán aquí agrupados por mes y año.'
-          }
+          title="Sin registros en el período seleccionado"
+          description="Ajuste el rango de fechas o registre un nuevo día."
         />
       ) : (
         <>
           {/* Móvil y tablet: filas agrupadas por mes */}
-          <div className="space-y-5 xl:hidden">
+          <div
+            data-testid="historial-scroll-movil"
+            role="region"
+            aria-label="Listado de registros del Cuaderno Rojo"
+            tabIndex={0}
+            className="max-h-[520px] space-y-5 overflow-y-auto pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue xl:hidden"
+          >
             {grupos.map((grupo) => (
               <section key={grupo.clave} aria-label={grupo.etiqueta}>
                 <h4 className="mb-2 flex items-center justify-between gap-2 text-label-md uppercase tracking-wide text-on-surface-variant">
@@ -323,35 +311,28 @@ export default function CuadernoRojoHistorial({
                 </h4>
                 <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
                   {grupo.registros.map((registro, indice) => {
-                    const seleccionado = esSeleccionado(registro)
                     const abierto = String(detalleAbierto) === String(claveRegistro(registro))
                     return (
                       <li
                         key={registro?.id ?? `${grupo.clave}-${indice}`}
-                        className={`border-l-2 p-3 sm:p-4 ${
-                          seleccionado ? 'border-primary bg-primary/5' : 'border-transparent'
-                        }`}
+                        className={`p-3 sm:p-4 ${abierto ? 'bg-surface-container-low/60' : ''}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="flex flex-wrap items-center gap-2 text-title-sm font-semibold text-on-surface">
+                          <p className="text-title-sm font-semibold text-on-surface">
                             {fechaCorta(registro?.fecha)}
-                            {seleccionado && (
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-label-sm font-semibold text-primary">
-                                En edición
-                              </span>
-                            )}
                           </p>
-                          <div className="flex flex-wrap items-center justify-end gap-2">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
                             <BotonDetalle
                               registro={registro}
                               vista="movil"
                               abierto={abierto}
                               onAlternar={alternarDetalle}
                             />
-                            <BotonEditar
+                            <BotonEditar registro={registro} onEditar={onEditar} />
+                            <BotonEliminar
                               registro={registro}
-                              onSeleccionar={onSeleccionar}
-                              deshabilitado={deshabilitado}
+                              onEliminar={onEliminar}
+                              puedeEliminar={puedeEliminar}
                             />
                           </div>
                         </div>
@@ -383,42 +364,53 @@ export default function CuadernoRojoHistorial({
             ))}
           </div>
 
-          {/* Escritorio amplio: tabla compacta */}
+          {/* Escritorio amplio: tabla compacta con scroll interno */}
           <div className="hidden overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest xl:block">
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-              <caption className="sr-only">Historial de registros del Cuaderno Rojo</caption>
-              <thead>
-                <tr className="border-b border-outline-variant bg-surface-container-low text-on-surface-variant">
-                  {COLUMNAS_HISTORIAL.map((columna) => (
+            <div
+              data-testid="historial-scroll-escritorio"
+              role="region"
+              aria-label="Listado de registros del Cuaderno Rojo"
+              tabIndex={0}
+              className="max-h-[520px] overflow-y-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hro-blue"
+            >
+              <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
+                <caption className="sr-only">Registros del Cuaderno Rojo</caption>
+                <thead>
+                  <tr className="border-b border-outline-variant bg-surface-container-low text-on-surface-variant">
+                    {COLUMNAS_HISTORIAL.map((columna) => (
+                      <th
+                        key={columna.clave}
+                        scope="col"
+                        className={`sticky top-0 z-10 bg-surface-container-low px-3 py-2.5 font-semibold ${
+                          columna.clave === 'fecha' ? 'text-left' : 'text-right'
+                        }`}
+                      >
+                        {columna.etiqueta}
+                      </th>
+                    ))}
                     <th
-                      key={columna.clave}
                       scope="col"
-                      className={`px-3 py-2.5 font-semibold ${
-                        columna.clave === 'fecha' ? 'text-left' : 'text-right'
-                      }`}
+                      className="sticky top-0 z-10 w-80 bg-surface-container-low px-3 py-2.5 text-right font-semibold"
                     >
-                      {columna.etiqueta}
+                      Acciones
                     </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupos.map((grupo) => (
+                    <GrupoHistorial
+                      key={grupo.clave}
+                      grupo={grupo}
+                      onEditar={onEditar}
+                      onEliminar={onEliminar}
+                      puedeEliminar={puedeEliminar}
+                      detalleAbierto={detalleAbierto}
+                      onAlternarDetalle={alternarDetalle}
+                    />
                   ))}
-                  <th scope="col" className="w-56 px-3 py-2.5 text-right font-semibold">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {grupos.map((grupo) => (
-                  <GrupoHistorial
-                    key={grupo.clave}
-                    grupo={grupo}
-                    onSeleccionar={onSeleccionar}
-                    esSeleccionado={esSeleccionado}
-                    deshabilitado={deshabilitado}
-                    detalleAbierto={detalleAbierto}
-                    onAlternarDetalle={alternarDetalle}
-                  />
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -428,9 +420,9 @@ export default function CuadernoRojoHistorial({
 
 function GrupoHistorial({
   grupo,
-  onSeleccionar,
-  esSeleccionado,
-  deshabilitado,
+  onEditar,
+  onEliminar,
+  puedeEliminar,
   detalleAbierto,
   onAlternarDetalle,
 }) {
@@ -446,13 +438,12 @@ function GrupoHistorial({
         </th>
       </tr>
       {grupo.registros.map((registro, indice) => {
-        const seleccionado = esSeleccionado(registro)
         const abierto = String(detalleAbierto) === String(claveRegistro(registro))
         return (
           <Fragment key={registro?.id ?? `${grupo.clave}-${indice}`}>
             <tr
-              className={`border-b border-outline-variant/60 last:border-0 ${
-                seleccionado ? 'bg-primary/5' : ''
+              className={`border-b border-outline-variant/60 ${
+                abierto ? 'bg-surface-container-low/60' : ''
               }`}
             >
               {COLUMNAS_HISTORIAL.map((columna) =>
@@ -460,18 +451,9 @@ function GrupoHistorial({
                   <th
                     key={columna.clave}
                     scope="row"
-                    className={`border-l-2 px-3 py-2.5 text-left font-semibold text-on-surface ${
-                      seleccionado ? 'border-primary' : 'border-transparent'
-                    }`}
+                    className="px-3 py-2.5 text-left font-semibold text-on-surface"
                   >
-                    <span className="inline-flex flex-wrap items-center gap-2">
-                      {fechaCorta(registro?.[columna.clave])}
-                      {seleccionado && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-label-sm font-semibold text-primary">
-                          En edición
-                        </span>
-                      )}
-                    </span>
+                    {fechaCorta(registro?.fecha)}
                   </th>
                 ) : (
                   <td
@@ -483,17 +465,18 @@ function GrupoHistorial({
                 ),
               )}
               <td className="px-3 py-2.5 text-right">
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  <BotonEditar registro={registro} onEditar={onEditar} />
                   <BotonDetalle
                     registro={registro}
                     vista="escritorio"
                     abierto={abierto}
                     onAlternar={onAlternarDetalle}
                   />
-                  <BotonEditar
+                  <BotonEliminar
                     registro={registro}
-                    onSeleccionar={onSeleccionar}
-                    deshabilitado={deshabilitado}
+                    onEliminar={onEliminar}
+                    puedeEliminar={puedeEliminar}
                   />
                 </div>
               </td>

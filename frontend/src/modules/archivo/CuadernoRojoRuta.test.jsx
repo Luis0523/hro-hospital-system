@@ -32,7 +32,7 @@ describe('AppRouter · /archivo/cuaderno-rojo', () => {
     renderRuta('/archivo/cuaderno-rojo')
 
     expect(screen.getByRole('heading', { name: 'Cuaderno Rojo' })).toBeInTheDocument()
-    expect(screen.getByLabelText('TIA')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /registrar nuevo día/i })).toBeInTheDocument()
   })
 
   it('se integra con el layout de Archivo', () => {

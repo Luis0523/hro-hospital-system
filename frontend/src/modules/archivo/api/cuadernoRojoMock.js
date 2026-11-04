@@ -96,6 +96,17 @@ export function guardarCuadernoRojoMock(fecha, datos) {
   return registro
 }
 
+export function eliminarCuadernoRojoMock(fecha) {
+  const registro = registros.get(fecha)
+  if (!registro) {
+    const error = new Error('No se encontró el registro del Cuaderno Rojo.')
+    error.status = 404
+    throw error
+  }
+  registros.delete(fecha)
+  return registro
+}
+
 export function reiniciarCuadernoRojoMock() {
   registros.clear()
   siguienteId = 1
