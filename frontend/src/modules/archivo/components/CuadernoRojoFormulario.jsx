@@ -1,82 +1,83 @@
-import { Alert, Button, Icon, Input } from '@/shared/components/ui'
+import { Input, InputFecha } from '@/shared/components/ui'
 import { CAMPOS_CUADERNO_ROJO } from '../cuadernoRojoCampos'
 
 const CAMPOS_CANTIDAD = CAMPOS_CUADERNO_ROJO.filter((campo) => campo.tipo !== 'fecha')
 
 /**
- * Formulario de captura del Cuaderno Rojo. Es controlado por `useCuadernoRojo`:
- * la fecha y las cantidades viven en `valores`; aquí solo se presentan.
+ * Campos del formulario del Cuaderno Rojo. Se usa dentro de los modales de
+ * alta y edición; las acciones viven en el footer del modal.
  */
 export default function CuadernoRojoFormulario({
   valores,
   errores,
   tocados,
-  existente,
-  cargandoDia,
-  guardando,
   onCambiar,
   onBlur,
   onGuardar,
+  formId = 'cuaderno-rojo-form',
+  bloquearFecha = false,
+  cargandoDia = false,
+  guardando = false,
 }) {
+  const camposBloqueados = cargandoDia || guardando
+
   function manejarEnvio(evento) {
     evento.preventDefault()
-    onGuardar()
+    onGuardar?.()
   }
 
   return (
-    <form className="space-y-5" noValidate onSubmit={manejarEnvio}>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Input
+    <form
+      id={formId}
+      className="space-y-4"
+      noValidate
+      onSubmit={manejarEnvio}
+      aria-busy={cargandoDia}
+      aria-label="Registro del día"
+    >
+      <div className="max-w-xs">
+        <InputFecha
           id="cuaderno-rojo-fecha"
           name="fecha"
-          label="Fecha"
-          type="date"
+          label="Fecha del registro"
           value={valores.fecha}
+          disabled={bloquearFecha || guardando}
+          className="min-h-11 text-base sm:text-sm"
           error={tocados.fecha ? errores.fecha : undefined}
-          hint="Un registro por día. Puede corregir fechas anteriores."
-          onChange={(evento) => onCambiar('fecha', evento.target.value)}
+          hint={
+            bloquearFecha ? 'La fecha del registro no cambia al editarlo.' : 'Un registro por día.'
+          }
+          onChange={(valor) => onCambiar('fecha', valor)}
           onBlur={() => onBlur('fecha')}
         />
+      </div>
 
+      <div className="grid grid-cols-2 gap-3">
         {CAMPOS_CANTIDAD.map((campo) => (
-          <Input
-            key={campo.clave}
-            id={`cuaderno-rojo-${campo.clave}`}
-            name={campo.clave}
-            label={campo.etiqueta}
-            type="text"
-            inputMode="numeric"
-            placeholder="0"
-            autoComplete="off"
-            value={valores[campo.clave]}
-            error={tocados[campo.clave] ? errores[campo.clave] : undefined}
-            onChange={(evento) => onCambiar(campo.clave, evento.target.value)}
-            onBlur={() => onBlur(campo.clave)}
-          />
+          <div key={campo.clave} className="min-w-0">
+            <Input
+              id={`cuaderno-rojo-${campo.clave}`}
+              name={campo.clave}
+              label={campo.etiqueta}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="0"
+              autoComplete="off"
+              disabled={camposBloqueados}
+              className="min-h-11 text-right text-base tabular-nums sm:text-sm"
+              value={valores[campo.clave]}
+              error={tocados[campo.clave] ? errores[campo.clave] : undefined}
+              onChange={(evento) => onCambiar(campo.clave, evento.target.value)}
+              onBlur={() => onBlur(campo.clave)}
+            />
+          </div>
         ))}
       </div>
 
       <p className="text-body-sm text-on-surface-variant">
-        Ingrese cantidades enteras iguales o mayores a cero.
+        Cantidades enteras mayores o iguales a cero.
       </p>
-
-      {existente && (
-        <Alert tone="info" title="Esta fecha ya tiene un registro">
-          Al guardar se actualizarán los valores existentes; no se creará un duplicado.
-        </Alert>
-      )}
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        {cargandoDia && (
-          <span className="text-body-sm text-on-surface-variant" role="status">
-            Consultando el registro de la fecha…
-          </span>
-        )}
-        <Button type="submit" disabled={guardando || cargandoDia} className="w-full sm:w-auto">
-          <Icon name="save" className="text-[18px]" />
-          {guardando ? 'Guardando…' : existente ? 'Actualizar registro' : 'Guardar registro'}
-        </Button>
-      </div>
     </form>
   )
 }

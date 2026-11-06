@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Icon, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, InputFecha, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useTema } from '@/shared/context/ThemeContext.jsx'
 import { hoyIso } from '@/shared/utils/fecha'
@@ -182,12 +182,12 @@ export default function ReportesArchivoPage() {
         <>
           <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1">
             <Icon name="calendar_today" className="text-[18px] text-primary" />
-            <input
-              type="date"
+            <InputFecha
+              soloInput
               value={fecha}
-              onChange={(evento) => setFecha(evento.target.value)}
+              onChange={setFecha}
               aria-label="Fecha del reporte"
-              className="h-8 rounded-md bg-transparent text-label-sm font-semibold outline-none"
+              className="h-8 w-[7rem] text-label-sm font-semibold"
             />
           </label>
           <Button size="sm" variant="secondary" onClick={() => setRecarga((n) => n + 1)}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Icon, Modal, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, InputFecha, Modal, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { useEstacion } from '@/shared/context/EstacionContext.jsx'
 import { useTema } from '@/shared/context/ThemeContext.jsx'
@@ -186,12 +186,12 @@ export default function SalidaArchivoHospitalPage() {
               name="calendar_today"
               className="hidden text-[18px] text-primary sm:inline-block"
             />
-            <input
-              type="date"
+            <InputFecha
+              soloInput
               value={fecha}
-              onChange={(evento) => setFecha(evento.target.value)}
+              onChange={setFecha}
               aria-label="Fecha de la salida"
-              className="h-8 w-[6.6rem] rounded-md bg-transparent text-xs font-semibold outline-none sm:w-auto sm:text-label-sm"
+              className="h-8 w-[6.6rem] text-xs font-semibold sm:w-[7rem] sm:text-label-sm"
             />
           </label>
 

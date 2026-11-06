@@ -1,5 +1,6 @@
 package com.hro.system.archivo.service;
 
+import com.hro.system.archivo.dto.DepurarExpedienteManualRequestDTO;
 import com.hro.system.archivo.dto.DepurarExpedienteRequestDTO;
 import com.hro.system.archivo.dto.ExpedienteDepuradoResponseDTO;
 import com.hro.system.archivo.entity.Expediente;
@@ -9,6 +10,8 @@ import com.hro.system.archivo.repository.ExpedienteRepository;
 import com.hro.system.auth.UsuarioContexto;
 import com.hro.system.common.ConflictException;
 import com.hro.system.common.ResourceNotFoundException;
+import com.hro.system.integracion.dto.PacienteHroDTO;
+import com.hro.system.integracion.service.ExpedienteHroService;
 import com.hro.system.paciente.entity.Paciente;
 import com.hro.system.usuario.entity.UsuarioReferencia;
 import com.hro.system.usuario.repository.UsuarioReferenciaRepository;
@@ -39,40 +42,117 @@ public class DepuracionArchivoService {
     private final ExpedienteRepository expedienteRepository;
     private final ExpedienteDepuracionRepository depuracionRepository;
     private final UsuarioReferenciaRepository usuarioRepository;
+    private final ExpedienteHroService expedienteHroService;
 
     @Transactional
     public ExpedienteDepuradoResponseDTO depurar(DepurarExpedienteRequestDTO dto) {
         String numero = dto.getNumeroExpediente().trim();
-        Expediente expediente = expedienteRepository.findByNumeroExpediente(numero)
-                .orElseThrow(() -> new ResourceNotFoundException("Expediente", "numeroExpediente", numero));
-
-        if (Boolean.TRUE.equals(expediente.getDepurado())) {
-            throw new ConflictException("EXPEDIENTE_YA_DEPURADO",
-                    "El expediente '" + numero + "' ya fue depurado.", null);
-        }
+        Expediente expediente = expedienteRepository.findByNumeroExpediente(numero).orElse(null);
 
         UsuarioReferencia usuario = usuarioActual();
         OffsetDateTime ahora = OffsetDateTime.now();
-        Paciente paciente = expediente.getPaciente();
+        Paciente paciente = null;
+        String pacienteNombre;
 
-        expediente.setDepurado(true);
-        expediente.setDepuradoEn(ahora);
-        expediente.setDepuradoPor(usuario);
-        expediente.setMotivoDepuracion(dto.getMotivo());
-        expedienteRepository.save(expediente);
+        if (expediente != null) {
+            if (Boolean.TRUE.equals(expediente.getDepurado())) {
+                throw new ConflictException("EXPEDIENTE_YA_DEPURADO",
+                        "El expediente '" + numero + "' ya fue depurado.", null);
+            }
+
+            paciente = expediente.getPaciente();
+            pacienteNombre = nombrePaciente(paciente);
+
+            expediente.setDepurado(true);
+            expediente.setDepuradoEn(ahora);
+            expediente.setDepuradoPor(usuario);
+            expediente.setMotivoDepuracion(dto.getMotivo());
+            expedienteRepository.save(expediente);
+        } else {
+            if (depuracionRepository.findByNumeroExpedienteAndExpedienteIsNull(numero).isPresent()) {
+                throw new ConflictException("EXPEDIENTE_YA_DEPURADO",
+                        "El expediente '" + numero + "' ya fue depurado.", null);
+            }
+
+            PacienteHroDTO hospital = expedienteHroService.consultar(numero);
+            if (hospital == null) {
+                throw new ResourceNotFoundException("Expediente", "numeroExpediente", numero);
+            }
+            pacienteNombre = hospital.getNombreCompleto();
+        }
 
         ExpedienteDepuracion registro = depuracionRepository.save(ExpedienteDepuracion.builder()
                 .expediente(expediente)
                 .numeroExpediente(numero)
                 .paciente(paciente)
-                .pacienteNombre(nombrePaciente(paciente))
+                .pacienteNombre(pacienteNombre)
                 .motivo(dto.getMotivo())
                 .usuario(usuario)
                 .depuradoEn(ahora)
                 .build());
 
-        log.info("Expediente {} depurado por '{}'", numero, nombreUsuario(usuario));
+        log.info("Expediente {} depurado por '{}'{}", numero, nombreUsuario(usuario),
+                expediente == null ? " (sin registro local)" : "");
         return map(registro);
+    }
+
+    @Transactional
+    public ExpedienteDepuradoResponseDTO registrarManual(DepurarExpedienteManualRequestDTO dto) {
+        String numero = dto.getNumeroExpediente().trim();
+        String pacienteNombre = dto.getPacienteNombre().trim();
+        UsuarioReferencia usuario = usuarioActual();
+        OffsetDateTime ahora = OffsetDateTime.now();
+        Expediente expediente = expedienteRepository.findByNumeroExpediente(numero).orElse(null);
+        Paciente paciente = null;
+
+        if (expediente != null) {
+            if (Boolean.TRUE.equals(expediente.getDepurado())) {
+                throw new ConflictException("EXPEDIENTE_YA_DEPURADO",
+                        "El expediente '" + numero + "' ya fue depurado.", null);
+            }
+            paciente = expediente.getPaciente();
+            expediente.setDepurado(true);
+            expediente.setDepuradoEn(ahora);
+            expediente.setDepuradoPor(usuario);
+            expediente.setMotivoDepuracion(dto.getMotivo());
+            expedienteRepository.save(expediente);
+        } else if (depuracionRepository
+                .findByNumeroExpedienteAndExpedienteIsNull(numero).isPresent()) {
+            throw new ConflictException("EXPEDIENTE_YA_DEPURADO",
+                    "El expediente '" + numero + "' ya fue depurado.", null);
+        }
+
+        ExpedienteDepuracion registro = depuracionRepository.save(ExpedienteDepuracion.builder()
+                .expediente(expediente)
+                .numeroExpediente(numero)
+                .paciente(paciente)
+                .pacienteNombre(pacienteNombre)
+                .motivo(dto.getMotivo())
+                .usuario(usuario)
+                .depuradoEn(ahora)
+                .build());
+
+        log.info("Expediente {} depurado manualmente por '{}'", numero, nombreUsuario(usuario));
+        return map(registro);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        ExpedienteDepuracion registro = depuracionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "ExpedienteDepuracion", "id", id));
+
+        Expediente expediente = registro.getExpediente();
+        if (expediente != null) {
+            expediente.setDepurado(false);
+            expediente.setDepuradoEn(null);
+            expediente.setDepuradoPor(null);
+            expediente.setMotivoDepuracion(null);
+            expedienteRepository.save(expediente);
+        }
+
+        depuracionRepository.delete(registro);
+        log.info("Depuración {} eliminada (expediente {})", id, registro.getNumeroExpediente());
     }
 
     @Transactional(readOnly = true)

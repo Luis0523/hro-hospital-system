@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Icon } from '@/shared/components/ui'
+import { Icon, InputFecha } from '@/shared/components/ui'
 import { useAuth } from '@/shared/context/AuthContext.jsx'
 import { useTema } from '@/shared/context/ThemeContext.jsx'
 import { formatearFechaLarga } from '@/shared/utils/fecha'
@@ -58,12 +58,12 @@ export default function SalidaArchivoHeader({
 
           <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1">
             <Icon name="calendar_today" className="text-[18px] text-primary" />
-            <input
-              type="date"
+            <InputFecha
+              soloInput
               value={fecha}
-              onChange={(evento) => onFecha(evento.target.value)}
+              onChange={onFecha}
               aria-label="Fecha de la salida"
-              className="h-8 rounded-md bg-transparent text-label-sm font-semibold outline-none"
+              className="h-8 w-[7rem] text-label-sm font-semibold"
             />
           </label>
 

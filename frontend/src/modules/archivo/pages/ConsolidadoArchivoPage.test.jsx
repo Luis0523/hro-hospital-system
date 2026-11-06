@@ -47,4 +47,19 @@ describe('ConsolidadoArchivoPage', () => {
     expect(screen.getByText(/Tabla 2 · Detalle/i)).toBeInTheDocument()
     expect(screen.getByText(/Totales del mes/i)).toBeInTheDocument()
   })
+
+  it('abre la pestaña Depuraciones con el historial de hoy', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('tab', { name: 'Depuraciones' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Depurados de hoy', level: 3 }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Esta semana' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rango personalizado' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^deshacer$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /depurar expediente/i })).not.toBeInTheDocument()
+  })
 })

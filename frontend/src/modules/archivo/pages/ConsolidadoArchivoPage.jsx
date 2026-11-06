@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Icon, Input, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, InputFecha, InputMes, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import { obtenerCuadernoRojo } from '../api/archivoApi'
 import { obtenerEstadisticasJefe } from '../api/dashboardArchivoApi'
@@ -7,6 +7,7 @@ import { descargarArchivadosPdf } from '../api/consolidadoArchivoApi'
 import { descargarBlob } from '../utils/descargarBlob'
 import ArchivoLayout from '../components/ArchivoLayout.jsx'
 import ConsolidadoDiario from '../components/consolidado/ConsolidadoDiario.jsx'
+import HistorialDepuracionesConsolidado from '../components/consolidado/HistorialDepuracionesConsolidado.jsx'
 import TablaInformeEstadistico from '../components/consolidado/TablaInformeEstadistico.jsx'
 import TablaDetalleConsulta from '../components/consolidado/TablaDetalleConsulta.jsx'
 import BloqueTotalesMes from '../components/consolidado/BloqueTotalesMes.jsx'
@@ -15,6 +16,7 @@ import { useConsolidadoArchivo } from '../hooks/useConsolidadoArchivo'
 const VISTAS = [
   { clave: 'diario', etiqueta: 'Diario', icono: 'today' },
   { clave: 'mensual', etiqueta: 'Mensual', icono: 'calendar_month' },
+  { clave: 'depuraciones', etiqueta: 'Depuraciones', icono: 'delete_sweep' },
 ]
 
 function mesValor(periodo) {
@@ -106,7 +108,7 @@ export default function ConsolidadoArchivoPage() {
             </p>
           </div>
 
-          <div role="tablist" aria-label="Tipo de consolidado" className="flex gap-2">
+          <div role="tablist" aria-label="Tipo de consolidado" className="flex flex-wrap gap-2">
             {VISTAS.map((item) => {
               const activa = vista === item.clave
               return (
@@ -137,12 +139,11 @@ export default function ConsolidadoArchivoPage() {
               className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <Input
+                <InputFecha
                   label="Fecha"
                   name="fecha-consolidado"
-                  type="date"
                   value={fecha}
-                  onChange={(evento) => setFecha(evento.target.value)}
+                  onChange={(valor) => setFecha(valor)}
                   className="sm:max-w-xs"
                 />
                 <div className="flex flex-wrap gap-2">
@@ -252,13 +253,12 @@ export default function ConsolidadoArchivoPage() {
               className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <Input
+                <InputMes
                   label="Mes"
                   name="mes-consolidado"
-                  type="month"
                   value={mesValor(periodo)}
-                  onChange={(evento) => {
-                    const [anio, mes] = evento.target.value.split('-').map(Number)
+                  onChange={(valor) => {
+                    const [anio, mes] = valor.split('-').map(Number)
                     if (anio && mes) setPeriodo({ anio, mes })
                   }}
                   className="sm:max-w-xs"
@@ -292,6 +292,8 @@ export default function ConsolidadoArchivoPage() {
             )}
           </>
         )}
+
+        {vista === 'depuraciones' && <HistorialDepuracionesConsolidado />}
       </main>
 
       <ModalGenerandoPdf abierto={descargandoArchivados} progreso={progresoPdf} />

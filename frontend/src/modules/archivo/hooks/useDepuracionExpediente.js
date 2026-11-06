@@ -1,28 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { hoyIso } from '@/shared/utils/fecha'
 import {
-  buscarExpedienteParaDepurar,
-  listarDepuraciones,
+  MENSAJES_ERROR_EXPEDIENTE,
+  formatearExpedienteDepuracion,
+  validarEntradaExpediente,
+} from '../utils/expedienteDepuracion'
+import {
+  USANDO_DATOS_MOCK,
+  deshacerUltimaDepuracion,
+  eliminarDepuracion,
   marcarDepurado,
+  registrarDepuracionManual,
 } from '../api/depuracionArchivoApi'
+import { useHistorialDepurados } from './useHistorialDepurados'
 
-const DEBOUNCE_MS = 350
+function esFalloDeRed(fallo) {
+  return fallo?.status == null
+}
 
-// Orquesta la pantalla de Depuración: búsqueda automática por número de
-// expediente, confirmación de baja lógica y bitácora del día.
-// `estado`: inicial | buscando | encontrado | no_encontrado | duplicado | error.
 export function useDepuracionExpediente() {
+  const historial = useHistorialDepurados()
+  const { invalidarRegistro: invalidarRegistroHistorial, refrescar: refrescarHistorial } = historial
+
   const [numero, setNumero] = useState('')
-  const [resultado, setResultado] = useState(null)
   const [estado, setEstado] = useState('inicial')
   const [mensaje, setMensaje] = useState(null)
   const [exito, setExito] = useState(null)
-  const [motivo, setMotivo] = useState('')
-  const [depurados, setDepurados] = useState([])
   const [procesando, setProcesando] = useState(false)
+  const [pendientes, setPendientes] = useState([])
+  const [fallidos, setFallidos] = useState(0)
+  const [ultimaDepuracion, setUltimaDepuracion] = useState(null)
+  const [confirmacionDeshacerAbierta, setConfirmacionDeshacerAbierta] = useState(false)
+  const [errorDeshacer, setErrorDeshacer] = useState(null)
+  const [deshaciendo, setDeshaciendo] = useState(false)
+  const [exitoDeshacer, setExitoDeshacer] = useState(null)
 
   const inputRef = useRef(null)
-  const peticionRef = useRef(0)
+  const colaRef = useRef([])
+  const procesandoRef = useRef(false)
+  const enColaRef = useRef(new Set())
+  const deshaciendoRef = useRef(false)
 
   const enfocar = useCallback(() => inputRef.current?.focus(), [])
 
@@ -30,124 +46,209 @@ export function useDepuracionExpediente() {
     enfocar()
   }, [enfocar])
 
-  const cargarBitacora = useCallback(async () => {
-    try {
-      setDepurados(await listarDepuraciones({ fecha: hoyIso() }))
-    } catch {
-      // Silencioso: la bitácora se reintenta al confirmar/recargar.
-    }
-  }, [])
-
-  useEffect(() => {
-    cargarBitacora()
-  }, [cargarBitacora])
-
-  const buscar = useCallback(async (valor) => {
-    const buscado = String(valor ?? '').trim()
-    if (!buscado) return
-
-    const peticion = peticionRef.current + 1
-    peticionRef.current = peticion
+  const vaciarCola = useCallback(async () => {
+    if (procesandoRef.current) return
+    procesandoRef.current = true
     setProcesando(true)
-    setEstado('buscando')
-    setMensaje(null)
-    setResultado(null)
 
-    try {
-      const expediente = await buscarExpedienteParaDepurar(buscado)
-      if (peticion !== peticionRef.current) return
+    let huboExito = false
+    let huboDuplicado = false
 
-      if (!expediente) {
-        setEstado('no_encontrado')
-        setMensaje(`No se encontró el expediente ${buscado}.`)
-        return
+    while (colaRef.current.length > 0) {
+      const item = colaRef.current.shift()
+      try {
+        const registro = await marcarDepurado({
+          numeroExpediente: item.numero,
+        })
+        if (USANDO_DATOS_MOCK) setUltimaDepuracion(registro)
+        setExito(
+          `Expediente ${formatearExpedienteDepuracion(
+            registro?.numeroExpediente ?? item.numero,
+          )} depurado.`,
+        )
+        setEstado('inicial')
+        setMensaje(null)
+        huboExito = true
+      } catch (fallo) {
+        const status = fallo?.status
+        huboDuplicado = huboDuplicado || status === 409
+
+        if (status === 404) {
+          setEstado('no_encontrado')
+          setMensaje(
+            `No existe el expediente ${formatearExpedienteDepuracion(item.numero)} en el hospital.`,
+          )
+        } else if (status === 409) {
+          setEstado('duplicado')
+          setMensaje('Este expediente ya está depurado (ya no existe en el sistema).')
+        } else if (esFalloDeRed(fallo) || status === 502) {
+          setEstado('error')
+          setMensaje('No se pudo consultar el hospital. Intente de nuevo.')
+          setFallidos((actuales) => actuales + 1)
+        } else {
+          setEstado('error')
+          setMensaje('No se pudo registrar la depuración. Inténtelo de nuevo.')
+          setFallidos((actuales) => actuales + 1)
+        }
+      } finally {
+        setPendientes((actuales) => actuales.filter((p) => p.numero !== item.numero))
+        enColaRef.current.delete(item.numero)
       }
-      if (expediente.depurado) {
-        setResultado(expediente)
-        setEstado('duplicado')
-        setMensaje('Este expediente ya está depurado (ya no existe en el sistema).')
-        return
-      }
-      setResultado(expediente)
-      setEstado('encontrado')
-    } catch (fallo) {
-      if (peticion !== peticionRef.current) return
-      if (fallo?.status === 404) {
-        setEstado('no_encontrado')
-        setMensaje(`No se encontró el expediente ${buscado}.`)
-      } else {
-        setEstado('error')
-        setMensaje(fallo?.message || 'No se pudo buscar el expediente.')
-      }
-    } finally {
-      if (peticion === peticionRef.current) setProcesando(false)
     }
-  }, [])
 
-  // Búsqueda automática con debounce al escribir/escanear.
-  useEffect(() => {
-    const buscado = numero.trim()
-    if (!buscado) {
-      setEstado('inicial')
-      setResultado(null)
+    procesandoRef.current = false
+    setProcesando(false)
+
+    if (huboExito || huboDuplicado) {
+      await refrescarHistorial({ forzar: true })
+    }
+  }, [refrescarHistorial])
+
+  const agregar = useCallback(
+    (valor) => {
+      const validacion = validarEntradaExpediente(valor)
+      if (!validacion.valido) {
+        setEstado('formato_invalido')
+        setMensaje(
+          MENSAJES_ERROR_EXPEDIENTE[validacion.error] ?? 'Número de expediente no válido.',
+        )
+        return false
+      }
+
+      const numeroCanonico = validacion.numero
+      if (enColaRef.current.has(numeroCanonico)) {
+        setEstado('duplicado')
+        setMensaje('Ese expediente ya se está procesando.')
+        return false
+      }
+
+      enColaRef.current.add(numeroCanonico)
+      setPendientes((actuales) => [...actuales, { numero: numeroCanonico }])
+      setEstado('enviado')
       setMensaje(null)
-      return undefined
-    }
+      setExito(null)
+      setExitoDeshacer(null)
+      colaRef.current.push({ numero: numeroCanonico })
+      vaciarCola()
+      return true
+    },
+    [vaciarCola],
+  )
 
-    setExito(null)
-    const timer = setTimeout(() => buscar(buscado), DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [numero, buscar])
-
-  const confirmarDepuracion = useCallback(async () => {
-    if (!resultado || procesando) return
-
-    setProcesando(true)
-    setMensaje(null)
-    try {
-      const registro = await marcarDepurado({
-        numeroExpediente: resultado.numeroExpediente,
-        motivo: motivo.trim() || undefined,
+  const registrarManual = useCallback(
+    async ({ numeroExpediente, pacienteNombre, motivo } = {}) => {
+      const registro = await registrarDepuracionManual({
+        numeroExpediente,
+        pacienteNombre,
+        motivo,
       })
-      setExito(`Expediente ${registro.numeroExpediente ?? resultado.numeroExpediente} depurado.`)
-      setNumero('')
-      setResultado(null)
-      setMotivo('')
-      setEstado('inicial')
-      await cargarBitacora()
-    } catch (fallo) {
-      const status = fallo?.status
-      if (status === 409) {
-        setEstado('duplicado')
-        setMensaje('Este expediente ya estaba depurado.')
-      } else if (status === 404) {
-        setEstado('no_encontrado')
-        setMensaje('El expediente no existe.')
-      } else {
-        setEstado('error')
-        setMensaje(fallo?.message || 'No se pudo marcar el expediente como depurado.')
-      }
-    } finally {
-      setProcesando(false)
-      enfocar()
+      await refrescarHistorial({ forzar: true })
+      return registro
+    },
+    [refrescarHistorial],
+  )
+
+  const eliminar = useCallback(
+    async (id) => {
+      await eliminarDepuracion(id)
+      if (ultimaDepuracion?.id === id) setUltimaDepuracion(null)
+      invalidarRegistroHistorial(id)
+      await refrescarHistorial({ forzar: true })
+    },
+    [ultimaDepuracion, invalidarRegistroHistorial, refrescarHistorial],
+  )
+
+  const abrirDeshacer = useCallback(() => {
+    if (!USANDO_DATOS_MOCK || !ultimaDepuracion || deshaciendo) return
+    setErrorDeshacer(null)
+    setConfirmacionDeshacerAbierta(true)
+  }, [ultimaDepuracion, deshaciendo])
+
+  const cerrarDeshacer = useCallback(() => {
+    if (deshaciendo) return
+    setConfirmacionDeshacerAbierta(false)
+    setErrorDeshacer(null)
+  }, [deshaciendo])
+
+  const confirmarDeshacer = useCallback(async () => {
+    if (
+      !USANDO_DATOS_MOCK ||
+      !ultimaDepuracion ||
+      !confirmacionDeshacerAbierta ||
+      deshaciendoRef.current
+    ) {
+      return
     }
-  }, [resultado, procesando, motivo, cargarBitacora, enfocar])
+
+    deshaciendoRef.current = true
+    setDeshaciendo(true)
+    setErrorDeshacer(null)
+
+    try {
+      let registro
+      try {
+        registro = await deshacerUltimaDepuracion()
+      } catch (fallo) {
+        if (fallo?.codigo === 'solo_mock') {
+          setErrorDeshacer('La reversión solo está disponible en modo simulación.')
+        } else if (fallo?.status === 409) {
+          setErrorDeshacer('No hay una depuración reversible en esta sesión.')
+        } else {
+          setErrorDeshacer('No se pudo deshacer la depuración simulada. Inténtelo de nuevo.')
+        }
+        return
+      }
+
+      const numeroRevertido = registro?.numeroExpediente ?? ultimaDepuracion.numeroExpediente
+      invalidarRegistroHistorial(registro?.id ?? ultimaDepuracion.id)
+      setUltimaDepuracion(null)
+      setConfirmacionDeshacerAbierta(false)
+      setErrorDeshacer(null)
+      setExito(null)
+      setExitoDeshacer(
+        `Depuración simulada revertida: ${formatearExpedienteDepuracion(
+          numeroRevertido,
+        )} vuelve a estar disponible.`,
+      )
+      setTimeout(enfocar, 0)
+
+      await refrescarHistorial({ forzar: true })
+    } finally {
+      deshaciendoRef.current = false
+      setDeshaciendo(false)
+    }
+  }, [
+    ultimaDepuracion,
+    confirmacionDeshacerAbierta,
+    invalidarRegistroHistorial,
+    refrescarHistorial,
+    enfocar,
+  ])
 
   return {
+    ...historial,
     numero,
     setNumero,
-    resultado,
     estado,
     mensaje,
     exito,
-    motivo,
-    setMotivo,
-    depurados,
     procesando,
+    pendientes,
+    cola: pendientes.length,
+    fallidos,
+    ultimaDepuracion,
+    confirmacionDeshacerAbierta,
+    errorDeshacer,
+    deshaciendo,
+    exitoDeshacer,
     inputRef,
-    buscar,
-    confirmarDepuracion,
-    cargarBitacora,
+    agregar,
+    registrarManual,
+    eliminar,
+    abrirDeshacer,
+    cerrarDeshacer,
+    confirmarDeshacer,
+    cargarBitacora: refrescarHistorial,
     enfocar,
   }
 }

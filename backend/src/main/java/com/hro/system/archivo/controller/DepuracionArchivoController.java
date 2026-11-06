@@ -1,5 +1,6 @@
 package com.hro.system.archivo.controller;
 
+import com.hro.system.archivo.dto.DepurarExpedienteManualRequestDTO;
 import com.hro.system.archivo.dto.DepurarExpedienteRequestDTO;
 import com.hro.system.archivo.dto.ExpedienteDepuradoResponseDTO;
 import com.hro.system.archivo.service.DepuracionArchivoService;
@@ -37,6 +38,24 @@ public class DepuracionArchivoController {
         ExpedienteDepuradoResponseDTO response = depuracionService.depurar(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(response, "Expediente depurado exitosamente"));
+    }
+
+    @PostMapping("/manual")
+    @Operation(summary = "Depurar expediente manualmente",
+            description = "Registra la baja sin consultar al API del hospital. Para cuando el sistema no responde o no reconoce el expediente.")
+    public ResponseEntity<ApiResponse<ExpedienteDepuradoResponseDTO>> depurarManual(
+            @Valid @RequestBody DepurarExpedienteManualRequestDTO dto) {
+        ExpedienteDepuradoResponseDTO response = depuracionService.registrarManual(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(response, "Expediente depurado manualmente"));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar una depuración",
+            description = "Elimina el registro de la bitácora y revierte la baja lógica del expediente si estaba registrado en Archivo.")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Long id) {
+        depuracionService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Depuración eliminada"));
     }
 
     @GetMapping

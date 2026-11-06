@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Icon, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
+import { Alert, Button, Icon, InputFecha, ModalGenerandoPdf, Spinner } from '@/shared/components/ui'
 import { useToast } from '@/shared/context/ToastContext.jsx'
 import {
   ETIQUETAS_ESTADO_CARNET,
@@ -357,12 +357,12 @@ export default function DashboardArchivoPage() {
         <div className="flex flex-wrap items-end gap-2">
           <label className="inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1">
             <Icon name="calendar_today" className="text-[18px] text-primary" />
-            <input
-              type="date"
+            <InputFecha
+              soloInput
               value={fecha}
-              onChange={(evento) => setFecha(evento.target.value)}
+              onChange={setFecha}
               aria-label="Fecha del dashboard"
-              className="h-8 rounded-md bg-transparent text-label-sm font-semibold outline-none"
+              className="h-8 w-[7rem] text-label-sm font-semibold"
             />
           </label>
           <Button variant="secondary" onClick={refrescar} disabled={cargando}>

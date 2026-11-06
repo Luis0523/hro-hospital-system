@@ -1,4 +1,4 @@
-import { Input, Select } from '@/shared/components/ui'
+import { InputFecha, Select } from '@/shared/components/ui'
 
 // Barra de filtros del dashboard (rango de fechas + unidad/subespecialidad).
 // Presentacional: recibe el estado y emite los cambios vía `onChange`.
@@ -19,19 +19,17 @@ export default function FiltroDashboard({ filtros, onChange, subespecialidades =
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-card"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Input
+        <InputFecha
           label="Desde"
           name="desde"
-          type="date"
           value={filtros.desde}
-          onChange={(evento) => actualizar({ desde: evento.target.value })}
+          onChange={(valor) => actualizar({ desde: valor })}
         />
-        <Input
+        <InputFecha
           label="Hasta"
           name="hasta"
-          type="date"
           value={filtros.hasta}
-          onChange={(evento) => actualizar({ hasta: evento.target.value })}
+          onChange={(valor) => actualizar({ hasta: valor })}
         />
         <Select
           label="Unidad / Subespecialidad"

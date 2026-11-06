@@ -27,6 +27,7 @@ import {
 } from './mockData'
 import { construirPdfResumen } from '../utils/pdfMock'
 import {
+  eliminarCuadernoRojoMock,
   guardarCuadernoRojoMock,
   listarCuadernoRojoMock,
   obtenerCuadernoRojoMock,
@@ -315,4 +316,19 @@ export async function guardarCuadernoRojo(fecha, datos) {
   if (USE_MOCK) return guardarCuadernoRojoMock(fecha, datos)
 
   return desenvolver(await client.put(`/cuaderno-rojo/${fecha}`, datos))
+}
+
+/**
+ * La eliminación solo está disponible en mock. El backend actual no expone
+ * DELETE para Cuaderno Rojo; en modo real se devuelve un error explícito y la
+ * UI deshabilita la acción.
+ */
+export async function eliminarCuadernoRojo(fecha) {
+  if (USE_MOCK) return eliminarCuadernoRojoMock(fecha)
+
+  const error = new Error(
+    'La eliminación de registros del Cuaderno Rojo no está disponible: el backend no expone DELETE.',
+  )
+  error.status = 501
+  throw error
 }
