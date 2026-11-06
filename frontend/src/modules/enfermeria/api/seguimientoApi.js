@@ -443,7 +443,7 @@ export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
     return adjuntarEspecialidadesDelDia(clinicas, vistaMock)
   }
 
-  const [respuestaResumen, fijas, vista] = await Promise.all([
+  const [respuestaResumen, fijas, vista, respuestaOrden] = await Promise.all([
     leerConReintento('/turnos-estacion/clinicas/resumen', {
       params: { fecha, estacionId },
     }),
@@ -451,24 +451,55 @@ export async function listarClinicas({ estacionId, fecha = hoyIso() } = {}) {
       ? leerConReintento(`/estaciones/${estacionId}/clinicas-fijas`).catch(() => [])
       : Promise.resolve([]),
     listarAsignacionesClinicas(fecha).catch(() => []),
+    estacionId != null
+      ? leerConReintento(`/estaciones/${estacionId}/clinicas-orden`).catch(() => [])
+      : Promise.resolve([]),
   ])
   const resumen = desenvolver(respuestaResumen)
-  const clinicas = (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
-    id: clinica.espacioFisicoId,
-    numero: clinica.numero,
-    nivel: clinica.nivel,
-    orden: Number(clinica.orden ?? 0),
-    nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
-    asignados: Number(clinica.asignados ?? 0),
-    devueltos: Number(clinica.devueltos ?? 0),
-    presentaciones: Number(clinica.presentaciones ?? 0),
-    expedientesEnClinica: Number(clinica.pendientes ?? 0),
-    ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
-  }))
+  // La misma fuente que configura jefe de enfermería en Estaciones: así el
+  // orden de Devuelto coincide con Registro y Recibir/Repartir aunque el
+  // resumen no traiga el campo `orden`.
+  const ordenConfigurado = desenvolver(respuestaOrden)
+  const clinicas = aplicarOrdenClinicas(
+    (Array.isArray(resumen) ? resumen : []).map((clinica) => ({
+      id: clinica.espacioFisicoId,
+      numero: clinica.numero,
+      nivel: clinica.nivel,
+      orden: Number(clinica.orden ?? 0),
+      nombre: clinica.nombre ?? `Clínica ${clinica.numero}`,
+      asignados: Number(clinica.asignados ?? 0),
+      devueltos: Number(clinica.devueltos ?? 0),
+      presentaciones: Number(clinica.presentaciones ?? 0),
+      expedientesEnClinica: Number(clinica.pendientes ?? 0),
+      ultimaDevolucionEn: clinica.ultimaDevolucionEn ?? null,
+    })),
+    Array.isArray(ordenConfigurado) ? ordenConfigurado : [],
+  )
   return adjuntarEspecialidadesDelDia(
     adjuntarEspecialidadesFijas(filtrarClinicasPorNivel(clinicas, estacionId), desenvolver(fijas)),
     vista,
   )
+}
+
+/**
+ * Reemplaza el campo `orden` de cada clínica con la posición configurada para
+ * la estación (1 = primera). Mantiene las clínicas que no estén en la lista.
+ */
+export function aplicarOrdenClinicas(clinicas = [], ordenConfigurado = []) {
+  if (!Array.isArray(ordenConfigurado) || ordenConfigurado.length === 0) return clinicas
+  const posiciones = new Map(
+    ordenConfigurado.map((item, indice) => [
+      String(item?.espacioFisicoId ?? item?.id),
+      Number(item?.orden ?? indice + 1),
+    ]),
+  )
+  // Las clínicas fuera de la configuración se van al final, igual que en el
+  // listado de jefe de enfermería.
+  const ultimoOrden = Math.max(0, ...posiciones.values())
+  return clinicas.map((clinica) => {
+    const posicion = posiciones.get(String(clinica.id))
+    return { ...clinica, orden: posicion ?? ultimoOrden + 1 }
+  })
 }
 
 export async function registrarDevolucionClinica({

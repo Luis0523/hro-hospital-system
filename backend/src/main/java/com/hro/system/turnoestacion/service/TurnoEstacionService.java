@@ -628,24 +628,8 @@ public class TurnoEstacionService {
                     "No se puede eliminar un turno que ya tiene paciente o expediente vinculado");
         }
 
-        boolean ultimoGeneral = turnoRepository
-                .findFirstByFechaAndEstacionIdAndActivoTrueOrderByNumeroGeneralDesc(
-                        turno.getFecha(), turno.getEstacion().getId())
-                .map(t -> t.getId().equals(turno.getId()))
-                .orElse(false);
-
-        if (ultimoGeneral) {
-            turnoRepository.decrementarTurnoGeneral(
-                    turno.getEstacion().getId(), turno.getFecha(), turno.getNumeroGeneral());
-            turnoRepository.decrementarCorrelativoEspecialidad(
-                    turno.getEspecialidad().getId(), turno.getFecha(), turno.getCorrelativoEspecialidad());
-            movimientoRepository.deleteByTurnoEstacionId(turno.getId());
-            turnoRepository.delete(turno);
-            turnoRepository.flush();
-            log.info("Turno de estación {} eliminado físicamente y contadores decrementados", id);
-            return;
-        }
-
+        // El número general y el correlativo nunca se reutilizan: el turno se
+        // da de baja lógica para reservar ambos números y conservar la bitácora.
         turno.setActivo(false);
         turno.setEliminadoPor(usuarioActual());
         turno.setEliminadoEn(OffsetDateTime.now());
@@ -761,13 +745,16 @@ public class TurnoEstacionService {
                                                               EstacionEnfermeria estacion) {
         List<TurnoEstacion> turnos = turnoRepository
                 .findByFechaAndEstacionIdAndActivoTrueOrderByNumeroGeneralAsc(dia, estacion.getId());
+        // La clínica fija asigna destino desde el registro, pero el expediente
+        // todavía no está en la clínica. Solo cuenta como asignado cuando ya
+        // fue recibido y repartido (recibido o posterior).
         Map<UUID, Long> asignados = turnos.stream()
-                .filter(turno -> turno.getEspacioFisico() != null)
+                .filter(this::llegoALaClinica)
                 .collect(Collectors.groupingBy(
                         turno -> turno.getEspacioFisico().getId(), Collectors.counting()));
         Map<UUID, Long> presentaciones = turnos.stream()
-                .filter(turno -> turno.getEspacioFisico() != null
-                        && "presentacion".equals(turno.getTipoRegistro()))
+                .filter(this::llegoALaClinica)
+                .filter(turno -> "presentacion".equals(turno.getTipoRegistro()))
                 .collect(Collectors.groupingBy(
                         turno -> turno.getEspacioFisico().getId(), Collectors.counting()));
         Map<UUID, List<DevolucionClinica>> devoluciones = devolucionClinicaRepository
@@ -813,6 +800,16 @@ public class TurnoEstacionService {
                     .build());
         }
         return resultado;
+    }
+
+    /**
+     * Un turno ya está en la clínica cuando tiene espacio físico y superó el
+     * estado inicial. En `registrado` la clínica puede venir precargada por la
+     * clínica fija de la estación, sin que el expediente haya llegado aún.
+     */
+    private boolean llegoALaClinica(TurnoEstacion turno) {
+        return turno.getEspacioFisico() != null
+                && turno.getEstado() != EstadoTurnoEstacion.registrado;
     }
 
     @Transactional(readOnly = true)

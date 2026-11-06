@@ -3,7 +3,6 @@ package com.hro.system.turnoestacion.repository;
 import com.hro.system.turnoestacion.entity.EstadoTurnoEstacion;
 import com.hro.system.turnoestacion.entity.TurnoEstacion;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -53,30 +52,6 @@ public interface TurnoEstacionRepository extends JpaRepository<TurnoEstacion, UU
     List<Object[]> asignarCorrelativos(@Param("estacionId") Long estacionId,
                                        @Param("especialidadId") Long especialidadId,
                                        @Param("fecha") LocalDate fecha);
-
-    @Modifying
-    @Query(value = """
-            UPDATE contador_turno_estacion
-               SET ultimo_numero = GREATEST(ultimo_numero - 1, 0)
-             WHERE estacion_id = :estacionId
-               AND fecha = :fecha
-               AND ultimo_numero = :numero
-            """, nativeQuery = true)
-    int decrementarTurnoGeneral(@Param("estacionId") Long estacionId,
-                                @Param("fecha") LocalDate fecha,
-                                @Param("numero") Integer numero);
-
-    @Modifying
-    @Query(value = """
-            UPDATE contador_correlativo_especialidad
-               SET ultimo_correlativo = GREATEST(ultimo_correlativo - 1, 0)
-             WHERE especialidad_id = :especialidadId
-               AND fecha = :fecha
-               AND ultimo_correlativo = :correlativo
-            """, nativeQuery = true)
-    int decrementarCorrelativoEspecialidad(@Param("especialidadId") Long especialidadId,
-                                           @Param("fecha") LocalDate fecha,
-                                           @Param("correlativo") Integer correlativo);
 
     long countByFechaAndEstacionIdAndActivoTrue(LocalDate fecha, Long estacionId);
 

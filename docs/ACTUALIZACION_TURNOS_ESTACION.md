@@ -270,14 +270,9 @@ Reglas:
 
 - Solo aplica a turnos en estado `registrado`.
 - No aplica a turnos con paciente o expediente.
-- Si es el último número general de la estación/fecha:
-  - se elimina físicamente;
-  - se decrementan ambos contadores;
-  - el número puede reutilizarse.
-- Si no es el último:
-  - se desactiva lógicamente;
-  - el número queda reservado;
-  - no se reutiliza ni se tocan los contadores.
+- La eliminación siempre es lógica (`activo = false`).
+- El número general y el correlativo de la especialidad quedan reservados.
+- No se reutilizan ni se decrementan los contadores, aunque sea el último turno.
 
 ### 4.9 Libro digital
 

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ordenarClinicas } from '../components/seguimiento/ordenClinicas'
 import {
   actualizarTipoRegistroTurno,
   adjuntarEspecialidadesFijas,
+  aplicarOrdenClinicas,
   avanzarTurno,
   cambiarClinicaTurno,
   contarExpedientesEnClinica,
@@ -242,6 +244,23 @@ describe('seguimientoApi', () => {
 
     expect(clinicas).toHaveLength(8)
     expect(clinicas.map((clinica) => clinica.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+  })
+
+  it('aplica el orden de clínicas configurado para la estación', () => {
+    const clinicas = [
+      { id: 1, orden: 1 },
+      { id: 2, orden: 2 },
+      { id: 3, orden: 3 },
+    ]
+    const configurado = [
+      { espacioFisicoId: 3, orden: 1 },
+      { espacioFisicoId: 1, orden: 2 },
+      { espacioFisicoId: 2, orden: 3 },
+    ]
+
+    const resultado = aplicarOrdenClinicas(clinicas, configurado)
+
+    expect(ordenarClinicas(resultado).map((clinica) => clinica.id)).toEqual([3, 1, 2])
   })
 
   it('filtra clínicas por nivel según la estación', async () => {

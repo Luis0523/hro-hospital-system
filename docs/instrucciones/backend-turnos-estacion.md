@@ -337,15 +337,11 @@ Respetar `X-Estacion-Id` cuando esté presente y validar que coincida con la est
 
 Solo se puede eliminar un turno en estado `registrado`, sin paciente y sin expediente.
 
-- Si es el **último turno general** de la estación/fecha:
-  - se elimina físicamente;
-  - se decrementan ambos contadores;
-  - el número puede reutilizarse.
-- Si no es el último:
-  - se desactiva lógicamente (`activo = false`);
-  - se guarda `motivo_eliminacion` si viene;
-  - el número queda reservado y no se reutiliza;
-  - no se tocan los contadores.
+La eliminación siempre es lógica (`activo = false`):
+
+- se guarda `motivo_eliminacion` si viene;
+- el número general y el correlativo de la especialidad quedan reservados;
+- no se reutilizan ni se decrementan los contadores, aunque sea el último turno.
 
 Un turno con paciente/expediente vinculado nunca se elimina; solo puede seguir su flujo.
 
@@ -397,8 +393,8 @@ La historia de Enfermería queda en `turno_estacion_movimiento`; la de Archivo e
 4. Tope agotado responde 409 y no consume turno general.
 5. Re-llamado incrementa `llamados` y deja movimiento.
 6. No se permite `atendido -> llamado`.
-7. Borrado físico del último turno decrementa contadores.
-8. Borrado de un turno anterior es lógico y no reutiliza número.
+7. Eliminar cualquier turno lo desactiva lógicamente.
+8. El número general y el correlativo no se reutilizan después de eliminar.
 9. Doctor con colegiado inválido recibe 404/403.
 10. Clínica de otra sede o no asignada es rechazada.
 11. Vínculo con expediente crea/reutiliza `ExpedienteCiclo` y movimiento.

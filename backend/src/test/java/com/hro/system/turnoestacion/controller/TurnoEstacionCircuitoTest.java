@@ -17,9 +17,11 @@ import com.hro.system.espacio.entity.EspacioFisico;
 import com.hro.system.espacio.repository.AsignacionDiariaEspacioRepository;
 import com.hro.system.espacio.repository.EspacioFisicoRepository;
 import com.hro.system.estacion.entity.ClinicaFijaEstacion;
+import com.hro.system.estacion.entity.EstacionClinicaOrden;
 import com.hro.system.estacion.entity.EstacionEnfermeria;
 import com.hro.system.estacion.entity.EstacionSubespecialidad;
 import com.hro.system.estacion.repository.ClinicaFijaEstacionRepository;
+import com.hro.system.estacion.repository.EstacionClinicaOrdenRepository;
 import com.hro.system.estacion.repository.EstacionEnfermeriaRepository;
 import com.hro.system.estacion.repository.EstacionSubespecialidadRepository;
 import com.hro.system.medico.entity.Medico;
@@ -72,6 +74,7 @@ class TurnoEstacionCircuitoTest {
     @Autowired private UbicacionArchivoRepository ubicacionArchivoRepository;
     @Autowired private EstacionEnfermeriaRepository estacionRepository;
     @Autowired private ClinicaFijaEstacionRepository clinicaFijaRepository;
+    @Autowired private EstacionClinicaOrdenRepository estacionClinicaOrdenRepository;
     @Autowired private EstacionSubespecialidadRepository estacionSubespecialidadRepository;
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private SubespecialidadRepository subespecialidadRepository;
@@ -483,7 +486,7 @@ class TurnoEstacionCircuitoTest {
     }
 
     @Test
-    @DisplayName("Borrado lógico del turno intermedio no reutiliza números; el último se borra físicamente y decrementa contadores")
+    @DisplayName("Eliminar un turno lo desactiva y nunca reutiliza el número general")
     void borradoYContadores() throws Exception {
         Contexto contexto = crearContexto(null);
         String usuario = "enf-" + UUID.randomUUID().toString().substring(0, 8);
@@ -519,11 +522,11 @@ class TurnoEstacionCircuitoTest {
                         .content("{\"motivo\":\"Error de captura\"}"))
                 .andExpect(status().isOk());
 
-        assertThat(turnoRepository.findById(id4)).isEmpty();
+        assertThat(turnoRepository.findById(id4).orElseThrow().getActivo()).isFalse();
 
         JsonNode t5 = crearTurno(contexto, contexto.especialidad().getId(), usuario);
-        assertThat(t5.get("numeroGeneral").asInt()).isEqualTo(4);
-        assertThat(t5.get("correlativoEspecialidad").asInt()).isEqualTo(4);
+        assertThat(t5.get("numeroGeneral").asInt()).isEqualTo(5);
+        assertThat(t5.get("correlativoEspecialidad").asInt()).isEqualTo(5);
     }
 
     @Test
@@ -571,6 +574,106 @@ class TurnoEstacionCircuitoTest {
                 .isEqualTo(contexto.espacio().getId().toString());
         assertThat(turno.get("espacioFisicoNumero").asText())
                 .isEqualTo(contexto.espacio().getNumero());
+    }
+
+    @Test
+    @DisplayName("Resumen de clínicas respeta el orden configurado por la estación")
+    void resumenRespetaOrdenConfigurado() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+
+        // Se crea una clínica que por número quedaría antes que la del contexto
+        // para comprobar que manda el orden configurado, no el natural.
+        EspacioFisico primera = espacioFisicoRepository.save(EspacioFisico.builder()
+                .numero("A-" + suffix)
+                .nivel((short) 1)
+                .nombre("Primera " + suffix)
+                .activo(true)
+                .build());
+        estacionClinicaOrdenRepository.save(EstacionClinicaOrden.builder()
+                .estacion(contexto.estacion())
+                .espacioFisico(primera)
+                .orden(1)
+                .build());
+        estacionClinicaOrdenRepository.save(EstacionClinicaOrden.builder()
+                .estacion(contexto.estacion())
+                .espacioFisico(contexto.espacio())
+                .orden(2)
+                .build());
+
+        String respuesta = mockMvc.perform(
+                        auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria",
+                                "enf-" + suffix, contexto.estacion().getId())
+                                .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode data = objectMapper.readTree(respuesta).get("data");
+        int indicePrimera = -1;
+        int indiceContexto = -1;
+        for (int i = 0; i < data.size(); i += 1) {
+            String id = data.get(i).get("espacioFisicoId").asText();
+            if (id.equals(primera.getId().toString())) indicePrimera = i;
+            if (id.equals(contexto.espacio().getId().toString())) indiceContexto = i;
+        }
+
+        assertThat(indicePrimera).isGreaterThanOrEqualTo(0);
+        assertThat(indiceContexto).isGreaterThanOrEqualTo(0);
+        assertThat(indicePrimera).isLessThan(indiceContexto);
+        assertThat(data.get(indicePrimera).get("orden").asInt())
+                .isLessThan(data.get(indiceContexto).get("orden").asInt());
+    }
+
+    @Test
+    @DisplayName("Resumen de clínicas no cuenta turnos solo registrados con clínica fija")
+    void resumenNoCuentaRegistradosConClinicaFija() throws Exception {
+        Contexto contexto = crearContexto(null);
+        String enfermeria = "enf-" + UUID.randomUUID().toString().substring(0, 8);
+
+        clinicaFijaRepository.save(ClinicaFijaEstacion.builder()
+                .estacion(contexto.estacion())
+                .especialidad(contexto.especialidad())
+                .espacioFisico(contexto.espacio())
+                .activo(true)
+                .build());
+
+        JsonNode turno = crearTurno(contexto, contexto.especialidad().getId(), enfermeria);
+        UUID turnoId = UUID.fromString(turno.get("id").asText());
+        String filtro = "$.data[?(@.espacioFisicoId == '" + contexto.espacio().getId() + "')]";
+
+        // La clínica fija ya está precargada, pero el turno sigue en registrado.
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria", enfermeria,
+                        contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(filtro + ".asignados").value(0))
+                .andExpect(jsonPath(filtro + ".pendientes").value(0));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/recibir"),
+                        "enfermeria", enfermeria, contexto.estacion().getId()))
+                .andExpect(status().isOk());
+
+        // Al recibirlo ya cuenta como asignado, aunque el reparto sea inmediato.
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria", enfermeria,
+                        contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(filtro + ".asignados").value(1))
+                .andExpect(jsonPath(filtro + ".pendientes").value(1));
+
+        mockMvc.perform(auth(post("/turnos-estacion/" + turnoId + "/asignar-clinica"),
+                        "enfermeria", enfermeria, contexto.estacion().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "espacioFisicoId", contexto.espacio().getId().toString()))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(auth(get("/turnos-estacion/clinicas/resumen"), "enfermeria", enfermeria,
+                        contexto.estacion().getId())
+                        .param("fecha", HOY.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(filtro + ".asignados").value(1))
+                .andExpect(jsonPath(filtro + ".pendientes").value(1));
     }
 
     @Test
